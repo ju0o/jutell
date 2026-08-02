@@ -1,4 +1,5 @@
 import { promises as fs, existsSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { validateConfig, type ValidationResult } from '../config/schema.js';
 import type { Config, Feedback } from '../types.js';
@@ -30,7 +31,10 @@ export function getStoragePaths(projectRoot: string): StoragePaths {
   };
 }
 
-export async function ensureStorage(paths: StoragePaths) {
+const storageInitialization = new Map<string, Promise<void>>();
+const fileWrites = new Map<string, Promise<void>>();
+
+async function initializeStorage(paths: StoragePaths) {
   await fs.mkdir(paths.localDir, { recursive: true });
   for (const [file, fallback] of [
     [paths.feedbackFile, []],
@@ -39,10 +43,23 @@ export async function ensureStorage(paths: StoragePaths) {
   ] as const) {
     try {
       await fs.access(file);
-    } catch {
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
       await writeJsonAtomically(file, fallback);
     }
   }
+}
+
+export function ensureStorage(paths: StoragePaths): Promise<void> {
+  const existing = storageInitialization.get(paths.localDir);
+  if (existing) return existing;
+
+  const initialization = initializeStorage(paths).catch((error) => {
+    storageInitialization.delete(paths.localDir);
+    throw error;
+  });
+  storageInitialization.set(paths.localDir, initialization);
+  return initialization;
 }
 
 export async function readJson<T>(file: string): Promise<T> {
@@ -66,10 +83,10 @@ async function readDefaultConfig(): Promise<Config> {
   return structuredClone(DEFAULT_CONFIG);
 }
 
-export async function writeJsonAtomically(file: string, value: unknown) {
+async function writeJsonAtomicallyUnlocked(file: string, value: unknown) {
   const directory = path.dirname(file);
   await fs.mkdir(directory, { recursive: true });
-  const tempFile = path.join(directory, `.${path.basename(file)}.${process.pid}.${Date.now()}.tmp`);
+  const tempFile = path.join(directory, `.${path.basename(file)}.${process.pid}.${randomUUID()}.tmp`);
   await fs.writeFile(tempFile, JSON.stringify(value, null, 2) + '\n', 'utf8');
   try {
     JSON.parse(await fs.readFile(tempFile, 'utf8'));
@@ -87,6 +104,16 @@ export async function writeJsonAtomically(file: string, value: unknown) {
   } finally {
     await fs.rm(tempFile, { force: true });
   }
+}
+
+export function writeJsonAtomically(file: string, value: unknown): Promise<void> {
+  const previous = fileWrites.get(file) ?? Promise.resolve();
+  const write = previous.then(() => writeJsonAtomicallyUnlocked(file, value), () => writeJsonAtomicallyUnlocked(file, value));
+  const tracked = write.finally(() => {
+    if (fileWrites.get(file) === tracked) fileWrites.delete(file);
+  });
+  fileWrites.set(file, tracked);
+  return tracked;
 }
 
 export async function readArray<T>(file: string): Promise<T[]> {

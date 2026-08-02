@@ -141,12 +141,12 @@ function confirmBody(input: unknown, message: string) {
 
 export async function handleApiRequest(req: IncomingMessage, res: ServerResponse, projectRoot: string) {
   const paths = getStoragePaths(projectRoot);
-  await ensureStorage(paths);
-  const url = new URL(req.url ?? '/', 'http://127.0.0.1');
-  const method = req.method ?? 'GET';
-  if (!url.pathname.startsWith('/api/')) return error(res, 404, '요청한 주소를 찾을 수 없습니다.');
-
   try {
+    await ensureStorage(paths);
+    const url = new URL(req.url ?? '/', 'http://127.0.0.1');
+    const method = req.method ?? 'GET';
+    if (!url.pathname.startsWith('/api/')) return error(res, 404, '요청한 주소를 찾을 수 없습니다.');
+
     if (method === 'GET' && url.pathname === '/api/config') return json(res, 200, await readOverview(paths));
     if (method === 'GET' && url.pathname === '/api/readiness') return json(res, 200, await readReadiness(projectRoot, paths));
     if (method === 'GET' && url.pathname === '/api/mcp/status') return json(res, 200, await readMcpStatus(projectRoot, paths));
