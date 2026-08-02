@@ -1,5 +1,37 @@
 # Codex Beginner Bridge — Decisions
 
+## 2026-08-02 — 개인 베타 로컬 관리자 V0.1 구현
+
+### 결정 내용
+
+* `apps/local-admin/`에 Vite·React 화면과 Node.js 기본 HTTP 로컬 API를 둔다.
+* 서버는 `127.0.0.1`에만 바인딩하고, 설정과 개인 베타 피드백을 프로젝트 루트의 허용된 로컬 파일에만 저장한다.
+* 설정 저장은 `version`, 공식 Profile·Feature, limits 범위와 알 수 없는 필드를 검증하며, 임시 파일·재검증·기존 파일 보존·직렬화 처리를 사용한다.
+* limits의 V0.1 입력 범위는 `maxMainFiles` 1~10, `maxGlossaryTerms` 0~10, `compactReportMaxSentences` 4~30으로 통일한다.
+* Prompt, AI 답변, 코드, Git diff, 경로, 프로젝트 식별 정보, 비밀정보, 원문 오류 로그는 로컬 기록에도 저장하지 않는다.
+* 원격 Telemetry, 중앙 서버, 계정·로그인, 외부 API와 자동 수집은 구현하지 않는다.
+
+### 변경 이유
+
+개인 운영자가 브라우저에서 설정과 피드백을 직접 관리할 수 있어야 개인 베타를 반복 실행할 수 있기 때문이다. 기존 Feature와 Telemetry의 개인정보 원칙은 유지한다.
+
+### 영향받은 파일
+
+* `apps/local-admin/`
+* `.gitignore`
+* `README.md`
+* `AGENTS.md`
+* `docs/START_HERE.md`
+* `docs/DOCUMENTATION_MAP.md`
+* `docs/LOCAL_ADMIN_REQUIREMENTS.md`
+* `docs/PERSONAL_BETA_PLAN.md`
+* `docs/FEATURE_CONFIGURATION.md`
+* `docs/DECISIONS.md`
+
+### V0.1 범위 변경 여부
+
+개인용 로컬 관리자 화면과 로컬 피드백 기록으로 범위를 확장했다. 중앙 서버·원격 Telemetry·외부 전송·사용자 계정은 여전히 범위 밖이다.
+
 ## 2026-08-02 — 개인 베타 준비와 문서 진입 구조
 
 ### 결정 내용

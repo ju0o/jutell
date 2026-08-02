@@ -1,0 +1,147 @@
+import type { Config, FeatureId, Limits, Profile } from '../types.js';
+
+export const SUPPORTED_VERSION = 1;
+
+export const FEATURE_IDS: FeatureId[] = [
+  'changeSummary',
+  'userVisibleChanges',
+  'internalChanges',
+  'mainFiles',
+  'glossary',
+  'validationResults',
+  'riskAssessment',
+  'userActions',
+];
+
+export const PROFILES: Record<Profile, { features: Record<FeatureId, boolean>; limits: Limits }> = {
+  minimal: {
+    features: {
+      changeSummary: true,
+      userVisibleChanges: true,
+      internalChanges: false,
+      mainFiles: false,
+      glossary: false,
+      validationResults: true,
+      riskAssessment: false,
+      userActions: true,
+    },
+    limits: { maxMainFiles: 3, maxGlossaryTerms: 1, compactReportMaxSentences: 8 },
+  },
+  balanced: {
+    features: {
+      changeSummary: true,
+      userVisibleChanges: true,
+      internalChanges: true,
+      mainFiles: true,
+      glossary: true,
+      validationResults: true,
+      riskAssessment: true,
+      userActions: true,
+    },
+    limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 },
+  },
+  learning: {
+    features: {
+      changeSummary: true,
+      userVisibleChanges: true,
+      internalChanges: true,
+      mainFiles: true,
+      glossary: true,
+      validationResults: true,
+      riskAssessment: true,
+      userActions: true,
+    },
+    limits: { maxMainFiles: 5, maxGlossaryTerms: 6, compactReportMaxSentences: 12 },
+  },
+  detailed: {
+    features: {
+      changeSummary: true,
+      userVisibleChanges: true,
+      internalChanges: true,
+      mainFiles: true,
+      glossary: true,
+      validationResults: true,
+      riskAssessment: true,
+      userActions: true,
+    },
+    limits: { maxMainFiles: 5, maxGlossaryTerms: 6, compactReportMaxSentences: 18 },
+  },
+};
+
+export const DEFAULT_CONFIG: Config = {
+  version: SUPPORTED_VERSION,
+  profile: 'balanced',
+  features: { ...PROFILES.balanced.features },
+  limits: { ...PROFILES.balanced.limits },
+};
+
+export const LIMIT_RANGES = {
+  maxMainFiles: { min: 1, max: 10 },
+  maxGlossaryTerms: { min: 0, max: 10 },
+  compactReportMaxSentences: { min: 4, max: 30 },
+} as const;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const hasOnlyKeys = (value: Record<string, unknown>, keys: string[]) =>
+  Object.keys(value).every((key) => keys.includes(key));
+
+const isFeatureId = (value: string): value is FeatureId => FEATURE_IDS.includes(value as FeatureId);
+
+export type ValidationResult =
+  | { ok: true; value: Config }
+  | { ok: false; error: string };
+
+export function validateConfig(input: unknown): ValidationResult {
+  if (!isRecord(input)) return { ok: false, error: '설정은 JSON 객체여야 합니다.' };
+  if (!hasOnlyKeys(input, ['version', 'profile', 'features', 'limits'])) {
+    return { ok: false, error: '지원하지 않는 설정 항목이 있습니다.' };
+  }
+  if (input.version !== SUPPORTED_VERSION) return { ok: false, error: '지원하지 않는 설정 버전입니다.' };
+  if (!['minimal', 'balanced', 'learning', 'detailed'].includes(String(input.profile))) {
+    return { ok: false, error: '지원하지 않는 Profile입니다.' };
+  }
+  if (!isRecord(input.features) || !hasOnlyKeys(input.features, FEATURE_IDS)) {
+    return { ok: false, error: '공식 Feature만 설정할 수 있습니다.' };
+  }
+  for (const featureId of FEATURE_IDS) {
+    if (typeof input.features[featureId] !== 'boolean') {
+      return { ok: false, error: 'Feature 값은 ON 또는 OFF여야 합니다.' };
+    }
+  }
+  if (!isRecord(input.limits) || !hasOnlyKeys(input.limits, Object.keys(LIMIT_RANGES))) {
+    return { ok: false, error: '지원하지 않는 limits 항목이 있습니다.' };
+  }
+  for (const [key, range] of Object.entries(LIMIT_RANGES)) {
+    const value = input.limits[key];
+    if (typeof value !== 'number' || !Number.isInteger(value) || value < range.min || value > range.max) {
+      return { ok: false, error: `${key}는 ${range.min}~${range.max} 사이의 정수여야 합니다.` };
+    }
+  }
+  return {
+    ok: true,
+    value: {
+      version: SUPPORTED_VERSION,
+      profile: input.profile as Profile,
+      features: { ...(input.features as Record<FeatureId, boolean>) },
+      limits: { ...(input.limits as Limits) },
+    },
+  };
+}
+
+export function changedFields(before: Config, after: Config) {
+  const changes: Array<{ field: string; before: unknown; after: unknown }> = [];
+  if (before.profile !== after.profile) changes.push({ field: 'profile', before: before.profile, after: after.profile });
+  for (const id of FEATURE_IDS) {
+    if (before.features[id] !== after.features[id]) {
+      changes.push({ field: `features.${id}`, before: before.features[id], after: after.features[id] });
+    }
+  }
+  for (const key of Object.keys(LIMIT_RANGES) as Array<keyof Limits>) {
+    if (before.limits[key] !== after.limits[key]) {
+      changes.push({ field: `limits.${key}`, before: before.limits[key], after: after.limits[key] });
+    }
+  }
+  return changes;
+}

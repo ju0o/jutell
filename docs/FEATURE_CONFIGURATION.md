@@ -66,7 +66,7 @@ Profile은 여러 Feature와 길이 제한의 기본 묶음이다. 명시적으�
 
 `learning`은 용어 설명 한도를 늘릴 수 있다. `detailed`는 복잡하거나 위험한 작업에서 파일과 검증 설명을 더 자세히 작성할 수 있다. 단순 작업에서는 실제 작업 규모에 맞게 줄인다.
 
-`maxMainFiles`는 V0.1 기준상 1~5의 정수로 제한한다. `maxGlossaryTerms`는 0~10, `compactReportMaxSentences`는 1~50의 정수만 허용한다. 이 제한은 선택 정보에 적용하며 안전상 강제되는 정보에는 적용하지 않는다.
+`maxMainFiles`는 1~10, `maxGlossaryTerms`는 0~10, `compactReportMaxSentences`는 4~30의 정수만 허용한다. 이 제한은 선택 정보에 적용하며 안전상 강제되는 정보에는 적용하지 않는다.
 
 ## 5. 설정 우선순위
 

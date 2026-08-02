@@ -8,6 +8,7 @@ coverage/
 .env
 .env.*
 !.env.example
+.beginner-bridge-local/
 
 # Local editor and operating-system files
 .vscode/
