@@ -10,6 +10,8 @@ const packageRoot = path.resolve(import.meta.dirname, '..');
 const entry = path.join(packageRoot, 'dist', 'index.js');
 const temporaryRoots: string[] = [];
 
+const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+
 async function fixture() {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'beginner-bridge-cli-'));
   temporaryRoots.push(root);
@@ -22,6 +24,10 @@ async function fixture() {
 
 async function runCli(args: string[], cwd: string, env: NodeJS.ProcessEnv) {
   return execFileAsync(process.execPath, [entry, ...args], { cwd, env, windowsHide: true, maxBuffer: 1024 * 1024 });
+}
+
+async function runNpm(args: string[], cwd: string) {
+  return execFileAsync(npmCommand, args, { cwd, shell: true, windowsHide: true, maxBuffer: 4 * 1024 * 1024 });
 }
 
 afterEach(async () => {
@@ -116,4 +122,28 @@ describe('Distribution CLI V0.1', () => {
     expect((await stopped.json()).server.state).toBe('stopped');
     await new Promise<void>((resolve) => { child.once('exit', () => resolve()); child.kill(); });
   });
+
+  it('실제 tarball을 임시 npm prefix에 설치한 뒤 두 CLI bin이 실행된다', async () => {
+    const { root, project, env } = await fixture();
+    const packRoot = path.join(root, 'pack');
+    const prefix = path.join(root, 'prefix');
+    await fs.mkdir(packRoot, { recursive: true });
+
+    await runNpm(['pack', '--ignore-scripts', '--pack-destination', packRoot, '--json'], packageRoot);
+    const tarball = (await fs.readdir(packRoot)).find((file) => file.endsWith('.tgz'));
+    expect(tarball).toBeTruthy();
+    await runNpm(['install', '--prefix', prefix, path.join(packRoot, tarball as string), '--no-audit', '--no-fund', '--ignore-scripts'], project);
+
+    const binDirectory = path.join(prefix, 'node_modules', '.bin');
+    const jutellBin = path.join(binDirectory, process.platform === 'win32' ? 'jutell.cmd' : 'jutell');
+    const legacyBin = path.join(binDirectory, process.platform === 'win32' ? 'beginner-bridge.cmd' : 'beginner-bridge');
+    const installedEnv = { ...env, PATH: `${binDirectory}${path.delimiter}${env.PATH ?? ''}` };
+    const version = await execFileAsync(jutellBin, ['--version'], { cwd: project, env: installedEnv, shell: true, windowsHide: true });
+    expect(version.stdout.trim()).toBe('0.2.0');
+    const help = await execFileAsync(jutellBin, ['--help'], { cwd: project, env: installedEnv, shell: true, windowsHide: true });
+    expect(help.stdout).toContain('JuTell CLI 0.2.0');
+    const legacy = await execFileAsync(legacyBin, ['--version'], { cwd: project, env: installedEnv, shell: true, windowsHide: true });
+    expect(legacy.stdout).toContain('0.2.0');
+    expect(legacy.stdout).toContain('이전 명령입니다');
+  }, 30000);
 });
