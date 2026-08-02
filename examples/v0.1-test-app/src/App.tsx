@@ -18,8 +18,8 @@ function LoginPanel() {
         <label htmlFor="password">비밀번호</label>
         <input id="password" name="password" type="password" />
 
-        <button type="submit" style={{ backgroundColor: "#374151" }}>
-          로그인
+        <button type="submit" style={{ backgroundColor: "#2563EB" }}>
+          로그인하기
         </button>
       </form>
       {message ? <p role="status">{message}</p> : null}
