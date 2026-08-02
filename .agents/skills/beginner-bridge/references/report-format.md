@@ -110,3 +110,17 @@
 * 화면이 정상적으로 표시됩니다
 
 대신 확인한 범위, 실행한 검증, 남은 미확인 사항을 적는다.
+
+## 8. 로컬 Feature 설정
+
+프로젝트 루트의 `.beginner-bridge.json`을 확인한다.
+
+* 파일이 없으면 `balanced` 기본값을 사용한다.
+* JSON, Profile, Feature ID, 값 형식 또는 limits가 잘못되면 설정 전체를 추측하지 않고 `balanced`로 진행한다.
+* 잘못된 설정이 있었을 때만 설정 문제를 짧게 알리고 설정 파일 전체를 출력하지 않는다.
+* 명시적 `features`와 `limits`는 Profile 기본값보다 우선한다.
+* 사용자가 요청한 보고 형식과 안전상 강제 보고 항목은 Feature를 끄더라도 적용한다.
+* 실패, 핵심 검증 실패, 중요한 미확인 사항, 높은 위험·판정 불가, 비밀정보·데이터 손실 위험, 범위 밖 변경과 작업 보류 사유는 숨기지 않는다.
+* limits는 선택 정보의 길이와 수에 적용하며 안전상 강제 정보에는 적용하지 않는다.
+
+Feature ID별 상세 예외는 `references/feature-registry.md`, 전체 정책은 `docs/FEATURE_CONFIGURATION.md`를 참조한다.

@@ -31,6 +31,20 @@ Codex 작업 결과를 비개발자가 이해할 수 있는 하나의 보고서�
 
 사용자가 상세 보고를 생략해달라고 하면 최소 보고만 제공한다. 작업 완료 여부, 주요 수정 파일, 중요한 실패 또는 미확인 항목은 생략하지 않는다.
 
+## 설정 해석 절차
+
+실행 절차에 들어가기 전에 다음 순서로 로컬 설정을 해석한다.
+
+1. 프로젝트 루트에서 `.beginner-bridge.json`을 확인한다.
+2. JSON, `version`, Profile, Feature ID, boolean 값과 limits를 검증한다.
+3. 선택한 Profile의 기본값을 적용한다. 파일이 없으면 `balanced`를 사용한다.
+4. 명시적으로 적힌 `features`와 `limits`를 Profile 기본값보다 우선 적용한다.
+5. 안전상 강제 보고 항목과 사용자가 현재 요청에서 요구한 형식을 적용한다.
+6. 이번 보고서에서 사용할 최종 활성 Feature와 limits를 확정한다.
+7. 활성 Feature만 사용해 보고서를 작성하되, 강제 보고 항목은 생략하지 않는다.
+
+설정 오류가 있으면 전체 설정을 추측해 고치지 않고 `balanced`로 진행한다. 오류가 있는 경우에만 설정 문제를 짧게 알리며 설정 파일 전체는 출력하지 않는다.
+
 ## 실행 절차
 
 1. 사용자 요청, 작업 유형, 허용 범위와 금지 범위를 확인한다.
@@ -57,7 +71,7 @@ Codex 작업 결과를 비개발자가 이해할 수 있는 하나의 보고서�
    * 보고서 상태: 확인 완료, 추가 확인 필요, 일부 확인, 작업 보류, 범위 밖
 10. 위험도는 변경 영향도를 기준으로 판단한다. 검증 도구가 없다는 이유만으로 위험도를 판정 불가로 만들지 않는다. 여러 조건이 겹치면 가장 높은 위험도를 적용한다.
 11. 필요한 용어만 처음 등장할 때 설명한다. 기술 전용 용어는 해당 기술이 사용되는 것을 확인한 경우에만 설명한다. 기본 사전에 없는 용어는 추측하지 않는다.
-12. `references/report-format.md`에 따라 하나의 비개발자용 최종 보고를 작성한다.
+12. 활성 Feature와 `references/report-format.md`에 따라 하나의 비개발자용 최종 보고를 작성한다.
 13. 제출 전 다음을 점검한다.
    * 화면 변화와 내부 변화를 분리했는가
    * 예상과 실제 확인을 구분했는가
@@ -68,6 +82,8 @@ Codex 작업 결과를 비개발자가 이해할 수 있는 하나의 보고서�
    * 비밀정보가 보고서와 사용자에게 보인 출력에 없는가
    * 중요한 미확인 사항과 사용자 행동을 표시했는가
    * 보고서가 작업 규모에 비해 길지 않은가
+
+설정 상세와 Feature별 예외는 `docs/FEATURE_CONFIGURATION.md`와 `references/feature-registry.md`에서 확인한다.
 
 ## 작업 유형별 출력
 
@@ -84,7 +100,9 @@ Codex 작업 결과를 비개발자가 이해할 수 있는 하나의 보고서�
 * `docs/BEGINNER_REPORT_SPEC.md` — 공식 정보 체계, 검증과 보고서 상태 연결
 * `docs/GLOSSARY_POLICY.md` — 용어 설명 정책
 * `docs/TEST_SCENARIOS.md` — V0.1 시나리오와 평가 기준
+* `docs/FEATURE_CONFIGURATION.md` — 로컬 Feature 설정, Profile과 우선순위
 * `references/glossary-ko.md` — 핵심 용어와 문맥 주의사항
+* `references/feature-registry.md` — Feature ID와 강제 보고 예외
 * `references/report-format.md` — 보고서 형식
 * `references/risk-level-guide.md` — 위험도 예시와 우선순위
 

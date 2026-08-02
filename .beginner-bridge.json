@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "profile": "balanced",
+  "features": {
+    "changeSummary": true,
+    "userVisibleChanges": true,
+    "internalChanges": true,
+    "mainFiles": true,
+    "glossary": true,
+    "validationResults": true,
+    "riskAssessment": true,
+    "userActions": true
+  },
+  "limits": {
+    "maxMainFiles": 5,
+    "maxGlossaryTerms": 3,
+    "compactReportMaxSentences": 12
+  }
+}

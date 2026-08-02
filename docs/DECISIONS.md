@@ -1,5 +1,33 @@
 # Codex Beginner Bridge — Decisions
 
+## 2026-08-02 — 로컬 Feature 설정 시스템 추가
+
+### 결정 내용
+
+* Beginner Bridge 보고서의 선택 기능을 프로젝트 루트 `.beginner-bridge.json`에서 독립적으로 켜고 끌 수 있게 한다.
+* `minimal`, `balanced`, `learning`, `detailed` Profile을 제공하고 명시적 Feature·limits를 Profile보다 우선한다.
+* 설정이 없거나 잘못되면 설정 전체를 추측하지 않고 `balanced` 기본값으로 진행한다.
+* 실패, 핵심 검증 실패, 중요한 미확인 사항, 높은 위험·판정 불가, 비밀정보·데이터 손실 위험, 범위 밖 변경과 작업 보류 사유는 설정으로 숨길 수 없다.
+* 설정은 로컬 파일과 Skill 문서 해석에 한정하며 중앙 서버, 외부 API, Gateway, MCP, Plugin, UI와 동기화는 추가하지 않는다.
+
+### 변경 이유
+
+사용자가 보고서의 상세 수준과 용어 설명 정도를 작업 목적에 맞게 조절하면서도 안전 정보와 사실성 기준을 유지할 수 있게 하기 위해서다.
+
+### 영향받은 파일
+
+* `.beginner-bridge.json`
+* `docs/FEATURE_CONFIGURATION.md`
+* `docs/TEST_SCENARIOS.md`
+* `.agents/skills/beginner-bridge/SKILL.md`
+* `.agents/skills/beginner-bridge/references/feature-registry.md`
+* `.agents/skills/beginner-bridge/references/report-format.md`
+* `docs/DECISIONS.md`
+
+### V0.1 범위 변경 여부
+
+없음. 로컬 설정 문서와 Skill 실행 규칙만 추가하며 중앙 서비스나 실행 프로그램은 만들지 않는다.
+
 ## 2026-08-02 — V0.1 문서 기반과 Skill 초안 정리
 
 ### 결정 내용
