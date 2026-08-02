@@ -1,5 +1,32 @@
 # Codex Beginner Bridge — Decisions
 
+## 2026-08-02 — Telemetry Foundation V0.1 문서 설계
+
+### 결정 내용
+
+* Telemetry의 목적을 사용자 추적이 아닌 제품 개선으로 한정한다.
+* 기본값은 OFF이며, 명시적 동의 전에는 이벤트 생성·저장·외부 전송을 하지 않는다.
+* V0.1에서는 정책, Event Registry, 개인정보 원칙과 단계별 Roadmap만 작성하고 실제 데이터 처리는 구현하지 않는다.
+* 프로젝트 코드·diff·Prompt·AI 답변·파일 경로·프로젝트 식별 정보·비밀정보·개인정보는 수집 대상에서 제외한다.
+* 공식 Event Registry에 없는 필드는 수집 가능한 정보로 간주하지 않는다.
+* 로컬 기록, 익명 통계, 중앙 Dashboard, Team Analytics는 단계별 개인정보 검토와 명시적 동의 이후에만 확장한다.
+
+### 변경 이유
+
+향후 로컬 기록이나 익명 통계로 확장할 수 있는 공통 언어를 마련하되, V0.1에서 추적·전송 기능이 이미 존재하는 것처럼 오해하지 않도록 하기 위해서다.
+
+### 영향받은 파일
+
+* `docs/TELEMETRY_POLICY.md`
+* `docs/TELEMETRY_EVENTS.md`
+* `docs/PRIVACY_PRINCIPLES.md`
+* `docs/ROADMAP_TELEMETRY.md`
+* `docs/DECISIONS.md`
+
+### V0.1 범위 변경 여부
+
+없음. 문서 기반 설계만 추가하며 이벤트 저장·전송, 서버, API, UI와 관리자 기능은 구현하지 않는다.
+
 ## 2026-08-02 — 로컬 Feature 설정 시스템 추가
 
 ### 결정 내용
