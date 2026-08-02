@@ -102,7 +102,7 @@ async function exists(file: string) {
 }
 
 async function readReadiness(projectRoot: string, paths: StoragePaths): Promise<Readiness> {
-  const configExists = await exists(paths.configFile);
+  const configExists = await exists(paths.configFile) || await exists(paths.legacyConfigFile);
   const agentsPath = path.join(projectRoot, 'AGENTS.md');
   const skillPath = path.join(projectRoot, '.agents', 'skills', 'beginner-bridge', 'SKILL.md');
   const [agentsExists, skillExists] = await Promise.all([exists(agentsPath), exists(skillPath)]);
@@ -153,7 +153,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     if (method === 'POST' && url.pathname === '/api/mcp/preview') {
       const config = (await readConfig(paths)).config;
       const codex = await readCodexMcpRegistration(projectRoot, config.mcp.enabled);
-      return json(res, 200, { path: codex.path, preview: codex.preview, registered: codex.registered, conflict: codex.conflict, note: '프로젝트의 .codex/config.toml에 Beginner Bridge 관리 블록만 추가합니다.' });
+      return json(res, 200, { path: codex.path, preview: codex.preview, registered: codex.registered, conflict: codex.conflict, note: '프로젝트의 .codex/config.toml에 JuTell 관리 블록만 추가합니다.' });
     }
     if (method === 'POST' && url.pathname === '/api/mcp/register') {
       const errorMessage = confirmBody(await body(req), 'Codex 연결 설정 생성 확인이 필요합니다.');

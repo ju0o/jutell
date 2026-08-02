@@ -1,4 +1,4 @@
-# Beginner Bridge — Risk Level Guide
+# JuTell — Risk Level Guide
 
 이 문서는 `docs/BEGINNER_REPORT_SPEC.md`의 위험도 규칙을 짧게 적용하기 위한 reference다. 위험도는 정상 작동 여부가 아니라 변경이 기존 기능에 미칠 수 있는 영향의 크기다.
 

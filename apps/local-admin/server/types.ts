@@ -26,6 +26,7 @@ export type Config = {
   features: Record<FeatureId, boolean>;
   limits: Limits;
   mcp: McpSettings;
+  voice?: { preset?: 'default' | 'plain' | 'learning' | 'jutell' };
 };
 
 export type Feedback = {

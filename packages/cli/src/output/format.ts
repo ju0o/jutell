@@ -51,18 +51,20 @@ export function parseOptions(args: string[]): { command: string; options: CliOpt
 export function scopeLabel(scope: InstallScope) { return scope === 'global' ? '사용자 전역' : '현재 프로젝트'; }
 
 export function printHelp(io: CliIo) {
-  io.write(`Beginner Bridge CLI 0.1.0
+  io.write(`JuTell CLI 0.2.0
 
 사용법:
-  beginner-bridge [dashboard] [--no-open]
-  beginner-bridge setup [--project|--global] [--profile balanced] [--yes]
-  beginner-bridge status [--project|--global] [--json]
-  beginner-bridge enable [--skill-only|--mcp-only]
-  beginner-bridge disable [--skill|--mcp|--all]
-  beginner-bridge doctor [--fix] [--json]
-  beginner-bridge uninstall [--keep-data|--remove-data] [--yes]
-  beginner-bridge --version
+  jutell [dashboard] [--no-open]
+  jutell setup [--project|--global] [--profile balanced] [--yes]
+  jutell status [--project|--global] [--json]
+  jutell enable [--skill-only|--mcp-only]
+  jutell disable [--skill|--mcp|--all]
+  jutell doctor [--fix] [--json]
+  jutell uninstall [--keep-data|--remove-data] [--yes]
+  jutell --version
+
+이전 별칭: beginner-bridge
 
 실제 npm 배포 전에는 로컬 패키지 검증만 지원합니다. 업데이트는 다음 명령을 사용하세요.
-  npm update -g codex-beginner`);
+  npm update -g jutell`);
 }

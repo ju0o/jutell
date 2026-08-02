@@ -1,4 +1,4 @@
-# Beginner Bridge — 한국어 용어 reference
+# JuTell — 한국어 용어 reference
 
 이 문서는 `docs/GLOSSARY_POLICY.md`를 실행할 때 필요한 핵심 용어 사전이다. 모든 용어를 자동으로 설명하지 말고, 현재 보고서를 이해하는 데 필요한 경우에만 사용한다.
 

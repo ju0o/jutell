@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_CONFIG, normalizeConfig } from '../src/config/bridge-config.js';
 import { activeFeatures, beginnerReportRules, bridgeStatus, reportPreferences, safeReportRequirements } from '../src/tools/bridge-tools.js';
 
-describe('Beginner Bridge MCP read-only data', () => {
+describe('JuTell MCP read-only data', () => {
   it('keeps old settings valid when mcp is absent', () => {
     const oldConfig = { version: 1, profile: 'balanced', features: DEFAULT_CONFIG.features, limits: DEFAULT_CONFIG.limits };
     expect(normalizeConfig(oldConfig).mcp).toEqual({ enabled: false, autoStart: false });

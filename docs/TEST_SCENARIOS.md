@@ -1,8 +1,8 @@
-# Codex Beginner Bridge — Test Scenarios
+# JuTell — Test Scenarios
 
 ## 1. 문서 목적
 
-이 문서는 Codex Beginner Bridge V0.1의 검증 시나리오, 기대 결과, 비개발자 평가 질문과 채점 기준을 정의한다.
+이 문서는 JuTell V0.1의 검증 시나리오, 기대 결과, 비개발자 평가 질문과 채점 기준을 정의한다.
 
 이 문서가 준비되지 않은 상태에서는 비개발자 이해 평가를 완료로 판단하지 않는다.
 
@@ -642,7 +642,7 @@ V0.1 통과를 위해서는 두 시나리오 모두 6점 이상이어야 한다.
 
 ## 9.2 Skill 미적용 기준 결과
 
-가능하면 먼저 Beginner Bridge Skill을 적용하지 않은 상태에서 같은 요청을 실행한다.
+가능하면 먼저 JuTell Skill을 적용하지 않은 상태에서 같은 요청을 실행한다.
 
 다음을 기록한다.
 
@@ -658,7 +658,7 @@ V0.1 통과를 위해서는 두 시나리오 모두 6점 이상이어야 한다.
 
 ## 9.3 Skill 적용 결과
 
-Beginner Bridge Skill을 적용한 뒤 같은 요청을 실행한다.
+JuTell Skill을 적용한 뒤 같은 요청을 실행한다.
 
 다음을 기록한다.
 
@@ -901,7 +901,7 @@ tests/results/
 
 # 14. 로컬 Feature 설정 문서 시나리오
 
-다음 시나리오는 `.beginner-bridge.json`과 Feature 설정 정책을 검토하기 위한 문서 테스트 정의다. 이번 작업에서는 시나리오를 실제 실행하지 않는다. 기존 시나리오 A와 B의 코드·결과 기록은 변경하지 않는다.
+다음 시나리오는 `.jutell.json`과 기존 `.beginner-bridge.json` fallback을 포함한 Feature 설정 정책을 검토하기 위한 문서 테스트 정의다. 이번 작업에서는 시나리오를 실제 실행하지 않는다. 기존 시나리오 A와 B의 코드·결과 기록은 변경하지 않는다.
 
 ## 14.1 설정 시나리오 C1 — `minimal` Profile
 
@@ -962,7 +962,7 @@ JSON 문법 오류 또는 지원하지 않는 Feature ID를 사용한다.
 
 ## 14.5 공통 문서 확인 항목
 
-* 공식 Feature ID가 `.beginner-bridge.json`, `FEATURE_CONFIGURATION.md`, `feature-registry.md`, `SKILL.md`에서 일치한다.
+* 공식 Feature ID가 `.jutell.json`, `FEATURE_CONFIGURATION.md`, `feature-registry.md`, `SKILL.md`에서 일치한다.
 * Feature ID가 중복 정의되지 않는다.
 * Profile 기본값과 명시적 Feature·limits 우선순위가 일치한다.
 * SKILL.md의 reference 경로가 실제 파일과 일치한다.

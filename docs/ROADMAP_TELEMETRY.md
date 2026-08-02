@@ -1,4 +1,4 @@
-# Beginner Bridge Telemetry Roadmap
+# JuTell Telemetry Roadmap
 
 Telemetry는 한 번에 원격 분석으로 확장하지 않고, 로컬·투명성·동의 검토를 단계별로 통과한다.
 

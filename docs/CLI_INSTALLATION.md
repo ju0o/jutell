@@ -1,15 +1,15 @@
-# Distribution CLI V0.1 설치 안내
+# JuTell CLI V0.2 설치 안내
 
 ## 현재 상태
 
-`codex-beginner` 패키지와 `beginner-bridge` 명령을 준비했지만 아직 npm에 publish하지 않았습니다. 이번 버전은 로컬 `npm pack`과 격리된 설치 검증 단계입니다.
+`jutell` 패키지와 `jutell` 명령을 준비했지만 아직 npm에 publish하지 않았습니다. 이번 버전은 로컬 `npm pack`과 격리된 설치 검증 단계입니다.
 
 공개 후 목표 흐름은 다음과 같습니다.
 
 ```bash
-npm install -g codex-beginner
-beginner-bridge setup
-beginner-bridge
+npm install -g jutell
+jutell setup
+jutell
 ```
 
 현재 저장소에서 검증할 때는 다음을 사용합니다.
@@ -18,29 +18,31 @@ beginner-bridge
 cd packages/cli
 npm install
 npm pack
-npm install -g ./codex-beginner-0.1.0.tgz
+npm install -g ./jutell-0.2.0.tgz
 ```
 
 ## 명령
 
 | 명령 | 역할 |
 |---|---|
-| `beginner-bridge` | 로컬 관리자 화면을 실행하고 가능한 경우 브라우저를 엽니다. |
-| `beginner-bridge setup` | Skill, 기본 설정, MCP 연결 설정을 안전하게 준비합니다. |
-| `beginner-bridge dashboard` | 127.0.0.1의 임시 포트에서 관리자 화면을 실행합니다. |
-| `beginner-bridge status` | 설치·Profile·Feature·MCP·Telemetry 상태를 보여줍니다. |
-| `beginner-bridge enable` | Skill과 MCP를 다시 활성화합니다. |
-| `beginner-bridge disable` | 기본적으로 MCP 연결만 끄고 Skill과 데이터를 보존합니다. |
-| `beginner-bridge doctor` | 설치 파일, 설정, 권한과 외부 전송 여부를 점검합니다. |
-| `beginner-bridge uninstall` | Skill과 Beginner Bridge MCP 관리 블록을 제거합니다. 기본적으로 데이터는 보존합니다. |
+| `jutell` | 로컬 관리자 화면을 실행하고 가능한 경우 브라우저를 엽니다. |
+| `jutell setup` | Skill, 기본 설정, MCP 연결 설정을 안전하게 준비합니다. |
+| `jutell dashboard` | 127.0.0.1의 임시 포트에서 관리자 화면을 실행합니다. |
+| `jutell status` | 설치·Profile·Feature·MCP·Telemetry 상태를 보여줍니다. |
+| `jutell enable` | Skill과 MCP를 다시 활성화합니다. |
+| `jutell disable` | 기본적으로 MCP 연결만 끄고 Skill과 데이터를 보존합니다. |
+| `jutell doctor` | 설치 파일, 설정, 권한과 외부 전송 여부를 점검합니다. |
+| `jutell uninstall` | Skill과 JuTell MCP 관리 블록을 제거합니다. 기본적으로 데이터는 보존합니다. |
 
 `--project`는 현재 프로젝트, `--global`은 격리된 사용자 전역 범위를 뜻합니다. `setup` 기본 범위는 현재 프로젝트입니다.
+
+이전 설치에서 사용하던 `beginner-bridge` 명령도 같은 기능의 호환 별칭으로 동작하며, 실행 시 `jutell` 사용을 안내합니다.
 
 ## 설치 안전성
 
 - 기존 Codex 설정 파일을 변경하기 전에 `.previous` 백업을 만듭니다.
 - 다른 MCP 서버 설정은 보존합니다.
-- Beginner Bridge 관리 블록만 추가·갱신·제거합니다.
+- JuTell 관리 블록만 추가·갱신·제거합니다.
 - 같은 이름의 관리되지 않는 MCP 설정이 있으면 자동 변경하지 않습니다.
 - 이미 같은 Skill 파일이 있으면 중복으로 만들지 않습니다.
 - 다른 내용의 기존 Skill 파일은 덮어쓰지 않고 주의로 알립니다.
@@ -63,5 +65,5 @@ Windows 11, macOS, Linux를 기준으로 경로와 실행 파일을 처리합니
 업데이트 기능은 V0.1에 포함하지 않습니다. 공개 후 패키지 업데이트에는 다음 명령을 사용할 수 있습니다.
 
 ```bash
-npm update -g codex-beginner
+npm update -g jutell
 ```

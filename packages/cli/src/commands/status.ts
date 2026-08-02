@@ -43,7 +43,7 @@ export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
     mcpEnabled: config.config.mcp?.enabled === true,
     profile: config.config.profile,
     activeFeatureCount: Object.values(config.config.features).filter(Boolean).length,
-    configLocation: safeLocation(paths.scope, 'config'),
+    configLocation: config.source === 'legacy' ? '기존 설정(.beginner-bridge.json)' : safeLocation(paths.scope, 'config'),
     localAdmin: await adminState(paths),
     telemetry: '비활성화',
     externalTransmission: '없음',
@@ -54,7 +54,7 @@ export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
 export async function statusCommand(paths: ScopePaths, options: CliOptions, io: CliIo) {
   const status = await getStatus(paths);
   if (options.json) { io.write(JSON.stringify(status, null, 2)); return status; }
-  io.write(`Beginner Bridge 상태\n\nCLI: ${status.cliVersion}\nSkill: ${status.skillInstalled ? '설치됨' : '설치되지 않음'}\nMCP: ${status.mcpRegistered ? '등록됨' : '등록되지 않음'} / ${status.mcpEnabled ? '활성화' : '비활성화'}\nProfile: ${status.profile}\n활성 Feature: ${status.activeFeatureCount}개\n설치 범위: ${status.installationScope === 'global' ? '사용자 전역' : '현재 프로젝트'}\nCodex 감지: ${status.codexDetected ? '예' : '직접 확인 필요'}\n로컬 관리자: ${status.localAdmin}\nTelemetry: ${status.telemetry}\n외부 전송: ${status.externalTransmission}\n설정 위치: ${status.configLocation}`);
+  io.write(`JuTell 상태\n\nCLI: ${status.cliVersion}\nSkill: ${status.skillInstalled ? '설치됨' : '설치되지 않음'}\nMCP: ${status.mcpRegistered ? '등록됨' : '등록되지 않음'} / ${status.mcpEnabled ? '활성화' : '비활성화'}\nProfile: ${status.profile}\n활성 Feature: ${status.activeFeatureCount}개\n설치 범위: ${status.installationScope === 'global' ? '사용자 전역' : '현재 프로젝트'}\nCodex 감지: ${status.codexDetected ? '예' : '직접 확인 필요'}\n로컬 관리자: ${status.localAdmin}\nTelemetry: ${status.telemetry}\n외부 전송: ${status.externalTransmission}\n설정 위치: ${status.configLocation}`);
   for (const warning of status.warnings) io.write(`주의: ${warning}`);
   return status;
 }
@@ -87,8 +87,8 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   checks.push({ name: 'Codex 설치 또는 설정', status: codexDetected() || await exists(paths.codexConfigFile) ? '정상' : '직접 확인 필요', detail: codexDetected() ? 'Codex 명령을 확인했습니다.' : 'Codex 명령 또는 설정을 자동 확인하지 못했습니다.' });
   checks.push({ name: 'Skill 파일', status: skillText?.includes('name: beginner-bridge') ? '정상' : '오류', detail: skillText ? 'Skill 파일을 확인했습니다.' : 'Skill 파일이 없습니다.' });
   checks.push({ name: 'MCP 빌드 파일', status: await exists(mcpEntry) ? '정상' : '오류', detail: await exists(mcpEntry) ? '패키지에 포함되어 있습니다.' : 'MCP 빌드 파일이 없습니다.' });
-  checks.push({ name: 'MCP 설정', status: registration.conflict ? '오류' : registration.registered ? '정상' : '주의', detail: registration.conflict ? '관리되지 않는 동일 이름 설정이 있습니다.' : registration.registered ? 'Beginner Bridge 관리 블록을 확인했습니다.' : '등록되지 않았습니다.' });
-  checks.push({ name: '.beginner-bridge.json', status: config.valid ? '정상' : '오류', detail: config.exists ? (config.valid ? '설정 형식을 확인했습니다.' : '설정이 올바르지 않아 기본값을 사용합니다.') : '없으면 기본 설정을 사용합니다.' });
+  checks.push({ name: 'MCP 설정', status: registration.conflict ? '오류' : registration.registered ? '정상' : '주의', detail: registration.conflict ? '관리되지 않는 동일 이름 설정이 있습니다.' : registration.registered ? 'JuTell 관리 블록을 확인했습니다.' : '등록되지 않았습니다.' });
+  checks.push({ name: '.jutell.json', status: config.valid ? '정상' : '오류', detail: config.exists ? (config.valid ? '설정 형식을 확인했습니다.' : '설정이 올바르지 않아 기본값을 사용합니다.') : '없으면 기본 설정을 사용합니다.' });
   const featuresValid = Object.keys(config.config.features).every((id) => ['changeSummary', 'userVisibleChanges', 'internalChanges', 'mainFiles', 'glossary', 'validationResults', 'riskAssessment', 'userActions'].includes(id));
   const limitsValid = config.config.limits.maxMainFiles >= 1 && config.config.limits.maxMainFiles <= 10 && config.config.limits.maxGlossaryTerms >= 0 && config.config.limits.maxGlossaryTerms <= 10 && config.config.limits.compactReportMaxSentences >= 4 && config.config.limits.compactReportMaxSentences <= 30;
   checks.push({ name: '공식 Feature ID', status: featuresValid ? '정상' : '오류', detail: featuresValid ? '현재 공식 ID만 확인했습니다.' : '지원하지 않는 Feature ID가 있습니다.' });
@@ -110,7 +110,7 @@ export async function doctorCommand(paths: ScopePaths, options: CliOptions, io: 
     checks = await getDoctorResults(paths);
   }
   if (options.json) { io.write(JSON.stringify(checks, null, 2)); return checks; }
-  io.write('Beginner Bridge 점검 결과');
+  io.write('JuTell 점검 결과');
   for (const check of checks) io.write(`${check.status}  ${check.name}: ${check.detail}`);
   return checks;
 }

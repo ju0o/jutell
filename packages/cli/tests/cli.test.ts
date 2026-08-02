@@ -37,7 +37,7 @@ describe('Distribution CLI V0.1', () => {
 
     const first = await runCli(['setup', '--project', '--profile', 'learning', '--yes'], project, env);
     expect(first.stdout).toContain('설치가 완료되었습니다');
-    const configFile = path.join(project, '.beginner-bridge.json');
+    const configFile = path.join(project, '.jutell.json');
     const skillFile = path.join(project, '.agents', 'skills', 'beginner-bridge', 'SKILL.md');
     expect(await fs.stat(skillFile)).toBeTruthy();
     expect(JSON.parse(await fs.readFile(configFile, 'utf8')).profile).toBe('learning');
@@ -81,8 +81,19 @@ describe('Distribution CLI V0.1', () => {
     const { project, home, env } = await fixture();
     await runCli(['setup', '--global', '--yes'], project, env);
     expect(await fs.stat(path.join(home, '.agents', 'skills', 'beginner-bridge', 'SKILL.md'))).toBeTruthy();
-    expect(JSON.parse(await fs.readFile(path.join(home, '.beginner-bridge.json'), 'utf8')).mcp.enabled).toBe(false);
+    expect(JSON.parse(await fs.readFile(path.join(home, '.jutell.json'), 'utf8')).mcp.enabled).toBe(false);
     expect((await fs.readFile(path.join(home, '.codex', 'config.toml'), 'utf8'))).toContain('[mcp_servers.beginner_bridge]');
+  });
+
+  it('기존 설정을 읽고 승인된 setup에서 새 설정으로 복사하며 기존 파일을 보존한다', async () => {
+    const { project, env } = await fixture();
+    const legacyFile = path.join(project, '.beginner-bridge.json');
+    await fs.writeFile(legacyFile, JSON.stringify({ version: 1, profile: 'learning', features: {}, limits: {}, mcp: { enabled: false, autoStart: false } }), 'utf8');
+    const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
+    expect(status.profile).toBe('learning');
+    await runCli(['setup', '--project', '--yes'], project, env);
+    expect(JSON.parse(await fs.readFile(path.join(project, '.jutell.json'), 'utf8')).profile).toBe('learning');
+    expect(await fs.stat(legacyFile)).toBeTruthy();
   });
 
   it('dashboard를 localhost에서 실행하고 API를 제공한다', async () => {

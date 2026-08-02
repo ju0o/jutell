@@ -1,4 +1,4 @@
-# Codex Beginner Bridge — Beginner Report Specification
+# JuTell — Beginner Report Specification
 
 ## 1. 문서 목적
 

@@ -10,11 +10,12 @@ import type { CliIo } from './types.js';
 
 function safeError(message: string, verbose: boolean) {
   if (verbose) return message;
-  if (/ENOENT|EACCES|EPERM|spawn EINVAL/i.test(message)) return '필요한 파일이나 실행 권한을 확인하지 못했습니다. `beginner-bridge doctor`를 실행해 주세요.';
+  if (/ENOENT|EACCES|EPERM|spawn EINVAL/i.test(message)) return '필요한 파일이나 실행 권한을 확인하지 못했습니다. `jutell doctor`를 실행해 주세요.';
   return message.replace(/[A-Za-z]:[\\/][^\r\n'" ]+/g, '[경로]');
 }
 
-export async function run(argv: string[] = process.argv.slice(2), io: CliIo = createIo()) {
+export async function run(argv: string[] = process.argv.slice(2), io: CliIo = createIo(), legacyAlias = false) {
+  if (legacyAlias) io.write('`beginner-bridge`는 이전 명령입니다. 앞으로는 `jutell` 사용을 권장합니다.');
   if (argv.includes('--version')) { io.write((await readVersionInfo()).cli); return 0; }
   try {
     const { command, options } = parseOptions(argv);

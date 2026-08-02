@@ -16,7 +16,8 @@ export async function setupCommand(paths: ScopePaths, options: CliOptions, io: C
   if (!validProfile(options.profile)) throw new Error('Profile은 minimal, balanced, learning, detailed 중 하나여야 합니다.');
   const currentConfig = await readBridgeConfig(paths);
   const plannedProfile = options.profile ?? currentConfig.config.profile;
-  io.write(`Beginner Bridge 설치 미리보기\n\n운영체제: ${operatingSystem()}\nNode: ${process.versions.node} (${nodeMajorVersion() >= 18 ? '지원 범위' : '낮은 버전'})\nCodex 감지: ${codexDetected() ? '예' : '직접 확인 필요'}\n설치 범위: ${scopeLabel(paths.scope)}\nProfile: ${plannedProfile}\nSkill: ${options.mcpOnly ? '변경하지 않음' : '설치 또는 기존 파일 유지'}\nMCP: ${options.skillOnly ? '변경하지 않음' : '기존 설정을 보존하고 관리 블록 등록'}\n기본 자동 시작: OFF\n`);
+  const migrationNote = currentConfig.source === 'legacy' ? '\n기존 설정을 읽었습니다. 승인하면 .jutell.json을 만들고 기존 파일은 보존합니다.\n' : '';
+  io.write(`JuTell 설치 미리보기\n${migrationNote}\n\n운영체제: ${operatingSystem()}\nNode: ${process.versions.node} (${nodeMajorVersion() >= 18 ? '지원 범위' : '낮은 버전'})\nCodex 감지: ${codexDetected() ? '예' : '직접 확인 필요'}\n설치 범위: ${scopeLabel(paths.scope)}\nProfile: ${plannedProfile}\nSkill: ${options.mcpOnly ? '변경하지 않음' : '설치 또는 기존 파일 유지'}\nMCP: ${options.skillOnly ? '변경하지 않음' : '기존 설정을 보존하고 관리 블록 등록'}\n기본 자동 시작: OFF\n`);
   if (!options.yes && !(await io.ask('위 변경을 진행할까요?'))) return { cancelled: true };
 
   const configSnapshot = await snapshot(paths.configFile);
@@ -29,7 +30,7 @@ export async function setupCommand(paths: ScopePaths, options: CliOptions, io: C
       await registerMcp(paths, packageRoot(), ensured.config.mcp?.enabled === true);
     }
     await recordSkillFiles(paths, skillResult.changed);
-    io.write(`설치가 완료되었습니다.\n\n설치 범위: ${scopeLabel(paths.scope)}\nProfile: ${ensured.config.profile}\nSkill: ${skillResult.conflicts.length ? '충돌 파일을 보존함' : '설치됨'}\nMCP: ${options.skillOnly ? '변경하지 않음' : '등록됨 (기본 활성화: 꺼짐)'}\n설정: ${safeLocation(paths.scope, 'config')}\n\n다음 실행: beginner-bridge`);
+    io.write(`설치가 완료되었습니다.\n\n설치 범위: ${scopeLabel(paths.scope)}\nProfile: ${ensured.config.profile}\nSkill: ${skillResult.conflicts.length ? '충돌 파일을 보존함' : '설치됨'}\nMCP: ${options.skillOnly ? '변경하지 않음' : '등록됨 (기본 활성화: 꺼짐)'}\n설정: ${safeLocation(paths.scope, 'config')}\n\n다음 실행: jutell`);
     if (skillResult.conflicts.length) io.write(`\n주의: 기존 파일을 덮어쓰지 않았습니다: ${skillResult.conflicts.join(', ')}`);
     return { cancelled: false, skillResult };
   } catch (error) {
@@ -41,7 +42,7 @@ export async function setupCommand(paths: ScopePaths, options: CliOptions, io: C
 }
 
 export async function enableCommand(paths: ScopePaths, options: CliOptions, io: CliIo) {
-  if (!options.yes && !(await io.ask(`Beginner Bridge를 ${scopeLabel(paths.scope)}에서 활성화할까요?`))) return { cancelled: true };
+  if (!options.yes && !(await io.ask(`JuTell을 ${scopeLabel(paths.scope)}에서 활성화할까요?`))) return { cancelled: true };
   const configSnapshot = await snapshot(paths.configFile);
   const codexSnapshot = await snapshot(paths.codexConfigFile);
   let skillResult: { conflicts: string[]; changed: string[] } = { conflicts: [], changed: [] };
@@ -68,7 +69,7 @@ export async function enableCommand(paths: ScopePaths, options: CliOptions, io: 
 export async function disableCommand(paths: ScopePaths, options: CliOptions, io: CliIo) {
   const disableSkill = options.disableSkill;
   const disableMcp = options.disableMcp || (!disableSkill && !options.disableAll);
-  if (!options.yes && !(await io.ask(`Beginner Bridge 연결을 ${scopeLabel(paths.scope)}에서 비활성화할까요?`))) return { cancelled: true };
+  if (!options.yes && !(await io.ask(`JuTell 연결을 ${scopeLabel(paths.scope)}에서 비활성화할까요?`))) return { cancelled: true };
   if (disableMcp) {
     const config = await setMcpDisabled(paths);
     await registerMcp(paths, packageRoot(), config.mcp?.enabled === true);
@@ -82,7 +83,7 @@ export async function disableCommand(paths: ScopePaths, options: CliOptions, io:
 export async function uninstallCommand(paths: ScopePaths, options: CliOptions, io: CliIo) {
   const removeData = options.removeData;
   const dataMessage = removeData ? '설정과 Beta Journal도 삭제합니다.' : '설정과 Beta Journal은 보존합니다.';
-  if (!options.yes && !(await io.ask(`Beginner Bridge를 제거할까요? ${dataMessage}`))) return { cancelled: true };
+  if (!options.yes && !(await io.ask(`JuTell을 제거할까요? ${dataMessage}`))) return { cancelled: true };
   await removeMcp(paths, packageRoot());
   await removeManagedSkillFiles(assets().skill, paths.skillRoot, paths);
   if (removeData) {

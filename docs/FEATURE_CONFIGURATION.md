@@ -1,8 +1,8 @@
-# Beginner Bridge 로컬 Feature 설정
+# JuTell 로컬 Feature 설정
 
 ## 1. 목적과 범위
 
-Beginner Bridge 보고서의 선택 기능을 프로젝트별 로컬 설정으로 조절한다.
+JuTell 보고서의 선택 기능을 프로젝트별 로컬 설정으로 조절한다.
 
 이 설정은 Codex Skill이 보고서를 작성할 때 읽는 문서 기반 설정이다. 로컬 관리자와 Distribution CLI가 이 파일을 안전하게 만들거나 관리할 수 있지만, 중앙 서버, 계정 동기화와 외부 Provider는 현재 범위가 아니다.
 
@@ -10,7 +10,7 @@ Beginner Bridge 보고서의 선택 기능을 프로젝트별 로컬 설정으�
 
 ## 2. 기본 설정 파일
 
-프로젝트 루트의 `.beginner-bridge.json`을 사용한다. 파일이 없으면 `balanced` 기본값을 사용한다.
+프로젝트 루트의 `.jutell.json`을 우선 사용한다. 없으면 기존 `.beginner-bridge.json`을 읽고, 둘 다 없으면 `balanced` 기본값을 사용한다. 기존 파일은 사용자 승인 없이 삭제하지 않는다.
 
 ```json
 {
@@ -74,9 +74,9 @@ Profile은 여러 Feature와 길이 제한의 기본 묶음이다. 명시적으�
 
 1. 안전상 반드시 보고해야 하는 정보
 2. 사용자가 현재 요청에서 명시한 보고 형식
-3. `.beginner-bridge.json`의 명시적 `features`와 `limits`
+3. `.jutell.json`의 명시적 `features`와 `limits` (없으면 legacy 설정의 같은 필드)
 4. 선택한 Profile의 기본 설정
-5. Beginner Bridge의 `balanced` 기본값
+5. JuTell의 `balanced` 기본값
 
 사용자가 현재 요청에서 특정 정보를 요구하면 해당 정보를 보고한다. 사용자가 안전·실패 정보를 숨겨달라고 해도 숨기지 않는다.
 

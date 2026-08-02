@@ -26,7 +26,7 @@ export function codexHome() {
 }
 
 export function userHome() {
-  const override = process.env.BEGINNER_BRIDGE_HOME;
+  const override = process.env.JUTELL_HOME ?? process.env.BEGINNER_BRIDGE_HOME;
   return path.resolve(override && override.trim() ? override : os.homedir());
 }
 
@@ -37,9 +37,11 @@ export function resolveScope(scope: InstallScope, cwd = process.cwd()): ScopePat
       scope,
       targetRoot: home,
       skillRoot: path.join(home, '.agents', 'skills', 'beginner-bridge'),
-      configFile: path.join(home, '.beginner-bridge.json'),
+      configFile: path.join(home, '.jutell.json'),
+      legacyConfigFile: path.join(home, '.beginner-bridge.json'),
       codexConfigFile: path.join(codexHome(), 'config.toml'),
-      dataRoot: path.join(home, '.beginner-bridge-local'),
+      dataRoot: path.join(home, '.jutell-local'),
+      legacyDataRoot: path.join(home, '.beginner-bridge-local'),
     };
   }
   const projectRoot = path.resolve(cwd);
@@ -47,13 +49,15 @@ export function resolveScope(scope: InstallScope, cwd = process.cwd()): ScopePat
     scope,
     targetRoot: projectRoot,
     skillRoot: path.join(projectRoot, '.agents', 'skills', 'beginner-bridge'),
-    configFile: path.join(projectRoot, '.beginner-bridge.json'),
+    configFile: path.join(projectRoot, '.jutell.json'),
+    legacyConfigFile: path.join(projectRoot, '.beginner-bridge.json'),
     codexConfigFile: path.join(projectRoot, '.codex', 'config.toml'),
-    dataRoot: path.join(projectRoot, '.beginner-bridge-local'),
+    dataRoot: path.join(projectRoot, '.jutell-local'),
+    legacyDataRoot: path.join(projectRoot, '.beginner-bridge-local'),
   };
 }
 
 export function safeLocation(scope: InstallScope, kind: 'config' | 'codex') {
   if (scope === 'global') return kind === 'config' ? '사용자 전역 설정' : '사용자 Codex 설정';
-  return kind === 'config' ? '현재 프로젝트/.beginner-bridge.json' : '현재 프로젝트/.codex/config.toml';
+  return kind === 'config' ? '현재 프로젝트/.jutell.json' : '현재 프로젝트/.codex/config.toml';
 }

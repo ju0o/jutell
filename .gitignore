@@ -9,6 +9,7 @@ coverage/
 .env.*
 !.env.example
 .beginner-bridge-local/
+.jutell-local/
 
 # Local Codex MCP settings and backups
 .codex/config.toml

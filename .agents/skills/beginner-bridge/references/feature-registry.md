@@ -1,4 +1,4 @@
-# Beginner Bridge Feature Registry
+# JuTell Feature Registry
 
 로컬 설정을 해석할 때 빠르게 확인하는 짧은 reference다. 기본값은 `balanced` 기준으로 모두 켬이다.
 

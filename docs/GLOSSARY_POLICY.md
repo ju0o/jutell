@@ -1,4 +1,4 @@
-# Codex Beginner Bridge — Glossary Policy
+# JuTell — Glossary Policy
 
 ## 1. 목적과 적용 범위
 

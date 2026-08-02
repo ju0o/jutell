@@ -1,4 +1,4 @@
-# Beginner Bridge — Report Format Reference
+# JuTell — Report Format Reference
 
 이 문서는 `docs/BEGINNER_REPORT_SPEC.md`의 짧은 실행용 형식이다. 상황에 맞는 형식만 사용하고 내용을 반복하지 않는다.
 
@@ -113,7 +113,7 @@
 
 ## 8. 로컬 Feature 설정
 
-프로젝트 루트의 `.beginner-bridge.json`을 확인한다.
+프로젝트 루트의 `.jutell.json` 우선, 없으면 `.beginner-bridge.json`을 확인한다.
 
 * 파일이 없으면 `balanced` 기본값을 사용한다.
 * JSON, Profile, Feature ID, 값 형식 또는 limits가 잘못되면 설정 전체를 추측하지 않고 `balanced`로 진행한다.

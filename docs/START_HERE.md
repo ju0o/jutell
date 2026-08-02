@@ -1,23 +1,23 @@
-# Codex Beginner Bridge 시작하기
+# JuTell 시작하기
 
 ## 이 문서는 무엇을 설명하나요?
 
-처음 보는 사람이 Beginner Bridge의 역할과 현재 범위를 빠르게 이해하도록 돕는 안내서입니다. 모든 문서를 처음부터 읽을 필요는 없습니다.
+처음 보는 사람이 JuTell의 역할과 현재 범위를 빠르게 이해하도록 돕는 안내서입니다. 모든 문서를 처음부터 읽을 필요는 없습니다.
 
-## Beginner Bridge의 역할
+## JuTell의 역할
 
-Beginner Bridge는 Codex 작업 뒤에 다음을 구분해 보고하도록 돕는 Codex Skill입니다.
+JuTell은 Codex 작업 뒤에 다음을 구분해 보고하도록 돕는 Codex Skill입니다.
 
 - 실제로 확인한 사실
 - 코드만 보고 예상한 변화
 - 아직 확인하지 못한 내용
 - 사용자가 직접 확인하거나 결정할 내용
 
-Beginner Bridge 자체가 코드를 실행하거나 화면을 대신 승인하는 제품은 아닙니다.
+JuTell 자체가 코드를 실행하거나 화면을 대신 승인하는 제품은 아닙니다.
 
 ## Skill과 설정 파일
 
-`.agents/skills/beginner-bridge/SKILL.md`는 보고서를 만드는 실행 규칙입니다. 프로젝트 루트의 [`.beginner-bridge.json`](../.beginner-bridge.json)은 보고서의 선택 기능과 길이 제한을 정합니다. 설정 파일이 없거나 잘못되면 `balanced` 기본값으로 진행합니다.
+`.agents/skills/beginner-bridge/SKILL.md`는 보고서를 만드는 실행 규칙입니다. 프로젝트 루트의 [`.jutell.json`](../.jutell.json)은 보고서의 선택 기능과 길이 제한을 정합니다. 설정 파일이 없거나 잘못되면 `balanced` 기본값으로 진행합니다.
 
 Profile은 다음과 같이 사용합니다.
 
@@ -53,9 +53,9 @@ Prompt, 코드, 파일 경로, 비밀정보를 피드백에 그대로 적지 않
 cd packages/cli
 npm install
 npm pack
-npm install -g ./codex-beginner-0.1.0.tgz
-beginner-bridge setup
-beginner-bridge
+npm install -g ./jutell-0.2.0.tgz
+jutell setup
+jutell
 ```
 
 설치 범위는 기본적으로 현재 프로젝트입니다. Skill과 MCP는 서로 분리되어 있으며, MCP가 꺼져도 Skill fallback은 유지됩니다. 명령별 안전 규칙은 [CLI 설치 안내](CLI_INSTALLATION.md)를 읽습니다.
@@ -82,14 +82,14 @@ npm run dev
 
 현재 단계는 개인 베타 준비입니다. 다음 단계는 이 화면을 중앙 서비스로 확장하는 것이 아니라, 실제 사용에서 반복되는 문제와 필요한 설정을 기록하는 것입니다.
 
-관리자 화면은 Codex 세션에 설정을 자동으로 주입하지 않습니다. 화면은 프로젝트 루트의 `.beginner-bridge.json`을 저장하고, Codex가 작업을 시작할 때 Skill과 설정을 먼저 읽도록 사용자가 요청해야 합니다.
+관리자 화면은 Codex 세션에 설정을 자동으로 주입하지 않습니다. 화면은 프로젝트 루트의 `.jutell.json`을 저장하고, Codex가 작업을 시작할 때 Skill과 설정을 먼저 읽도록 사용자가 요청해야 합니다.
 
 ```text
 이 프로젝트의 AGENTS.md,
 .agents/skills/beginner-bridge/SKILL.md,
-.beginner-bridge.json을 먼저 읽고 작업해주세요.
+.jutell.json을 먼저 읽고 작업해주세요.
 
-작업 완료 후 현재 활성화된 Beginner Bridge 기능만 사용해 보고해주세요.
+작업 완료 후 현재 활성화된 JuTell 기능만 사용해 보고해주세요.
 설정으로 꺼진 항목은 생략하되,
 실패, 중요한 미확인 사항, 범위 밖 변경과 안전 문제는 숨기지 마세요.
 ```

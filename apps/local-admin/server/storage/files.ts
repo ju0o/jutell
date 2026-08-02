@@ -1,4 +1,4 @@
-import { promises as fs } from 'node:fs';
+import { promises as fs, existsSync } from 'node:fs';
 import path from 'node:path';
 import { validateConfig, type ValidationResult } from '../config/schema.js';
 import type { Config, Feedback } from '../types.js';
@@ -6,18 +6,24 @@ import type { Config, Feedback } from '../types.js';
 export type StoragePaths = {
   projectRoot: string;
   configFile: string;
+  legacyConfigFile: string;
   localDir: string;
+  legacyLocalDir: string;
   feedbackFile: string;
   historyFile: string;
   metadataFile: string;
 };
 
 export function getStoragePaths(projectRoot: string): StoragePaths {
-  const localDir = path.join(projectRoot, '.beginner-bridge-local');
+  const preferredLocalDir = path.join(projectRoot, '.jutell-local');
+  const legacyLocalDir = path.join(projectRoot, '.beginner-bridge-local');
+  const localDir = existsSync(preferredLocalDir) || !existsSync(legacyLocalDir) ? preferredLocalDir : legacyLocalDir;
   return {
     projectRoot,
-    configFile: path.join(projectRoot, '.beginner-bridge.json'),
+    configFile: path.join(projectRoot, '.jutell.json'),
+    legacyConfigFile: path.join(projectRoot, '.beginner-bridge.json'),
     localDir,
+    legacyLocalDir,
     feedbackFile: path.join(localDir, 'beta-feedback.json'),
     historyFile: path.join(localDir, 'settings-history.json'),
     metadataFile: path.join(localDir, 'metadata.json'),
@@ -46,7 +52,8 @@ export async function readJson<T>(file: string): Promise<T> {
 
 export async function readConfig(paths: StoragePaths): Promise<{ config: Config; fallback: boolean; warning?: string }> {
   try {
-    const result = validateConfig(await readJson<unknown>(paths.configFile));
+    const configFile = await fs.access(paths.configFile).then(() => paths.configFile).catch(() => paths.legacyConfigFile);
+    const result = validateConfig(await readJson<unknown>(configFile));
     if (result.ok) return { config: result.value, fallback: false };
     return { config: (await readDefaultConfig()), fallback: true, warning: result.error };
   } catch {

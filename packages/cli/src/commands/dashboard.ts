@@ -52,7 +52,7 @@ export async function dashboardCommand(paths: ScopePaths, options: CliOptions, i
   await fs.mkdir(paths.dataRoot, { recursive: true });
   await fs.writeFile(marker, `${JSON.stringify({ pid: process.pid, port })}\n`, 'utf8');
   const url = `http://127.0.0.1:${port}`;
-  io.write(`Beginner Bridge 로컬 관리자를 실행했습니다.\n${url}\n종료하려면 이 터미널에서 Ctrl+C를 누르세요.`);
+  io.write(`JuTell 로컬 관리자를 실행했습니다.\n${url}\n종료하려면 이 터미널에서 Ctrl+C를 누르세요.`);
   if (options.openBrowser) await openBrowser(url, io);
   const close = async () => { await fs.rm(marker, { force: true }); server.close(); };
   process.once('SIGINT', () => void close().then(() => process.exit(0)));

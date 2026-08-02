@@ -42,7 +42,8 @@ async function readText(file: string) {
 }
 
 export async function readBridgeContext(projectRoot = process.cwd()) {
-  const configText = await readText(path.join(projectRoot, '.beginner-bridge.json'));
+  const preferredConfig = await readText(path.join(projectRoot, '.jutell.json'));
+  const configText = preferredConfig || await readText(path.join(projectRoot, '.beginner-bridge.json'));
   let parsed: unknown;
   try { parsed = JSON.parse(configText); } catch { parsed = undefined; }
   const config = normalizeConfig(parsed);

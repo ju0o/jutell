@@ -5,9 +5,9 @@ import { PROFILE_CATALOG } from '../../lib/catalog';
 
 const prompt = `이 프로젝트의 AGENTS.md,
 .agents/skills/beginner-bridge/SKILL.md,
-.beginner-bridge.json을 먼저 읽고 작업해주세요.
+.jutell.json을 먼저 읽고 작업해주세요.
 
-작업 완료 후 현재 활성화된 Beginner Bridge 기능만 사용해 보고해주세요.
+작업 완료 후 현재 활성화된 JuTell 기능만 사용해 보고해주세요.
 설정으로 꺼진 항목은 생략하되,
 실패, 중요한 미확인 사항, 범위 밖 변경과 안전 문제는 숨기지 마세요.`;
 
@@ -39,9 +39,9 @@ export function Overview({ data, readiness, showGuide, onDismissGuide, onShowGui
       <div><span>짧은 보고서 문장 수</span><strong>{data.config.limits.compactReportMaxSentences}문장</strong></div>
       <div><span>Skill 버전</span><strong>{displaySkillVersion(data.metadata.skillVersion)}</strong></div>
       <div><span>마지막 설정 변경</span><strong>{data.lastChangedAt ? new Date(data.lastChangedAt).toLocaleString('ko-KR') : '아직 없음'}</strong><small>{!data.lastChangedAt && '아직 관리자 화면에서 저장한 설정이 없습니다.'}</small></div>
-      <div><span>저장 위치</span><strong><code>.beginner-bridge.json</code></strong></div>
+      <div><span>저장 위치</span><strong><code>.jutell.json</code></strong></div>
     </div>
-    <div className="panel readiness-panel"><div className="section-heading"><div><p className="eyebrow">Codex 적용 상태</p><h3>{ready ? '이 저장소에서는 Beginner Bridge 적용 준비가 되어 있습니다.' : '적용에 필요한 파일을 확인하세요.'}</h3></div><span className={`status-pill ${ready ? 'success' : 'warning'}`}>{ready ? '준비됨' : '추가 확인 필요'}</span></div><p className="muted">관리자 페이지를 실행했다고 Codex에 설정이 자동 주입되는 것은 아닙니다. 이 화면은 루트 설정 파일을 편집하고, 아래 파일이 있는지만 확인합니다.</p><ul className="check-list"><Check ok={readiness.config.exists && readiness.config.valid}>설정 파일: {readiness.config.exists && readiness.config.valid ? '정상' : '확인 필요'} · 활성 Feature {readiness.config.activeFeatures}개</Check><Check ok={readiness.skill.exists}>Skill: {readiness.skill.exists ? '발견' : '확인 필요'}</Check><Check ok={readiness.agents.exists}>AGENTS.md: {readiness.agents.exists ? '발견' : '확인 필요'}</Check><Check ok={readiness.safetyRules.exists}>안전 강제 보고 규칙: {readiness.safetyRules.exists ? '발견' : '확인 필요'}</Check><Check ok={false}>Codex 세션 적용: 직접 확인 필요</Check></ul><p className="callout">새 Codex 작업을 시작할 때 AGENTS.md와 Beginner Bridge Skill을 읽도록 요청하면 설정 적용을 더 확실하게 확인할 수 있습니다.</p><div className="prompt-box"><div className="section-heading"><strong>복사해서 시작하기</strong><button className="secondary small" onClick={onCopyPrompt}>시작 프롬프트 복사</button></div><pre>{prompt}</pre></div></div>
+    <div className="panel readiness-panel"><div className="section-heading"><div><p className="eyebrow">Codex 적용 상태</p><h3>{ready ? '이 저장소에서는 JuTell 적용 준비가 되어 있습니다.' : '적용에 필요한 파일을 확인하세요.'}</h3></div><span className={`status-pill ${ready ? 'success' : 'warning'}`}>{ready ? '준비됨' : '추가 확인 필요'}</span></div><p className="muted">관리자 페이지를 실행했다고 Codex에 설정이 자동 주입되는 것은 아닙니다. 이 화면은 루트 설정 파일을 편집하고, 아래 파일이 있는지만 확인합니다.</p><ul className="check-list"><Check ok={readiness.config.exists && readiness.config.valid}>설정 파일: {readiness.config.exists && readiness.config.valid ? '정상' : '확인 필요'} · 활성 Feature {readiness.config.activeFeatures}개</Check><Check ok={readiness.skill.exists}>Skill: {readiness.skill.exists ? '발견' : '확인 필요'}</Check><Check ok={readiness.agents.exists}>AGENTS.md: {readiness.agents.exists ? '발견' : '확인 필요'}</Check><Check ok={readiness.safetyRules.exists}>안전 강제 보고 규칙: {readiness.safetyRules.exists ? '발견' : '확인 필요'}</Check><Check ok={false}>Codex 세션 적용: 직접 확인 필요</Check></ul><p className="callout">새 Codex 작업을 시작할 때 AGENTS.md와 JuTell Skill을 읽도록 요청하면 설정 적용을 더 확실하게 확인할 수 있습니다.</p><div className="prompt-box"><div className="section-heading"><strong>복사해서 시작하기</strong><button className="secondary small" onClick={onCopyPrompt}>시작 프롬프트 복사</button></div><pre>{prompt}</pre></div></div>
     <Notice>외부 전송 없음 · 중앙 서버 없음 · 이 화면은 현재 컴퓨터에서만 동작합니다.</Notice>
   </section>;
 }

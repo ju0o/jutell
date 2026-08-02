@@ -1,19 +1,33 @@
-# Codex Beginner Bridge — Decisions
+# JuTell by Ju0 — Decisions
+
+## 2026-08-03 — Codex Beginner Bridge에서 JuTell로 리브랜딩
+
+* 제품 표시는 `JuTell by Ju0`로 통일하고, 대표 CLI는 `jutell`로 준비한다.
+* 기존 `beginner-bridge` CLI, Skill ID·경로, MCP 도구 ID는 호환성을 위해 유지한다.
+* `.jutell.json`과 `.jutell-local/`을 우선 사용하되 기존 `.beginner-bridge.json`과 `.beginner-bridge-local/`은 삭제하지 않고 fallback·마이그레이션 대상으로 보존한다.
+* `voice.preset`은 기본 `default`인 선택 구조만 준비하며 JuTell Style 엔진은 구현하지 않는다.
+* 패키지 버전은 문서·CLI·설정·UI를 함께 전환하고 호환성을 추가하므로 `0.2.0`으로 올린다. npm publish와 GitHub 저장소 이름 변경은 하지 않는다.
+
+변경 이유: 제품이 단순 보고 Skill을 넘어 비개발자의 이해·검증·계속 작업·운영을 돕는 제품으로 확장되는 방향을 명확히 하고, 기존 설치를 깨뜨리지 않기 위해서다.
+
+영향받은 파일: README, AGENTS.md, Skill 표시 설명, CLI, 로컬 관리자, MCP 표시 설명, 설정 경로와 브랜드 문서.
+
+V0.1 범위 변경 여부: 제품 이름과 표시·호환성만 정리했다. 중앙 서버, 원격 Telemetry, 계정, 미래 Plan 기능은 추가하지 않았다.
 
 ## 2026-08-03 — Distribution CLI V0.1
 
 ### 결정 내용
 
-* `packages/cli/`에 `codex-beginner` 패키지와 `beginner-bridge` 실행 명령을 둔다.
+* (이전 결정) `packages/cli/`에 `codex-beginner` 패키지와 `beginner-bridge` 실행 명령을 둔다. 2026-08-03 JuTell 리브랜딩 결정으로 새 설치 경로는 `jutell`을 사용한다.
 * 패키지는 Skill reference, MCP 빌드 결과, 로컬 관리자 정적 화면과 서버 번들을 내부 자산으로 포함한다.
 * `setup`의 기본 범위는 현재 프로젝트이며, `--global`은 격리된 사용자 전역 범위를 지원한다.
-* Codex 설정은 기존 파일을 백업한 뒤 Beginner Bridge 관리 블록만 추가·갱신한다. 다른 MCP 서버 설정은 보존한다.
+* Codex 설정은 기존 파일을 백업한 뒤 JuTell 관리 블록만 추가·갱신한다. 다른 MCP 서버 설정은 보존한다.
 * `dashboard`는 127.0.0.1의 임시 포트에서 foreground로 실행하고 운영체제 서비스로 등록하지 않는다.
 * 실제 npm publish와 공개 배포는 이번 범위에 포함하지 않는다.
 
 ### 변경 이유
 
-일반 사용자가 Git clone, 수동 Skill 복사와 MCP 설정 편집 없이 Beginner Bridge를 설치할 수 있는 첫 배포 경로를 준비하기 위해서다. 설치 과정에서 기존 Codex 설정과 사용자 데이터를 보존해야 한다.
+일반 사용자가 Git clone, 수동 Skill 복사와 MCP 설정 편집 없이 JuTell를 설치할 수 있는 첫 배포 경로를 준비하기 위해서다. 설치 과정에서 기존 Codex 설정과 사용자 데이터를 보존해야 한다.
 
 ### 영향받은 파일
 
@@ -180,7 +194,7 @@
 
 ### 결정 내용
 
-* Beginner Bridge 보고서의 선택 기능을 프로젝트 루트 `.beginner-bridge.json`에서 독립적으로 켜고 끌 수 있게 한다.
+* JuTell 보고서의 선택 기능을 프로젝트 루트 `.beginner-bridge.json`에서 독립적으로 켜고 끌 수 있게 한다.
 * `minimal`, `balanced`, `learning`, `detailed` Profile을 제공하고 명시적 Feature·limits를 Profile보다 우선한다.
 * 설정이 없거나 잘못되면 설정 전체를 추측하지 않고 `balanced` 기본값으로 진행한다.
 * 실패, 핵심 검증 실패, 중요한 미확인 사항, 높은 위험·판정 불가, 비밀정보·데이터 손실 위험, 범위 밖 변경과 작업 보류 사유는 설정으로 숨길 수 없다.

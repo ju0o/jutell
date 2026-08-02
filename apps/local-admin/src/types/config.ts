@@ -22,6 +22,7 @@ export type Config = {
     enabled: boolean;
     autoStart: boolean;
   };
+  voice?: { preset?: 'default' | 'plain' | 'learning' | 'jutell' };
 };
 
 export type McpStatus = {

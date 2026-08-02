@@ -9,7 +9,7 @@ const apiPort = Number(process.env.BB_LOCAL_ADMIN_PORT ?? 8787);
 const host = '127.0.0.1';
 
 const started = await startLocalAdminServer({ projectRoot, host, port: apiPort });
-console.log(`Beginner Bridge local API: http://${host}:${started.port}`);
+console.log(`JuTell local API: http://${host}:${started.port}`);
 
 if (process.argv.includes('--dev')) {
   const viteEntry = path.join(appRoot, 'node_modules', 'vite', 'bin', 'vite.js');
@@ -18,7 +18,7 @@ if (process.argv.includes('--dev')) {
     env: { ...process.env, BB_LOCAL_ADMIN_PORT: String(started.port) },
     stdio: 'inherit',
   });
-  console.log(`Beginner Bridge local admin: http://${host}:${process.env.BB_LOCAL_ADMIN_VITE_PORT ?? 5174}`);
+  console.log(`JuTell local admin: http://${host}:${process.env.BB_LOCAL_ADMIN_VITE_PORT ?? 5174}`);
   const close = () => {
     vite.kill();
     started.server.close();

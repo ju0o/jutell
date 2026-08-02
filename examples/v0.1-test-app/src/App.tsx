@@ -62,7 +62,7 @@ function SearchPanel() {
 export default function App() {
   return (
     <main>
-      <h1>Codex Beginner Bridge V0.1 테스트 앱</h1>
+      <h1>JuTell V0.1 테스트 앱</h1>
       <LoginPanel />
       <SearchPanel />
     </main>

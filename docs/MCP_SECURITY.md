@@ -1,4 +1,4 @@
-# Beginner Bridge MCP 보안 기준
+# JuTell MCP 보안 기준
 
 ## 기본 원칙
 
@@ -8,7 +8,7 @@ MCP V0.1은 개인 베타용 로컬 읽기 기능입니다. 외부 네트워크�
 
 MCP 서버는 프로젝트 루트에서 다음 고정 위치만 읽습니다.
 
-- `.beginner-bridge.json`
+- `.jutell.json`
 - `AGENTS.md` 존재 여부
 - `.agents/skills/beginner-bridge/SKILL.md` 존재 여부와 필요한 안전 규칙
 
@@ -29,10 +29,10 @@ MCP 입력으로 임의 경로를 받지 않습니다. 서버는 프로젝트 �
 
 1. 프로젝트의 `.codex/config.toml`을 읽습니다.
 2. 기존 파일이 있으면 `.codex/config.toml.previous`로 백업합니다.
-3. Beginner Bridge 관리 블록만 추가하거나 갱신합니다.
+3. JuTell 관리 블록만 추가하거나 갱신합니다.
 4. 다른 MCP 서버 설정은 유지합니다.
 5. 같은 이름의 관리되지 않는 항목이 있으면 자동 변경하지 않습니다.
-6. 제거할 때도 Beginner Bridge 관리 블록만 제거합니다.
+6. 제거할 때도 JuTell 관리 블록만 제거합니다.
 
 설정 변경 전 미리보기를 제공하고, 제거는 사용자 확인 후 실행합니다. 실패하면 기존 설정을 유지하는 것을 우선합니다.
 

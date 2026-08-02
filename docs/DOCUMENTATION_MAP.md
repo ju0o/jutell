@@ -1,4 +1,4 @@
-# Codex Beginner Bridge 문서 지도
+# JuTell 문서 지도
 
 문서를 모두 읽을 필요는 없습니다. 지금 하려는 일에 해당하는 문서만 선택하세요.
 
@@ -6,7 +6,7 @@
 
 | 문서 | 이 문서가 답하는 질문 |
 |---|---|
-| [README.md](../README.md) | Beginner Bridge가 무엇이고 현재 어디까지 되었나요? |
+| [README.md](../README.md) | JuTell이 무엇이고 현재 어디까지 되었나요? |
 | [START_HERE.md](START_HERE.md) | 처음 사용할 때 어떤 순서로 보면 되나요? |
 | [FEATURE_CONFIGURATION.md](FEATURE_CONFIGURATION.md) | Profile과 보고서 Feature를 어떻게 조절하나요? |
 
@@ -17,6 +17,10 @@
 | [PRODUCT_SCOPE.md](PRODUCT_SCOPE.md) | 제품의 목적과 V0.1 범위는 무엇인가요? |
 | [PRIVACY_PRINCIPLES.md](PRIVACY_PRINCIPLES.md) | 코드와 사용자 정보를 어떻게 다루지 않나요? |
 | [DECISIONS.md](DECISIONS.md) | 지금까지 어떤 중요한 결정을 했나요? |
+| [BRAND_IDENTITY.md](BRAND_IDENTITY.md) | Ju0와 JuTell의 공식 표기는 무엇인가요? |
+| [PRODUCT_VISION.md](PRODUCT_VISION.md) | JuTell이 해결하려는 문제와 미래 방향은 무엇인가요? |
+| [JUTELL_STYLE.md](JUTELL_STYLE.md) | 기본 말투와 JuTell Style은 어떻게 구분하나요? |
+| [BRAND_MIGRATION.md](BRAND_MIGRATION.md) | 기존 설치와 이름을 어떻게 보존하나요? |
 
 ## 보고서 작성
 

@@ -1,10 +1,11 @@
 {
-  "name": "codex-beginner",
-  "version": "0.1.0",
-  "description": "Codex Beginner Bridge local installer and dashboard CLI",
+  "name": "jutell",
+  "version": "0.2.0",
+  "description": "JuTell by Ju0 local installer and dashboard CLI",
   "type": "module",
   "bin": {
-    "beginner-bridge": "dist/index.js"
+    "jutell": "dist/index.js",
+    "beginner-bridge": "dist/compat.js"
   },
   "files": [
     "dist",

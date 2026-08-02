@@ -1,4 +1,4 @@
-# Beginner Bridge Telemetry Event Registry
+# JuTell Telemetry Event Registry
 
 ## 1. 문서 범위
 
@@ -10,7 +10,7 @@ Registry의 이벤트 `id`는 이벤트 종류를 나타내는 고정된 문서 
 
 각 이벤트에서 허용하는 공통 필드는 다음으로 제한한다.
 
-* `beginner_bridge_version`: Beginner Bridge 버전
+* `beginner_bridge_version`: JuTell 버전
 * `skill_version`: Skill 버전
 * `profile`: `minimal`, `balanced`, `learning`, `detailed` 중 하나
 * `active_features`: 공식 Feature ID 목록
@@ -33,25 +33,25 @@ Registry의 이벤트 `id`는 이벤트 종류를 나타내는 고정된 문서 
 
 ### `feature_enabled`
 
-* 설명: 특정 Beginner Bridge Feature가 활성화된 설정 변경
+* 설명: 특정 JuTell Feature가 활성화된 설정 변경
 * 기록 가능한 필드: `feature_id`, `profile`, `beginner_bridge_version`, `skill_version`, `os_type`
 * 절대 기록하면 안 되는 정보: 사용자가 설정한 원문, 프로젝트 정보, 설정 파일 전체, 사용자·기기 식별값
 
 ### `feature_disabled`
 
-* 설명: 특정 Beginner Bridge Feature가 비활성화된 설정 변경
+* 설명: 특정 JuTell Feature가 비활성화된 설정 변경
 * 기록 가능한 필드: `feature_id`, `profile`, `beginner_bridge_version`, `skill_version`, `os_type`
 * 절대 기록하면 안 되는 정보: 비활성화 이유의 자유 입력, 설정 파일 전체, 프로젝트 정보, 사용자·기기 식별값
 
 ### `profile_changed`
 
-* 설명: Beginner Bridge Profile이 변경된 설정 변경
+* 설명: JuTell Profile이 변경된 설정 변경
 * 기록 가능한 필드: `from_profile`, `to_profile`, `beginner_bridge_version`, `skill_version`, `os_type`
 * 절대 기록하면 안 되는 정보: 설정 파일의 원문, 사용자 선택 이유, 프로젝트 정보, 사용자·기기 식별값
 
 ### `report_generated`
 
-* 설명: Beginner Bridge 최종 보고서 생성 시도 또는 생성 완료를 나타내는 이벤트
+* 설명: JuTell 최종 보고서 생성 시도 또는 생성 완료를 나타내는 이벤트
 * 기록 가능한 필드: `profile`, `active_features`, `inactive_features`, `beginner_bridge_version`, `skill_version`, `os_type`
 * 절대 기록하면 안 되는 정보: 보고서 원문, 변경 파일 목록, Prompt, 코드, 사용자 행동의 원문
 
@@ -69,7 +69,7 @@ Registry의 이벤트 `id`는 이벤트 종류를 나타내는 고정된 문서 
 
 ### `configuration_error`
 
-* 설명: 로컬 Beginner Bridge 설정을 해석할 수 없어 안전한 기본값을 사용한 이벤트
+* 설명: 로컬 JuTell 설정을 해석할 수 없어 안전한 기본값을 사용한 이벤트
 * 기록 가능한 필드: `error_category` (`json_syntax`, `unknown_profile`, `unknown_feature`, `invalid_boolean`, `invalid_limit`, `unsupported_version` 중 하나), `fallback_profile` (`balanced`), `os_type`, `beginner_bridge_version`, `skill_version`
 * 절대 기록하면 안 되는 정보: 잘못된 설정값 원문, 설정 파일 전체, 경로, 환경 변수, 사용자 입력
 

@@ -66,24 +66,28 @@ export function normalizeConfig(value: unknown): BridgeConfig {
   const inputLimits = input.limits && typeof input.limits === 'object' && !Array.isArray(input.limits) ? input.limits as Record<string, unknown> : {};
   const numberOr = (key: string, fallback: number) => typeof inputLimits[key] === 'number' && Number.isInteger(inputLimits[key]) ? inputLimits[key] as number : fallback;
   const inputMcp = input.mcp && typeof input.mcp === 'object' && !Array.isArray(input.mcp) ? input.mcp as Record<string, unknown> : {};
+  const inputVoice = input.voice && typeof input.voice === 'object' && !Array.isArray(input.voice) ? input.voice as Record<string, unknown> : {};
   return {
     version: 1,
     profile,
     features,
     limits: { maxMainFiles: numberOr('maxMainFiles', 5), maxGlossaryTerms: numberOr('maxGlossaryTerms', 3), compactReportMaxSentences: numberOr('compactReportMaxSentences', 12) },
     mcp: { enabled: inputMcp.enabled === true, autoStart: inputMcp.autoStart === true },
+    ...(typeof inputVoice.preset === 'string' ? { voice: { preset: inputVoice.preset as 'default' | 'plain' | 'learning' | 'jutell' } } : {}),
   };
 }
 
 export async function readBridgeConfig(paths: ScopePaths) {
-  const raw = await readText(paths.configFile);
-  if (!raw) return { config: await defaultConfig(), exists: false, valid: true };
+  const preferred = await readText(paths.configFile);
+  const raw = preferred ?? await readText(paths.legacyConfigFile);
+  const source = preferred !== undefined ? 'new' as const : raw !== undefined ? 'legacy' as const : 'default' as const;
+  if (!raw) return { config: await defaultConfig(), exists: false, valid: true, source };
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     const valid = parsed.version === 1 && typeof parsed.profile === 'string' && PROFILES.includes(parsed.profile as typeof PROFILES[number]);
-    return { config: normalizeConfig(parsed), exists: true, valid };
+    return { config: normalizeConfig(parsed), exists: true, valid, source };
   } catch {
-    return { config: await defaultConfig(), exists: true, valid: false };
+    return { config: await defaultConfig(), exists: true, valid: false, source };
   }
 }
 
@@ -140,6 +144,6 @@ export async function removeMcp(paths: ScopePaths, packageRoot: string) {
 
 export async function readVersionInfo() {
   const content = await readText(assets().version);
-  if (!content) return { cli: '0.1.0', skill: '확인 필요', mcp: '0.1.0', admin: '0.1.0' };
-  try { return JSON.parse(content) as { cli: string; skill: string; mcp: string; admin: string }; } catch { return { cli: '0.1.0', skill: '확인 필요', mcp: '0.1.0', admin: '0.1.0' }; }
+  if (!content) return { cli: '0.2.0', skill: '확인 필요', mcp: '0.1.0', admin: '0.1.0' };
+  try { return JSON.parse(content) as { cli: string; skill: string; mcp: string; admin: string }; } catch { return { cli: '0.2.0', skill: '확인 필요', mcp: '0.1.0', admin: '0.1.0' }; }
 }

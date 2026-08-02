@@ -1,15 +1,11 @@
-# codex-beginner
+# jutell
 
-Codex Beginner Bridge Distribution CLI V0.1의 로컬 패키지입니다.
-
-현재 npm에 publish하지 않았습니다. 저장소 루트에서 다음 순서로 검증합니다.
+JuTell by Ju0의 로컬 설치·상태·진단·관리자 실행 CLI입니다. 아직 npm에 공개하지 않았습니다.
 
 ```bash
-npm install
-npm pack
-npm install -g ./codex-beginner-0.1.0.tgz
-beginner-bridge setup
-beginner-bridge
+npm install -g ./jutell-0.2.0.tgz
+jutell setup
+jutell status
 ```
 
-기본 `setup` 범위는 현재 프로젝트입니다. MCP는 선택 기능이며, Skill 방식은 MCP가 꺼져도 계속 사용할 수 있습니다.
+기존 `beginner-bridge` 명령은 같은 기능의 호환 별칭이며 실행 시 새 명령 사용을 안내합니다. CLI는 프로젝트 코드, Prompt, AI 답변, Git diff와 비밀정보를 수집하거나 외부로 전송하지 않습니다.

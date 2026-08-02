@@ -31,8 +31,10 @@ export type ScopePaths = {
   targetRoot: string;
   skillRoot: string;
   configFile: string;
+  legacyConfigFile: string;
   codexConfigFile: string;
   dataRoot: string;
+  legacyDataRoot: string;
 };
 
 export type BridgeConfig = {
@@ -48,6 +50,7 @@ export type BridgeConfig = {
     enabled: boolean;
     autoStart: boolean;
   };
+  voice?: { preset?: 'default' | 'plain' | 'learning' | 'jutell' };
 };
 
 export type StatusResult = {

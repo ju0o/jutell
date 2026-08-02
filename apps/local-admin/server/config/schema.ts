@@ -96,7 +96,7 @@ export type ValidationResult =
 
 export function validateConfig(input: unknown): ValidationResult {
   if (!isRecord(input)) return { ok: false, error: '설정은 JSON 객체여야 합니다.' };
-  if (!hasOnlyKeys(input, ['version', 'profile', 'features', 'limits', 'mcp'])) {
+  if (!hasOnlyKeys(input, ['version', 'profile', 'features', 'limits', 'mcp', 'voice'])) {
     return { ok: false, error: '지원하지 않는 설정 항목이 있습니다.' };
   }
   if (input.version !== SUPPORTED_VERSION) return { ok: false, error: '지원하지 않는 설정 버전입니다.' };
@@ -123,6 +123,9 @@ export function validateConfig(input: unknown): ValidationResult {
   if ('mcp' in input && (!isRecord(input.mcp) || !hasOnlyKeys(input.mcp, ['enabled', 'autoStart']) || typeof input.mcp.enabled !== 'boolean' || typeof input.mcp.autoStart !== 'boolean')) {
     return { ok: false, error: 'MCP 설정은 enabled와 autoStart만 사용할 수 있습니다.' };
   }
+  if ('voice' in input && (!isRecord(input.voice) || !hasOnlyKeys(input.voice, ['preset']) || (input.voice.preset !== undefined && !['default', 'plain', 'learning', 'jutell'].includes(String(input.voice.preset))))) {
+    return { ok: false, error: 'voice 설정의 preset을 확인할 수 없습니다.' };
+  }
   return {
     ok: true,
     value: {
@@ -131,6 +134,7 @@ export function validateConfig(input: unknown): ValidationResult {
       features: { ...(input.features as Record<FeatureId, boolean>) },
       limits: { ...(input.limits as Limits) },
       mcp: ('mcp' in input ? { ...(input.mcp as McpSettings) } : { ...DEFAULT_CONFIG.mcp }),
+      ...('voice' in input ? { voice: { preset: input.voice && isRecord(input.voice) && typeof input.voice.preset === 'string' ? input.voice.preset as 'default' | 'plain' | 'learning' | 'jutell' : 'default' } } : {}),
     },
   };
 }

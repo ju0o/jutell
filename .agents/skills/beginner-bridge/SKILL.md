@@ -1,11 +1,11 @@
 ---
 name: beginner-bridge
-description: Create concise, evidence-based Codex work reports for non-developers, separating observed facts, code-based expectations, verification results, risks, and user actions. Use after code or project-file changes, when explaining current changes or a file in simple language, or when describing an implementation plan.
+description: JuTell by Ju0 creates concise, evidence-based work reports for non-developers, separating observed facts, code-based expectations, verification results, risks, and user actions. The legacy Skill ID is retained for compatibility.
 ---
 
-# Beginner Bridge
+# JuTell by Ju0
 
-Codex 작업 결과를 비개발자가 이해할 수 있는 하나의 보고서로 정리한다. 확인하지 않은 내용을 완료된 사실처럼 표현하지 않는다.
+Codex 작업 결과를 비개발자가 이해할 수 있는 하나의 보고서로 정리한다. 확인하지 않은 내용을 완료된 사실처럼 표현하지 않는다. 제품 목적은 AI가 만든 결과를 사람이 이해하고 운영하도록 돕는 것이다.
 
 ## 적용 전 읽기
 
@@ -35,7 +35,7 @@ Codex 작업 결과를 비개발자가 이해할 수 있는 하나의 보고서�
 
 실행 절차에 들어가기 전에 다음 순서로 로컬 설정을 해석한다.
 
-1. 프로젝트 루트에서 `.beginner-bridge.json`을 확인한다.
+1. 프로젝트 루트에서 `.jutell.json`을 먼저 확인하고, 없으면 `.beginner-bridge.json`을 호환 경로로 확인한다.
 2. JSON, `version`, Profile, Feature ID, boolean 값과 limits를 검증한다.
 3. 선택한 Profile의 기본값을 적용한다. 파일이 없으면 `balanced`를 사용한다.
 4. 명시적으로 적힌 `features`와 `limits`를 Profile 기본값보다 우선 적용한다.
