@@ -53,8 +53,6 @@ Prompt, 코드, 파일 경로, 비밀정보를 피드백에 그대로 적지 않
 - 시나리오나 평가 기준이 궁금하면 [TEST_SCENARIOS.md](TEST_SCENARIOS.md)를 봅니다.
 - 기록·개인정보·Telemetry가 궁금하면 [DOCUMENTATION_MAP.md](DOCUMENTATION_MAP.md)에서 해당 문서만 선택합니다.
 
-## 현재 단계
-
 ## 로컬 관리자 실행
 
 로컬 관리자 화면은 개인 베타 준비용으로 구현되어 있습니다.
@@ -68,3 +66,15 @@ npm run dev
 브라우저에서 `http://127.0.0.1:5174`를 엽니다. API도 `127.0.0.1:8787`에 함께 실행되며 외부 네트워크 주소에 공개하지 않습니다. 포트가 사용 중이면 `BB_LOCAL_ADMIN_PORT`와 `BB_LOCAL_ADMIN_VITE_PORT` 환경변수로 바꿀 수 있습니다.
 
 현재 단계는 개인 베타 준비입니다. 다음 단계는 이 화면을 중앙 서비스로 확장하는 것이 아니라, 실제 사용에서 반복되는 문제와 필요한 설정을 기록하는 것입니다.
+
+관리자 화면은 Codex 세션에 설정을 자동으로 주입하지 않습니다. 화면은 프로젝트 루트의 `.beginner-bridge.json`을 저장하고, Codex가 작업을 시작할 때 Skill과 설정을 먼저 읽도록 사용자가 요청해야 합니다.
+
+```text
+이 프로젝트의 AGENTS.md,
+.agents/skills/beginner-bridge/SKILL.md,
+.beginner-bridge.json을 먼저 읽고 작업해주세요.
+
+작업 완료 후 현재 활성화된 Beginner Bridge 기능만 사용해 보고해주세요.
+설정으로 꺼진 항목은 생략하되,
+실패, 중요한 미확인 사항, 범위 밖 변경과 안전 문제는 숨기지 마세요.
+```

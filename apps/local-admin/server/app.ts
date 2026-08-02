@@ -5,7 +5,7 @@ import path from 'node:path';
 import { changedFields, DEFAULT_CONFIG, validateConfig } from './config/schema.js';
 import { ensureStorage, getStoragePaths, readArray, readConfig, readJson, saveFeedback, writeJsonAtomically, type StoragePaths } from './storage/files.js';
 import { validateFeedback } from './validation/feedback.js';
-import type { Config, Feedback, FeedbackInput } from './types.js';
+import type { Config, Feedback, Readiness } from './types.js';
 
 const MAX_BODY_BYTES = 512 * 1024;
 let writeQueue = Promise.resolve();
@@ -94,6 +94,32 @@ async function readOverview(paths: StoragePaths) {
   };
 }
 
+async function exists(file: string) {
+  try { await fs.access(file); return true; } catch { return false; }
+}
+
+async function readReadiness(projectRoot: string, paths: StoragePaths): Promise<Readiness> {
+  const configExists = await exists(paths.configFile);
+  const agentsPath = path.join(projectRoot, 'AGENTS.md');
+  const skillPath = path.join(projectRoot, '.agents', 'skills', 'beginner-bridge', 'SKILL.md');
+  const [agentsExists, skillExists] = await Promise.all([exists(agentsPath), exists(skillPath)]);
+  let safetyExists = false;
+  if (skillExists) {
+    try {
+      const skill = await fs.readFile(skillPath, 'utf8');
+      safetyExists = skill.includes('비밀정보') && skill.includes('중요한 미확인 사항');
+    } catch { safetyExists = false; }
+  }
+  const config = await readConfig(paths);
+  return {
+    config: { exists: configExists, valid: configExists && !config.fallback, profile: config.config.profile, activeFeatures: Object.values(config.config.features).filter(Boolean).length },
+    skill: { exists: skillExists },
+    agents: { exists: agentsExists },
+    safetyRules: { exists: safetyExists },
+    sessionApplied: 'manual_check_required',
+  };
+}
+
 export async function handleApiRequest(req: IncomingMessage, res: ServerResponse, projectRoot: string) {
   const paths = getStoragePaths(projectRoot);
   await ensureStorage(paths);
@@ -103,6 +129,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
   try {
     if (method === 'GET' && url.pathname === '/api/config') return json(res, 200, await readOverview(paths));
+    if (method === 'GET' && url.pathname === '/api/readiness') return json(res, 200, await readReadiness(projectRoot, paths));
     if (method === 'GET' && url.pathname === '/api/config/history') return json(res, 200, { history: await getHistory(paths) });
     if (method === 'PUT' && url.pathname === '/api/config') {
       const result = validateConfig(await body(req));

@@ -1,12 +1,12 @@
 import { FEATURE_IDS, PROFILES } from '../config/schema.js';
 import type { FeedbackInput, Profile } from '../types.js';
 
-const TASK_TYPES = ['screen', 'feature', 'docs', 'settings', 'other'];
+const TASK_TYPES = ['screen', 'feature', 'docs', 'settings', 'ui-ux-beta', 'other'];
 const LENGTHES = ['short', 'appropriate', 'long'];
 const UNDERSTANDABLE = ['yes', 'partial', 'no'];
 const REUSE = ['yes', 'no', 'unknown'];
 const SEVERITIES = ['low', 'medium', 'high'];
-const STATUSES = ['noted', 'needs_reproduction', 'planned', 'confirmed'];
+const STATUSES = ['noted', 'needs_reproduction', 'planned', 'improving', 'confirmed'];
 
 const requiredKeys = [
   'date', 'projectAlias', 'taskType', 'profile', 'activeFeatures', 'perceivedLength', 'understandable',

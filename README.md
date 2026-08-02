@@ -31,7 +31,7 @@ Codex로 웹사이트나 프로그램을 만들지만 코드 변경의 의미를
 - [START_HERE.md](docs/START_HERE.md): 처음 읽을 문서
 - [DOCUMENTATION_MAP.md](docs/DOCUMENTATION_MAP.md): 문서별 역할과 필요한 읽기 순서
 - [PERSONAL_BETA_PLAN.md](docs/PERSONAL_BETA_PLAN.md): 개인 베타 사용과 판단 기준
-- [LOCAL_ADMIN_REQUIREMENTS.md](docs/LOCAL_ADMIN_REQUIREMENTS.md): 향후 로컬 관리자 화면 요구사항
+- [LOCAL_ADMIN_REQUIREMENTS.md](docs/LOCAL_ADMIN_REQUIREMENTS.md): 로컬 관리자 V0.1 요구사항과 현재 구현 범위
 - [개인정보 원칙](docs/PRIVACY_PRINCIPLES.md)과 [Telemetry 정책](docs/TELEMETRY_POLICY.md): 기록·전송에 대한 현재 원칙
 
 ## 개인정보와 Telemetry

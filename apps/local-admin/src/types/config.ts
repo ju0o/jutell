@@ -36,7 +36,7 @@ export type Feedback = {
   reuseConfig: 'yes' | 'no' | 'unknown';
   improvementIdea: string;
   severity: 'low' | 'medium' | 'high';
-  status: 'noted' | 'needs_reproduction' | 'planned' | 'confirmed';
+  status: 'noted' | 'needs_reproduction' | 'planned' | 'improving' | 'confirmed';
   createdAt: string;
   updatedAt: string;
 };
@@ -50,3 +50,11 @@ export type ConfigResponse = {
 };
 
 export type FeedbackInput = Omit<Feedback, 'id' | 'createdAt' | 'updatedAt'>;
+
+export type Readiness = {
+  config: { exists: boolean; valid: boolean; profile: Profile; activeFeatures: number };
+  skill: { exists: boolean };
+  agents: { exists: boolean };
+  safetyRules: { exists: boolean };
+  sessionApplied: 'manual_check_required';
+};

@@ -52,6 +52,13 @@ describe('local config API', () => {
     expect(reset.body.config.profile).toBe('balanced');
   });
 
+  it('reports repository readiness without claiming the current session applied the Skill', async () => {
+    const readiness = await request('/api/readiness');
+    expect(readiness.status).toBe(200);
+    expect(readiness.body.sessionApplied).toBe('manual_check_required');
+    expect(readiness.body.config.valid).toBe(true);
+  });
+
   it('rejects invalid JSON settings without replacing the existing file', async () => {
     const configFile = getStoragePaths(root).configFile;
     await fs.writeFile(configFile, '{ invalid json', 'utf8');
