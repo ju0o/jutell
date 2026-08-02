@@ -15,11 +15,17 @@ export type Limits = {
   compactReportMaxSentences: number;
 };
 
+export type McpSettings = {
+  enabled: boolean;
+  autoStart: boolean;
+};
+
 export type Config = {
   version: 1;
   profile: Profile;
   features: Record<FeatureId, boolean>;
   limits: Limits;
+  mcp: McpSettings;
 };
 
 export type Feedback = {

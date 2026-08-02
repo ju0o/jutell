@@ -30,10 +30,18 @@ afterEach(async () => {
 
 describe('config validation', () => {
   it('accepts the baseline configuration', () => expect(validateConfig(DEFAULT_CONFIG).ok).toBe(true));
+  it('accepts an older configuration without the optional mcp section', () => {
+    const { mcp, ...oldConfig } = DEFAULT_CONFIG;
+    void mcp;
+    const result = validateConfig(oldConfig);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.mcp).toEqual({ enabled: false, autoStart: false });
+  });
   it('rejects an unknown Profile, Feature, and invalid limit', () => {
     expect(validateConfig({ ...DEFAULT_CONFIG, profile: 'unknown' }).ok).toBe(false);
     expect(validateConfig({ ...DEFAULT_CONFIG, features: { ...DEFAULT_CONFIG.features, unknown: true } }).ok).toBe(false);
     expect(validateConfig({ ...DEFAULT_CONFIG, limits: { ...DEFAULT_CONFIG.limits, maxMainFiles: 0 } }).ok).toBe(false);
+    expect(validateConfig({ ...DEFAULT_CONFIG, mcp: { enabled: true, autoStart: false, unsupported: true } }).ok).toBe(false);
   });
 });
 
@@ -57,6 +65,40 @@ describe('local config API', () => {
     expect(readiness.status).toBe(200);
     expect(readiness.body.sessionApplied).toBe('manual_check_required');
     expect(readiness.body.config.valid).toBe(true);
+  });
+
+  it('keeps MCP status separate from Codex tool connection and preserves Skill fallback', async () => {
+    const status = await request('/api/mcp/status');
+    expect(status.status).toBe(200);
+    expect(status.body.server.state).toBe('stopped');
+    expect(status.body.connection.state).toBe('manual_check_required');
+    expect(status.body.skillFallback.available).toBe(true);
+    const start = await request('/api/mcp/start', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    expect(start.status).toBe(409);
+    const checked = await request('/api/mcp/check', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    expect(checked.body.connection.state).toBe('manual_check_required');
+  });
+
+  it('previews, adds, and removes only the managed Codex MCP block', async () => {
+    const codexDir = path.join(root, '.codex');
+    await fs.mkdir(codexDir, { recursive: true });
+    const codexFile = path.join(codexDir, 'config.toml');
+    await fs.writeFile(codexFile, '[mcp_servers.other]\ncommand = "other"\n', 'utf8');
+    const preview = await request('/api/mcp/preview', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+    expect(preview.body.path).toBe('.codex/config.toml');
+    expect(preview.body.preview).toContain('apps/mcp-server/dist/index.js');
+    expect(preview.body.preview).not.toContain(root);
+    const registered = await request('/api/mcp/register', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
+    expect(registered.status).toBe(200);
+    const afterRegister = await fs.readFile(codexFile, 'utf8');
+    expect(afterRegister).toContain('[mcp_servers.other]');
+    expect(afterRegister).toContain('# BEGINNER_BRIDGE_MCP_BEGIN');
+    expect(await fs.readFile(`${codexFile}.previous`, 'utf8')).toContain('[mcp_servers.other]');
+    const removed = await request('/api/mcp/remove', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
+    expect(removed.status).toBe(200);
+    const afterRemove = await fs.readFile(codexFile, 'utf8');
+    expect(afterRemove).toContain('[mcp_servers.other]');
+    expect(afterRemove).not.toContain('# BEGINNER_BRIDGE_MCP_BEGIN');
   });
 
   it('rejects invalid JSON settings without replacing the existing file', async () => {

@@ -78,3 +78,9 @@ npm run dev
 설정으로 꺼진 항목은 생략하되,
 실패, 중요한 미확인 사항, 범위 밖 변경과 안전 문제는 숨기지 마세요.
 ```
+
+## 선택형 MCP 연결
+
+MCP는 Skill 방식에 추가로 사용할 수 있는 로컬 읽기 연결입니다. 관리자 화면의 `MCP 연결`에서 서버 실행, 프로젝트 Codex 설정 미리보기, 설정 등록 여부를 확인할 수 있습니다. 서버 실행 상태와 실제 Codex 도구 호출 성공은 다르므로 새 세션에서 도구 호출을 직접 확인해야 합니다.
+
+자세한 실행 순서는 [MCP_INTEGRATION.md](MCP_INTEGRATION.md), 보안 범위는 [MCP_SECURITY.md](MCP_SECURITY.md)를 읽습니다. MCP가 꺼져도 AGENTS.md·Skill·설정 파일 방식은 그대로 사용할 수 있습니다.

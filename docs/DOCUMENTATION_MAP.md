@@ -52,5 +52,7 @@
 | [PERSONAL_BETA_PLAN.md](PERSONAL_BETA_PLAN.md) | 개인 베타에서 무엇을 사용하고 어떤 근거로 판단하나요? |
 | [LOCAL_ADMIN_REQUIREMENTS.md](LOCAL_ADMIN_REQUIREMENTS.md) | 로컬 관리자 V0.1이 무엇을 관리하고 무엇을 저장하지 않나요? |
 | [BETA_FEEDBACK_TEMPLATE.md](BETA_FEEDBACK_TEMPLATE.md) | 개인 베타 사용 중 불편을 어떻게 짧게 기록하나요? |
+| [MCP_INTEGRATION.md](MCP_INTEGRATION.md) | 선택형 로컬 MCP를 어떻게 연결하고 확인하나요? |
+| [MCP_SECURITY.md](MCP_SECURITY.md) | MCP가 어떤 정보를 읽고 보호하나요? |
 
 기여 방법이나 공개 배포 절차는 아직 별도 문서로 확정하지 않았습니다.

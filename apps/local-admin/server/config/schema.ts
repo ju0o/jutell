@@ -1,4 +1,4 @@
-import type { Config, FeatureId, Limits, Profile } from '../types.js';
+import type { Config, FeatureId, Limits, McpSettings, Profile } from '../types.js';
 
 export const SUPPORTED_VERSION = 1;
 
@@ -73,6 +73,7 @@ export const DEFAULT_CONFIG: Config = {
   profile: 'balanced',
   features: { ...PROFILES.balanced.features },
   limits: { ...PROFILES.balanced.limits },
+  mcp: { enabled: false, autoStart: false },
 };
 
 export const LIMIT_RANGES = {
@@ -95,7 +96,7 @@ export type ValidationResult =
 
 export function validateConfig(input: unknown): ValidationResult {
   if (!isRecord(input)) return { ok: false, error: '설정은 JSON 객체여야 합니다.' };
-  if (!hasOnlyKeys(input, ['version', 'profile', 'features', 'limits'])) {
+  if (!hasOnlyKeys(input, ['version', 'profile', 'features', 'limits', 'mcp'])) {
     return { ok: false, error: '지원하지 않는 설정 항목이 있습니다.' };
   }
   if (input.version !== SUPPORTED_VERSION) return { ok: false, error: '지원하지 않는 설정 버전입니다.' };
@@ -119,6 +120,9 @@ export function validateConfig(input: unknown): ValidationResult {
       return { ok: false, error: `${key}는 ${range.min}~${range.max} 사이의 정수여야 합니다.` };
     }
   }
+  if ('mcp' in input && (!isRecord(input.mcp) || !hasOnlyKeys(input.mcp, ['enabled', 'autoStart']) || typeof input.mcp.enabled !== 'boolean' || typeof input.mcp.autoStart !== 'boolean')) {
+    return { ok: false, error: 'MCP 설정은 enabled와 autoStart만 사용할 수 있습니다.' };
+  }
   return {
     ok: true,
     value: {
@@ -126,6 +130,7 @@ export function validateConfig(input: unknown): ValidationResult {
       profile: input.profile as Profile,
       features: { ...(input.features as Record<FeatureId, boolean>) },
       limits: { ...(input.limits as Limits) },
+      mcp: ('mcp' in input ? { ...(input.mcp as McpSettings) } : { ...DEFAULT_CONFIG.mcp }),
     },
   };
 }
@@ -142,6 +147,9 @@ export function changedFields(before: Config, after: Config) {
     if (before.limits[key] !== after.limits[key]) {
       changes.push({ field: `limits.${key}`, before: before.limits[key], after: after.limits[key] });
     }
+  }
+  for (const key of ['enabled', 'autoStart'] as Array<keyof McpSettings>) {
+    if (before.mcp[key] !== after.mcp[key]) changes.push({ field: `mcp.${key}`, before: before.mcp[key], after: after.mcp[key] });
   }
   return changes;
 }

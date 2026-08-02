@@ -5,10 +5,13 @@ import path from 'node:path';
 import { changedFields, DEFAULT_CONFIG, validateConfig } from './config/schema.js';
 import { ensureStorage, getStoragePaths, readArray, readConfig, readJson, saveFeedback, writeJsonAtomically, type StoragePaths } from './storage/files.js';
 import { validateFeedback } from './validation/feedback.js';
+import { readCodexMcpRegistration, registerCodexMcp, removeCodexMcp } from './mcp/config.js';
+import { getMcpRuntimeState, startMcpRuntime, stopMcpRuntime } from './mcp/runtime.js';
 import type { Config, Feedback, Readiness } from './types.js';
 
 const MAX_BODY_BYTES = 512 * 1024;
 let writeQueue = Promise.resolve();
+let lastMcpCheckAt: string | null = null;
 
 function withWriteLock<T>(task: () => Promise<T>): Promise<T> {
   const run = writeQueue.then(task, task);
@@ -120,6 +123,22 @@ async function readReadiness(projectRoot: string, paths: StoragePaths): Promise<
   };
 }
 
+async function readMcpStatus(projectRoot: string, paths: StoragePaths) {
+  const config = (await readConfig(paths)).config;
+  const codex = await readCodexMcpRegistration(projectRoot, config.mcp.enabled);
+  return {
+    settings: config.mcp,
+    server: getMcpRuntimeState(),
+    codex: { registered: codex.registered, path: codex.path, conflict: codex.conflict },
+    connection: { state: 'manual_check_required' as const, lastCheckedAt: lastMcpCheckAt },
+    skillFallback: { available: true, message: 'MCP를 끄거나 사용할 수 없어도 AGENTS.md, Skill, 설정 파일 방식은 계속 사용할 수 있습니다.' },
+  };
+}
+
+function confirmBody(input: unknown, message: string) {
+  return Boolean(input && typeof input === 'object' && (input as { confirm?: unknown }).confirm === true) ? null : message;
+}
+
 export async function handleApiRequest(req: IncomingMessage, res: ServerResponse, projectRoot: string) {
   const paths = getStoragePaths(projectRoot);
   await ensureStorage(paths);
@@ -130,6 +149,33 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
   try {
     if (method === 'GET' && url.pathname === '/api/config') return json(res, 200, await readOverview(paths));
     if (method === 'GET' && url.pathname === '/api/readiness') return json(res, 200, await readReadiness(projectRoot, paths));
+    if (method === 'GET' && url.pathname === '/api/mcp/status') return json(res, 200, await readMcpStatus(projectRoot, paths));
+    if (method === 'POST' && url.pathname === '/api/mcp/preview') {
+      const config = (await readConfig(paths)).config;
+      const codex = await readCodexMcpRegistration(projectRoot, config.mcp.enabled);
+      return json(res, 200, { path: codex.path, preview: codex.preview, registered: codex.registered, conflict: codex.conflict, note: '프로젝트의 .codex/config.toml에 Beginner Bridge 관리 블록만 추가합니다.' });
+    }
+    if (method === 'POST' && url.pathname === '/api/mcp/register') {
+      const errorMessage = confirmBody(await body(req), 'Codex 연결 설정 생성 확인이 필요합니다.');
+      if (errorMessage) return error(res, 400, errorMessage);
+      const config = (await readConfig(paths)).config;
+      return json(res, 200, { registration: await registerCodexMcp(projectRoot, config.mcp.enabled) });
+    }
+    if (method === 'POST' && url.pathname === '/api/mcp/remove') {
+      const errorMessage = confirmBody(await body(req), 'Codex 연결 설정 제거 확인이 필요합니다.');
+      if (errorMessage) return error(res, 400, errorMessage);
+      return json(res, 200, { registration: await removeCodexMcp(projectRoot) });
+    }
+    if (method === 'POST' && url.pathname === '/api/mcp/start') {
+      const config = (await readConfig(paths)).config;
+      if (!config.mcp.enabled) return error(res, 409, 'MCP 연결이 꺼져 있습니다. 먼저 MCP 사용을 켜세요.');
+      return json(res, 200, { server: await startMcpRuntime(projectRoot) });
+    }
+    if (method === 'POST' && url.pathname === '/api/mcp/stop') return json(res, 200, { server: await stopMcpRuntime() });
+    if (method === 'POST' && url.pathname === '/api/mcp/check') {
+      lastMcpCheckAt = new Date().toISOString();
+      return json(res, 200, { connection: { state: 'manual_check_required', lastCheckedAt: lastMcpCheckAt, message: 'Codex 세션에서 실제 MCP 도구 호출을 직접 확인해야 합니다.' } });
+    }
     if (method === 'GET' && url.pathname === '/api/config/history') return json(res, 200, { history: await getHistory(paths) });
     if (method === 'PUT' && url.pathname === '/api/config') {
       const result = validateConfig(await body(req));
@@ -216,6 +262,7 @@ export async function startLocalAdminServer(options: LocalAdminServerOptions): P
   const server = createServer((req, res) => {
     void handleApiRequest(req, res, options.projectRoot);
   });
+  server.once('close', () => { void stopMcpRuntime(); });
   await new Promise<void>((resolve, reject) => {
     server.once('error', reject);
     server.listen(port, host, () => {

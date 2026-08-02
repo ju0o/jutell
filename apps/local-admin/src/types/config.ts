@@ -18,6 +18,18 @@ export type Config = {
     maxGlossaryTerms: number;
     compactReportMaxSentences: number;
   };
+  mcp: {
+    enabled: boolean;
+    autoStart: boolean;
+  };
+};
+
+export type McpStatus = {
+  settings: { enabled: boolean; autoStart: boolean };
+  server: { state: 'running' | 'stopped' | 'starting' | 'error'; error?: string };
+  codex: { registered: boolean; path: string; conflict: boolean };
+  connection: { state: 'manual_check_required'; lastCheckedAt: string | null };
+  skillFallback: { available: boolean; message: string };
 };
 
 export type Feedback = {

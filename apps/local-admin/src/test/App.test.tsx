@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 
-const config = { version: 1 as const, profile: 'balanced' as const, features: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true }, limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 } };
+const config = { version: 1 as const, profile: 'balanced' as const, features: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true }, limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 }, mcp: { enabled: false, autoStart: false } };
 const feedback = { feedback: [] };
 const history = { history: [] };
 
@@ -11,6 +11,7 @@ beforeEach(() => {
     const url = String(input);
     if (url.endsWith('/api/config')) return new Response(JSON.stringify({ config, fallback: false, metadata: { configVersion: 1, skillVersion: 'not-recorded' }, lastChangedAt: null }), { status: 200 });
     if (url.endsWith('/api/readiness')) return new Response(JSON.stringify({ config: { exists: true, valid: true, profile: 'balanced', activeFeatures: 8 }, skill: { exists: true }, agents: { exists: true }, safetyRules: { exists: true }, sessionApplied: 'manual_check_required' }), { status: 200 });
+    if (url.endsWith('/api/mcp/status')) return new Response(JSON.stringify({ settings: { enabled: false, autoStart: false }, server: { state: 'stopped' }, codex: { registered: false, path: '.codex/config.toml', conflict: false }, connection: { state: 'manual_check_required', lastCheckedAt: null }, skillFallback: { available: true, message: 'Skill 방식 사용 가능' } }), { status: 200 });
     if (url.endsWith('/api/feedback')) return new Response(JSON.stringify(feedback), { status: 200 });
     if (url.endsWith('/api/config/history')) return new Response(JSON.stringify(history), { status: 200 });
     if (options?.method === 'POST' && url.includes('/api/feedback')) return new Response(JSON.stringify({ feedback: { ...JSON.parse(String(options.body)), id: '12345678-1234-1234-1234-123456789012', createdAt: '', updatedAt: '' } }), { status: 201 });
@@ -67,5 +68,14 @@ describe('local admin screens', () => {
     expect(screen.getByText('새 피드백 기록')).toBeInTheDocument();
     expect(screen.getAllByRole('option', { name: '개선 중' }).length).toBeGreaterThan(0);
     await waitFor(() => expect(screen.getByLabelText('익명 프로젝트 별칭')).toBeInTheDocument());
+  });
+
+  it('separates MCP server status from actual Codex connection status', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'MCP 연결' }));
+    expect(screen.getByText('중지됨')).toBeInTheDocument();
+    expect(screen.getByText('Codex 세션에서 직접 확인 필요')).toBeInTheDocument();
+    expect(screen.getByText(/Skill 방식은 항상 유지됩니다/)).toBeInTheDocument();
+    expect(screen.getByText(/자동 실행은 항상 OFF/)).toBeInTheDocument();
   });
 });

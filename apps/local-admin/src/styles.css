@@ -82,3 +82,14 @@ code { border-radius: 5px; background: #eef2f8; color: #385078; padding: 2px 5px
 .advanced-settings { max-width: 920px; margin-top: 16px; border: 1px dashed #bac7d9; border-radius: 12px; background: #fff; padding: 16px; }.advanced-settings > p { color: #6e7e96; font-size: 13px; }.advanced-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }.advanced-grid label { display: grid; gap: 6px; color: #53617a; font-size: 13px; font-weight: 700; }.advanced-grid small { color: #71809a; font-weight: 400; }.small { padding: 7px 10px; font-size: 12px; }
 @media (max-width: 820px) { .first-use-guide ol { grid-template-columns: 1fr; }.choice-grid { grid-template-columns: repeat(2, 1fr); }.advanced-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 560px) { .choice-grid, .advanced-grid { grid-template-columns: 1fr; }.safe-info { align-items: flex-start; flex-direction: column; } }
+
+.mcp-panel { display: grid; gap: 14px; }
+.mcp-toggle { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+.mcp-toggle input { width: 18px; height: 18px; }
+.mcp-status-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.mcp-status-grid > div { display: grid; gap: 5px; border: 1px solid #dbe3ef; border-radius: 10px; padding: 12px; }
+.mcp-status-grid span, .mcp-status-grid small { color: #66748c; }
+.mcp-status-grid strong { color: #172033; }
+.mcp-actions { flex-wrap: wrap; }
+.mcp-preview pre, .mcp-panel pre { white-space: pre-wrap; overflow-x: auto; background: #f7f9fc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; color: #34435f; }
+@media (max-width: 760px) { .mcp-status-grid { grid-template-columns: 1fr; } }

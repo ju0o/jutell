@@ -1,5 +1,36 @@
 # Codex Beginner Bridge — Decisions
 
+## 2026-08-02 — 개인 베타용 선택형 로컬 MCP 연결
+
+### 결정 내용
+
+* Skill 방식은 기본 적용 경로로 유지하고 MCP는 선택형 보조 연결로 둔다.
+* MCP는 공식 Codex 로컬 `stdio` 방식과 프로젝트 `.codex/config.toml` 관리 블록을 사용한다.
+* MCP V0.1은 설정·Feature·보고 규칙을 읽는 도구만 제공하며 코드, Prompt, Git diff, AI 답변과 비밀정보는 읽지 않는다.
+* 로컬 서버 실행, Codex 설정 등록, 실제 Codex 도구 호출을 별도 상태로 표시한다.
+* 자동 시작은 기본 OFF이며, 설정 생성·제거는 미리보기와 사용자 확인을 거친다.
+
+### 변경 이유
+
+개인 베타 운영자가 로컬 MCP 연결을 시험할 수 있게 하면서도 기존 Skill 경로와 개인정보 보호 원칙을 유지해야 하기 때문이다.
+
+### 영향받은 파일
+
+* `apps/mcp-server/`
+* `apps/local-admin/`
+* `docs/MCP_INTEGRATION.md`
+* `docs/MCP_SECURITY.md`
+* `README.md`
+* `docs/START_HERE.md`
+* `docs/DOCUMENTATION_MAP.md`
+* `docs/LOCAL_ADMIN_REQUIREMENTS.md`
+* `docs/PERSONAL_BETA_PLAN.md`
+* `docs/DECISIONS.md`
+
+### V0.1 범위 변경 여부
+
+로컬 선택형 MCP 읽기 연결을 개인 베타 범위에 추가했다. 중앙 서버, 외부 API, 원격 Telemetry, 쓰기 도구, 계정과 배포는 여전히 범위 밖이다.
+
 ## 2026-08-02 — 비개발자용 로컬 관리자 UI/UX 보완
 
 ### 결정 내용
