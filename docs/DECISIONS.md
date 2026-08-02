@@ -1,5 +1,34 @@
 # Codex Beginner Bridge — Decisions
 
+## 2026-08-02 — 개인 베타 준비와 문서 진입 구조
+
+### 결정 내용
+
+* README, START_HERE, DOCUMENTATION_MAP을 첫 방문자용 진입 구조로 둔다.
+* 개인 베타는 최소 3개 실제 프로젝트, 네 Profile, 현재 Feature 8개, 권장 20개 이상 보고서 검토를 기준으로 반복되는 불편을 찾는다.
+* 향후 로컬 관리자 화면은 설정·Profile·Feature·제한값·사용자 작성 베타 기록과 삭제를 다루는 요구사항으로만 정의한다.
+* 현재 작업에서는 로컬 관리자 UI, 이벤트 저장, 서버, API, 외부 전송을 구현하지 않는다.
+* 개인 베타 기록에는 프로젝트를 식별하지 않는 별칭만 사용하고 Prompt·코드·경로·비밀정보를 넣지 않는다.
+
+### 변경 이유
+
+처음 보는 사람이 문서 전체를 읽지 않고도 제품의 현재 범위와 첫 사용 순서를 이해하게 하고, 공개 베타 전에 실제 사용 근거를 모으기 위해서다.
+
+### 영향받은 파일
+
+* `README.md`
+* `AGENTS.md`
+* `docs/START_HERE.md`
+* `docs/DOCUMENTATION_MAP.md`
+* `docs/PERSONAL_BETA_PLAN.md`
+* `docs/LOCAL_ADMIN_REQUIREMENTS.md`
+* `docs/BETA_FEEDBACK_TEMPLATE.md`
+* `docs/DECISIONS.md`
+
+### V0.1 범위 변경 여부
+
+없음. 문서 진입 구조와 개인 베타 준비 기준만 추가하며, 기존 보고서·Feature·Telemetry 정책과 V0.1 기능 범위는 유지한다.
+
 ## 2026-08-02 — Telemetry Foundation V0.1 문서 설계
 
 ### 결정 내용
