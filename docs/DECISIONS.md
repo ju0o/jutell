@@ -1,5 +1,36 @@
 # Codex Beginner Bridge — Decisions
 
+## 2026-08-03 — Distribution CLI V0.1
+
+### 결정 내용
+
+* `packages/cli/`에 `codex-beginner` 패키지와 `beginner-bridge` 실행 명령을 둔다.
+* 패키지는 Skill reference, MCP 빌드 결과, 로컬 관리자 정적 화면과 서버 번들을 내부 자산으로 포함한다.
+* `setup`의 기본 범위는 현재 프로젝트이며, `--global`은 격리된 사용자 전역 범위를 지원한다.
+* Codex 설정은 기존 파일을 백업한 뒤 Beginner Bridge 관리 블록만 추가·갱신한다. 다른 MCP 서버 설정은 보존한다.
+* `dashboard`는 127.0.0.1의 임시 포트에서 foreground로 실행하고 운영체제 서비스로 등록하지 않는다.
+* 실제 npm publish와 공개 배포는 이번 범위에 포함하지 않는다.
+
+### 변경 이유
+
+일반 사용자가 Git clone, 수동 Skill 복사와 MCP 설정 편집 없이 Beginner Bridge를 설치할 수 있는 첫 배포 경로를 준비하기 위해서다. 설치 과정에서 기존 Codex 설정과 사용자 데이터를 보존해야 한다.
+
+### 영향받은 파일
+
+* `packages/cli/`
+* `docs/PRODUCT_SCOPE.md`
+* `README.md`
+* `docs/START_HERE.md`
+* `docs/DOCUMENTATION_MAP.md`
+* `docs/MCP_INTEGRATION.md`
+* `docs/CLI_INSTALLATION.md`
+* `docs/DISTRIBUTION_ARCHITECTURE.md`
+* `docs/DECISIONS.md`
+
+### V0.1 범위 변경 여부
+
+로컬 설치·상태·대시보드 실행 CLI를 개인 베타 범위에 추가했다. npm publish, 중앙 서버, 원격 Telemetry, OS 서비스 등록, 계정과 V1 공개 선언은 여전히 범위 밖이다.
+
 ## 2026-08-02 — 개인 베타용 선택형 로컬 MCP 연결
 
 ### 결정 내용

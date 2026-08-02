@@ -17,9 +17,30 @@ Codex로 웹사이트나 프로그램을 만들지만 코드 변경의 의미를
 
 ## 아직 하지 않는 일
 
-현재는 개인 베타 준비 단계입니다. 원격 Telemetry, 중앙 서버, 계정, 결제, 배포 기능은 구현하지 않았습니다. MCP는 로컬 선택 기능이며 Skill 방식을 대체하지 않습니다.
+현재는 개인 베타 준비 단계입니다. 원격 Telemetry, 중앙 서버, 계정, 결제와 npm 공개 배포는 구현하지 않았습니다. MCP는 로컬 선택 기능이며 Skill 방식을 대체하지 않습니다.
 
 ## 가장 빠른 사용 순서
+
+Distribution CLI V0.1은 아직 npm에 공개되지 않았습니다. 로컬 패키지를 검증할 때는 먼저 `packages/cli/`에서 패키지를 만들고 설치합니다.
+
+```bash
+cd packages/cli
+npm install
+npm pack
+npm install -g ./codex-beginner-0.1.0.tgz
+beginner-bridge setup
+beginner-bridge
+```
+
+공개 후의 목표 사용 흐름은 다음과 같습니다.
+
+```bash
+npm install -g codex-beginner
+beginner-bridge setup
+beginner-bridge
+```
+
+자세한 범위와 격리된 설치 검증은 [CLI 설치 안내](docs/CLI_INSTALLATION.md)와 [배포 구조](docs/DISTRIBUTION_ARCHITECTURE.md)를 참고합니다.
 
 1. [문서 시작점](docs/START_HERE.md)에서 현재 범위와 첫 사용 순서를 확인합니다.
 2. 필요하면 [Feature 설정](docs/FEATURE_CONFIGURATION.md)을 읽고 `.beginner-bridge.json`의 Profile을 선택합니다.

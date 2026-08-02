@@ -1,0 +1,43 @@
+#!/usr/bin/env node
+import { pathToFileURL } from 'node:url';
+import { resolveScope } from './config/paths.js';
+import { readVersionInfo } from './config/managed.js';
+import { parseOptions, createIo, printHelp } from './output/format.js';
+import { setupCommand, enableCommand, disableCommand, uninstallCommand } from './commands/lifecycle.js';
+import { statusCommand, doctorCommand } from './commands/status.js';
+import { dashboardCommand } from './commands/dashboard.js';
+import type { CliIo } from './types.js';
+
+function safeError(message: string, verbose: boolean) {
+  if (verbose) return message;
+  if (/ENOENT|EACCES|EPERM|spawn EINVAL/i.test(message)) return '필요한 파일이나 실행 권한을 확인하지 못했습니다. `beginner-bridge doctor`를 실행해 주세요.';
+  return message.replace(/[A-Za-z]:[\\/][^\r\n'" ]+/g, '[경로]');
+}
+
+export async function run(argv: string[] = process.argv.slice(2), io: CliIo = createIo()) {
+  if (argv.includes('--version')) { io.write((await readVersionInfo()).cli); return 0; }
+  try {
+    const { command, options } = parseOptions(argv);
+    if (command === 'help') { printHelp(io); return 0; }
+    const paths = resolveScope(options.scope);
+    if (command === 'setup') await setupCommand(paths, options, io);
+    else if (command === 'dashboard') await dashboardCommand(paths, options, io);
+    else if (command === 'status') await statusCommand(paths, options, io);
+    else if (command === 'enable') await enableCommand(paths, options, io);
+    else if (command === 'disable') await disableCommand(paths, options, io);
+    else if (command === 'doctor') await doctorCommand(paths, options, io);
+    else if (command === 'uninstall') await uninstallCommand(paths, options, io);
+    else throw new Error(`알 수 없는 명령입니다: ${command}`);
+    return 0;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '작업을 처리하지 못했습니다.';
+    io.error(`오류: ${safeError(message, argv.includes('--verbose'))}`);
+    return 1;
+  }
+}
+
+const entry = process.argv[1] ? pathToFileURL(process.argv[1]).href : '';
+if (import.meta.url === entry) {
+  const code = await run();
+  process.exitCode = code;
+}

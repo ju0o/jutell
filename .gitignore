@@ -19,3 +19,7 @@ coverage/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Distribution CLI build artifacts
+packages/cli/assets/
+packages/cli/*.tgz

@@ -1,0 +1,29 @@
+{
+  "name": "codex-beginner",
+  "version": "0.1.0",
+  "description": "Codex Beginner Bridge local installer and dashboard CLI",
+  "type": "module",
+  "bin": {
+    "beginner-bridge": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "assets",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && node scripts/build-assets.mjs",
+    "test": "vitest run",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "esbuild": "^0.24.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.9"
+  }
+}

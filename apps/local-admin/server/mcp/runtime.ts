@@ -7,7 +7,8 @@ let child: ChildProcess | undefined;
 let state: McpRuntimeState = { state: 'stopped' };
 
 function serverEntry(projectRoot: string) {
-  return path.join(projectRoot, 'apps', 'mcp-server', 'dist', 'index.js');
+  const configured = process.env.BEGINNER_BRIDGE_MCP_SERVER;
+  return configured && path.isAbsolute(configured) ? configured : path.join(projectRoot, 'apps', 'mcp-server', 'dist', 'index.js');
 }
 
 export function getMcpRuntimeState(): McpRuntimeState {

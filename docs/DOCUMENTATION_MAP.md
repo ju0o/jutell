@@ -55,4 +55,11 @@
 | [MCP_INTEGRATION.md](MCP_INTEGRATION.md) | 선택형 로컬 MCP를 어떻게 연결하고 확인하나요? |
 | [MCP_SECURITY.md](MCP_SECURITY.md) | MCP가 어떤 정보를 읽고 보호하나요? |
 
+## Distribution CLI
+
+| 문서 | 이 문서가 답하는 질문 |
+|---|---|
+| [CLI_INSTALLATION.md](CLI_INSTALLATION.md) | 일반 사용자가 CLI로 어떻게 설치하고 검증하나요? |
+| [DISTRIBUTION_ARCHITECTURE.md](DISTRIBUTION_ARCHITECTURE.md) | 패키지에 무엇을 포함하고 설치 후 어떻게 동작하나요? |
+
 기여 방법이나 공개 배포 절차는 아직 별도 문서로 확정하지 않았습니다.

@@ -17,12 +17,18 @@ function filePath(projectRoot: string) {
   return path.join(projectRoot, '.codex', 'config.toml');
 }
 
+function configuredServerEntry() {
+  const configured = process.env.BEGINNER_BRIDGE_MCP_SERVER;
+  return configured && path.isAbsolute(configured) ? configured : undefined;
+}
+
 export function buildMcpConfigBlock(enabled: boolean) {
+  const serverEntry = configuredServerEntry();
   return [
     BEGIN_MARKER,
     '[mcp_servers.beginner_bridge]',
     'command = "node"',
-    'args = ["apps/mcp-server/dist/index.js"]',
+    `args = [${JSON.stringify(serverEntry ?? 'apps/mcp-server/dist/index.js')}]`,
     'cwd = "."',
     `enabled = ${enabled ? 'true' : 'false'}`,
     'required = false',

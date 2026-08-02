@@ -13,6 +13,8 @@ MCP는 Skill의 대체재가 아닙니다. MCP 서버가 중지되거나 연결�
 
 현재 연결 방식은 Codex가 지원하는 로컬 `stdio` 서버와 프로젝트 범위 `.codex/config.toml`입니다. Codex CLI, Codex 앱, Codex IDE 확장은 같은 Codex 호스트 설정을 사용할 수 있지만 새 세션이나 재시작이 필요할 수 있습니다. ChatGPT 웹의 원격 연결은 이 문서의 지원 범위가 아닙니다.
 
+Distribution CLI를 사용하면 Skill과 MCP 자산을 수동 복사하지 않고 설치할 수 있습니다. 현재는 npm에 publish하지 않았으므로 [CLI 설치 안내](CLI_INSTALLATION.md)의 로컬 패키징 절차를 사용합니다.
+
 공식 기준은 [Codex Model Context Protocol 안내](https://learn.chatgpt.com/docs/extend/mcp.md)와 [MCP 서버 설정 안내](https://developers.openai.com/plugins/concepts/mcp-server.md)를 참고합니다.
 
 ## 2. 제공 도구

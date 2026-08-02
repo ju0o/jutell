@@ -45,6 +45,21 @@ Profile은 다음과 같이 사용합니다.
 
 Prompt, 코드, 파일 경로, 비밀정보를 피드백에 그대로 적지 않습니다. 오류를 기록해야 한다면 민감한 내용을 제거한 짧은 요약만 사용합니다.
 
+## Distribution CLI V0.1
+
+일반 사용자가 Skill을 직접 복사하지 않도록 설치 CLI의 로컬 패키징을 준비했습니다. 아직 npm publish는 하지 않았으므로 현재는 저장소의 `packages/cli/`에서 `npm pack`과 격리된 설치 검증만 수행합니다.
+
+```bash
+cd packages/cli
+npm install
+npm pack
+npm install -g ./codex-beginner-0.1.0.tgz
+beginner-bridge setup
+beginner-bridge
+```
+
+설치 범위는 기본적으로 현재 프로젝트입니다. Skill과 MCP는 서로 분리되어 있으며, MCP가 꺼져도 Skill fallback은 유지됩니다. 명령별 안전 규칙은 [CLI 설치 안내](CLI_INSTALLATION.md)를 읽습니다.
+
 ## 문제가 생기면 어디를 보나요?
 
 - 보고서 형식이나 상태가 궁금하면 [BEGINNER_REPORT_SPEC.md](BEGINNER_REPORT_SPEC.md)를 봅니다.
