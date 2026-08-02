@@ -22,12 +22,23 @@ describe("로그인 기준 기능", () => {
 });
 
 describe("검색 기준 기능", () => {
-  it("빈 검색어에서도 검색 요청을 실행한다", () => {
+  it("빈 검색어에서는 검색 요청을 실행하지 않는다", () => {
     render(<App />);
 
     fireEvent.click(screen.getByRole("button", { name: "검색" }));
 
-    expect(screen.getByText("검색 요청 실행: 1회")).toBeInTheDocument();
+    expect(screen.getByText("검색 요청 실행: 0회")).toBeInTheDocument();
+  });
+
+  it("공백만 있는 검색어에서도 검색 요청을 실행하지 않는다", () => {
+    render(<App />);
+
+    fireEvent.change(screen.getByLabelText("검색어"), {
+      target: { value: "   " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "검색" }));
+
+    expect(screen.getByText("검색 요청 실행: 0회")).toBeInTheDocument();
   });
 
   it("한 글자 이상 입력했을 때 검색 요청을 실행한다", () => {
@@ -44,6 +55,9 @@ describe("검색 기준 기능", () => {
   it("검색 요청을 반복하면 실행 횟수가 증가한다", () => {
     render(<App />);
 
+    fireEvent.change(screen.getByLabelText("검색어"), {
+      target: { value: "코드" },
+    });
     const searchButton = screen.getByRole("button", { name: "검색" });
     fireEvent.click(searchButton);
     fireEvent.click(searchButton);

@@ -33,6 +33,11 @@ function SearchPanel() {
 
   function handleSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (query.trim() === "") {
+      return;
+    }
+
     setRequestCount((currentCount) => currentCount + 1);
   }
 
