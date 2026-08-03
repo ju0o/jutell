@@ -5,7 +5,7 @@ import { Toggle } from '../../components/Toggle';
 
 export function FeatureSettings({ config, onChange }: { config: Config; onChange: (id: keyof Config['features'], value: boolean) => void }) {
   return <section>
-    <PageHeader eyebrow="Features" title="보고서에 넣을 내용 고르기" description="한글 이름을 먼저 보고, 필요한 기능만 켜거나 끌 수 있습니다. 변경은 저장 전까지 임시로 유지됩니다." />
+    <PageHeader eyebrow="보고 내용" title="보고서에 넣을 내용 고르기" description="한글 이름을 먼저 보고, 필요한 기능만 켜거나 끌 수 있습니다. 변경은 저장 전까지 임시로 유지됩니다." />
     <div className="safe-info"><strong>안전 안내</strong><span>어떤 기능을 꺼도 작업 실패, 중요한 미확인 사항, 범위 밖 변경, 데이터 손실과 보안 위험은 계속 표시됩니다.</span></div>
     <div className="feature-list">{FEATURE_CATALOG.map((feature) => <article className="feature-card" key={feature.id}>
       <div className="feature-card-top"><div><div className="feature-title-row"><h3>{feature.label}</h3><span className="meta-badge">{feature.badge}</span></div><code className="feature-id">{feature.id}</code></div><Toggle checked={config.features[feature.id]} onChange={(value) => onChange(feature.id, value)} label={config.features[feature.id] ? 'ON' : 'OFF'} /></div>

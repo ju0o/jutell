@@ -41,10 +41,10 @@ npm install -g ./jutell-0.2.0.tgz
 
 최초 실행 시 기존 프로젝트 내용을 보존하면서 다음을 준비합니다.
 
-- `.jutell.json`의 `balanced` 기본 설정
+- `.jutell.json` 설정 (터미널 안내에서 고른 보고 방식. 자동 환경에서는 `balanced` 기본값)
 - `.agents/skills/beginner-bridge/SKILL.md` Skill
 - `AGENTS.md`의 JuTell 관리 블록
-- 현재 연결 Provider 설정의 JuTell MCP 관리 블록과 활성 상태
+- 선택한 AI Agent Provider 설정의 JuTell MCP 관리 블록과 활성 상태
 
 AGENTS.md의 기존 내용과 다른 Provider MCP 설정은 보존합니다. 현재 실제 연결 Provider는 Codex이며, `on`과 `off`는 설정 및 Beta Journal을 삭제하지 않습니다.
 

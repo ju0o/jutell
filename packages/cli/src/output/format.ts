@@ -13,6 +13,26 @@ export function createIo(): CliIo {
         return defaultYes ? !/^n(o)?$/i.test(answer.trim()) : /^y(es)?$/i.test(answer.trim());
       } finally { rl.close(); }
     },
+    choose: async (message, choices, defaultValue) => {
+      const rl = readline.createInterface({ input, output });
+      try {
+        const list = choices.map((choice, index) => `  ${index + 1}. ${choice.label}${choice.note ? ` — ${choice.note}` : ''}`).join('\n');
+        output.write(`${message}\n${list}\n`);
+        const defaultLabel = defaultValue ? choices.find((choice) => choice.value === defaultValue)?.label : undefined;
+        while (true) {
+          const answer = await rl.question(`선택 (번호 입력${defaultLabel ? `, Enter: ${defaultLabel}` : ''}) > `);
+          const trimmed = answer.trim();
+          if (!trimmed) {
+            if (defaultLabel) return defaultValue;
+            output.write('보기 중 하나의 번호를 입력하세요.\n');
+            continue;
+          }
+          const number = Number(trimmed);
+          if (Number.isInteger(number) && number >= 1 && number <= choices.length) return choices[number - 1].value;
+          output.write('보기 중 하나의 번호를 입력하세요.\n');
+        }
+      } finally { rl.close(); }
+    },
   };
 }
 
@@ -60,46 +80,35 @@ export function scopeLabel(scope: InstallScope) { return scope === 'global' ? '�
 export function printHelp(io: CliIo) {
   io.write(`JuTell CLI 0.2.0
 
-가장 많이 사용하는 명령
+가장 많이 사용하는 명령 7가지
 
-  jutell          JuTell을 준비하고 관리자 화면을 엽니다.
-  jutell use opencode   OpenCode 연결을 준비합니다 (권장).
-  jutell use codex      Codex 연결을 준비합니다 (권장).
-  jutell on       JuTell 연결을 켭니다.
-  jutell off      JuTell 연결을 끕니다.
-  jutell status   현재 연결 상태를 확인합니다.
-  jutell doctor   문제가 있는지 점검합니다.
+  jutell                처음 시작: 설치·연결·관리자 화면을 준비합니다.
+  jutell on             연결을 켭니다.
+  jutell off            연결을 끕니다.
+  jutell status         현재 연결 상태를 확인합니다.
+  jutell doctor         문제가 있는지 점검합니다.
+  jutell use codex      Codex에 연결합니다 (권장).
+  jutell use opencode   OpenCode에 연결합니다 (베타).
 
-사용법:
-  jutell [--no-open|--status-only]
-  jutell dashboard [--no-open]
-  jutell use <agent>
-  jutell on
-  jutell off
+처음 실행할 때는 jutell 만 입력하면 됩니다.
+사용 중인 AI Agent와 보고 방식을 묻는 안내에 따라 고르면 연결이 준비됩니다.
+설정은 언제든 관리자 화면 또는 jutell use 명령으로 바꿀 수 있습니다.
 
 use·connect는 Agent를 대신 실행하거나 소유하지 않습니다.
 Agent는 사용자가 선택한 도구로 그대로 실행되며,
 JuTell은 Skill·MCP·지침·설정을 연결합니다.
 
-고급 명령:
-  jutell setup [--project|--global] [--profile balanced] [--yes]
-  jutell status [--project|--global] [--json]
-  jutell enable [--skill-only|--mcp-only]
-  jutell disable [--skill|--mcp|--all]
-  jutell doctor [--fix] [--json]
-  jutell uninstall [--keep-data|--remove-data] [--yes]
-  jutell --version
+고급 명령 (보통 사용할 필요가 없습니다)
 
-AI Agent Provider 명령:
-  jutell provider          연결 상태를 간단히 봅니다.
-  jutell provider list
-  jutell provider status [--json]
-  jutell provider setup opencode [--yes]
-  jutell provider enable opencode
-  jutell provider disable opencode
-  jutell connect <agent>      연결만 추가합니다.
-  jutell disconnect <agent>   해당 연결만 끕니다.
-  jutell switch <agent>       기본 Agent로 전환합니다.
+  jutell dashboard      관리자 화면만 엽니다.
+  jutell setup          설치를 다시 진행합니다.
+  jutell enable         연결을 켭니다 (on과 같음).
+  jutell disable        연결을 끕니다 (off와 같음).
+  jutell uninstall      설치를 제거합니다.
+  jutell provider       Agent 연결 상태를 자세히 봅니다.
+  jutell connect        연결만 추가합니다.
+  jutell disconnect     해당 연결만 끕니다.
+  jutell switch         기본 Agent를 전환합니다.
 
 이전 별칭: beginner-bridge
 

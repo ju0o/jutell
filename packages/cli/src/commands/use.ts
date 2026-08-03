@@ -65,7 +65,7 @@ export async function useCommand(paths: ScopePaths, options: CliOptions, io: Cli
   const snapshots = await registrationSnapshots(paths);
   let changed: string[] = [];
   try {
-    await ensureBridgeConfig(paths, undefined);
+    await ensureBridgeConfig(paths, options.profile);
     const skillResult = await installSkill(assets().skill, paths.skillRoot);
     changed = skillResult.changed;
     if (paths.scope === 'project') await ensureJuTellAgentsBlock(paths.targetRoot);

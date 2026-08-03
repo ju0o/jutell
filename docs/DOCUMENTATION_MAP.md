@@ -41,6 +41,7 @@
 | [BRAND_IDENTITY.md](BRAND_IDENTITY.md) | Ju0와 JuTell의 공식 표기는 무엇인가요? |
 | [PRODUCT_VISION.md](PRODUCT_VISION.md) | JuTell이 해결하려는 문제와 미래 방향은 무엇인가요? |
 | [JUTELL_STYLE.md](JUTELL_STYLE.md) | 기본 말투와 JuTell Style은 어떻게 구분하나요? |
+| [STYLE_LAB_DESIGN.md](STYLE_LAB_DESIGN.md) | Style Lab의 설계와 데이터 구조는 무엇인가요? |
 | [BRAND_MIGRATION.md](BRAND_MIGRATION.md) | 기존 설치와 이름을 어떻게 보존하나요? |
 
 ## 보고서 작성

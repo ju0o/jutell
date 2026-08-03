@@ -47,7 +47,7 @@ AI가 빠르게 코드를 바꾸어도 무엇이 바뀌었는지, 실제로 확�
 
 고급 코드 해석, 시각적 Diff, 다음 AI 요청 자동 생성, 프로젝트 기획·운영 Workflow, 중앙 서버, 익명 Telemetry, 팀 기능은 제품 방향이며 현재 완성된 기능으로 주장하지 않습니다.
 
-## 빠른 설치
+## 빠른 설치 (5분)
 
 현재는 npm에 공개하지 않았습니다. 저장소에서 CLI 패키지를 만들고 격리된 환경으로 확인할 수 있습니다.
 
@@ -58,7 +58,7 @@ npm pack
 npm install -g ./jutell-0.2.0.tgz
 ```
 
-설치한 뒤 사용할 프로젝트 폴더에서 `jutell`만 실행하면 설치 확인, 기본 연결, 로컬 관리자 실행과 브라우저 열기를 순서대로 처리합니다. 공개 후의 목표 흐름은 다음과 같습니다.
+설치가 끝나면 프로젝트 폴더에서 `jutell` 한 번만 실행합니다. 사용 중인 AI Agent와 보고 방식을 묻는 안내를 따라 고르면 Skill·AGENTS.md·MCP 연결과 관리자 화면이 한 번에 준비됩니다. 공개 후의 목표 흐름은 다음과 같습니다.
 
 ```powershell
 npm install -g jutell
@@ -66,7 +66,18 @@ cd <프로젝트 폴더>
 jutell
 ```
 
-자주 쓰는 명령은 `jutell`, `jutell on`, `jutell off`, `jutell status`, `jutell doctor`입니다. AI Agent 연결은 `jutell use opencode` 또는 `jutell use codex` 한 번으로 백업·등록·활성화를 끝냅니다. 기존 사용자를 위해 `beginner-bridge`도 같은 기능의 호환 별칭으로 유지합니다. `setup`, `enable`, `disable`, `uninstall`, `provider`는 고급 명령으로 계속 사용할 수 있습니다.
+기억할 명령은 7개입니다.
+
+| 명령 | 역할 |
+|---|---|
+| `jutell` | 처음 시작·연결·관리자 화면을 준비합니다. |
+| `jutell on` / `jutell off` | 연결을 켜고 끕니다. |
+| `jutell status` | 현재 연결 상태를 확인합니다. |
+| `jutell doctor` | 문제가 있는지 점검합니다. |
+| `jutell use codex` | Codex에 연결합니다 (권장). |
+| `jutell use opencode` | OpenCode에 연결합니다 (베타). |
+
+`setup`, `enable`, `disable`, `uninstall`, `provider`는 고급 명령으로 계속 사용할 수 있습니다. 기존 사용자를 위해 `beginner-bridge`도 같은 기능의 호환 별칭으로 유지합니다.
 
 ## Skill, MCP, 관리자
 

@@ -37,7 +37,7 @@ describe('local admin screens', () => {
 
   it('shows the unsaved feature change and save preview', async () => {
     render(<App />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Features' }));
+    fireEvent.click(await screen.findByRole('button', { name: '보고서 내용' }));
     expect(screen.getByText('프로그램 내부 변화')).toBeInTheDocument();
     expect(screen.getAllByText('보고 길이 영향: 조금 줄어듦').length).toBeGreaterThan(0);
     fireEvent.click(screen.getAllByRole('checkbox')[0]);
@@ -48,7 +48,7 @@ describe('local admin screens', () => {
 
   it('compares a Profile choice before save', async () => {
     render(<App />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Profiles' }));
+    fireEvent.click(await screen.findByRole('button', { name: '보고서 스타일' }));
     expect(screen.getByText('최소 보고')).toBeInTheDocument();
     expect(screen.getByText(/처음 사용하는 사용자에게 권장/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /최소 보고/ }));
@@ -57,7 +57,7 @@ describe('local admin screens', () => {
 
   it('shows an error outside the allowed limits', async () => {
     render(<App />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Limits' }));
+    fireEvent.click(await screen.findByRole('button', { name: '보고서 길이' }));
     expect(screen.getByText(/숫자를 직접 이해할 필요는 없습니다/)).toBeInTheDocument();
     expect(screen.getAllByText('추천').length).toBeGreaterThan(0);
     fireEvent.click(screen.getByText('고급 설정'));
@@ -67,9 +67,9 @@ describe('local admin screens', () => {
 
   it('shows privacy deletion controls and the beta journal form', async () => {
     render(<App />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Privacy' }));
+    fireEvent.click(await screen.findByRole('button', { name: '개인정보 보호' }));
     expect(screen.getByText('설정 기록 삭제')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Beta Journal' }));
+    fireEvent.click(screen.getByRole('button', { name: '베타 기록' }));
     expect(screen.getByText('새 피드백 기록')).toBeInTheDocument();
     expect(screen.getAllByRole('option', { name: '개선 중' }).length).toBeGreaterThan(0);
     await waitFor(() => expect(screen.getByLabelText('익명 프로젝트 별칭')).toBeInTheDocument());

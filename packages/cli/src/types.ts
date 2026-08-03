@@ -23,10 +23,17 @@ export type CliOptions = {
   removeData: boolean;
 };
 
+export type CliChoice = {
+  value: string;
+  label: string;
+  note?: string;
+};
+
 export type CliIo = {
   write: (message: string) => void;
   error: (message: string) => void;
   ask: (message: string, defaultYes?: boolean) => Promise<boolean>;
+  choose: (message: string, choices: CliChoice[], defaultValue?: string) => Promise<string | undefined>;
 };
 
 export type ScopePaths = {

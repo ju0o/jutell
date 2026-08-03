@@ -13,7 +13,7 @@ import { McpConnection } from './features/mcp-connection/McpConnection';
 
 type Tab = 'overview' | 'features' | 'profiles' | 'limits' | 'journal' | 'mcp' | 'privacy';
 type PreviewKind = 'feature' | 'profile' | 'limits';
-const tabs: Array<{ id: Tab; label: string }> = [{ id: 'overview', label: '개요' }, { id: 'features', label: 'Features' }, { id: 'profiles', label: 'Profiles' }, { id: 'limits', label: 'Limits' }, { id: 'journal', label: 'Beta Journal' }, { id: 'mcp', label: 'AI Agent 연결' }, { id: 'privacy', label: 'Privacy' }];
+const tabs: Array<{ id: Tab; label: string }> = [{ id: 'overview', label: '개요' }, { id: 'features', label: '보고서 내용' }, { id: 'profiles', label: '보고서 스타일' }, { id: 'limits', label: '보고서 길이' }, { id: 'journal', label: '베타 기록' }, { id: 'mcp', label: 'AI Agent 연결' }, { id: 'privacy', label: '개인정보 보호' }];
 const startPrompt = `이 프로젝트의 AGENTS.md,
 .agents/skills/beginner-bridge/SKILL.md,
 .jutell.json을 먼저 읽고 작업해주세요.

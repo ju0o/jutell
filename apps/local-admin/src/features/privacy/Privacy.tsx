@@ -3,7 +3,7 @@ import { Notice } from '../../components/Notice';
 
 export function Privacy({ onDeleteHistory, onDeleteFeedback }: { onDeleteHistory: () => void; onDeleteFeedback: () => void }) {
   return <section>
-    <PageHeader eyebrow="Privacy" title="로컬 기록과 개인정보" description="현재 관리자 페이지가 어디에 저장하고 무엇을 저장하지 않는지 확인하세요." />
+    <PageHeader eyebrow="개인정보 보호" title="로컬 기록과 개인정보" description="현재 관리자 페이지가 어디에 저장하고 무엇을 저장하지 않는지 확인하세요." />
     <Notice>현재 외부 전송 없음 · 중앙 서버 없음 · 원격 Telemetry는 구현되지 않았습니다.</Notice>
     <div className="privacy-grid">
       <article className="panel"><h3>저장되는 로컬 파일</h3><ul><li><code>.jutell.json</code> — Profile, Feature, limits</li><li><code>.jutell-local/settings-history.json</code> — 변경 시각과 변경 필드</li><li><code>.jutell-local/beta-feedback.json</code> — 사용자가 직접 작성한 피드백</li><li><code>.jutell-local/metadata.json</code> — 제한된 버전 정보</li></ul></article>
