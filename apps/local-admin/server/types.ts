@@ -33,6 +33,7 @@ export type Config = {
   features: Record<FeatureId, boolean>;
   limits: Limits;
   mcp: McpSettings;
+  usageMeasurement: { localCountersEnabled: boolean };
   voice?: { preset?: 'default' | 'plain' | 'learning' | 'jutell' };
 };
 

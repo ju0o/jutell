@@ -2,10 +2,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 
-const config = { version: 1 as const, profile: 'balanced' as const, features: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true }, limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 }, mcp: { enabled: false, autoStart: false } };
+const config = { version: 1 as const, profile: 'balanced' as const, features: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true }, limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 }, mcp: { enabled: false, autoStart: false }, usageMeasurement: { localCountersEnabled: false } };
 const feedback = { feedback: [] };
 const history = { history: [] };
 const templates = { templates: [{ name: 'FEATURE_REQUEST.md', description: '새 기능·화면 추가', content: '# 기능 요청서\n' }], source: 'project' };
+const usageCounters = { exists: false, corrupt: false, counters: null };
+const usageExperiments = { summary: null, experiments: [] };
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, options?: RequestInit) => {
@@ -21,6 +23,9 @@ beforeEach(() => {
     if (url.endsWith('/api/feedback')) return new Response(JSON.stringify(feedback), { status: 200 });
     if (url.endsWith('/api/config/history')) return new Response(JSON.stringify(history), { status: 200 });
     if (url.endsWith('/api/request-templates')) return new Response(JSON.stringify(templates), { status: 200 });
+    if (url.endsWith('/api/usage-counters')) return new Response(JSON.stringify(usageCounters), { status: 200 });
+    if (url.endsWith('/api/usage-experiments')) return new Response(JSON.stringify(usageExperiments), { status: 200 });
+    if (options?.method === 'PATCH' && url.endsWith('/api/usage-settings')) return new Response(JSON.stringify({ config: { ...config, usageMeasurement: { localCountersEnabled: true } }, changed: true, fallback: false, metadata: { configVersion: 1, skillVersion: 'not-recorded' }, lastChangedAt: null }), { status: 200 });
     if (options?.method === 'POST' && url.includes('/api/feedback')) return new Response(JSON.stringify({ feedback: { ...JSON.parse(String(options.body)), id: '12345678-1234-1234-1234-123456789012', createdAt: '', updatedAt: '' } }), { status: 201 });
     return new Response(JSON.stringify({ ...config, changed: true }), { status: 200 });
   }));
@@ -105,5 +110,15 @@ describe('local admin screens', () => {
     expect(screen.getByText(/자동 전송이나 수집은 없습니다/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /FEATURE_REQUEST/ }));
     expect(screen.getByText('# 기능 요청서')).toBeInTheDocument();
+  });
+
+  it('shows the usage measurement tab with counters OFF by default', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: '사용량 측정' }));
+    expect(screen.getByText('JuTell이 얼마나 쓰였는지 로컬에서만 확인하기')).toBeInTheDocument();
+    expect(screen.getByText('기록 설정')).toBeInTheDocument();
+    expect(screen.getByText(/기본 꺼짐이며/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '켜기' }));
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/usage-settings'), expect.any(Object)));
   });
 });

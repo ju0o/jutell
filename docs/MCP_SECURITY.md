@@ -16,8 +16,8 @@ MCP 입력으로 임의 경로를 받지 않습니다. 서버는 프로젝트 �
 
 ## 도구 안전성
 
-- 모든 V0.1 도구는 읽기 전용입니다.
-- 코드·파일을 수정하는 도구는 제공하지 않습니다.
+- 모든 V0.1 도구는 읽기 전용입니다. 코드·파일을 수정하는 도구는 제공하지 않습니다.
+- 예외는 로컬 사용량 카운터 기록뿐입니다. `usageMeasurement.localCountersEnabled`가 켜진 경우에만 `.jutell-local/usage-counters.json`에 도구 이름, 호출 수, 응답 문자 수 합계, 시각을 기록하며, 기록 실패는 도구 응답에 영향을 주지 않습니다. 자세한 구조는 `docs/USAGE_EFFICIENCY_EXPERIMENTS.md`를 참조하세요.
 - 자동 Commit, Profile 변경, Feedback 전송을 하지 않습니다.
 - API Key, 환경변수, Cookie, Token을 요구하거나 출력하지 않습니다.
 - 오류에는 절대 경로와 전체 스택을 포함하지 않습니다.
@@ -43,3 +43,5 @@ MCP 입력으로 임의 경로를 받지 않습니다. 서버는 프로젝트 �
 ## 데이터와 Telemetry
 
 MCP는 Prompt, 코드, AI 답변 원문, 프로젝트 식별 정보와 개인정보를 저장하거나 전송하지 않습니다. 원격 Telemetry와 외부 HTTP 요청은 구현하지 않습니다. MCP가 꺼져도 Skill 방식은 계속 사용할 수 있습니다.
+
+로컬 사용량 카운터가 켜진 경우에만 도구 이름·호출 수·응답 문자 수 합계·시각을 `.jutell-local/usage-counters.json`에 기록합니다. Tool arguments, 응답 원문, 파일 경로, 프로젝트 이름, 저장소 URL, API Key, 식별자는 저장하지 않으며, 잘못된 형식의 기존 파일은 덮어쓰지 않고 보존합니다. 기록 실패는 stderr 요약으로만 처리하고 stdout JSON-RPC는 오염시키지 않습니다.

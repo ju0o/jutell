@@ -56,6 +56,16 @@ describe('config validation', () => {
     expect(validateConfig({ ...DEFAULT_CONFIG, limits: { ...DEFAULT_CONFIG.limits, maxMainFiles: 0 } }).ok).toBe(false);
     expect(validateConfig({ ...DEFAULT_CONFIG, mcp: { enabled: true, autoStart: false, unsupported: true } }).ok).toBe(false);
   });
+  it('accepts an older configuration without usageMeasurement and defaults to OFF', () => {
+    const { usageMeasurement, ...oldConfig } = DEFAULT_CONFIG;
+    void usageMeasurement;
+    const result = validateConfig(oldConfig);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.usageMeasurement).toEqual({ localCountersEnabled: false });
+  });
+  it('rejects a non-boolean usageMeasurement setting', () => {
+    expect(validateConfig({ ...DEFAULT_CONFIG, usageMeasurement: { localCountersEnabled: 'yes' } }).ok).toBe(false);
+  });
 });
 
 describe('local config API', () => {
@@ -291,5 +301,87 @@ describe('feedback API', () => {
   it('does not accept a path-like feedback identifier', async () => {
     const response = await request('/api/feedback/not-a-path');
     expect(response.status).toBe(400);
+  });
+});
+
+describe('usage experiments API', () => {
+  async function exists(file: string) {
+    try { await fs.access(file); return true; } catch { return false; }
+  }
+
+  it('creates no files while recording is OFF and rejects template copies', async () => {
+    const paths = getStoragePaths(root);
+    const list = await request('/api/usage-experiments');
+    expect(list.status).toBe(200);
+    expect(list.body.experiments).toEqual([]);
+    const counters = await request('/api/usage-counters');
+    expect(counters.status).toBe(200);
+    expect(counters.body.exists).toBe(false);
+    expect(await exists(paths.usageCountersFile)).toBe(false);
+    expect(await exists(paths.usageExperimentsFile)).toBe(false);
+    const copy = await request('/api/usage-experiments/template-copy', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ template: 'FEATURE_REQUEST.md', taskType: 'feature' }) });
+    expect(copy.status).toBe(409);
+    expect(await exists(paths.usageCountersFile)).toBe(false);
+  });
+
+  it('creates, updates, summarizes, and deletes all experiments', async () => {
+    const paths = getStoragePaths(root);
+    const created = await request('/api/usage-experiments', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: '보고서 길이 비교', profile: 'balanced', features: ['changeSummary', 'glossary'], environment: { provider: 'codex', mcpEnabled: true, skillEnabled: true } }) });
+    expect(created.status).toBe(201);
+    expect(created.body.experiment.id).toBe('EXP-001');
+    expect(created.body.experiment.features).toEqual(['changeSummary', 'glossary']);
+
+    const patched = await request('/api/usage-experiments/EXP-001', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ status: 'completed', evaluation: { understanding: 5, readability: 4, accuracy: 5, overall: 5 }, issues: ['용어 설명이 길다'], decision: 'balanced 유지' }) });
+    expect(patched.status).toBe(200);
+    expect(patched.body.experiment.evaluation.understanding).toBe(5);
+
+    const list = await request('/api/usage-experiments');
+    expect(list.body.summary.completed).toBe(1);
+    expect(list.body.summary.averageUnderstanding).toBe(5);
+    expect(list.body.summary.mostUsedProfile).toBe('balanced');
+    expect(list.body.summary.mostDisabledFeatures).toContain('internalChanges');
+
+    const invalid = await request('/api/usage-experiments', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ title: '' }) });
+    expect(invalid.status).toBe(400);
+    const missing = await request('/api/usage-experiments/EXP-999', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ decision: '유지' }) });
+    expect(missing.status).toBe(404);
+
+    const rejected = await request('/api/usage-experiments', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: false }) });
+    expect(rejected.status).toBe(400);
+    const deleted = await request('/api/usage-experiments', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
+    expect(deleted.status).toBe(200);
+    expect(await exists(paths.usageExperimentsFile)).toBe(false);
+  });
+
+  it('records template copies and deletes counters after enabling the setting', async () => {
+    const paths = getStoragePaths(root);
+    const settings = await request('/api/usage-settings', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ localCountersEnabled: true }) });
+    expect(settings.status).toBe(200);
+    expect(settings.body.config.usageMeasurement.localCountersEnabled).toBe(true);
+    expect(settings.body.changed).toBe(true);
+
+    const copy = await request('/api/usage-experiments/template-copy', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ template: 'FEATURE_REQUEST.md', taskType: 'feature' }) });
+    expect(copy.status).toBe(200);
+    const counters = await request('/api/usage-counters');
+    expect(counters.body.counters.templateCopies['FEATURE_REQUEST.md'].count).toBe(1);
+    expect(counters.body.counters.templateCopies['FEATURE_REQUEST.md'].byProfile.balanced).toBe(1);
+
+    const bad = await request('/api/usage-experiments/template-copy', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ template: '../../secret', taskType: 'x' }) });
+    expect(bad.status).toBe(400);
+
+    const rejected = await request('/api/usage-counters', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: false }) });
+    expect(rejected.status).toBe(400);
+    const deleted = await request('/api/usage-counters', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
+    expect(deleted.status).toBe(200);
+    const after = await request('/api/usage-counters');
+    expect(after.body.exists).toBe(false);
+
+    expect(await exists(paths.feedbackFile)).toBe(true);
+    expect(await exists(paths.historyFile)).toBe(true);
+  });
+
+  it('rejects a wrong usage-settings value', async () => {
+    const settings = await request('/api/usage-settings', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ localCountersEnabled: 'yes' }) });
+    expect(settings.status).toBe(400);
   });
 });

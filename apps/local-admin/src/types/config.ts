@@ -26,6 +26,9 @@ export type Config = {
     enabled: boolean;
     autoStart: boolean;
   };
+  usageMeasurement: {
+    localCountersEnabled: boolean;
+  };
   voice?: { preset?: 'default' | 'plain' | 'learning' | 'jutell' };
 };
 

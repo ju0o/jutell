@@ -61,6 +61,9 @@ export type BridgeConfig = {
     enabled: boolean;
     autoStart: boolean;
   };
+  usageMeasurement?: {
+    localCountersEnabled: boolean;
+  };
   voice?: { preset?: 'default' | 'plain' | 'learning' | 'jutell' };
 };
 
@@ -85,6 +88,7 @@ export type StatusResult = {
   activeFeatureCount: number;
   configLocation: string;
   localAdmin: '실행 중' | '중지됨' | '확인 필요';
+  usageCountersEnabled: boolean;
   telemetry: '비활성화';
   externalTransmission: '없음';
   warnings: string[];

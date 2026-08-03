@@ -44,6 +44,7 @@
 | [STYLE_LAB_DESIGN.md](STYLE_LAB_DESIGN.md) | Style Lab의 설계와 데이터 구조는 무엇인가요? |
 | [REQUEST_BUILDER.md](REQUEST_BUILDER.md) | 요청 만들기 템플릿과 Feature 기본값 근거는 무엇인가요? |
 | [REQUEST_BUILDER_V2.md](REQUEST_BUILDER_V2.md) | 요청 만들기 V2 화면 설계는 무엇인가요? |
+| [USAGE_EFFICIENCY_EXPERIMENTS.md](USAGE_EFFICIENCY_EXPERIMENTS.md) | 로컬 사용량 측정은 무엇을 어떻게 저장하나요? |
 | [BRAND_MIGRATION.md](BRAND_MIGRATION.md) | 기존 설치와 이름을 어떻게 보존하나요? |
 
 ## 보고서 작성

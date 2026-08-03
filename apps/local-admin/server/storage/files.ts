@@ -13,6 +13,8 @@ export type StoragePaths = {
   feedbackFile: string;
   historyFile: string;
   metadataFile: string;
+  usageCountersFile: string;
+  usageExperimentsFile: string;
 };
 
 export function getStoragePaths(projectRoot: string): StoragePaths {
@@ -28,6 +30,8 @@ export function getStoragePaths(projectRoot: string): StoragePaths {
     feedbackFile: path.join(localDir, 'beta-feedback.json'),
     historyFile: path.join(localDir, 'settings-history.json'),
     metadataFile: path.join(localDir, 'metadata.json'),
+    usageCountersFile: path.join(localDir, 'usage-counters.json'),
+    usageExperimentsFile: path.join(localDir, 'usage-experiments.json'),
   };
 }
 

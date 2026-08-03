@@ -7,7 +7,9 @@ import { ensureStorage, getStoragePaths, readArray, readConfig, readJson, saveFe
 import { validateFeedback } from './validation/feedback.js';
 import { readCodexMcpRegistration, registerCodexMcp, removeCodexMcp, readOpenCodeRegistration, registerOpenCodeMcp, setOpenCodeMcpEnabled, providerDetected } from './mcp/config.js';
 import { getMcpRuntimeState, startMcpRuntime, stopMcpRuntime } from './mcp/runtime.js';
-import { readRequestTemplates } from './templates/request-templates.js';
+import { readRequestTemplates, REQUEST_TEMPLATE_LIST } from './templates/request-templates.js';
+import { deleteUsageCounters, readUsageCounters, recordTemplateCopy } from './usage/counters.js';
+import { createUsageExperiment, deleteAllUsageExperiments, readUsageExperiments, updateUsageExperiment } from './usage/experiments.js';
 import type { Config, Feedback, Readiness } from './types.js';
 
 const MAX_BODY_BYTES = 512 * 1024;
@@ -194,6 +196,52 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
 
     if (method === 'GET' && url.pathname === '/api/config') return json(res, 200, await readOverview(paths));
     if (method === 'GET' && url.pathname === '/api/request-templates') return json(res, 200, await readRequestTemplates(projectRoot));
+    if (method === 'GET' && url.pathname === '/api/usage-counters') return json(res, 200, await readUsageCounters(paths));
+    if (method === 'DELETE' && url.pathname === '/api/usage-counters') {
+      const errorMessage = confirmBody(await body(req), '로컬 사용량 카운터 삭제 확인이 필요합니다.');
+      if (errorMessage) return error(res, 400, errorMessage);
+      await deleteUsageCounters(paths);
+      return json(res, 200, { counters: null });
+    }
+    if (method === 'PATCH' && url.pathname === '/api/usage-settings') {
+      const input = await body(req);
+      if (!input || typeof input !== 'object' || typeof (input as { localCountersEnabled?: unknown }).localCountersEnabled !== 'boolean') {
+        return error(res, 400, 'localCountersEnabled는 ON 또는 OFF여야 합니다.');
+      }
+      const config = (await readConfig(paths)).config;
+      const saved = await saveConfig(paths, { ...config, usageMeasurement: { localCountersEnabled: (input as { localCountersEnabled: boolean }).localCountersEnabled } });
+      return json(res, 200, { ...saved, ...(await readOverview(paths)) });
+    }
+    if (method === 'GET' && url.pathname === '/api/usage-experiments') return json(res, 200, await readUsageExperiments(paths));
+    if (method === 'POST' && url.pathname === '/api/usage-experiments') {
+      const result = await createUsageExperiment(paths, await body(req) as Parameters<typeof createUsageExperiment>[1]);
+      if (!result.ok) return error(res, 400, result.error);
+      return json(res, 201, { experiment: result.experiment, ...(await readUsageExperiments(paths)) });
+    }
+    if (method === 'POST' && url.pathname === '/api/usage-experiments/template-copy') {
+      const config = (await readConfig(paths)).config;
+      if (!config.usageMeasurement.localCountersEnabled) return error(res, 409, '로컬 사용량 측정이 꺼져 있습니다. 먼저 켜야 템플릿 복사 횟수를 기록할 수 있습니다.');
+      const input = await body(req);
+      const record = input && typeof input === 'object' ? input as { template?: unknown; taskType?: unknown } : {};
+      const template = typeof record.template === 'string' ? record.template : '';
+      const taskType = typeof record.taskType === 'string' && record.taskType.length > 0 && record.taskType.length <= 40 ? record.taskType : '기타';
+      if (!REQUEST_TEMPLATE_LIST.some((item) => item.name === template)) return error(res, 400, '공식 템플릿 이름만 기록할 수 있습니다.');
+      const result = await recordTemplateCopy(paths, template, taskType, config.profile);
+      if (!result.ok) return error(res, 409, result.reason);
+      return json(res, 200, { recorded: true, counters: (await readUsageCounters(paths)).counters });
+    }
+    const experimentMatch = url.pathname.match(/^\/api\/usage-experiments\/(EXP-\d{3})$/);
+    if (experimentMatch && method === 'PATCH') {
+      const result = await updateUsageExperiment(paths, experimentMatch[1], await body(req) as Parameters<typeof updateUsageExperiment>[2]);
+      if (!result.ok) return error(res, result.error === '실험 기록을 찾을 수 없습니다.' ? 404 : 400, result.error);
+      return json(res, 200, { experiment: result.experiment, ...(await readUsageExperiments(paths)) });
+    }
+    if (method === 'DELETE' && url.pathname === '/api/usage-experiments') {
+      const errorMessage = confirmBody(await body(req), '실험 기록 전체 삭제 확인이 필요합니다.');
+      if (errorMessage) return error(res, 400, errorMessage);
+      await deleteAllUsageExperiments(paths);
+      return json(res, 200, { experiments: [], summary: null });
+    }
     if (method === 'GET' && url.pathname === '/api/readiness') return json(res, 200, await readReadiness(projectRoot, paths));
     if (method === 'GET' && url.pathname === '/api/mcp/status') return json(res, 200, await readMcpStatus(projectRoot, paths));
     if (method === 'POST' && url.pathname === '/api/mcp/preview') {

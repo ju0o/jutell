@@ -107,3 +107,13 @@ code { border-radius: 5px; background: #eef2f8; color: #385078; padding: 2px 5px
 .template-steps li { margin: 0 !important; padding-left: 6px; }
 .template-steps strong, .template-steps span { display: block; }
 .template-steps span { margin-top: 4px; color: #71809a; font-size: 13px; }
+
+.field-label { display: grid; gap: 6px; margin: 10px 0 4px; color: #53617a; font-size: 13px; font-weight: 700; }
+.text-input { display: block; width: 100%; }
+.data-table { width: 100%; margin: 10px 0; border-collapse: collapse; font-size: 13px; }
+.data-table th, .data-table td { border: 1px solid #e2e8f0; padding: 7px 10px; text-align: left; }
+.data-table th { background: #f2f6fb; color: #4c5a73; }
+.setting-row { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 14px 0; border-bottom: 1px solid #edf0f5; }
+.setting-row:last-child { border-bottom: 0; }
+.setting-row strong { display: block; }
+.setting-row .muted { margin: 4px 0 0; }

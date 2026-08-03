@@ -59,6 +59,7 @@ export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
     activeFeatureCount: Object.values(config.config.features).filter(Boolean).length,
     configLocation: config.source === 'legacy' ? '기존 설정(.beginner-bridge.json)' : safeLocation(paths.scope, 'config'),
     localAdmin: await adminState(paths),
+    usageCountersEnabled: config.config.usageMeasurement?.localCountersEnabled === true,
     telemetry: '비활성화',
     externalTransmission: '없음',
     warnings,
@@ -70,7 +71,7 @@ export async function statusCommand(paths: ScopePaths, options: CliOptions, io: 
   if (options.json) { io.write(JSON.stringify(status, null, 2)); return status; }
   const preparation = { not_registered: '설정 미등록', registered: '등록됨', enabled: '활성화됨', error: '오류' }[status.codexPreparation];
   const actual = { not_checked: '확인하지 않음', success: '마지막 확인 성공', failure: '마지막 확인 실패' }[status.actualConnection];
-  io.write(`JuTell 상태\n\nCLI: ${status.cliVersion}\nSkill: ${status.skillInstalled ? '설치됨' : '설치되지 않음'}\nAGENTS.md: ${status.agentsManaged ? 'JuTell 블록 있음' : 'JuTell 블록 없음'}\nMCP: ${status.mcpRegistered ? '등록됨' : '등록되지 않음'} / ${status.mcpEnabled ? '활성화' : '비활성화'}\nAI Agent Provider: Codex (현재 지원)\nAI Agent 연결 준비: ${preparation}\n실제 도구 호출: ${actual}\nOpenCode (베타): ${status.opencode.registered ? `MCP 등록됨${status.opencode.enabled ? ' / 활성화' : ''}` : status.opencode.conflict ? '충돌 확인 필요' : 'MCP 미등록'}${status.opencodeDetected ? '' : ' (감지: 직접 확인 필요)'}\nProfile: ${status.profile}\n활성 Feature: ${status.activeFeatureCount}개\n설치 범위: ${status.installationScope === 'global' ? '사용자 전역' : '현재 프로젝트'}\nAI Agent 감지: ${status.codexDetected ? '예' : '직접 확인 필요'}\n로컬 관리자: ${status.localAdmin}\nTelemetry: ${status.telemetry}\n외부 전송: ${status.externalTransmission}\n설정 위치: ${status.configLocation}`);
+  io.write(`JuTell 상태\n\nCLI: ${status.cliVersion}\nSkill: ${status.skillInstalled ? '설치됨' : '설치되지 않음'}\nAGENTS.md: ${status.agentsManaged ? 'JuTell 블록 있음' : 'JuTell 블록 없음'}\nMCP: ${status.mcpRegistered ? '등록됨' : '등록되지 않음'} / ${status.mcpEnabled ? '활성화' : '비활성화'}\nAI Agent Provider: Codex (현재 지원)\nAI Agent 연결 준비: ${preparation}\n실제 도구 호출: ${actual}\nOpenCode (베타): ${status.opencode.registered ? `MCP 등록됨${status.opencode.enabled ? ' / 활성화' : ''}` : status.opencode.conflict ? '충돌 확인 필요' : 'MCP 미등록'}${status.opencodeDetected ? '' : ' (감지: 직접 확인 필요)'}\nProfile: ${status.profile}\n활성 Feature: ${status.activeFeatureCount}개\n설치 범위: ${status.installationScope === 'global' ? '사용자 전역' : '현재 프로젝트'}\nAI Agent 감지: ${status.codexDetected ? '예' : '직접 확인 필요'}\n로컬 관리자: ${status.localAdmin}\n로컬 사용량 카운터: ${status.usageCountersEnabled ? '켜짐' : '꺼짐'}\nTelemetry: ${status.telemetry}\n외부 전송: ${status.externalTransmission}\n설정 위치: ${status.configLocation}`);
   for (const warning of status.warnings) io.write(`주의: ${warning}`);
   return status;
 }
