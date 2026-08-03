@@ -3,7 +3,7 @@ import net from 'node:net';
 import path from 'node:path';
 import { assets, packageRoot, safeLocation } from '../config/paths.js';
 import { codexDetected, nodeMajorVersion, operatingSystem } from '../process/system.js';
-import { exists, readBridgeConfig, readCodexRegistration, readText, readVersionInfo } from '../config/managed.js';
+import { exists, readBridgeConfig, readCodexRegistration, readText, readVersionInfo, FEATURE_IDS } from '../config/managed.js';
 import { setupCommand } from './lifecycle.js';
 import { hasJuTellAgentsBlock } from '../installer/agents.js';
 import { opencodeDetected, readOpenCodeRegistration } from '../installer/opencode.js';
@@ -106,7 +106,7 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   checks.push({ name: 'MCP 빌드 파일', status: await exists(mcpEntry) ? '정상' : '오류', detail: await exists(mcpEntry) ? '패키지에 포함되어 있습니다.' : 'MCP 빌드 파일이 없습니다.' });
   checks.push({ name: 'MCP 설정', status: registration.conflict ? '오류' : registration.registered ? '정상' : '주의', detail: registration.conflict ? '관리되지 않는 동일 이름 설정이 있습니다.' : registration.registered ? 'JuTell 관리 블록을 확인했습니다.' : '등록되지 않았습니다.' });
   checks.push({ name: '.jutell.json', status: config.valid ? '정상' : '오류', detail: config.exists ? (config.valid ? '설정 형식을 확인했습니다.' : '설정이 올바르지 않아 기본값을 사용합니다.') : '없으면 기본 설정을 사용합니다.' });
-  const featuresValid = Object.keys(config.config.features).every((id) => ['changeSummary', 'userVisibleChanges', 'internalChanges', 'mainFiles', 'glossary', 'validationResults', 'riskAssessment', 'userActions'].includes(id));
+  const featuresValid = Object.keys(config.config.features).every((id) => FEATURE_IDS.includes(id));
   const limitsValid = config.config.limits.maxMainFiles >= 1 && config.config.limits.maxMainFiles <= 10 && config.config.limits.maxGlossaryTerms >= 0 && config.config.limits.maxGlossaryTerms <= 10 && config.config.limits.compactReportMaxSentences >= 4 && config.config.limits.compactReportMaxSentences <= 30;
   checks.push({ name: '공식 Feature ID', status: featuresValid ? '정상' : '오류', detail: featuresValid ? '현재 공식 ID만 확인했습니다.' : '지원하지 않는 Feature ID가 있습니다.' });
   checks.push({ name: 'limits', status: limitsValid ? '정상' : '오류', detail: limitsValid ? '허용 범위를 확인했습니다.' : '허용 범위를 벗어난 값이 있습니다.' });

@@ -2,15 +2,16 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 
-const config = { version: 1 as const, profile: 'balanced' as const, features: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true }, limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 }, mcp: { enabled: false, autoStart: false } };
+const config = { version: 1 as const, profile: 'balanced' as const, features: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true }, limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 }, mcp: { enabled: false, autoStart: false } };
 const feedback = { feedback: [] };
 const history = { history: [] };
+const templates = { templates: [{ name: 'FEATURE_REQUEST.md', description: '새 기능·화면 추가', content: '# 기능 요청서\n' }], source: 'project' };
 
 beforeEach(() => {
   vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, options?: RequestInit) => {
     const url = String(input);
     if (url.endsWith('/api/config')) return new Response(JSON.stringify({ config, fallback: false, metadata: { configVersion: 1, skillVersion: 'not-recorded' }, lastChangedAt: null }), { status: 200 });
-    if (url.endsWith('/api/readiness')) return new Response(JSON.stringify({ config: { exists: true, valid: true, profile: 'balanced', activeFeatures: 8 }, skill: { exists: true }, agents: { exists: true, jutellBlock: true }, safetyRules: { exists: true }, sessionApplied: 'manual_check_required' }), { status: 200 });
+    if (url.endsWith('/api/readiness')) return new Response(JSON.stringify({ config: { exists: true, valid: true, profile: 'balanced', activeFeatures: 12 }, skill: { exists: true }, agents: { exists: true, jutellBlock: true }, safetyRules: { exists: true }, sessionApplied: 'manual_check_required' }), { status: 200 });
     if (url.endsWith('/api/mcp/status')) return new Response(JSON.stringify({ settings: { enabled: false, autoStart: false }, server: { state: 'stopped' }, preparation: 'not_registered', codex: { registered: false, path: '.codex/config.toml', conflict: false, enabled: false }, providers: [
       { id: 'codex', label: 'Codex', status: 'supported', detected: true, registered: false, conflict: false, enabled: false, lastCheckedAt: null },
       { id: 'opencode', label: 'OpenCode', status: 'beta', detected: true, registered: false, conflict: false, enabled: false, lastCheckedAt: null },
@@ -19,6 +20,7 @@ beforeEach(() => {
     ], connection: { state: 'not_checked', lastCheckedAt: null }, skillFallback: { available: true, message: 'Skill 방식 사용 가능' } }), { status: 200 });
     if (url.endsWith('/api/feedback')) return new Response(JSON.stringify(feedback), { status: 200 });
     if (url.endsWith('/api/config/history')) return new Response(JSON.stringify(history), { status: 200 });
+    if (url.endsWith('/api/request-templates')) return new Response(JSON.stringify(templates), { status: 200 });
     if (options?.method === 'POST' && url.includes('/api/feedback')) return new Response(JSON.stringify({ feedback: { ...JSON.parse(String(options.body)), id: '12345678-1234-1234-1234-123456789012', createdAt: '', updatedAt: '' } }), { status: 201 });
     return new Response(JSON.stringify({ ...config, changed: true }), { status: 200 });
   }));
@@ -93,5 +95,15 @@ describe('local admin screens', () => {
     expect(screen.getAllByText(/연결 준비 중입니다/).length).toBe(2);
     fireEvent.click(screen.getAllByText('연결하기')[0]);
     await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/mcp/connect'), expect.any(Object)));
+  });
+
+  it('shows request builder templates when the feature is on', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: '요청 만들기' }));
+    expect(screen.getByText('막연한 요구를 AI Agent 요청문으로 바꾸기')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('FEATURE_REQUEST')).toBeInTheDocument());
+    expect(screen.getByText(/자동 전송이나 수집은 없습니다/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /FEATURE_REQUEST/ }));
+    expect(screen.getByText('# 기능 요청서')).toBeInTheDocument();
   });
 });

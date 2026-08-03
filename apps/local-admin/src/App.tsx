@@ -10,10 +10,11 @@ import { Limits } from './features/limits/Limits';
 import { BetaJournal } from './features/beta-journal/BetaJournal';
 import { Privacy } from './features/privacy/Privacy';
 import { McpConnection } from './features/mcp-connection/McpConnection';
+import { RequestBuilder } from './features/request-builder/RequestBuilder';
 
-type Tab = 'overview' | 'features' | 'profiles' | 'limits' | 'journal' | 'mcp' | 'privacy';
+type Tab = 'overview' | 'features' | 'profiles' | 'limits' | 'journal' | 'mcp' | 'privacy' | 'requests';
 type PreviewKind = 'feature' | 'profile' | 'limits';
-const tabs: Array<{ id: Tab; label: string }> = [{ id: 'overview', label: '개요' }, { id: 'features', label: '보고서 내용' }, { id: 'profiles', label: '보고서 스타일' }, { id: 'limits', label: '보고서 길이' }, { id: 'journal', label: '베타 기록' }, { id: 'mcp', label: 'AI Agent 연결' }, { id: 'privacy', label: '개인정보 보호' }];
+const tabs: Array<{ id: Tab; label: string }> = [{ id: 'overview', label: '개요' }, { id: 'features', label: '보고서 내용' }, { id: 'profiles', label: '보고서 스타일' }, { id: 'limits', label: '보고서 길이' }, { id: 'journal', label: '베타 기록' }, { id: 'requests', label: '요청 만들기' }, { id: 'mcp', label: 'AI Agent 연결' }, { id: 'privacy', label: '개인정보 보호' }];
 const startPrompt = `이 프로젝트의 AGENTS.md,
 .agents/skills/beginner-bridge/SKILL.md,
 .jutell.json을 먼저 읽고 작업해주세요.
@@ -58,7 +59,7 @@ export default function App() {
   const dismissGuide = () => { localStorage.setItem('bb-admin-guide-dismissed', 'true'); setShowGuide(false); };
   if (busy && !data) return <div className="loading">로컬 설정을 읽는 중입니다…</div>;
   if (!data || !draft || !readiness || !mcpStatus) return <div className="loading"><Notice tone="error">로컬 설정을 읽지 못했습니다. 서버가 실행 중인지 확인하세요.</Notice></div>;
-  const page = tab === 'overview' ? <Overview data={data} readiness={readiness} mcpStatus={mcpStatus} showGuide={showGuide} onDismissGuide={dismissGuide} onShowGuide={() => setShowGuide(true)} onCopyPrompt={() => void copyPrompt()} /> : tab === 'features' ? <FeatureSettings config={draft} onChange={(id, value) => updateDraft({ ...draft, features: { ...draft.features, [id]: value } }, 'feature')} /> : tab === 'profiles' ? <Profiles config={draft} onChange={selectProfile} /> : tab === 'limits' ? <Limits limits={draft.limits} errors={limitErrors} onChange={(key, value) => updateDraft({ ...draft, limits: { ...draft.limits, [key]: value } }, 'limits')} /> : tab === 'journal' ? <BetaJournal config={data.config} feedback={feedback} onSave={saveFeedback} onDelete={deleteFeedback} /> : tab === 'mcp' ? <McpConnection config={draft} status={mcpStatus} onToggle={updateMcpSetting} onAction={mcpAction} /> : <Privacy onDeleteHistory={() => void deleteHistory()} onDeleteFeedback={() => void deleteAllFeedback()} />;
+  const page = tab === 'overview' ? <Overview data={data} readiness={readiness} mcpStatus={mcpStatus} showGuide={showGuide} onDismissGuide={dismissGuide} onShowGuide={() => setShowGuide(true)} onCopyPrompt={() => void copyPrompt()} /> : tab === 'features' ? <FeatureSettings config={draft} onChange={(id, value) => updateDraft({ ...draft, features: { ...draft.features, [id]: value } }, 'feature')} /> : tab === 'profiles' ? <Profiles config={draft} onChange={selectProfile} /> : tab === 'limits' ? <Limits limits={draft.limits} errors={limitErrors} onChange={(key, value) => updateDraft({ ...draft, limits: { ...draft.limits, [key]: value } }, 'limits')} /> : tab === 'journal' ? <BetaJournal config={data.config} feedback={feedback} onSave={saveFeedback} onDelete={deleteFeedback} /> : tab === 'requests' ? <RequestBuilder config={data.config} onMessage={(text, tone) => setMessage({ text, tone })} /> : tab === 'mcp' ? <McpConnection config={draft} status={mcpStatus} onToggle={updateMcpSetting} onAction={mcpAction} /> : <Privacy onDeleteHistory={() => void deleteHistory()} onDeleteFeedback={() => void deleteAllFeedback()} />;
   const changedOn = Object.keys(draft.features).filter((id) => draft.features[id as keyof Config['features']] && !data.config.features[id as keyof Config['features']]).map(featureLabel);
   const changedOff = Object.keys(draft.features).filter((id) => !draft.features[id as keyof Config['features']] && data.config.features[id as keyof Config['features']]).map(featureLabel);
   const changedLimits = Object.keys(draft.limits).filter((key) => draft.limits[key as keyof Config['limits']] !== data.config.limits[key as keyof Config['limits']]).map((key) => `${key}: ${data.config.limits[key as keyof Config['limits']]} → ${draft.limits[key as keyof Config['limits']]}`);

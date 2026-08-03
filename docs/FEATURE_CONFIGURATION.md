@@ -24,7 +24,11 @@ JuTell 보고서의 선택 기능을 프로젝트별 로컬 설정으로 조절�
     "glossary": true,
     "validationResults": true,
     "riskAssessment": true,
-    "userActions": true
+    "userActions": true,
+    "nextActionSuggestions": true,
+    "requestClarificationGuide": true,
+    "manualEditGuidance": true,
+    "requestBuilder": true
   },
   "limits": {
     "maxMainFiles": 5,
@@ -50,8 +54,14 @@ JSON에는 주석을 넣지 않는다.
 | `validationResults` | 테스트·타입 검사·빌드·브라우저 확인 결과 설명 |
 | `riskAssessment` | 위험도와 위험 근거 설명 |
 | `userActions` | 사용자 확인·추가 테스트·설정·결정 안내 |
+| `nextActionSuggestions` | 보고서 끝에 다음 행동 제안 최대 3개 추가 |
+| `requestClarificationGuide` | 요청이 모호할 때 결과가 크게 달라지는 항목을 작업 전에 확인 |
+| `manualEditGuidance` | 사용자가 직접 파일을 고칠 때 위치와 주의점 안내 |
+| `requestBuilder` | 요청 만들기 템플릿 제공 안내 (보고서와 무관) |
 
 기본값은 모든 Feature가 `true`다. Feature 값은 반드시 boolean이어야 한다.
+
+`nextActionSuggestions`가 꺼지면 보고서 끝의 다음 행동 제안을 생략한다. 단, 안전·데이터 손실과 관련된 사용자 행동은 `userActions`와 같은 강제 예외로 계속 보고한다. `requestBuilder`는 보고서 내용이 아니라 요청 만들기 탭의 템플릿 제공 여부만 조절한다.
 
 ## 4. Profile
 
@@ -59,7 +69,7 @@ Profile은 여러 Feature와 길이 제한의 기본 묶음이다. 명시적으�
 
 | Profile | 기본 Feature | 권장 limits |
 |---|---|---|
-| `minimal` | `internalChanges`, `mainFiles`, `glossary`, `riskAssessment` 끔; 나머지 켬 | 주요 파일 3개, 용어 1개, 8문장 |
+| `minimal` | `internalChanges`, `mainFiles`, `glossary`, `riskAssessment`, `nextActionSuggestions`, `requestClarificationGuide`, `manualEditGuidance` 끔; `requestBuilder` 포함 나머지 켬 | 주요 파일 3개, 용어 1개, 8문장 |
 | `balanced` | 모두 켬 | 주요 파일 5개, 용어 3개, 12문장 |
 | `learning` | 모두 켬 | 주요 파일 5개, 용어 6개, 12문장 |
 | `detailed` | 모두 켬 | 주요 파일 5개, 용어 6개, 18문장 |
@@ -106,6 +116,7 @@ Profile은 여러 Feature와 길이 제한의 기본 묶음이다. 명시적으�
 | JSON 문법 오류 | `balanced` 사용 후 설정 문제를 짧게 보고 |
 | 알 수 없는 Profile | `balanced` 사용 후 Profile 이름을 추측하지 않았음을 보고 |
 | 알 수 없는 Feature ID | 해당 이름을 적용하지 않고 `balanced` 사용 후 이름만 보고 |
+| Feature ID 누락 (구버전 설정) | 오류로 보지 않음. 선택한 Profile의 기본값으로 채움 |
 | boolean이 아닌 Feature 값 | `balanced` 사용 후 설정 문제를 보고 |
 | 음수·범위를 벗어난 limits | `balanced` 사용 후 설정 문제를 보고 |
 | 지원하지 않는 `version` | `balanced` 사용 후 지원 버전을 보고 |
@@ -128,7 +139,7 @@ Profile은 여러 Feature와 길이 제한의 기본 묶음이다. 명시적으�
 }
 ```
 
-이 설정에서는 변경 요약, 사용자 변화, 검증 결과, 필요한 사용자 행동을 유지하고 내부 변화·주요 파일·용어·일반 위험도 설명은 기본적으로 줄인다. 실패와 중요한 미확인 사항은 유지한다.
+이 설정에서는 변경 요약, 사용자 변화, 검증 결과, 필요한 사용자 행동을 유지하고 내부 변화·주요 파일·용어·일반 위험도 설명과 다음 행동 제안은 기본적으로 줄인다. 실패와 중요한 미확인 사항은 유지한다. `requestBuilder`는 보고서와 무관하므로 이 설정에서도 켜져 있다.
 
 ### 8.2 용어 학습용 `learning`
 

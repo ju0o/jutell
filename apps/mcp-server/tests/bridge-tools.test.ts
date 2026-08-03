@@ -21,9 +21,21 @@ describe('JuTell MCP read-only data', () => {
   });
 
   it('returns every feature and current report preferences', () => {
-    expect(activeFeatures(DEFAULT_CONFIG)).toHaveLength(8);
+    expect(activeFeatures(DEFAULT_CONFIG)).toHaveLength(12);
     expect(activeFeatures(DEFAULT_CONFIG).find((item) => item.id === 'glossary')).toMatchObject({ name: '개발 용어 설명', active: true });
+    expect(activeFeatures(DEFAULT_CONFIG).find((item) => item.id === 'requestBuilder')).toMatchObject({ name: '요청 만들기', active: true });
     expect(reportPreferences(DEFAULT_CONFIG)).toMatchObject({ profile: 'balanced', profileName: '균형 보고', limits: DEFAULT_CONFIG.limits });
+  });
+
+  it('fills missing helper feature keys with defaults for backward compatibility', () => {
+    const oldConfig = { version: 1, profile: 'minimal', features: { changeSummary: true, userVisibleChanges: true, internalChanges: false, mainFiles: false, glossary: false, validationResults: true, riskAssessment: false, userActions: true }, limits: { maxMainFiles: 3, maxGlossaryTerms: 1, compactReportMaxSentences: 8 } };
+    const normalized = normalizeConfig(oldConfig);
+    expect(normalized.features.nextActionSuggestions).toBe(false);
+    expect(normalized.features.requestClarificationGuide).toBe(false);
+    expect(normalized.features.manualEditGuidance).toBe(false);
+    expect(normalized.features.requestBuilder).toBe(true);
+    expect(normalized.profile).toBe('minimal');
+    expect(normalized.limits).toEqual(oldConfig.limits);
   });
 
   it('returns only active rules and mandatory safety requirements', () => {

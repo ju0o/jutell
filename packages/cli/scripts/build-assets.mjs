@@ -34,6 +34,7 @@ await runNpm(['run', 'build'], path.join(repoRoot, 'apps', 'local-admin'));
 await copy(path.join(repoRoot, '.agents', 'skills', 'beginner-bridge'), path.join(assetsRoot, 'skill'));
 await copy(path.join(repoRoot, 'apps', 'mcp-server', 'dist'), path.join(assetsRoot, 'mcp-server'));
 await copy(path.join(repoRoot, 'apps', 'local-admin', 'dist'), path.join(assetsRoot, 'local-admin'));
+await copy(path.join(repoRoot, 'templates', 'request-builder'), path.join(assetsRoot, 'templates', 'request-builder'));
 
 await build({
   entryPoints: [path.join(repoRoot, 'apps', 'local-admin', 'server', 'app.ts')],

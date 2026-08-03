@@ -7,7 +7,11 @@ export type FeatureId =
   | 'glossary'
   | 'validationResults'
   | 'riskAssessment'
-  | 'userActions';
+  | 'userActions'
+  | 'nextActionSuggestions'
+  | 'requestClarificationGuide'
+  | 'manualEditGuidance'
+  | 'requestBuilder';
 
 export type Limits = {
   maxMainFiles: number;

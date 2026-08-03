@@ -41,6 +41,7 @@ export async function dashboardCommand(paths: ScopePaths, options: CliOptions, i
   }
   await fs.rm(marker, { force: true });
   process.env.BEGINNER_BRIDGE_MCP_SERVER = path.join(assets().mcpServer, 'index.js');
+  process.env.JUTELL_TEMPLATES_ROOT = path.join(assets().root, 'templates', 'request-builder');
   const module = await import(pathToFileURL(assets().localAdminServer).href) as { handleApiRequest: (req: IncomingMessage, res: ServerResponse, projectRoot: string) => Promise<void> };
   const server = createServer((req, res) => {
     if ((req.url ?? '/').startsWith('/api/')) void module.handleApiRequest(req, res, paths.targetRoot);

@@ -11,6 +11,10 @@ export const FEATURE_IDS: FeatureId[] = [
   'validationResults',
   'riskAssessment',
   'userActions',
+  'nextActionSuggestions',
+  'requestClarificationGuide',
+  'manualEditGuidance',
+  'requestBuilder',
 ];
 
 export const PROFILES: Record<Profile, { features: Record<FeatureId, boolean>; limits: Limits }> = {
@@ -24,6 +28,10 @@ export const PROFILES: Record<Profile, { features: Record<FeatureId, boolean>; l
       validationResults: true,
       riskAssessment: false,
       userActions: true,
+      nextActionSuggestions: false,
+      requestClarificationGuide: false,
+      manualEditGuidance: false,
+      requestBuilder: true,
     },
     limits: { maxMainFiles: 3, maxGlossaryTerms: 1, compactReportMaxSentences: 8 },
   },
@@ -37,6 +45,10 @@ export const PROFILES: Record<Profile, { features: Record<FeatureId, boolean>; l
       validationResults: true,
       riskAssessment: true,
       userActions: true,
+      nextActionSuggestions: true,
+      requestClarificationGuide: true,
+      manualEditGuidance: true,
+      requestBuilder: true,
     },
     limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 },
   },
@@ -50,6 +62,10 @@ export const PROFILES: Record<Profile, { features: Record<FeatureId, boolean>; l
       validationResults: true,
       riskAssessment: true,
       userActions: true,
+      nextActionSuggestions: true,
+      requestClarificationGuide: true,
+      manualEditGuidance: true,
+      requestBuilder: true,
     },
     limits: { maxMainFiles: 5, maxGlossaryTerms: 6, compactReportMaxSentences: 12 },
   },
@@ -63,6 +79,10 @@ export const PROFILES: Record<Profile, { features: Record<FeatureId, boolean>; l
       validationResults: true,
       riskAssessment: true,
       userActions: true,
+      nextActionSuggestions: true,
+      requestClarificationGuide: true,
+      manualEditGuidance: true,
+      requestBuilder: true,
     },
     limits: { maxMainFiles: 5, maxGlossaryTerms: 6, compactReportMaxSentences: 18 },
   },
@@ -107,7 +127,7 @@ export function validateConfig(input: unknown): ValidationResult {
     return { ok: false, error: '공식 Feature만 설정할 수 있습니다.' };
   }
   for (const featureId of FEATURE_IDS) {
-    if (typeof input.features[featureId] !== 'boolean') {
+    if (input.features[featureId] !== undefined && typeof input.features[featureId] !== 'boolean') {
       return { ok: false, error: 'Feature 값은 ON 또는 OFF여야 합니다.' };
     }
   }
@@ -126,12 +146,17 @@ export function validateConfig(input: unknown): ValidationResult {
   if ('voice' in input && (!isRecord(input.voice) || !hasOnlyKeys(input.voice, ['preset']) || (input.voice.preset !== undefined && !['default', 'plain', 'learning', 'jutell'].includes(String(input.voice.preset))))) {
     return { ok: false, error: 'voice 설정의 preset을 확인할 수 없습니다.' };
   }
+  const profile = input.profile as Profile;
+  const rawFeatures = input.features as Record<string, unknown>;
+  const features = Object.fromEntries(
+    FEATURE_IDS.map((id) => [id, typeof rawFeatures[id] === 'boolean' ? (rawFeatures[id] as boolean) : PROFILES[profile].features[id]]),
+  ) as Record<FeatureId, boolean>;
   return {
     ok: true,
     value: {
       version: SUPPORTED_VERSION,
-      profile: input.profile as Profile,
-      features: { ...(input.features as Record<FeatureId, boolean>) },
+      profile,
+      features,
       limits: { ...(input.limits as Limits) },
       mcp: ('mcp' in input ? { ...(input.mcp as McpSettings) } : { ...DEFAULT_CONFIG.mcp }),
       ...('voice' in input ? { voice: { preset: input.voice && isRecord(input.voice) && typeof input.voice.preset === 'string' ? input.voice.preset as 'default' | 'plain' | 'learning' | 'jutell' : 'default' } } : {}),

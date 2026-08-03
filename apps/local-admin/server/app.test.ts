@@ -37,6 +37,19 @@ describe('config validation', () => {
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.value.mcp).toEqual({ enabled: false, autoStart: false });
   });
+  it('fills missing helper feature keys with the selected Profile defaults', () => {
+    const { nextActionSuggestions, requestClarificationGuide, manualEditGuidance, requestBuilder, ...oldFeatures } = DEFAULT_CONFIG.features;
+    void nextActionSuggestions; void requestClarificationGuide; void manualEditGuidance; void requestBuilder;
+    const minimal = { version: 1, profile: 'minimal' as const, features: oldFeatures, limits: { maxMainFiles: 3, maxGlossaryTerms: 1, compactReportMaxSentences: 8 } };
+    const result = validateConfig(minimal);
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.value.features.nextActionSuggestions).toBe(false);
+      expect(result.value.features.requestClarificationGuide).toBe(false);
+      expect(result.value.features.manualEditGuidance).toBe(false);
+      expect(result.value.features.requestBuilder).toBe(true);
+    }
+  });
   it('rejects an unknown Profile, Feature, and invalid limit', () => {
     expect(validateConfig({ ...DEFAULT_CONFIG, profile: 'unknown' }).ok).toBe(false);
     expect(validateConfig({ ...DEFAULT_CONFIG, features: { ...DEFAULT_CONFIG.features, unknown: true } }).ok).toBe(false);
@@ -239,6 +252,23 @@ describe('local config API', () => {
     expect(rejected.status).toBe(400);
     const deleted = await request('/api/config/history', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
     expect(deleted.body.history).toEqual([]);
+  });
+
+  it('reports unavailable templates and returns project templates with content', async () => {
+    const unavailable = await request('/api/request-templates');
+    expect(unavailable.status).toBe(200);
+    expect(unavailable.body.source).toBe('unavailable');
+    expect(unavailable.body.templates).toEqual([]);
+
+    const templateDir = path.join(root, 'templates', 'request-builder');
+    await fs.mkdir(templateDir, { recursive: true });
+    await fs.writeFile(path.join(templateDir, 'README.md'), '# Request Builder\n', 'utf8');
+    await fs.writeFile(path.join(templateDir, 'FEATURE_REQUEST.md'), '# 기능 요청서\n', 'utf8');
+    const available = await request('/api/request-templates');
+    expect(available.status).toBe(200);
+    expect(available.body.source).toBe('project');
+    expect(available.body.templates.map((item: { name: string }) => item.name)).toContain('FEATURE_REQUEST.md');
+    expect(available.body.templates.find((item: { name: string }) => item.name === 'FEATURE_REQUEST.md').content).toBe('# 기능 요청서\n');
   });
 });
 

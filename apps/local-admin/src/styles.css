@@ -95,3 +95,15 @@ code { border-radius: 5px; background: #eef2f8; color: #385078; padding: 2px 5px
 .mcp-preview pre, .mcp-panel pre { white-space: pre-wrap; overflow-x: auto; background: #f7f9fc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; color: #34435f; }
 @media (max-width: 760px) { .mcp-status-grid { grid-template-columns: 1fr; } }
 @media (max-width: 760px) { .provider-grid { grid-template-columns: 1fr; } }
+
+.template-list { display: grid; gap: 10px; padding: 0; list-style: none; }
+.template-row { display: grid; gap: 4px; width: 100%; text-align: left; border: 1px solid #dbe3ef; border-radius: 10px; background: #f8fbff; padding: 13px 15px; color: #172033; }
+.template-row:hover { border-color: #2563eb; background: #f2f7ff; }
+.template-row strong { color: #263a5c; }
+.template-row span { color: #66758d; font-size: 13px; }
+.template-content { margin-top: 10px; border: 1px solid #e2e8f0; border-radius: 10px; background: #f7f9fc; padding: 12px; }
+.template-content pre { max-height: 480px; overflow: auto; margin: 0 0 12px; white-space: pre-wrap; color: #34435f; font-size: 12px; line-height: 1.6; }
+.template-steps { display: grid; gap: 10px; padding-left: 20px; }
+.template-steps li { margin: 0 !important; padding-left: 6px; }
+.template-steps strong, .template-steps span { display: block; }
+.template-steps span { margin-top: 4px; color: #71809a; font-size: 13px; }

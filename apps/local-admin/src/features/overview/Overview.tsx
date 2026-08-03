@@ -1,7 +1,7 @@
 import type { ConfigResponse, McpStatus, Readiness } from '../../types/config';
 import { PageHeader } from '../../components/PageHeader';
 import { Notice } from '../../components/Notice';
-import { PROFILE_CATALOG } from '../../lib/catalog';
+import { PROFILE_CATALOG, FEATURE_CATALOG } from '../../lib/catalog';
 import { AGENT_PROVIDER_CATALOG } from '../../lib/providers';
 
 const prompt = `이 프로젝트의 AGENTS.md,
@@ -34,7 +34,7 @@ export function Overview({ data, readiness, mcpStatus, showGuide, onDismissGuide
     <div className="stat-grid">
       <div className="stat-card"><span>현재 Profile</span><strong>{PROFILE_CATALOG[data.config.profile].label}</strong><small>{PROFILE_CATALOG[data.config.profile].description}</small></div>
       <div className="stat-card"><span>활성 Feature</span><strong>{active}개</strong><small>보고서에 들어가는 항목 수입니다.</small></div>
-      <div className="stat-card"><span>비활성 Feature</span><strong>{8 - active}개</strong><small>꺼도 안전 항목은 계속 표시됩니다.</small></div>
+      <div className="stat-card"><span>비활성 Feature</span><strong>{FEATURE_CATALOG.length - active}개</strong><small>꺼도 안전 항목은 계속 표시됩니다.</small></div>
       <div className="stat-card"><span>설정 저장 방식</span><strong>이 컴퓨터에만</strong><small>중앙 서버로 보내지 않습니다.</small></div>
     </div>
     <div className="panel overview-details">
