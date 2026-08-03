@@ -52,7 +52,7 @@
 | 문서 | 이 문서가 답하는 질문 |
 |---|---|
 | [AGENTS.md](../AGENTS.md) | 이 저장소에서 작업할 때 지켜야 할 짧은 규칙은 무엇인가요? |
-| [SKILL.md](../.agents/skills/beginner-bridge/SKILL.md) | Codex가 보고서를 만들 때 어떤 실행 순서를 따르나요? |
+| [SKILL.md](../.agents/skills/beginner-bridge/SKILL.md) | 연결된 AI Agent가 보고서를 만들 때 어떤 실행 순서를 따르나요? |
 | [PERSONAL_BETA_PLAN.md](PERSONAL_BETA_PLAN.md) | 개인 베타에서 무엇을 사용하고 어떤 근거로 판단하나요? |
 | [LOCAL_ADMIN_REQUIREMENTS.md](LOCAL_ADMIN_REQUIREMENTS.md) | 로컬 관리자 V0.1이 무엇을 관리하고 무엇을 저장하지 않나요? |
 | [BETA_FEEDBACK_TEMPLATE.md](BETA_FEEDBACK_TEMPLATE.md) | 개인 베타 사용 중 불편을 어떻게 짧게 기록하나요? |

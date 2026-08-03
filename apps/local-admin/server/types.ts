@@ -20,6 +20,9 @@ export type McpSettings = {
   autoStart: boolean;
 };
 
+export type CodexPreparation = 'not_registered' | 'registered' | 'enabled' | 'error';
+export type ActualConnection = 'not_checked' | 'success' | 'failure';
+
 export type Config = {
   version: 1;
   profile: Profile;
@@ -55,7 +58,7 @@ export type FeedbackInput = Omit<Feedback, 'id' | 'createdAt' | 'updatedAt'>;
 export type Readiness = {
   config: { exists: boolean; valid: boolean; profile: Profile; activeFeatures: number };
   skill: { exists: boolean };
-  agents: { exists: boolean };
+  agents: { exists: boolean; jutellBlock: boolean };
   safetyRules: { exists: boolean };
   sessionApplied: 'manual_check_required';
 };

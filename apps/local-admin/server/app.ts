@@ -106,6 +106,7 @@ async function readReadiness(projectRoot: string, paths: StoragePaths): Promise<
   const agentsPath = path.join(projectRoot, 'AGENTS.md');
   const skillPath = path.join(projectRoot, '.agents', 'skills', 'beginner-bridge', 'SKILL.md');
   const [agentsExists, skillExists] = await Promise.all([exists(agentsPath), exists(skillPath)]);
+  const agentsText = agentsExists ? await fs.readFile(agentsPath, 'utf8') : '';
   let safetyExists = false;
   if (skillExists) {
     try {
@@ -117,7 +118,7 @@ async function readReadiness(projectRoot: string, paths: StoragePaths): Promise<
   return {
     config: { exists: configExists, valid: configExists && !config.fallback, profile: config.config.profile, activeFeatures: Object.values(config.config.features).filter(Boolean).length },
     skill: { exists: skillExists },
-    agents: { exists: agentsExists },
+    agents: { exists: agentsExists, jutellBlock: agentsText.includes('<!-- BEGIN JUTELL MANAGED BLOCK -->') && agentsText.includes('<!-- END JUTELL MANAGED BLOCK -->') },
     safetyRules: { exists: safetyExists },
     sessionApplied: 'manual_check_required',
   };
@@ -126,11 +127,13 @@ async function readReadiness(projectRoot: string, paths: StoragePaths): Promise<
 async function readMcpStatus(projectRoot: string, paths: StoragePaths) {
   const config = (await readConfig(paths)).config;
   const codex = await readCodexMcpRegistration(projectRoot, config.mcp.enabled);
+  const preparation = codex.conflict ? 'error' : !codex.registered ? 'not_registered' : config.mcp.enabled ? 'enabled' : 'registered';
   return {
     settings: config.mcp,
     server: getMcpRuntimeState(),
     codex: { registered: codex.registered, path: codex.path, conflict: codex.conflict },
-    connection: { state: 'manual_check_required' as const, lastCheckedAt: lastMcpCheckAt },
+    preparation,
+    connection: { state: 'not_checked' as const, lastCheckedAt: lastMcpCheckAt },
     skillFallback: { available: true, message: 'MCP를 끄거나 사용할 수 없어도 AGENTS.md, Skill, 설정 파일 방식은 계속 사용할 수 있습니다.' },
   };
 }
@@ -174,7 +177,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     if (method === 'POST' && url.pathname === '/api/mcp/stop') return json(res, 200, { server: await stopMcpRuntime() });
     if (method === 'POST' && url.pathname === '/api/mcp/check') {
       lastMcpCheckAt = new Date().toISOString();
-      return json(res, 200, { connection: { state: 'manual_check_required', lastCheckedAt: lastMcpCheckAt, message: 'Codex 세션에서 실제 MCP 도구 호출을 직접 확인해야 합니다.' } });
+      return json(res, 200, { connection: { state: 'not_checked', lastCheckedAt: lastMcpCheckAt, message: '실제 도구 호출 여부는 새 Codex 세션에서 직접 확인할 수 있습니다.' } });
     }
     if (method === 'GET' && url.pathname === '/api/config/history') return json(res, 200, { history: await getHistory(paths) });
     if (method === 'PUT' && url.pathname === '/api/config') {

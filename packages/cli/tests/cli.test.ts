@@ -35,6 +35,69 @@ afterEach(async () => {
 });
 
 describe('Distribution CLI V0.1', () => {
+  it('처음 jutell 한 번으로 기본 연결과 대시보드를 준비한다', async () => {
+    const { project, env } = await fixture();
+    const child = spawn(process.execPath, [entry, '--yes', '--no-open'], { cwd: project, env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
+    let output = '';
+    const url = await new Promise<string>((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('기본 jutell 대시보드 시작 시간 초과')), 10000);
+      child.stdout.on('data', (chunk) => {
+        output += chunk.toString();
+        const match = output.match(/http:\/\/127\.0\.0\.1:\d+/);
+        if (match) { clearTimeout(timer); resolve(match[0]); }
+      });
+      child.once('error', reject);
+    });
+    try {
+      expect(output).toContain('JuTell 준비 완료');
+      expect(output).toContain('✓ 설정 연결됨');
+      expect(output).toContain('✓ Skill 연결됨');
+      expect(output).toContain('✓ AI Agent 연결 준비 완료');
+      expect(url).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
+      const config = JSON.parse(await fs.readFile(path.join(project, '.jutell.json'), 'utf8'));
+      expect(config.profile).toBe('balanced');
+      expect(config.mcp.enabled).toBe(true);
+      expect(await fs.readFile(path.join(project, 'AGENTS.md'), 'utf8')).toContain('BEGIN JUTELL MANAGED BLOCK');
+      expect(await fs.stat(path.join(project, '.agents', 'skills', 'beginner-bridge', 'SKILL.md'))).toBeTruthy();
+      expect(await fs.readFile(path.join(project, '.codex', 'config.toml'), 'utf8')).toContain('enabled = true');
+    } finally {
+      child.kill();
+      await new Promise<void>((resolve) => child.once('exit', () => resolve()));
+    }
+
+    const statusOnly = await runCli(['--status-only'], project, env);
+      expect(statusOnly.stdout).toContain('AI Agent Provider: Codex (현재 지원)');
+      expect(statusOnly.stdout).toContain('AI Agent 연결 준비: 활성화됨');
+    expect(statusOnly.stdout).toContain('실제 도구 호출: 확인하지 않음');
+    expect((await fs.readFile(path.join(project, 'AGENTS.md'), 'utf8')).match(/BEGIN JUTELL MANAGED BLOCK/g)).toHaveLength(1);
+    expect((await fs.readFile(path.join(project, '.codex', 'config.toml'), 'utf8')).match(/BEGINNER_BRIDGE_CLI_MCP_BEGIN/g)).toHaveLength(1);
+  });
+
+  it('on과 off가 연결만 바꾸고 설정과 Beta Journal을 보존한다', async () => {
+    const { project, env } = await fixture();
+    await fs.writeFile(path.join(project, 'AGENTS.md'), '# 사용자 규칙\n', 'utf8');
+    await runCli(['setup', '--project', '--yes'], project, env);
+    const dataRoot = path.join(project, '.jutell-local');
+    await fs.mkdir(dataRoot, { recursive: true });
+    const journal = path.join(dataRoot, 'beta-feedback.json');
+    await fs.writeFile(journal, '[{"status":"noted"}]\n', 'utf8');
+
+    await runCli(['on', '--yes'], project, env);
+    expect(JSON.parse(await fs.readFile(path.join(project, '.jutell.json'), 'utf8')).mcp.enabled).toBe(true);
+    expect(await fs.stat(path.join(project, '.agents', 'skills', 'beginner-bridge', 'SKILL.md'))).toBeTruthy();
+    expect(await fs.readFile(path.join(project, 'AGENTS.md'), 'utf8')).toContain('BEGIN JUTELL MANAGED BLOCK');
+
+    await runCli(['off', '--yes'], project, env);
+    expect(JSON.parse(await fs.readFile(path.join(project, '.jutell.json'), 'utf8')).mcp.enabled).toBe(false);
+    expect(await fs.readFile(journal, 'utf8')).toBe('[{"status":"noted"}]\n');
+    await expect(fs.stat(path.join(project, '.agents', 'skills', 'beginner-bridge', 'SKILL.md'))).rejects.toThrow();
+    expect(await fs.readFile(path.join(project, 'AGENTS.md'), 'utf8')).toBe('# 사용자 규칙\n');
+
+    await runCli(['on', '--yes'], project, env);
+    expect(JSON.parse(await fs.readFile(path.join(project, '.jutell.json'), 'utf8')).mcp.enabled).toBe(true);
+    expect(await fs.stat(path.join(project, '.agents', 'skills', 'beginner-bridge', 'SKILL.md'))).toBeTruthy();
+  });
+
   it('설치·반복 설치·상태·활성화·비활성화·제거를 안전하게 처리한다', async () => {
     const { project, env } = await fixture();
     const codexConfig = path.join(project, '.codex', 'config.toml');

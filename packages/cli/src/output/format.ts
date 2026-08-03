@@ -6,24 +6,29 @@ export function createIo(): CliIo {
   return {
     write: (message) => console.log(message),
     error: (message) => console.error(message),
-    ask: async (message) => {
+    ask: async (message, defaultYes = false) => {
       const rl = readline.createInterface({ input, output });
-      try { const answer = await rl.question(`${message} (y/N) `); return /^y(es)?$/i.test(answer.trim()); } finally { rl.close(); }
+      try {
+        const answer = await rl.question(`${message} ${defaultYes ? '(Y/n)' : '(y/N)'} `);
+        return defaultYes ? !/^n(o)?$/i.test(answer.trim()) : /^y(es)?$/i.test(answer.trim());
+      } finally { rl.close(); }
     },
   };
 }
 
-export function parseOptions(args: string[]): { command: string; options: CliOptions } {
+export function parseOptions(args: string[]): { command: string; options: CliOptions; defaultInvocation: boolean } {
   let command = 'dashboard';
+  let defaultInvocation = true;
   let index = 0;
-  if (args[0] && !args[0].startsWith('-')) { command = args[0]; index = 1; }
-  const options: CliOptions = { scope: 'project', yes: false, json: false, verbose: false, openBrowser: true, fix: false, skillOnly: false, mcpOnly: false, disableSkill: false, disableMcp: false, disableAll: false, keepData: false, removeData: false };
+  if (args[0] && !args[0].startsWith('-')) { command = args[0]; defaultInvocation = false; index = 1; }
+  const options: CliOptions = { scope: 'project', yes: false, activateMcp: false, oneCommand: false, statusOnly: false, json: false, verbose: false, openBrowser: true, fix: false, skillOnly: false, mcpOnly: false, disableSkill: false, disableMcp: false, disableAll: false, keepData: false, removeData: false };
   for (; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === '--project') options.scope = 'project';
     else if (arg === '--global') options.scope = 'global';
     else if (arg === '--yes' || arg === '-y') options.yes = true;
     else if (arg === '--json') options.json = true;
+    else if (arg === '--status-only') options.statusOnly = true;
     else if (arg === '--verbose') options.verbose = true;
     else if (arg === '--no-open') options.openBrowser = false;
     else if (arg === '--fix') options.fix = true;
@@ -45,7 +50,7 @@ export function parseOptions(args: string[]): { command: string; options: CliOpt
   if (options.skillOnly && options.mcpOnly) throw new Error('--skill-only와 --mcp-only를 동시에 사용할 수 없습니다.');
   if (options.keepData && options.removeData) throw new Error('--keep-data와 --remove-data를 동시에 사용할 수 없습니다.');
   if (options.disableAll) { options.disableSkill = true; options.disableMcp = true; }
-  return { command, options };
+  return { command, options, defaultInvocation };
 }
 
 export function scopeLabel(scope: InstallScope) { return scope === 'global' ? '사용자 전역' : '현재 프로젝트'; }
@@ -53,8 +58,21 @@ export function scopeLabel(scope: InstallScope) { return scope === 'global' ? '�
 export function printHelp(io: CliIo) {
   io.write(`JuTell CLI 0.2.0
 
+가장 많이 사용하는 명령
+
+  jutell          JuTell을 준비하고 관리자 화면을 엽니다.
+  jutell on       JuTell 연결을 켭니다.
+  jutell off      JuTell 연결을 끕니다.
+  jutell status   현재 연결 상태를 확인합니다.
+  jutell doctor   문제가 있는지 점검합니다.
+
 사용법:
-  jutell [dashboard] [--no-open]
+  jutell [--no-open|--status-only]
+  jutell dashboard [--no-open]
+  jutell on
+  jutell off
+
+고급 명령:
   jutell setup [--project|--global] [--profile balanced] [--yes]
   jutell status [--project|--global] [--json]
   jutell enable [--skill-only|--mcp-only]

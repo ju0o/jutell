@@ -123,6 +123,7 @@ describe('local config API', () => {
     const readiness = await request('/api/readiness');
     expect(readiness.status).toBe(200);
     expect(readiness.body.sessionApplied).toBe('manual_check_required');
+    expect(readiness.body.agents.jutellBlock).toBe(false);
     expect(readiness.body.config.valid).toBe(true);
   });
 
@@ -130,12 +131,13 @@ describe('local config API', () => {
     const status = await request('/api/mcp/status');
     expect(status.status).toBe(200);
     expect(status.body.server.state).toBe('stopped');
-    expect(status.body.connection.state).toBe('manual_check_required');
+    expect(status.body.preparation).toBe('not_registered');
+    expect(status.body.connection.state).toBe('not_checked');
     expect(status.body.skillFallback.available).toBe(true);
     const start = await request('/api/mcp/start', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
     expect(start.status).toBe(409);
     const checked = await request('/api/mcp/check', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
-    expect(checked.body.connection.state).toBe('manual_check_required');
+    expect(checked.body.connection.state).toBe('not_checked');
   });
 
   it('previews, adds, and removes only the managed Codex MCP block', async () => {

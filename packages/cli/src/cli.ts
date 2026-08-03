@@ -4,6 +4,8 @@ import { parseOptions, createIo, printHelp } from './output/format.js';
 import { setupCommand, enableCommand, disableCommand, uninstallCommand } from './commands/lifecycle.js';
 import { statusCommand, doctorCommand } from './commands/status.js';
 import { dashboardCommand } from './commands/dashboard.js';
+import { defaultCommand } from './commands/default.js';
+import { onCommand, offCommand } from './commands/lifecycle.js';
 import type { CliIo } from './types.js';
 
 function safeError(message: string, verbose: boolean) {
@@ -16,11 +18,15 @@ export async function run(argv: string[] = process.argv.slice(2), io: CliIo = cr
   if (legacyAlias) io.write('`beginner-bridge`는 이전 명령입니다. 앞으로는 `jutell` 사용을 권장합니다.');
   if (argv.includes('--version')) { io.write((await readVersionInfo()).cli); return 0; }
   try {
-    const { command, options } = parseOptions(argv);
+    const { command, options, defaultInvocation } = parseOptions(argv);
     if (command === 'help') { printHelp(io); return 0; }
     const paths = resolveScope(options.scope);
-    if (command === 'setup') await setupCommand(paths, options, io);
+    if (options.statusOnly) await statusCommand(paths, options, io);
+    else if (defaultInvocation) await defaultCommand(paths, options, io);
+    else if (command === 'setup') await setupCommand(paths, options, io);
     else if (command === 'dashboard') await dashboardCommand(paths, options, io);
+    else if (command === 'on') await onCommand(paths, options, io);
+    else if (command === 'off') await offCommand(paths, options, io);
     else if (command === 'status') await statusCommand(paths, options, io);
     else if (command === 'enable') await enableCommand(paths, options, io);
     else if (command === 'disable') await disableCommand(paths, options, io);

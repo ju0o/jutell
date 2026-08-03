@@ -4,11 +4,10 @@
 
 `jutell` 패키지와 `jutell` 명령을 준비했지만 아직 npm에 publish하지 않았습니다. 이번 버전은 로컬 `npm pack`과 격리된 설치 검증 단계입니다.
 
-공개 후 목표 흐름은 다음과 같습니다.
+공개 후 일반 사용자 흐름은 다음과 같습니다.
 
 ```bash
 npm install -g jutell
-jutell setup
 jutell
 ```
 
@@ -25,7 +24,9 @@ npm install -g ./jutell-0.2.0.tgz
 
 | 명령 | 역할 |
 |---|---|
-| `jutell` | 로컬 관리자 화면을 실행하고 가능한 경우 브라우저를 엽니다. |
+| `jutell` | 프로젝트 연결을 확인·준비하고 관리자 화면을 엽니다. 최초에는 balanced, Skill, MCP를 기본으로 준비합니다. |
+| `jutell on` | Skill, MCP, AGENTS.md JuTell 블록을 다시 활성화합니다. |
+| `jutell off` | Skill과 MCP를 끄고 설정과 Beta Journal을 보존합니다. |
 | `jutell setup` | Skill, 기본 설정, MCP 연결 설정을 안전하게 준비합니다. |
 | `jutell dashboard` | 127.0.0.1의 임시 포트에서 관리자 화면을 실행합니다. |
 | `jutell status` | 설치·Profile·Feature·MCP·Telemetry 상태를 보여줍니다. |
@@ -36,11 +37,22 @@ npm install -g ./jutell-0.2.0.tgz
 
 `--project`는 현재 프로젝트, `--global`은 격리된 사용자 전역 범위를 뜻합니다. `setup` 기본 범위는 현재 프로젝트입니다.
 
+`jutell --no-open`은 기본 흐름에서 브라우저를 열지 않고, `jutell --status-only`는 연결 상태만 출력합니다. 이미 관리자가 실행 중이면 새 서버를 만들지 않고 기존 주소를 보여줍니다.
+
+최초 실행 시 기존 프로젝트 내용을 보존하면서 다음을 준비합니다.
+
+- `.jutell.json`의 `balanced` 기본 설정
+- `.agents/skills/beginner-bridge/SKILL.md` Skill
+- `AGENTS.md`의 JuTell 관리 블록
+- 현재 연결 Provider 설정의 JuTell MCP 관리 블록과 활성 상태
+
+AGENTS.md의 기존 내용과 다른 Provider MCP 설정은 보존합니다. 현재 실제 연결 Provider는 Codex이며, `on`과 `off`는 설정 및 Beta Journal을 삭제하지 않습니다.
+
 이전 설치에서 사용하던 `beginner-bridge` 명령도 같은 기능의 호환 별칭으로 동작하며, 실행 시 `jutell` 사용을 안내합니다.
 
 ## 설치 안전성
 
-- 기존 Codex 설정 파일을 변경하기 전에 `.previous` 백업을 만듭니다.
+- 기존 Provider 설정 파일을 변경하기 전에 `.previous` 백업을 만듭니다.
 - 다른 MCP 서버 설정은 보존합니다.
 - JuTell 관리 블록만 추가·갱신·제거합니다.
 - 같은 이름의 관리되지 않는 MCP 설정이 있으면 자동 변경하지 않습니다.
@@ -54,13 +66,13 @@ npm install -g ./jutell-0.2.0.tgz
 
 ## 상태와 개인정보
 
-`status`의 기본 출력은 비개발자가 읽기 쉬운 요약이며 전체 절대 경로와 비밀 값을 표시하지 않습니다. `--json`은 자동 점검용 구조화 결과입니다.
+`status`의 기본 출력은 비개발자가 읽기 쉬운 요약이며 전체 절대 경로와 비밀 값을 표시하지 않습니다. AI Agent 연결 준비 상태는 `설정 미등록`, `등록됨`, `활성화됨`, `오류`로 구분하고, 실제 도구 호출은 `확인하지 않음`, `마지막 확인 성공`, `마지막 확인 실패`로 따로 표시합니다. 현재 지원 Provider는 Codex이며, 실제 호출을 확인하지 않았다는 이유만으로 설치 경고를 표시하지 않습니다. `--json`은 자동 점검용 구조화 결과입니다.
 
 Telemetry는 비활성화되어 있고, CLI는 프로젝트 코드·Prompt·AI 답변·Git diff·API Key·환경변수·사용자 식별 정보를 수집하거나 외부로 보내지 않습니다. MCP는 선택 기능이며 Skill fallback은 유지됩니다.
 
 ## 지원 범위와 제한
 
-Windows 11, macOS, Linux를 기준으로 경로와 실행 파일을 처리합니다. 실제 검증은 현재 Windows 환경에서 수행합니다. CLI는 현재 Codex 설치 여부를 자동으로 확인할 수 있지만, 실제 Codex 세션에서 MCP 도구를 호출했는지는 대신 판정하지 않습니다.
+Windows 11, macOS, Linux를 기준으로 경로와 실행 파일을 처리합니다. 실제 검증은 현재 Windows 환경에서 수행합니다. CLI는 현재 지원 Provider인 Codex 설치 여부를 자동으로 확인할 수 있지만, 실제 AI Agent 세션에서 MCP 도구를 호출했는지는 대신 판정하지 않습니다.
 
 업데이트 기능은 V0.1에 포함하지 않습니다. 공개 후 패키지 업데이트에는 다음 명령을 사용할 수 있습니다.
 

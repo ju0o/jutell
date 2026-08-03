@@ -29,7 +29,8 @@ export type McpStatus = {
   settings: { enabled: boolean; autoStart: boolean };
   server: { state: 'running' | 'stopped' | 'starting' | 'error'; error?: string };
   codex: { registered: boolean; path: string; conflict: boolean };
-  connection: { state: 'manual_check_required'; lastCheckedAt: string | null };
+  preparation: 'not_registered' | 'registered' | 'enabled' | 'error';
+  connection: { state: 'not_checked' | 'success' | 'failure'; lastCheckedAt: string | null };
   skillFallback: { available: boolean; message: string };
 };
 
@@ -67,7 +68,7 @@ export type FeedbackInput = Omit<Feedback, 'id' | 'createdAt' | 'updatedAt'>;
 export type Readiness = {
   config: { exists: boolean; valid: boolean; profile: Profile; activeFeatures: number };
   skill: { exists: boolean };
-  agents: { exists: boolean };
+  agents: { exists: boolean; jutellBlock: boolean };
   safetyRules: { exists: boolean };
   sessionApplied: 'manual_check_required';
 };

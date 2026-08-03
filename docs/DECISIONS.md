@@ -1,5 +1,17 @@
 # JuTell by Ju0 — Decisions
 
+## 2026-08-03 — AI Agent Provider 공통 표시
+
+* 사용자 화면과 일반 안내 문서는 특정 Agent 이름보다 `AI Agent Provider`를 기본 개념으로 사용한다.
+* 현재 실제 MCP 연결은 Codex만 지원한다. Claude Code, Cline 등은 지원된다고 표시하지 않고 확장 준비 상태로만 보여준다.
+* 기존 Codex 설정 파일, 내부 상태 필드와 호환 경로는 변경하지 않는다. Provider별 연결 구현은 나중에 별도 Adapter로 추가할 수 있도록 화면의 Provider 목록과 현재 지원 상태를 분리한다.
+
+변경 이유: 사용자가 JuTell을 한 Agent 전용 도구로 오해하지 않도록 하면서도, 아직 구현하지 않은 연결을 지원한다고 과장하지 않기 위해서다.
+
+영향받은 파일: 로컬 관리자 Provider 연결 화면, CLI 상태 출력, README, 시작·MCP·설정·배포 안내 문서.
+
+V0.1 범위 변경 여부: 사용자 표시와 문서 구조만 일반화했다. 실제 연결 Provider 추가, 외부 API, 중앙 서버는 포함하지 않았다.
+
 ## 2026-08-03 — Codex Beginner Bridge에서 JuTell로 리브랜딩
 
 * 제품 표시는 `JuTell by Ju0`로 통일하고, 대표 CLI는 `jutell`로 준비한다.
@@ -245,3 +257,37 @@ V0.1 범위 변경 여부: 제품 이름과 표시·호환성만 정리했다. �
 ### V0.1 범위 변경 여부
 
 없음. 이번 변경은 문서 정리, 실행 지침 초안, reference 분리에 한정한다.
+
+## 2026-08-03 — `jutell` 기본 실행 흐름 단순화
+
+### 결정 내용
+
+* 프로젝트 폴더에서 `jutell`만 실행하면 현재 프로젝트 연결 확인, 최초 기본 설정, Skill·AGENTS.md·MCP 준비와 로컬 관리자 실행을 순서대로 처리한다.
+* 최초 연결의 기본값은 현재 프로젝트, `balanced`, Skill 활성화, MCP 활성화, 자동 OS 시작 OFF, Telemetry OFF로 한다.
+* 이미 연결된 프로젝트는 설치를 반복하지 않고 필요한 항목만 확인하며, 안전한 복구 전 사용자에게 묻는다.
+* `jutell on`과 `jutell off`를 제공하되 설정·Beta Journal·다른 Codex 설정은 보존한다.
+* Codex 연결 준비 상태와 실제 도구 호출 확인 상태를 별도 항목으로 표시한다. 실제 호출을 확인하지 않았다는 이유만으로 경고하지 않는다.
+* AGENTS.md에는 JuTell 관리 블록만 추가·갱신·제거하며 기존 내용은 보존한다.
+
+### 변경 이유
+
+일반 사용자가 여러 개의 고급 명령과 연결 상태 확인 절차를 반복하지 않고도 안전하게 JuTell을 시작할 수 있게 하기 위해서다.
+
+### 영향받은 파일
+
+* `packages/cli/src/cli.ts`
+* `packages/cli/src/commands/default.ts`
+* `packages/cli/src/commands/lifecycle.ts`
+* `packages/cli/src/commands/status.ts`
+* `packages/cli/src/installer/agents.ts`
+* `apps/local-admin/server/app.ts`
+* `apps/local-admin/src/features/overview/Overview.tsx`
+* `apps/local-admin/src/features/mcp-connection/McpConnection.tsx`
+* `README.md`
+* `docs/START_HERE.md`
+* `docs/CLI_INSTALLATION.md`
+* `docs/MCP_INTEGRATION.md`
+
+### V0.1 범위 변경 여부
+
+없음. 기존 로컬 CLI·관리자·Skill·선택형 MCP 연결을 한 명령으로 묶으며 중앙 서버, 원격 Telemetry, OS 자동 시작과 npm publish는 추가하지 않는다.

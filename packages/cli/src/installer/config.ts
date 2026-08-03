@@ -11,9 +11,9 @@ async function readObject(paths: ScopePaths): Promise<Record<string, unknown> | 
 }
 
 export async function ensureBridgeConfig(paths: ScopePaths, profile: Profile | undefined) {
+  const loaded = await readBridgeConfig(paths);
   const current = await readObject(paths);
-  if (!current) {
-    const loaded = await readBridgeConfig(paths);
+  if (!current || !loaded.valid) {
     const next = { ...loaded.config, ...(profile ? { profile } : {}) };
     await writeBridgeConfig(paths, next);
     return { config: next, created: true, replacedInvalid: loaded.exists && !loaded.valid };

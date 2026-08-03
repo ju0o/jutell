@@ -7,6 +7,9 @@ export type CliOptions = {
   scope: InstallScope;
   profile?: Profile;
   yes: boolean;
+  activateMcp: boolean;
+  oneCommand: boolean;
+  statusOnly: boolean;
   json: boolean;
   verbose: boolean;
   openBrowser: boolean;
@@ -23,7 +26,7 @@ export type CliOptions = {
 export type CliIo = {
   write: (message: string) => void;
   error: (message: string) => void;
-  ask: (message: string) => Promise<boolean>;
+  ask: (message: string, defaultYes?: boolean) => Promise<boolean>;
 };
 
 export type ScopePaths = {
@@ -59,10 +62,15 @@ export type StatusResult = {
   mcpVersion: string;
   adminVersion: string;
   installationScope: InstallScope;
+  configExists: boolean;
+  configValid: boolean;
   codexDetected: boolean;
   skillInstalled: boolean;
+  agentsManaged: boolean;
   mcpRegistered: boolean;
   mcpEnabled: boolean;
+  codexPreparation: 'not_registered' | 'registered' | 'enabled' | 'error';
+  actualConnection: 'not_checked' | 'success' | 'failure';
   profile: Profile;
   activeFeatureCount: number;
   configLocation: string;

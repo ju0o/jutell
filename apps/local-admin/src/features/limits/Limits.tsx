@@ -10,7 +10,7 @@ const choices: Record<LimitKey, Array<{ label: string; value: number; difference
   compactReportMaxSentences: [{ label: '매우 짧게', value: 6, difference: '핵심만 빠르게 확인' }, { label: '짧게', value: 8, difference: '단순 작업에 적합' }, { label: '보통', value: 12, difference: '처음 사용하기에 적당함', recommended: true }, { label: '자세히', value: 18, difference: '더 많은 설명 포함' }],
 };
 const descriptions: Record<LimitKey, string> = {
-  maxMainFiles: 'Codex가 변경한 파일 중 중요한 파일을 몇 개까지 설명할지 정합니다.',
+  maxMainFiles: 'AI Agent가 변경한 파일 중 중요한 파일을 몇 개까지 설명할지 정합니다.',
   maxGlossaryTerms: '어려운 개발 용어를 한 보고서에서 몇 개까지 쉽게 설명할지 정합니다.',
   compactReportMaxSentences: '작은 작업을 보고할 때 보고서가 어느 정도 길어질 수 있는지 정합니다.',
 };
