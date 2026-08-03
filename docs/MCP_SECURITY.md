@@ -38,7 +38,7 @@ MCP 입력으로 임의 경로를 받지 않습니다. 서버는 프로젝트 �
 
 ## 상태 오해 방지
 
-서버 실행, Provider 설정 등록, 실제 AI Agent 도구 호출은 각각 별도 상태입니다. MCP 서버가 실행 중이어도 AI Agent가 실제 도구를 호출했다고 보고하지 않습니다. 현재 연결 구현은 Codex Provider에 한정됩니다.
+서버 실행, Provider 설정 등록, 실제 AI Agent 도구 호출은 각각 별도 상태입니다. MCP 서버가 실행 중이어도 AI Agent가 실제 도구를 호출했다고 보고하지 않습니다. 현재 연결 구현은 Codex Provider에 한정되며, OpenCode는 설정 등록 베타 단계입니다.
 
 ## 데이터와 Telemetry
 

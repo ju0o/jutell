@@ -33,9 +33,10 @@ jutell/
 - Skill: 사용자 홈의 `.agents/skills/beginner-bridge/`
 - 설정: 사용자 홈의 `.jutell.json`
 - 현재 Provider MCP 설정: 사용자 Codex 설정의 `config.toml`
+- OpenCode MCP 설정: 프로젝트 `opencode.json` (베타)
 - 전역 관리자 상태: 사용자 홈의 `.jutell-local/`
 
-전역 설치에서 실제 프로젝트의 보고서 설정은 해당 프로젝트의 설정을 우선합니다. 전역 설치는 Skill과 현재 지원 Provider인 Codex 연결을 사용자 범위에 준비하는 방식입니다. 다른 Provider 연결은 아직 지원하지 않습니다.
+전역 설치에서 실제 프로젝트의 보고서 설정은 해당 프로젝트의 설정을 우선합니다. 전역 설치는 Skill과 현재 지원 Provider인 Codex 연결을 사용자 범위에 준비하는 방식입니다. OpenCode는 베타로 프로젝트 `opencode.json`에 JuTell 관리 블록을 등록합니다. 그 외 다른 Provider 연결은 아직 지원하지 않습니다.
 
 기존 `.beginner-bridge.json`과 `.beginner-bridge-local/`은 새 경로가 없을 때 fallback으로 읽고, 사용자 승인 없이 삭제하지 않습니다.
 
@@ -55,7 +56,7 @@ jutell/
 
 Skill은 기본 보고 경로입니다. MCP는 현재 Profile, Feature, limits와 안전한 보고 규칙을 읽기 위한 선택형 보조 경로입니다. MCP가 비활성화되거나 실패해도 Skill은 계속 사용할 수 있습니다.
 
-서버 실행, Provider 설정 등록, 실제 AI Agent 도구 호출은 서로 다른 상태입니다. CLI는 앞의 두 상태를 확인할 수 있지만, 실제 도구 호출은 새 Agent 세션에서 사용자가 직접 확인해야 합니다. 현재 실제 연결 확인 대상은 Codex입니다.
+서버 실행, Provider 설정 등록, 실제 AI Agent 도구 호출은 서로 다른 상태입니다. CLI는 앞의 두 상태를 확인할 수 있지만, 실제 도구 호출은 새 Agent 세션에서 사용자가 직접 확인해야 합니다. 현재 실제 연결 확인 대상은 Codex이며, OpenCode는 베타 단계입니다.
 
 ## 범위 밖
 

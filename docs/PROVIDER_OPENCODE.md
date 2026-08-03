@@ -135,7 +135,7 @@ JuTell은 항목 자체는 유지하고 `enabled` 값만 전환하는 방식(1)�
 
 ## 9. JuTell 구현 요약
 
-- 감지: `opencode --version` 실행 성공 또는 `~/.config/opencode/` 존재 여부 (best-effort)
+- 감지: `opencode --version` 실행 성공 여부 (best-effort). 명령을 찾지 못하면 화면에는 `직접 확인 필요`로 표시합니다.
 - 설정 백업: 변경 전 `opencode.json` → `opencode.json.previous`
 - 관리 블록: `mcp.beginner_bridge` 항목을 마커 주석으로 감싸 식별
 - 반복 설치: 마커가 있으면 교체만 수행해 중복을 만들지 않음
@@ -154,3 +154,26 @@ jutell provider disable opencode
 ```
 
 기존 `jutell setup`과 Codex 연결은 그대로 유지됩니다.
+
+## 11. 실제 호출 확인
+
+JuTell MCP 서버가 stdio 표준으로 도구를 제공하는지는 로컬 핸드셰이크로 직접 검증했습니다 (2026-08-03).
+
+- `initialize` 응답: `JuTell 0.1.0`
+- `tools/list`: `get_active_features`, `get_beginner_report_rules`, `get_bridge_status`, `get_report_preferences`, `get_safe_report_requirements` 5개
+- `tools/call get_bridge_status`: 설정 조회 성공 (profile, activeFeatures, 외부 전송 없음 확인)
+
+현재 검증 환경에는 OpenCode CLI가 PATH에 없어, OpenCode 앱 세션에서 실제로 JuTell 도구를 호출하는 단계는 운영자가 직접 확인해야 합니다. 확인 방법:
+
+1. `jutell provider setup opencode` → `jutell provider enable opencode` 실행.
+2. 프로젝트 루트 `opencode.json`에 `mcp.beginner_bridge` 항목과 `// BEGIN JUTELL MANAGED BLOCK` 마커가 있는지 확인.
+3. OpenCode 앱에서 새 세션을 시작하고 다음 문구를 전달합니다.
+
+```text
+JuTell MCP 연결 상태를 확인해주세요.
+사용 가능한 MCP 도구 목록에서 JuTell 도구를 찾고,
+get_bridge_status와 get_active_features를 호출해주세요.
+실제 호출 결과를 기준으로 연결 성공 또는 실패를 보고해주세요.
+```
+
+4. 결과를 `tests/results/`에 운영자 기록으로 남깁니다. 결과를 확인하기 전에는 V0.1 OpenCode 연결 통과를 선언하지 않습니다.

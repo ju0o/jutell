@@ -6,7 +6,7 @@
 
 ## JuTell의 역할
 
-JuTell은 AI Agent 작업 뒤에 다음을 구분해 보고하도록 돕는 Skill입니다. 현재 연결 Provider는 Codex이며, 다른 Provider로 확장할 수 있는 구조를 사용합니다.
+JuTell은 AI Agent 작업 뒤에 다음을 구분해 보고하도록 돕는 Skill입니다. 현재 연결 Provider는 Codex이며, OpenCode를 베타로 지원하고 다른 Provider로 확장할 수 있는 구조를 사용합니다.
 
 - 실제로 확인한 사실
 - 코드만 보고 예상한 변화
@@ -88,7 +88,7 @@ npm run dev
 
 현재 단계는 개인 베타 준비입니다. 다음 단계는 이 화면을 중앙 서비스로 확장하는 것이 아니라, 실제 사용에서 반복되는 문제와 필요한 설정을 기록하는 것입니다.
 
-관리자 화면은 AI Agent 세션에 설정을 자동으로 주입하지 않습니다. 화면은 프로젝트 루트의 `.jutell.json`을 저장하고, 사용 중인 AI Agent가 작업을 시작할 때 Skill과 설정을 먼저 읽도록 안내해야 합니다. 현재 실제 연결 확인은 Codex에서 수행합니다.
+관리자 화면은 AI Agent 세션에 설정을 자동으로 주입하지 않습니다. 화면은 프로젝트 루트의 `.jutell.json`을 저장하고, 사용 중인 AI Agent가 작업을 시작할 때 Skill과 설정을 먼저 읽도록 안내해야 합니다. 현재 실제 연결 확인은 Codex에서 수행하며, OpenCode는 베타 상태입니다.
 
 ```text
 이 프로젝트의 AGENTS.md,
@@ -102,6 +102,6 @@ npm run dev
 
 ## 선택형 AI Agent 연결
 
-MCP는 Skill 방식에 추가로 사용할 수 있는 로컬 읽기 연결입니다. 관리자 화면의 `AI Agent 연결`에서 서버 실행, 현재 Provider 설정 미리보기, 설정 등록 여부를 확인할 수 있습니다. 서버 실행 상태와 실제 AI Agent 도구 호출 성공은 다르므로 새 세션에서 도구 호출을 직접 확인해야 합니다. 현재 실제 연결 Provider는 Codex입니다.
+MCP는 Skill 방식에 추가로 사용할 수 있는 로컬 읽기 연결입니다. 관리자 화면의 `AI Agent 연결`에서 서버 실행, 현재 Provider 설정 미리보기, 설정 등록 여부를 확인할 수 있습니다. 서버 실행 상태와 실제 AI Agent 도구 호출 성공은 다르므로 새 세션에서 도구 호출을 직접 확인해야 합니다. 현재 실제 연결 Provider는 Codex이며, OpenCode는 `jutell provider setup opencode`로 등록하는 베타 지원입니다.
 
 자세한 실행 순서는 [MCP_INTEGRATION.md](MCP_INTEGRATION.md), 보안 범위는 [MCP_SECURITY.md](MCP_SECURITY.md)를 읽습니다. MCP가 꺼져도 AGENTS.md·Skill·설정 파일 방식은 그대로 사용할 수 있습니다.

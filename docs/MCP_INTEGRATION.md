@@ -16,10 +16,11 @@ MCP는 Skill의 대체재가 아닙니다. MCP 서버가 중지되거나 연결�
 | Provider | 현재 상태 | 의미 |
 |---|---|---|
 | Codex | 현재 지원 | 로컬 MCP 설정 등록과 실제 호출 확인을 지원합니다. |
+| OpenCode | 베타 | 로컬 `stdio` MCP 설정 등록을 지원하며, 실제 호출 확인은 사용자 환경에서 진행합니다. |
 | Claude Code | 확장 준비 | 공통 Provider 구조에는 포함하지만 연결 기능은 아직 제공하지 않습니다. |
 | Cline | 확장 준비 | 공통 Provider 구조에는 포함하지만 연결 기능은 아직 제공하지 않습니다. |
 
-현재 실제 연결 Provider는 Codex입니다. 연결 방식은 Codex가 지원하는 로컬 `stdio` 서버와 프로젝트 범위 `.codex/config.toml`을 사용합니다. 다른 AI Agent Provider도 같은 Skill·MCP 구조로 확장할 수 있지만, Claude Code와 Cline 연결은 아직 지원하지 않습니다. ChatGPT 웹의 원격 연결은 이 문서의 지원 범위가 아닙니다.
+현재 실제 연결 Provider는 Codex입니다. 연결 방식은 Codex가 지원하는 로컬 `stdio` 서버와 프로젝트 범위 `.codex/config.toml`을 사용합니다. OpenCode는 베타로, 프로젝트 `opencode.json`에 로컬 `stdio` 서버를 등록하는 방식을 지원합니다. 자세한 내용은 [OpenCode 연결 문서](PROVIDER_OPENCODE.md)를 참고합니다. 다른 AI Agent Provider도 같은 Skill·MCP 구조로 확장할 수 있지만, Claude Code와 Cline 연결은 아직 지원하지 않습니다. ChatGPT 웹의 원격 연결은 이 문서의 지원 범위가 아닙니다.
 
 Distribution CLI를 사용하면 Skill과 MCP 자산을 수동 복사하지 않고 설치할 수 있습니다. 현재는 npm에 publish하지 않았으므로 [CLI 설치 안내](CLI_INSTALLATION.md)의 로컬 패키징 절차를 사용합니다.
 
@@ -69,9 +70,9 @@ jutell
 
 3. 관리자 화면의 `AI Agent 연결`에서 `MCP 사용`을 켭니다.
 4. `연결 설정 미리 보기`로 프로젝트 설정을 확인합니다.
-5. `Provider 연결 설정 생성`을 누릅니다. 현재는 Codex 설정이 생성됩니다.
+5. `Provider 연결 설정 생성`을 누릅니다. 현재는 Codex 설정이 생성됩니다. OpenCode는 `jutell provider setup opencode` 명령으로 등록합니다.
 6. `MCP 서버 시작`을 누릅니다.
-7. 현재 연결 Provider인 Codex의 새 세션 또는 재시작 후 다음 확인 문구를 전달합니다.
+7. 현재 연결 Provider인 Codex의 새 세션 또는 재시작 후 다음 확인 문구를 전달합니다. OpenCode 사용자는 `jutell provider enable opencode`로 활성화한 뒤 같은 문구를 새 OpenCode 세션에 전달합니다.
 
    ```text
    JuTell MCP 연결 상태를 확인해주세요.
@@ -120,4 +121,4 @@ default_tools_approval_mode = "prompt"
 | 실제 도구 호출: 확인하지 않음 | AI Agent 세션에서 도구 호출 결과를 아직 확인하지 않았습니다. |
 | 실제 도구 호출: 마지막 확인 성공/실패 | 연결된 Provider에서 직접 확인한 결과입니다. |
 
-서버가 실행 중이라는 이유만으로 실제 연결 완료라고 표시하지 않습니다. 연결 준비가 `활성화됨`이면 `AI Agent 연결 준비 완료`로 표시하고, 실제 도구 호출은 별도 상태로 표시합니다. 현재 이 상태를 실제로 확인할 수 있는 Provider는 Codex입니다.
+서버가 실행 중이라는 이유만으로 실제 연결 완료라고 표시하지 않습니다. 연결 준비가 `활성화됨`이면 `AI Agent 연결 준비 완료`로 표시하고, 실제 도구 호출은 별도 상태로 표시합니다. 현재 이 상태를 실제로 확인할 수 있는 Provider는 Codex이며, OpenCode는 베타로 등록 상태만 확인합니다.

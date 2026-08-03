@@ -58,6 +58,7 @@
 | [BETA_FEEDBACK_TEMPLATE.md](BETA_FEEDBACK_TEMPLATE.md) | 개인 베타 사용 중 불편을 어떻게 짧게 기록하나요? |
 | [MCP_INTEGRATION.md](MCP_INTEGRATION.md) | 선택형 로컬 MCP를 어떻게 연결하고 확인하나요? |
 | [MCP_SECURITY.md](MCP_SECURITY.md) | MCP가 어떤 정보를 읽고 보호하나요? |
+| [PROVIDER_OPENCODE.md](PROVIDER_OPENCODE.md) | OpenCode Provider(베타)는 어떻게 설정하나요? |
 
 ## Distribution CLI
 
