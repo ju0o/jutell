@@ -10,6 +10,27 @@
 | [START_HERE.md](START_HERE.md) | 처음 사용할 때 어떤 순서로 보면 되나요? |
 | [FEATURE_CONFIGURATION.md](FEATURE_CONFIGURATION.md) | Profile과 보고서 Feature를 어떻게 조절하나요? |
 
+## Foundation (최상위 의사결정 기준)
+
+| 문서 | 이 문서가 답하는 질문 |
+|---|---|
+| [foundation/VISION.md](foundation/VISION.md) | JuTell이 왜 존재하나요? |
+| [foundation/PRODUCT_PHILOSOPHY.md](foundation/PRODUCT_PHILOSOPHY.md) | JuTell은 무엇이고 무엇을 하지 않나요? |
+| [foundation/NON_GOALS.md](foundation/NON_GOALS.md) | JuTell이 되지 않는 것은 무엇인가요? |
+| [foundation/ARCHITECTURE.md](foundation/ARCHITECTURE.md) | Core·Connector·Dashboard·Cloud의 경계는 무엇인가요? |
+| [foundation/DESIGN_PRINCIPLES.md](foundation/DESIGN_PRINCIPLES.md) | 비개발자 편의성 원칙은 무엇인가요? |
+| [foundation/CLOUD_PHILOSOPHY.md](foundation/CLOUD_PHILOSOPHY.md) | Cloud 없이 사용 가능한 이유는 무엇인가요? |
+| [foundation/PRODUCT_BOUNDARY.md](foundation/PRODUCT_BOUNDARY.md) | Agent와 JuTell·Ju0Symphony의 경계는 무엇인가요? |
+| [foundation/BUSINESS_MODEL.md](foundation/BUSINESS_MODEL.md) | 공개 원칙상 Core와 Cloud의 관계는 무엇인가요? |
+| [FOUNDATION_RECONCILIATION.md](FOUNDATION_RECONCILIATION.md) | 현재 구현이 Foundation과 어디서 일치·충돌하나요? |
+
+## 공개 저장소와 비공개 전략
+
+| 문서 | 이 문서가 답하는 질문 |
+|---|---|
+| [PUBLIC_REPOSITORY_POLICY.md](PUBLIC_REPOSITORY_POLICY.md) | 공개 저장소에 무엇을 올리고 올리지 않나요? |
+| [PRIVATE_DOCUMENTS_MAP.md](PRIVATE_DOCUMENTS_MAP.md) | 비공개 전략은 어디에 보관하나요? |
+
 ## 제품 원칙
 
 | 문서 | 이 문서가 답하는 질문 |

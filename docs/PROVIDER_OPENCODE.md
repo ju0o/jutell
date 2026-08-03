@@ -42,7 +42,7 @@ OpenCode 공식 문서에 따르면 설정 파일은 JSON 또는 JSONC(주석 �
 Windows 공식 문서는 WSL 사용을 권장하며, WSL 환경에서는 설정과 세션 데이터가 `~/.local/share/opencode/`에 저장됩니다.
 실제 검증은 현재 Windows 환경(데스크톱 앱)에서 수행합니다.
 
-이 저장소(2026-08-03 기준)의 전역 설정은 `C:\Users\user\.config\opencode\opencode.jsonc`에 있습니다.
+이 저장소(2026-08-03 기준)의 전역 설정은 `<사용자 홈>\.config\opencode\opencode.jsonc`에 있습니다.
 
 ## 4. 프로젝트 설정과 전역 설정
 

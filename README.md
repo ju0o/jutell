@@ -4,11 +4,29 @@
 
 ### by Ju0
 
-AI와 만든 프로젝트를 이해하고 운영하게 해주는 오픈소스입니다.
+> JuTell은 AI Agent를 대신 실행하거나 중계하는 Gateway가 아닙니다. 사용자가 이미 사용하는 Agent에 Skill, MCP, 지침, Workflow와 시각적 설정을 연결하여 작업을 이해하고 검증하고 운영하도록 돕는 비개발자용 AI Agent Harness입니다.
 
 JuTell은 비개발자가 AI 코딩 에이전트의 작업을 이해하고, 검증하고, 다음 작업을 요청하며, 프로젝트를 직접 운영할 수 있도록 돕습니다.
 
 > AI는 코드를 만들고, JuTell은 사람이 그 코드를 이해하고 운영하게 합니다.
+
+## JuTell이 하지 않는 일
+
+- AI 모델을 제공하지 않습니다.
+- Agent 구독을 중계하거나 API Gateway가 되지 않습니다.
+- Agent GUI를 복제하거나 인증을 대행하지 않습니다.
+- Codex, Claude Code, OpenCode를 대체하지 않습니다.
+- Ju0Symphony의 오케스트레이션 기능을 대체하지 않습니다.
+
+## Harness 구조와 경계
+
+- **Core** — 보고 규칙과 설정. 오프라인에서 항상 동작하며 Cloud 없이 100% 사용할 수 있습니다.
+- **Connector** — Agent별 연결(Skill, MCP, 지침, Workflow). Agent를 대신 실행하지 않습니다.
+- **Dashboard** — 선택형 시각 설정 도구. 없어도 기본 Profile로 동작합니다.
+- **Cloud** — 선택형 미래 기능. 현재 구현되어 있지 않습니다.
+- **Ju0Symphony** — 여러 Agent를 오케스트레이션하는 영역이며 JuTell은 여기에 포함되지 않습니다.
+
+상세 기준은 [Foundation 문서](docs/foundation/VISION.md)를 참고합니다.
 
 ## JuTell이 해결하는 문제
 
@@ -23,6 +41,7 @@ AI가 빠르게 코드를 바꾸어도 무엇이 바뀌었는지, 실제로 확�
 - `beginner-bridge` 호환 ID를 유지하는 JuTell Skill
 - 선택형 로컬 읽기 전용 MCP와 Skill fallback
 - 로컬 관리자, Beta Journal, CLI 설치·상태·진단·제거
+- 현재 지원 Provider: Codex, OpenCode(베타). Claude Code·Cline은 준비 중
 
 ## 아직 구현되지 않은 방향
 
@@ -68,6 +87,8 @@ JuTell은 프로젝트 코드, Prompt, AI 답변 원문, 파일 내용, 파일 �
 ## 문서
 
 - [시작하기](docs/START_HERE.md)
+- [Foundation (최상위 기준)](docs/foundation/VISION.md)
+- [Foundation 정합성 검토](docs/FOUNDATION_RECONCILIATION.md)
 - [제품 범위](docs/PRODUCT_SCOPE.md)
 - [제품 비전](docs/PRODUCT_VISION.md)
 - [브랜드 정책](docs/BRAND_IDENTITY.md)
@@ -79,6 +100,8 @@ JuTell은 프로젝트 코드, Prompt, AI 답변 원문, 파일 내용, 파일 �
 - [OpenCode 연결 (베타)](docs/PROVIDER_OPENCODE.md)
 - [개인정보 원칙](docs/PRIVACY_PRINCIPLES.md)
 - [Telemetry 정책](docs/TELEMETRY_POLICY.md)
+- [공개 저장소 정책](docs/PUBLIC_REPOSITORY_POLICY.md)
+- [비공개 문서 지도](docs/PRIVATE_DOCUMENTS_MAP.md)
 
 ## Ju0와의 관계
 

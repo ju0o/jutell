@@ -6,14 +6,20 @@
 
 ## JuTell의 역할
 
-JuTell은 AI Agent 작업 뒤에 다음을 구분해 보고하도록 돕는 Skill입니다. 현재 연결 Provider는 Codex이며, OpenCode를 베타로 지원하고 다른 Provider로 확장할 수 있는 구조를 사용합니다.
+JuTell은 AI Agent를 대신 실행하거나 중계하는 Gateway가 아닙니다. 사용자가 이미 사용하는 Agent에 Skill, MCP, 지침, Workflow와 시각적 설정을 연결하여 작업을 이해하고 검증하고 운영하도록 돕는 비개발자용 AI Agent Harness입니다. 최상위 의사결정 기준은 [Foundation 문서](foundation/VISION.md)이며, 현재 구현과의 대조는 [FOUNDATION_RECONCILIATION.md](FOUNDATION_RECONCILIATION.md)에 있습니다.
+
+JuTell은 AI Agent 작업 뒤에 다음을 구분해 보고하도록 돕습니다. 현재 연결 Provider는 Codex이며, OpenCode를 베타로 지원하고 다른 Provider로 확장할 수 있는 구조를 사용합니다.
 
 - 실제로 확인한 사실
 - 코드만 보고 예상한 변화
 - 아직 확인하지 못한 내용
 - 사용자가 직접 확인하거나 결정할 내용
 
-JuTell 자체가 코드를 실행하거나 화면을 대신 승인하는 제품은 아닙니다.
+JuTell 자체가 코드를 실행하거나 화면을 대신 승인하는 제품은 아닙니다. Agent는 사용자가 선택한 도구로 그대로 실행되며, JuTell은 연결과 보고·설정만 담당합니다.
+
+## Dashboard는 선택 사항
+
+로컬 관리자 화면(Dashboard)은 설정을 시각적으로 편집하는 도구입니다. 실행하지 않아도 Skill 방식과 기본 Profile로 JuTell은 그대로 동작합니다. Dashboard 없이 시작하고 싶다면 3단계로 시작합니다: 1) 작업 전 상태 확인, 2) 작은 작업부터 balanced로 실행, 3) 보고서에서 실제 확인과 예상을 구분해 읽기.
 
 ## Skill과 설정 파일
 
