@@ -25,10 +25,24 @@ export type Config = {
   voice?: { preset?: 'default' | 'plain' | 'learning' | 'jutell' };
 };
 
+export type McpProviderId = 'codex' | 'opencode' | 'claude-code' | 'cline';
+export type McpProviderStatus = {
+  id: McpProviderId;
+  label: string;
+  status: 'supported' | 'beta' | 'planned';
+  detected: boolean;
+  registered: boolean;
+  conflict: boolean;
+  enabled: boolean;
+  lastCheckedAt: string | null;
+};
+export type McpAction = 'preview' | 'register' | 'remove' | 'start' | 'stop' | 'check' | 'connect' | 'disconnect' | 'set-default';
+
 export type McpStatus = {
   settings: { enabled: boolean; autoStart: boolean };
   server: { state: 'running' | 'stopped' | 'starting' | 'error'; error?: string };
-  codex: { registered: boolean; path: string; conflict: boolean };
+  codex: { registered: boolean; path: string; conflict: boolean; enabled: boolean };
+  providers: McpProviderStatus[];
   preparation: 'not_registered' | 'registered' | 'enabled' | 'error';
   connection: { state: 'not_checked' | 'success' | 'failure'; lastCheckedAt: string | null };
   skillFallback: { available: boolean; message: string };

@@ -47,7 +47,7 @@ cd <프로젝트 폴더>
 jutell
 ```
 
-자주 쓰는 명령은 `jutell`, `jutell on`, `jutell off`, `jutell status`, `jutell doctor`입니다. 기존 사용자를 위해 `beginner-bridge`도 같은 기능의 호환 별칭으로 유지합니다. `setup`, `enable`, `disable`, `uninstall`은 고급 명령으로 계속 사용할 수 있습니다.
+자주 쓰는 명령은 `jutell`, `jutell on`, `jutell off`, `jutell status`, `jutell doctor`입니다. AI Agent 연결은 `jutell use opencode` 또는 `jutell use codex` 한 번으로 백업·등록·활성화를 끝냅니다. 기존 사용자를 위해 `beginner-bridge`도 같은 기능의 호환 별칭으로 유지합니다. `setup`, `enable`, `disable`, `uninstall`, `provider`는 고급 명령으로 계속 사용할 수 있습니다.
 
 ## Skill, MCP, 관리자
 

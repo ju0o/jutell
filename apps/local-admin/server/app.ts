@@ -5,7 +5,7 @@ import path from 'node:path';
 import { changedFields, DEFAULT_CONFIG, validateConfig } from './config/schema.js';
 import { ensureStorage, getStoragePaths, readArray, readConfig, readJson, saveFeedback, writeJsonAtomically, type StoragePaths } from './storage/files.js';
 import { validateFeedback } from './validation/feedback.js';
-import { readCodexMcpRegistration, registerCodexMcp, removeCodexMcp } from './mcp/config.js';
+import { readCodexMcpRegistration, registerCodexMcp, removeCodexMcp, readOpenCodeRegistration, registerOpenCodeMcp, setOpenCodeMcpEnabled, providerDetected } from './mcp/config.js';
 import { getMcpRuntimeState, startMcpRuntime, stopMcpRuntime } from './mcp/runtime.js';
 import type { Config, Feedback, Readiness } from './types.js';
 
@@ -124,6 +124,20 @@ async function readReadiness(projectRoot: string, paths: StoragePaths): Promise<
   };
 }
 
+async function readProviderStatuses(projectRoot: string, config: Config) {
+  const [codex, opencode] = await Promise.all([
+    readCodexMcpRegistration(projectRoot, config.mcp.enabled),
+    readOpenCodeRegistration(projectRoot, config.mcp.enabled),
+  ]);
+  const base = { lastCheckedAt: lastMcpCheckAt };
+  return [
+    { id: 'codex', label: 'Codex', status: 'supported', detected: providerDetected('codex'), registered: codex.registered, conflict: codex.conflict, enabled: codex.enabled, ...base },
+    { id: 'opencode', label: 'OpenCode', status: 'beta', detected: providerDetected('opencode'), registered: opencode.registered, conflict: opencode.conflict, enabled: opencode.enabled, ...base },
+    { id: 'claude-code', label: 'Claude Code', status: 'planned', detected: false, registered: false, conflict: false, enabled: false, ...base },
+    { id: 'cline', label: 'Cline', status: 'planned', detected: false, registered: false, conflict: false, enabled: false, ...base },
+  ];
+}
+
 async function readMcpStatus(projectRoot: string, paths: StoragePaths) {
   const config = (await readConfig(paths)).config;
   const codex = await readCodexMcpRegistration(projectRoot, config.mcp.enabled);
@@ -131,11 +145,38 @@ async function readMcpStatus(projectRoot: string, paths: StoragePaths) {
   return {
     settings: config.mcp,
     server: getMcpRuntimeState(),
-    codex: { registered: codex.registered, path: codex.path, conflict: codex.conflict },
+    codex: { registered: codex.registered, path: codex.path, conflict: codex.conflict, enabled: codex.enabled },
+    providers: await readProviderStatuses(projectRoot, config),
     preparation,
     connection: { state: 'not_checked' as const, lastCheckedAt: lastMcpCheckAt },
     skillFallback: { available: true, message: 'MCP를 끄거나 사용할 수 없어도 AGENTS.md, Skill, 설정 파일 방식은 계속 사용할 수 있습니다.' },
   };
+}
+
+type ProviderAction = 'connect' | 'disconnect' | 'default';
+
+async function providerRequest(input: unknown): Promise<{ provider: 'codex' | 'opencode' } | { error: string }> {
+  const value = input && typeof input === 'object' ? input as { provider?: unknown; confirm?: unknown } : {};
+  const provider = value.provider;
+  if (provider !== 'codex' && provider !== 'opencode') return { error: '연결할 Agent를 codex 또는 opencode 중에서 선택하세요.' };
+  if (value.confirm !== true) return { error: 'Provider 연결 변경 확인이 필요합니다.' };
+  return { provider };
+}
+
+async function applyProviderAction(projectRoot: string, provider: 'codex' | 'opencode', action: ProviderAction, config: Config) {
+  const opencode = await readOpenCodeRegistration(projectRoot, config.mcp.enabled);
+  const codex = await readCodexMcpRegistration(projectRoot, config.mcp.enabled);
+  if (action === 'disconnect') {
+    if (provider === 'codex') await registerCodexMcp(projectRoot, false);
+    else await setOpenCodeMcpEnabled(projectRoot, false);
+    return config;
+  }
+  if (action === 'default' && provider !== 'codex' && codex.registered && codex.enabled) await registerCodexMcp(projectRoot, false);
+  if (action === 'default' && provider !== 'opencode' && opencode.registered && opencode.enabled) await setOpenCodeMcpEnabled(projectRoot, false);
+  if (provider === 'codex') await registerCodexMcp(projectRoot, true);
+  else await registerOpenCodeMcp(projectRoot, true);
+  if (action === 'connect' || action === 'default') return { ...config, mcp: { ...config.mcp, enabled: true } };
+  return config;
 }
 
 function confirmBody(input: unknown, message: string) {
@@ -168,6 +209,16 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       const errorMessage = confirmBody(await body(req), 'Codex 연결 설정 제거 확인이 필요합니다.');
       if (errorMessage) return error(res, 400, errorMessage);
       return json(res, 200, { registration: await removeCodexMcp(projectRoot) });
+    }
+    if (method === 'POST' && (url.pathname === '/api/mcp/connect' || url.pathname === '/api/mcp/disconnect' || url.pathname === '/api/mcp/set-default')) {
+      const requested = await providerRequest(await body(req));
+      if ('error' in requested) return error(res, 400, requested.error);
+      const { provider } = requested;
+      const action: ProviderAction = url.pathname === '/api/mcp/connect' ? 'connect' : url.pathname === '/api/mcp/disconnect' ? 'disconnect' : 'default';
+      const config = (await readConfig(paths)).config;
+      const next = await applyProviderAction(projectRoot, provider, action, config);
+      if (action === 'connect' || action === 'default') await saveConfig(paths, next);
+      return json(res, 200, { providers: await readProviderStatuses(projectRoot, next) });
     }
     if (method === 'POST' && url.pathname === '/api/mcp/start') {
       const config = (await readConfig(paths)).config;

@@ -146,6 +146,17 @@ JuTell은 항목 자체는 유지하고 `enabled` 값만 전환하는 방식(1)�
 ## 10. 명령
 
 ```powershell
+jutell use opencode        # 백업·등록·활성화·Skill·AGENTS.md를 한 번에 준비
+jutell use codex           # Codex 연결 활성화 (기존 OpenCode 연결 유지)
+jutell provider            # Agent 연결 상태 요약
+jutell connect opencode    # 다른 연결을 유지한 채 추가 연결
+jutell disconnect opencode # 선택한 Agent 연결만 비활성화
+jutell switch opencode     # 선택한 Agent만 활성화, 다른 연결 비활성화
+```
+
+고급 명령(그대로 유지):
+
+```powershell
 jutell provider list
 jutell provider status
 jutell provider setup opencode
@@ -153,7 +164,7 @@ jutell provider enable opencode
 jutell provider disable opencode
 ```
 
-기존 `jutell setup`과 Codex 연결은 그대로 유지됩니다.
+Claude Code와 Cline은 `준비 중`으로 안내만 출력하며 설정을 만들지 않습니다. 기존 `jutell setup`과 Codex 연결은 그대로 유지됩니다.
 
 ## 11. 실제 호출 확인
 
@@ -165,9 +176,8 @@ JuTell MCP 서버가 stdio 표준으로 도구를 제공하는지는 로컬 핸�
 
 현재 검증 환경에는 OpenCode CLI가 PATH에 없어, OpenCode 앱 세션에서 실제로 JuTell 도구를 호출하는 단계는 운영자가 직접 확인해야 합니다. 확인 방법:
 
-1. `jutell provider setup opencode` → `jutell provider enable opencode` 실행.
-2. 프로젝트 루트 `opencode.json`에 `mcp.beginner_bridge` 항목과 `// BEGIN JUTELL MANAGED BLOCK` 마커가 있는지 확인.
-3. OpenCode 앱에서 새 세션을 시작하고 다음 문구를 전달합니다.
+1. `jutell use opencode` 실행. 프로젝트 루트 `opencode.json`에 `mcp.beginner_bridge` 항목과 `// BEGIN JUTELL MANAGED BLOCK` 마커가 있는지 확인.
+2. OpenCode 앱에서 새 세션을 시작하고 다음 문구를 전달합니다.
 
 ```text
 JuTell MCP 연결 상태를 확인해주세요.
@@ -176,4 +186,4 @@ get_bridge_status와 get_active_features를 호출해주세요.
 실제 호출 결과를 기준으로 연결 성공 또는 실패를 보고해주세요.
 ```
 
-4. 결과를 `tests/results/`에 운영자 기록으로 남깁니다. 결과를 확인하기 전에는 V0.1 OpenCode 연결 통과를 선언하지 않습니다.
+3. 결과를 `tests/results/`에 운영자 기록으로 남깁니다. 결과를 확인하기 전에는 V0.1 OpenCode 연결 통과를 선언하지 않습니다.

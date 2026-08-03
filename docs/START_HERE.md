@@ -102,6 +102,6 @@ npm run dev
 
 ## 선택형 AI Agent 연결
 
-MCP는 Skill 방식에 추가로 사용할 수 있는 로컬 읽기 연결입니다. 관리자 화면의 `AI Agent 연결`에서 서버 실행, 현재 Provider 설정 미리보기, 설정 등록 여부를 확인할 수 있습니다. 서버 실행 상태와 실제 AI Agent 도구 호출 성공은 다르므로 새 세션에서 도구 호출을 직접 확인해야 합니다. 현재 실제 연결 Provider는 Codex이며, OpenCode는 `jutell provider setup opencode`로 등록하는 베타 지원입니다.
+MCP는 Skill 방식에 추가로 사용할 수 있는 로컬 읽기 연결입니다. 연결은 `jutell use opencode`(또는 `jutell use codex`) 한 번으로 백업·등록·활성화를 끝냅니다. 관리자 화면의 `AI Agent 연결`에서 Provider 카드의 `연결하기`, `연결 끊기`, `기본 Agent로 사용` 버튼으로 같은 작업을 할 수 있습니다. 서버 실행 상태와 실제 AI Agent 도구 호출 성공은 다르므로 새 세션에서 도구 호출을 직접 확인해야 합니다.
 
 자세한 실행 순서는 [MCP_INTEGRATION.md](MCP_INTEGRATION.md), 보안 범위는 [MCP_SECURITY.md](MCP_SECURITY.md)를 읽습니다. MCP가 꺼져도 AGENTS.md·Skill·설정 파일 방식은 그대로 사용할 수 있습니다.

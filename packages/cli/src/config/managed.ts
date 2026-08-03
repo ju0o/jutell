@@ -119,7 +119,9 @@ export async function readCodexRegistration(paths: ScopePaths, packageRoot: stri
   const content = await readText(paths.codexConfigFile) ?? '';
   const registered = managedPattern().test(content);
   const conflict = !registered && /^\s*\[mcp_servers\.beginner_bridge\]\s*$/m.test(content);
-  return { content, exists: content.length > 0, registered, conflict, preview: buildMcpBlock(paths, packageRoot, enabled) };
+  const managedText = registered ? content.match(managedPattern())?.[0] ?? '' : '';
+  const enabledFlag = /^\s*enabled\s*=\s*true\s*$/m.test(managedText);
+  return { content, exists: content.length > 0, registered, conflict, enabled: enabledFlag, preview: buildMcpBlock(paths, packageRoot, enabled) };
 }
 
 export async function registerMcp(paths: ScopePaths, packageRoot: string, enabled: boolean) {

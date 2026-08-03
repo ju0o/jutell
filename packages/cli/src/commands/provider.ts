@@ -1,9 +1,27 @@
-import { readCodexRegistration } from '../config/managed.js';
-import { AGENT_PROVIDERS, findProvider } from '../installer/providers.js';
+import { readBridgeConfig, readCodexRegistration } from '../config/managed.js';
+import { AGENT_PROVIDERS, findProvider, type AgentProvider } from '../installer/providers.js';
 import { opencodeDetected, readOpenCodeRegistration, registerOpenCodeMcp, setOpenCodeEnabled } from '../installer/opencode.js';
 import { codexDetected } from '../process/system.js';
 import { packageRoot } from '../config/paths.js';
 import type { CliIo, CliOptions, ScopePaths } from '../types.js';
+
+export type ProviderConnectionStatus = {
+  provider: AgentProvider;
+  detected: boolean;
+  registered: boolean;
+  conflict: boolean;
+  enabled: boolean;
+};
+
+export async function readProviderStatuses(paths: ScopePaths): Promise<ProviderConnectionStatus[]> {
+  const codex = await readCodexRegistration(paths, packageRoot(), false);
+  const opencode = await readOpenCodeRegistration(paths, packageRoot(), false);
+  return AGENT_PROVIDERS.map((provider) => {
+    if (provider.status === 'planned') return { provider, detected: false, registered: false, conflict: false, enabled: false };
+    if (provider.id === 'codex') return { provider, detected: codexDetected(), registered: codex.registered, conflict: codex.conflict, enabled: codex.enabled };
+    return { provider, detected: opencodeDetected(), registered: opencode.registered, conflict: opencode.conflict, enabled: opencode.enabled };
+  });
+}
 
 function providerLabel(id: string) {
   const provider = findProvider(id);
@@ -22,6 +40,19 @@ async function listCommand(io: CliIo) {
   }
 }
 
+async function summaryCommand(paths: ScopePaths, io: CliIo) {
+  const statuses = await readProviderStatuses(paths);
+  const config = await readBridgeConfig(paths);
+  const active = statuses.filter((item) => item.registered && item.enabled).map((item) => item.provider.label);
+  io.write('JuTell Agent 연결 상태\n');
+  for (const item of statuses) {
+    const state = item.provider.status === 'planned' ? '준비 중' : item.conflict ? '설정 충돌' : item.registered ? (item.enabled ? '연결됨 · 활성' : '연결됨 · 비활성') : '연결 안 됨';
+    io.write(`${item.provider.label.padEnd(12)} ${state}`);
+  }
+  io.write(`\n현재 권장 Agent: ${active.length ? active.join(', ') : '없음'}`);
+  io.write(`JuTell 자동 적용: ${config.config.mcp?.enabled ? '켜짐' : '꺼짐'}`);
+}
+
 async function statusCommand(paths: ScopePaths, io: CliIo) {
   const codex = await readCodexRegistration(paths, packageRoot(), false);
   const opencode = await readOpenCodeRegistration(paths, packageRoot(), false);
@@ -31,6 +62,7 @@ ${providerLabel('codex')}
   감지: ${codexDetected() ? '예' : '직접 확인 필요'}
   설정 파일: 현재 Provider 설정 (.codex/config.toml)
   MCP 등록: ${codex.registered ? '등록됨' : codex.conflict ? '충돌 확인 필요' : '등록되지 않음'}
+  활성화: ${codex.registered ? (codex.enabled ? '예' : '아니오') : '등록되지 않음'}
 
 ${providerLabel('opencode')}
   감지: ${opencodeDetected() ? '예' : '직접 확인 필요'}
@@ -42,12 +74,13 @@ ${providerLabel('opencode')}
 function requireTarget(args: string[]) {
   const target = args[1];
   if (!target) throw new Error('설정할 Provider 이름이 필요합니다. 예: jutell provider setup opencode');
-  if (target === 'codex') throw new Error('Codex는 기존 jutell setup / on / off 명령을 사용하세요.');
-  if (target !== 'opencode') throw new Error('아직 지원하는 Provider는 opencode뿐입니다.');
+  if (target === 'codex') throw new Error('Codex는 기존 jutell setup / on / off 또는 jutell use codex 명령을 사용하세요.');
+  if (target !== 'opencode') throw new Error('provider 설정 명령은 opencode만 지원합니다. 일반 연결은 jutell use <agent> 를 사용하세요.');
 }
 
 export async function providerCommand(paths: ScopePaths, options: CliOptions, io: CliIo, args: string[]) {
   const sub = args[0];
+  if (!sub) return summaryCommand(paths, io);
   if (sub === 'list') return listCommand(io);
   if (sub === 'status') return statusCommand(paths, io);
   if (sub === 'setup') {

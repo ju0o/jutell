@@ -170,6 +170,69 @@ describe('local config API', () => {
     expect(await fs.readFile(configFile, 'utf8')).toBe('{ invalid json');
   });
 
+  it('reports provider statuses without claiming detection', async () => {
+    const status = await request('/api/mcp/status');
+    expect(status.status).toBe(200);
+    expect(status.body.providers).toHaveLength(4);
+    const ids = status.body.providers.map((provider: { id: string }) => provider.id);
+    expect(ids).toEqual(['codex', 'opencode', 'claude-code', 'cline']);
+    const codex = status.body.providers.find((provider: { id: string }) => provider.id === 'codex');
+    expect(codex).toMatchObject({ status: 'supported', registered: false, conflict: false, enabled: false });
+    const planned = status.body.providers.find((provider: { id: string }) => provider.id === 'claude-code');
+    expect(planned).toMatchObject({ status: 'planned', detected: false, registered: false });
+    expect(typeof codex.detected).toBe('boolean');
+  });
+
+  it('connects OpenCode with confirmation and preserves the Codex entry', async () => {
+    const opencodeFile = path.join(root, 'opencode.json');
+    await fs.writeFile(opencodeFile, JSON.stringify({ model: 'deepseek/deepseek-chat', mcp: { jira: { type: 'remote', url: 'https://example.com/mcp' } } }, null, 2), 'utf8');
+    const rejected = await request('/api/mcp/connect', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ provider: 'opencode', confirm: false }) });
+    expect(rejected.status).toBe(400);
+    const connected = await request('/api/mcp/connect', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ provider: 'opencode', confirm: true }) });
+    expect(connected.status).toBe(200);
+    const opencode = connected.body.providers.find((provider: { id: string }) => provider.id === 'opencode');
+    expect(opencode).toMatchObject({ registered: true, enabled: true });
+    const text = await fs.readFile(opencodeFile, 'utf8');
+    expect(text).toContain('"jira"');
+    expect(text).toContain('// BEGIN JUTELL MANAGED BLOCK');
+    const config = (await request('/api/config')).body.config;
+    expect(config.mcp.enabled).toBe(true);
+    expect(await fs.readFile(`${opencodeFile}.previous`, 'utf8')).toContain('deepseek-chat');
+  });
+
+  it('disconnects only the selected provider', async () => {
+    await request('/api/mcp/connect', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ provider: 'codex', confirm: true }) });
+    const opencodeFile = path.join(root, 'opencode.json');
+    await fs.writeFile(opencodeFile, JSON.stringify({ mcp: { jira: {} } }, null, 2), 'utf8');
+    await request('/api/mcp/connect', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ provider: 'opencode', confirm: true }) });
+    const disconnected = await request('/api/mcp/disconnect', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ provider: 'opencode', confirm: true }) });
+    expect(disconnected.status).toBe(200);
+    const opencode = disconnected.body.providers.find((provider: { id: string }) => provider.id === 'opencode');
+    const codex = disconnected.body.providers.find((provider: { id: string }) => provider.id === 'codex');
+    expect(opencode).toMatchObject({ registered: true, enabled: false });
+    expect(codex).toMatchObject({ registered: true, enabled: true });
+    const config = (await request('/api/config')).body.config;
+    expect(config.mcp.enabled).toBe(true);
+  });
+
+  it('switches the default provider and deactivates the other', async () => {
+    const opencodeFile = path.join(root, 'opencode.json');
+    await fs.writeFile(opencodeFile, JSON.stringify({ model: 'deepseek/deepseek-chat' }, null, 2), 'utf8');
+    await request('/api/mcp/connect', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ provider: 'codex', confirm: true }) });
+    await request('/api/mcp/connect', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ provider: 'opencode', confirm: true }) });
+    const switched = await request('/api/mcp/set-default', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ provider: 'opencode', confirm: true }) });
+    expect(switched.status).toBe(200);
+    const opencode = switched.body.providers.find((provider: { id: string }) => provider.id === 'opencode');
+    const codex = switched.body.providers.find((provider: { id: string }) => provider.id === 'codex');
+    expect(opencode).toMatchObject({ registered: true, enabled: true });
+    expect(codex).toMatchObject({ registered: true, enabled: false });
+  });
+
+  it('rejects provider actions for planned agents', async () => {
+    const response = await request('/api/mcp/connect', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ provider: 'cline', confirm: true }) });
+    expect(response.status).toBe(400);
+  });
+
   it('deletes configuration history only after confirmation', async () => {
     await request('/api/config/history', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: false }) });
     const rejected = await request('/api/config/history', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: false }) });

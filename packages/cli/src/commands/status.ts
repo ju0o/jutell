@@ -32,7 +32,7 @@ export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
   const skillInstalled = await exists(path.join(paths.skillRoot, 'SKILL.md'));
   const agentsManaged = await hasJuTellAgentsBlock(paths.targetRoot);
   const opencode = await readOpenCodeRegistration(paths, packageRoot(), false);
-  const codexPreparation = registration.conflict ? 'error' : !registration.registered ? 'not_registered' : config.config.mcp?.enabled === true ? 'enabled' : 'registered';
+  const codexPreparation = registration.conflict ? 'error' : !registration.registered ? 'not_registered' : registration.enabled ? 'enabled' : 'registered';
   const warnings: string[] = [];
   if (!config.valid) warnings.push('설정 파일을 읽지 못해 balanced 기본값을 사용 중입니다.');
   if (registration.conflict) warnings.push('같은 이름의 관리되지 않는 MCP 설정이 있어 자동 변경하지 않았습니다.');

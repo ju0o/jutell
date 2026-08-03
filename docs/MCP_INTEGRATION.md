@@ -70,9 +70,9 @@ jutell
 
 3. 관리자 화면의 `AI Agent 연결`에서 `MCP 사용`을 켭니다.
 4. `연결 설정 미리 보기`로 프로젝트 설정을 확인합니다.
-5. `Provider 연결 설정 생성`을 누릅니다. 현재는 Codex 설정이 생성됩니다. OpenCode는 `jutell provider setup opencode` 명령으로 등록합니다.
+5. `Provider 연결 설정 생성`을 누릅니다. 현재는 Codex 설정이 생성됩니다. OpenCode는 `jutell use opencode` 명령 한 번으로 등록·활성화까지 준비합니다.
 6. `MCP 서버 시작`을 누릅니다.
-7. 현재 연결 Provider인 Codex의 새 세션 또는 재시작 후 다음 확인 문구를 전달합니다. OpenCode 사용자는 `jutell provider enable opencode`로 활성화한 뒤 같은 문구를 새 OpenCode 세션에 전달합니다.
+7. 현재 연결 Provider인 Codex의 새 세션 또는 재시작 후 다음 확인 문구를 전달합니다. OpenCode 사용자는 `jutell use opencode`로 연결한 뒤 같은 문구를 새 OpenCode 세션에 전달합니다.
 
    ```text
    JuTell MCP 연결 상태를 확인해주세요.

@@ -11,7 +11,12 @@ beforeEach(() => {
     const url = String(input);
     if (url.endsWith('/api/config')) return new Response(JSON.stringify({ config, fallback: false, metadata: { configVersion: 1, skillVersion: 'not-recorded' }, lastChangedAt: null }), { status: 200 });
     if (url.endsWith('/api/readiness')) return new Response(JSON.stringify({ config: { exists: true, valid: true, profile: 'balanced', activeFeatures: 8 }, skill: { exists: true }, agents: { exists: true, jutellBlock: true }, safetyRules: { exists: true }, sessionApplied: 'manual_check_required' }), { status: 200 });
-    if (url.endsWith('/api/mcp/status')) return new Response(JSON.stringify({ settings: { enabled: false, autoStart: false }, server: { state: 'stopped' }, preparation: 'not_registered', codex: { registered: false, path: '.codex/config.toml', conflict: false }, connection: { state: 'not_checked', lastCheckedAt: null }, skillFallback: { available: true, message: 'Skill 방식 사용 가능' } }), { status: 200 });
+    if (url.endsWith('/api/mcp/status')) return new Response(JSON.stringify({ settings: { enabled: false, autoStart: false }, server: { state: 'stopped' }, preparation: 'not_registered', codex: { registered: false, path: '.codex/config.toml', conflict: false, enabled: false }, providers: [
+      { id: 'codex', label: 'Codex', status: 'supported', detected: true, registered: false, conflict: false, enabled: false, lastCheckedAt: null },
+      { id: 'opencode', label: 'OpenCode', status: 'beta', detected: true, registered: false, conflict: false, enabled: false, lastCheckedAt: null },
+      { id: 'claude-code', label: 'Claude Code', status: 'planned', detected: false, registered: false, conflict: false, enabled: false, lastCheckedAt: null },
+      { id: 'cline', label: 'Cline', status: 'planned', detected: false, registered: false, conflict: false, enabled: false, lastCheckedAt: null },
+    ], connection: { state: 'not_checked', lastCheckedAt: null }, skillFallback: { available: true, message: 'Skill 방식 사용 가능' } }), { status: 200 });
     if (url.endsWith('/api/feedback')) return new Response(JSON.stringify(feedback), { status: 200 });
     if (url.endsWith('/api/config/history')) return new Response(JSON.stringify(history), { status: 200 });
     if (options?.method === 'POST' && url.includes('/api/feedback')) return new Response(JSON.stringify({ feedback: { ...JSON.parse(String(options.body)), id: '12345678-1234-1234-1234-123456789012', createdAt: '', updatedAt: '' } }), { status: 201 });
@@ -70,13 +75,23 @@ describe('local admin screens', () => {
     await waitFor(() => expect(screen.getByLabelText('익명 프로젝트 별칭')).toBeInTheDocument());
   });
 
-  it('separates MCP server status from actual Codex connection status', async () => {
+  it('separates MCP server status from actual provider connection status', async () => {
     render(<App />);
     fireEvent.click(await screen.findByRole('button', { name: 'AI Agent 연결' }));
     expect(screen.getByText('중지됨')).toBeInTheDocument();
     expect(screen.getByText('확인하지 않음')).toBeInTheDocument();
     expect(screen.getByText(/Skill 방식은 항상 유지됩니다/)).toBeInTheDocument();
-    expect(screen.getByText(/현재 실제 연결을 지원합니다/)).toBeInTheDocument();
     expect(screen.getByText(/자동 실행은 항상 OFF/)).toBeInTheDocument();
+    expect(screen.getByText(/Codex 지원 · OpenCode 베타/)).toBeInTheDocument();
+  });
+
+  it('shows provider cards with connect buttons for supported agents only', async () => {
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'AI Agent 연결' }));
+    await waitFor(() => expect(screen.getAllByText('연결하기').length).toBe(2));
+    expect(screen.getByText(/Claude Code/)).toBeInTheDocument();
+    expect(screen.getAllByText(/연결 준비 중입니다/).length).toBe(2);
+    fireEvent.click(screen.getAllByText('연결하기')[0]);
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/mcp/connect'), expect.any(Object)));
   });
 });

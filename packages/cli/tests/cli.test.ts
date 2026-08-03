@@ -233,6 +233,104 @@ describe('Distribution CLI V0.1', () => {
     expect(after).toContain('deepseek-chat');
   });
 
+  it('jutell use opencode가 연결·활성화·Skill·AGENTS.md를 한 번에 준비하고 반복 실행을 방지한다', async () => {
+    const { project, env } = await fixture();
+    const opencodeFile = path.join(project, 'opencode.json');
+    await fs.writeFile(opencodeFile, JSON.stringify({ model: 'deepseek/deepseek-chat', mcp: { jira: { type: 'remote', url: 'https://example.com/mcp' } } }, null, 2), 'utf8');
+
+    const first = await runCli(['use', 'opencode'], project, env);
+    expect(first.stdout).toContain('OpenCode 연결 완료');
+    expect(first.stdout).toContain('✓ 설정 백업');
+    expect(first.stdout).toContain('✓ JuTell MCP 등록');
+    expect(first.stdout).toContain('✓ MCP 활성화');
+    expect(first.stdout).toContain('✓ 기존 OpenCode 설정 보존');
+    expect(first.stdout).toContain('새 OpenCode 세션에서 바로 사용할 수 있습니다.');
+    const text = await fs.readFile(opencodeFile, 'utf8');
+    expect(text.match(/BEGIN JUTELL MANAGED BLOCK/g)).toHaveLength(1);
+    expect(text).toContain('"enabled": true');
+    expect(text).toContain('"jira"');
+    expect(text).toContain('"deepseek/deepseek-chat"');
+    expect(JSON.parse(await fs.readFile(path.join(project, '.jutell.json'), 'utf8')).mcp.enabled).toBe(true);
+    expect(await fs.stat(path.join(project, '.agents', 'skills', 'beginner-bridge', 'SKILL.md'))).toBeTruthy();
+    expect(await fs.readFile(path.join(project, 'AGENTS.md'), 'utf8')).toContain('BEGIN JUTELL MANAGED BLOCK');
+
+    const repeated = await runCli(['use', 'opencode'], project, env);
+    expect(repeated.stdout).toContain('OpenCode 연결 완료');
+    expect((await fs.readFile(opencodeFile, 'utf8')).match(/BEGIN JUTELL MANAGED BLOCK/g)).toHaveLength(1);
+    expect((await fs.readFile(opencodeFile, 'utf8')).match(/"beginner_bridge"/g)).toHaveLength(1);
+  });
+
+  it('jutell use codex가 Codex 연결을 켜고 기존 OpenCode 연결을 유지한다', async () => {
+    const { project, env } = await fixture();
+    await runCli(['use', 'opencode'], project, env);
+    const useCodex = await runCli(['use', 'codex'], project, env);
+    expect(useCodex.stdout).toContain('Codex 연결 완료');
+    expect(useCodex.stdout).toContain('기존 다른 Agent 연결은 유지했습니다.');
+    const codexText = await fs.readFile(path.join(project, '.codex', 'config.toml'), 'utf8');
+    expect(codexText).toContain('[mcp_servers.beginner_bridge]');
+    expect(codexText).toContain('enabled = true');
+    expect(await fs.readFile(path.join(project, 'opencode.json'), 'utf8')).toContain('"enabled": true');
+
+    const summary = await runCli(['provider'], project, env);
+    expect(summary.stdout).toMatch(/Codex\s+연결됨 · 활성/);
+    expect(summary.stdout).toMatch(/OpenCode\s+연결됨 · 활성/);
+    expect(summary.stdout).toContain('현재 권장 Agent: Codex, OpenCode');
+    expect(summary.stdout).toContain('JuTell 자동 적용: 켜짐');
+  });
+
+  it('jutell connect와 disconnect가 해당 Provider만 바꾼다', async () => {
+    const { project, env } = await fixture();
+    await runCli(['use', 'codex'], project, env);
+    await runCli(['connect', 'opencode'], project, env);
+    expect(await fs.readFile(path.join(project, 'opencode.json'), 'utf8')).toContain('"enabled": true');
+    expect(await fs.readFile(path.join(project, '.codex', 'config.toml'), 'utf8')).toContain('enabled = true');
+
+    await runCli(['disconnect', 'opencode'], project, env);
+    expect(await fs.readFile(path.join(project, 'opencode.json'), 'utf8')).toContain('"enabled": false');
+    expect(await fs.readFile(path.join(project, '.codex', 'config.toml'), 'utf8')).toContain('enabled = true');
+    expect(JSON.parse(await fs.readFile(path.join(project, '.jutell.json'), 'utf8')).mcp.enabled).toBe(true);
+  });
+
+  it('jutell switch opencode가 Codex를 비활성화하고 OpenCode만 활성화한다', async () => {
+    const { project, env } = await fixture();
+    await runCli(['use', 'codex'], project, env);
+    const switched = await runCli(['switch', 'opencode'], project, env);
+    expect(switched.stdout).toContain('다른 Agent의 JuTell 연결은 비활성화했습니다.');
+    expect(await fs.readFile(path.join(project, '.codex', 'config.toml'), 'utf8')).toContain('enabled = false');
+    expect(await fs.readFile(path.join(project, 'opencode.json'), 'utf8')).toContain('"enabled": true');
+    const summary = await runCli(['provider'], project, env);
+    expect(summary.stdout).toMatch(/Codex\s+연결됨 · 비활성/);
+    expect(summary.stdout).toMatch(/OpenCode\s+연결됨 · 활성/);
+  });
+
+  it('미지원 Agent는 안내만 출력하고 설정 파일을 만들지 않는다', async () => {
+    const { project, env } = await fixture();
+    const claude = await runCli(['use', 'claude'], project, env);
+    expect(claude.stdout).toContain('Claude Code 연결은 아직 준비 중입니다.');
+    expect(claude.stdout).toContain('현재 사용할 수 있는 Agent는 Codex와 OpenCode입니다.');
+    const cline = await runCli(['use', 'cline'], project, env);
+    expect(cline.stdout).toContain('Cline 연결은 아직 준비 중입니다.');
+    await expect(fs.stat(path.join(project, 'opencode.json'))).rejects.toThrow();
+    const summary = await runCli(['provider'], project, env);
+    expect(summary.stdout).toMatch(/Claude Code\s+준비 중/);
+    expect(summary.stdout).toMatch(/Cline\s+준비 중/);
+  });
+
+  it('관리되지 않는 OpenCode 항목이 있으면 use가 실패하고 아무것도 바꾸지 않는다', async () => {
+    const { project, env } = await fixture();
+    const opencodeFile = path.join(project, 'opencode.json');
+    await fs.writeFile(opencodeFile, JSON.stringify({ mcp: { beginner_bridge: { type: 'remote', url: 'https://example.com/mcp' } } }, null, 2), 'utf8');
+    const before = await fs.readFile(opencodeFile, 'utf8');
+    let failure: { stderr?: string } | undefined;
+    try {
+      await runCli(['use', 'opencode'], project, env);
+    } catch (error) {
+      failure = error as { stderr?: string };
+    }
+    expect(failure?.stderr).toContain('관리되지 않는 MCP 항목');
+    expect(await fs.readFile(opencodeFile, 'utf8')).toBe(before);
+  });
+
   it('기존 설정을 읽고 승인된 setup에서 새 설정으로 복사하며 기존 파일을 보존한다', async () => {
     const { project, env } = await fixture();
     const legacyFile = path.join(project, '.beginner-bridge.json');

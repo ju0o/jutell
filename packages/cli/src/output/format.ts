@@ -63,6 +63,8 @@ export function printHelp(io: CliIo) {
 가장 많이 사용하는 명령
 
   jutell          JuTell을 준비하고 관리자 화면을 엽니다.
+  jutell use opencode   OpenCode 연결을 켭니다 (권장).
+  jutell use codex      Codex 연결을 켭니다 (권장).
   jutell on       JuTell 연결을 켭니다.
   jutell off      JuTell 연결을 끕니다.
   jutell status   현재 연결 상태를 확인합니다.
@@ -71,6 +73,7 @@ export function printHelp(io: CliIo) {
 사용법:
   jutell [--no-open|--status-only]
   jutell dashboard [--no-open]
+  jutell use <agent>
   jutell on
   jutell off
 
@@ -84,11 +87,15 @@ export function printHelp(io: CliIo) {
   jutell --version
 
 AI Agent Provider 명령:
+  jutell provider          연결 상태를 간단히 봅니다.
   jutell provider list
   jutell provider status [--json]
   jutell provider setup opencode [--yes]
   jutell provider enable opencode
   jutell provider disable opencode
+  jutell connect <agent>      연결만 추가합니다.
+  jutell disconnect <agent>   해당 연결만 끕니다.
+  jutell switch <agent>       기본 Agent로 전환합니다.
 
 이전 별칭: beginner-bridge
 
