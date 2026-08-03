@@ -36,6 +36,7 @@ export type ScopePaths = {
   configFile: string;
   legacyConfigFile: string;
   codexConfigFile: string;
+  opencodeConfigFile: string;
   dataRoot: string;
   legacyDataRoot: string;
 };
@@ -65,12 +66,14 @@ export type StatusResult = {
   configExists: boolean;
   configValid: boolean;
   codexDetected: boolean;
+  opencodeDetected: boolean;
   skillInstalled: boolean;
   agentsManaged: boolean;
   mcpRegistered: boolean;
   mcpEnabled: boolean;
   codexPreparation: 'not_registered' | 'registered' | 'enabled' | 'error';
   actualConnection: 'not_checked' | 'success' | 'failure';
+  opencode: { registered: boolean; conflict: boolean; enabled: boolean };
   profile: Profile;
   activeFeatureCount: number;
   configLocation: string;

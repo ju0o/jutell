@@ -16,10 +16,11 @@ export function createIo(): CliIo {
   };
 }
 
-export function parseOptions(args: string[]): { command: string; options: CliOptions; defaultInvocation: boolean } {
+export function parseOptions(args: string[]): { command: string; options: CliOptions; defaultInvocation: boolean; extraArgs: string[] } {
   let command = 'dashboard';
   let defaultInvocation = true;
   let index = 0;
+  const extraArgs: string[] = [];
   if (args[0] && !args[0].startsWith('-')) { command = args[0]; defaultInvocation = false; index = 1; }
   const options: CliOptions = { scope: 'project', yes: false, activateMcp: false, oneCommand: false, statusOnly: false, json: false, verbose: false, openBrowser: true, fix: false, skillOnly: false, mcpOnly: false, disableSkill: false, disableMcp: false, disableAll: false, keepData: false, removeData: false };
   for (; index < args.length; index += 1) {
@@ -45,12 +46,13 @@ export function parseOptions(args: string[]): { command: string; options: CliOpt
       options.profile = value as Profile;
       index += 1;
     } else if (arg === '--help' || arg === '-h') command = 'help';
-    else throw new Error(`알 수 없는 옵션입니다: ${arg}`);
+    else if (arg.startsWith('-')) throw new Error(`알 수 없는 옵션입니다: ${arg}`);
+    else extraArgs.push(arg);
   }
   if (options.skillOnly && options.mcpOnly) throw new Error('--skill-only와 --mcp-only를 동시에 사용할 수 없습니다.');
   if (options.keepData && options.removeData) throw new Error('--keep-data와 --remove-data를 동시에 사용할 수 없습니다.');
   if (options.disableAll) { options.disableSkill = true; options.disableMcp = true; }
-  return { command, options, defaultInvocation };
+  return { command, options, defaultInvocation, extraArgs };
 }
 
 export function scopeLabel(scope: InstallScope) { return scope === 'global' ? '사용자 전역' : '현재 프로젝트'; }
@@ -80,6 +82,13 @@ export function printHelp(io: CliIo) {
   jutell doctor [--fix] [--json]
   jutell uninstall [--keep-data|--remove-data] [--yes]
   jutell --version
+
+AI Agent Provider 명령:
+  jutell provider list
+  jutell provider status [--json]
+  jutell provider setup opencode [--yes]
+  jutell provider enable opencode
+  jutell provider disable opencode
 
 이전 별칭: beginner-bridge
 

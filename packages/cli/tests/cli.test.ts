@@ -154,6 +154,85 @@ describe('Distribution CLI V0.1', () => {
     expect((await fs.readFile(path.join(home, '.codex', 'config.toml'), 'utf8'))).toContain('[mcp_servers.beginner_bridge]');
   });
 
+  it('provider list와 provider status가 Provider를 구분해 보여준다', async () => {
+    const { project, env } = await fixture();
+    const list = await runCli(['provider', 'list'], project, env);
+    expect(list.stdout).toContain('Codex');
+    expect(list.stdout).toContain('OpenCode');
+    const status = await runCli(['provider', 'status'], project, env);
+    expect(status.stdout).toContain('Codex (현재 지원)');
+    expect(status.stdout).toContain('OpenCode (베타)');
+    expect(status.stdout).toContain('MCP 등록: 등록되지 않음');
+  });
+
+  it('provider setup opencode가 기존 설정을 보존하고 반복 설치를 방지한다', async () => {
+    const { project, env } = await fixture();
+    const opencodeFile = path.join(project, 'opencode.json');
+    await fs.writeFile(opencodeFile, JSON.stringify({ model: 'deepseek/deepseek-chat', mcp: { jira: { type: 'remote', url: 'https://example.com/mcp' } } }, null, 2), 'utf8');
+
+    await runCli(['provider', 'setup', 'opencode', '--yes'], project, env);
+    const first = await fs.readFile(opencodeFile, 'utf8');
+    expect(first).toContain('BEGIN JUTELL MANAGED BLOCK');
+    expect(first).toContain('"beginner_bridge"');
+    expect(first).toContain('"jira"');
+    expect(first).toContain('"deepseek/deepseek-chat"');
+    expect(first.match(/BEGIN JUTELL MANAGED BLOCK/g)).toHaveLength(1);
+
+    await runCli(['provider', 'setup', 'opencode', '--yes'], project, env);
+    const repeated = await fs.readFile(opencodeFile, 'utf8');
+    expect(repeated.match(/BEGIN JUTELL MANAGED BLOCK/g)).toHaveLength(1);
+    expect(repeated.match(/"beginner_bridge"/g)).toHaveLength(1);
+    expect(repeated).toContain('"jira"');
+    expect(await fs.readFile(`${opencodeFile}.previous`, 'utf8')).toContain('"deepseek/deepseek-chat"');
+  });
+
+  it('provider enable과 disable이 OpenCode 항목의 enabled만 바꾼다', async () => {
+    const { project, env } = await fixture();
+    await runCli(['provider', 'setup', 'opencode', '--yes'], project, env);
+    let text = await fs.readFile(path.join(project, 'opencode.json'), 'utf8');
+    expect(text).toContain('"enabled": false');
+
+    await runCli(['provider', 'enable', 'opencode'], project, env);
+    text = await fs.readFile(path.join(project, 'opencode.json'), 'utf8');
+    expect(text).toContain('"enabled": true');
+    expect(text).toContain('"type": "local"');
+    expect(text).toContain('"cwd": "."');
+
+    await runCli(['provider', 'disable', 'opencode'], project, env);
+    text = await fs.readFile(path.join(project, 'opencode.json'), 'utf8');
+    expect(text).toContain('"enabled": false');
+    expect(text).toContain('BEGIN JUTELL MANAGED BLOCK');
+  });
+
+  it('관리되지 않는 beginner_bridge 항목은 자동 변경하지 않는다', async () => {
+    const { project, env } = await fixture();
+    const opencodeFile = path.join(project, 'opencode.json');
+    await fs.writeFile(opencodeFile, JSON.stringify({ mcp: { beginner_bridge: { type: 'remote', url: 'https://example.com/mcp' } } }, null, 2), 'utf8');
+    const before = await fs.readFile(opencodeFile, 'utf8');
+    let failure: { stdout?: string; stderr?: string } | undefined;
+    try {
+      await runCli(['provider', 'setup', 'opencode', '--yes'], project, env);
+    } catch (error) {
+      failure = error as { stdout?: string; stderr?: string };
+    }
+    expect(failure?.stderr).toContain('관리되지 않는 MCP 항목');
+    expect(await fs.readFile(opencodeFile, 'utf8')).toBe(before);
+    const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
+    expect(status.opencode.conflict).toBe(true);
+  });
+
+  it('uninstall이 OpenCode JuTell 관리 블록만 제거하고 기존 설정은 보존한다', async () => {
+    const { project, env } = await fixture();
+    const opencodeFile = path.join(project, 'opencode.json');
+    await fs.writeFile(opencodeFile, JSON.stringify({ model: 'deepseek/deepseek-chat' }, null, 2), 'utf8');
+    await runCli(['provider', 'setup', 'opencode', '--yes'], project, env);
+    await runCli(['uninstall', '--keep-data', '--yes'], project, env);
+    const after = await fs.readFile(opencodeFile, 'utf8');
+    expect(after).not.toContain('BEGIN JUTELL MANAGED BLOCK');
+    expect(after).not.toContain('beginner_bridge');
+    expect(after).toContain('deepseek-chat');
+  });
+
   it('기존 설정을 읽고 승인된 setup에서 새 설정으로 복사하며 기존 파일을 보존한다', async () => {
     const { project, env } = await fixture();
     const legacyFile = path.join(project, '.beginner-bridge.json');

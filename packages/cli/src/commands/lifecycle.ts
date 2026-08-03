@@ -5,6 +5,7 @@ import { ensureBridgeConfig, setMcpDisabled, setMcpEnabled } from '../installer/
 import { installSkill, recordSkillFiles, removeAddedSkillFiles, removeManagedSkillFiles } from '../installer/skill.js';
 import { agentsFile, ensureJuTellAgentsBlock, removeJuTellAgentsBlock } from '../installer/agents.js';
 import { registerMcp, removeMcp } from '../config/managed.js';
+import { removeOpenCodeMcp, setOpenCodeEnabled } from '../installer/opencode.js';
 import { scopeLabel } from '../output/format.js';
 import { codexDetected, nodeMajorVersion, operatingSystem } from '../process/system.js';
 import type { CliIo, CliOptions, ScopePaths } from '../types.js';
@@ -85,6 +86,7 @@ export async function disableCommand(paths: ScopePaths, options: CliOptions, io:
   if (disableMcp) {
     const config = await setMcpDisabled(paths);
     await registerMcp(paths, packageRoot(), config.mcp?.enabled === true);
+    await setOpenCodeEnabled(paths, packageRoot(), false);
   }
   if (disableSkill) await removeManagedSkillFiles(assets().skill, paths.skillRoot, paths);
   if (disableSkill && paths.scope === 'project') await removeJuTellAgentsBlock(paths.targetRoot);
@@ -100,6 +102,7 @@ export async function uninstallCommand(paths: ScopePaths, options: CliOptions, i
   await removeMcp(paths, packageRoot());
   await removeManagedSkillFiles(assets().skill, paths.skillRoot, paths);
   if (paths.scope === 'project') await removeJuTellAgentsBlock(paths.targetRoot);
+  await removeOpenCodeMcp(paths, packageRoot());
   if (removeData) {
     await fs.rm(paths.configFile, { force: true });
     await fs.rm(paths.dataRoot, { recursive: true, force: true });

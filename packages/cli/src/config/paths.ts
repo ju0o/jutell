@@ -5,9 +5,7 @@ import type { AssetPaths, InstallScope, ScopePaths } from '../types.js';
 
 export function packageRoot() {
   return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-}
-
-export function assets(): AssetPaths {
+}export function assets(): AssetPaths {
   const root = path.join(packageRoot(), 'assets');
   return {
     root,
@@ -25,6 +23,10 @@ export function codexHome() {
   return path.resolve(override && override.trim() ? override : path.join(userHome(), '.codex'));
 }
 
+export function opencodeConfigDir() {
+  return path.join(userHome(), '.config', 'opencode');
+}
+
 export function userHome() {
   const override = process.env.JUTELL_HOME ?? process.env.BEGINNER_BRIDGE_HOME;
   return path.resolve(override && override.trim() ? override : os.homedir());
@@ -40,6 +42,7 @@ export function resolveScope(scope: InstallScope, cwd = process.cwd()): ScopePat
       configFile: path.join(home, '.jutell.json'),
       legacyConfigFile: path.join(home, '.beginner-bridge.json'),
       codexConfigFile: path.join(codexHome(), 'config.toml'),
+      opencodeConfigFile: path.join(opencodeConfigDir(), 'opencode.json'),
       dataRoot: path.join(home, '.jutell-local'),
       legacyDataRoot: path.join(home, '.beginner-bridge-local'),
     };
@@ -52,6 +55,7 @@ export function resolveScope(scope: InstallScope, cwd = process.cwd()): ScopePat
     configFile: path.join(projectRoot, '.jutell.json'),
     legacyConfigFile: path.join(projectRoot, '.beginner-bridge.json'),
     codexConfigFile: path.join(projectRoot, '.codex', 'config.toml'),
+    opencodeConfigFile: path.join(projectRoot, 'opencode.json'),
     dataRoot: path.join(projectRoot, '.jutell-local'),
     legacyDataRoot: path.join(projectRoot, '.beginner-bridge-local'),
   };
