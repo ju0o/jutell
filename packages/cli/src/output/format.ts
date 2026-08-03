@@ -63,8 +63,8 @@ export function printHelp(io: CliIo) {
 가장 많이 사용하는 명령
 
   jutell          JuTell을 준비하고 관리자 화면을 엽니다.
-  jutell use opencode   OpenCode 연결을 켭니다 (권장).
-  jutell use codex      Codex 연결을 켭니다 (권장).
+  jutell use opencode   OpenCode 연결을 준비합니다 (권장).
+  jutell use codex      Codex 연결을 준비합니다 (권장).
   jutell on       JuTell 연결을 켭니다.
   jutell off      JuTell 연결을 끕니다.
   jutell status   현재 연결 상태를 확인합니다.
@@ -76,6 +76,10 @@ export function printHelp(io: CliIo) {
   jutell use <agent>
   jutell on
   jutell off
+
+use·connect는 Agent를 대신 실행하거나 소유하지 않습니다.
+Agent는 사용자가 선택한 도구로 그대로 실행되며,
+JuTell은 Skill·MCP·지침·설정을 연결합니다.
 
 고급 명령:
   jutell setup [--project|--global] [--profile balanced] [--yes]

@@ -13,5 +13,3 @@ export const AGENT_PROVIDER_CATALOG: AgentProvider[] = [
   { id: 'claude-code', label: 'Claude Code', status: 'planned', description: 'Provider 확장을 준비 중입니다.' },
   { id: 'cline', label: 'Cline', status: 'planned', description: 'Provider 확장을 준비 중입니다.' },
 ];
-
-export const CURRENT_AGENT_PROVIDER = AGENT_PROVIDER_CATALOG[0];

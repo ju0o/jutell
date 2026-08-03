@@ -8,8 +8,31 @@ coverage/
 .env
 .env.*
 !.env.example
-.beginner-bridge-local/
+
+# JuTell local data
 .jutell-local/
+.beginner-bridge-local/
+
+# Local private notes
+.jutell-private/
+private/
+docs/private/
+*.private.md
+*.internal.md
+
+# Local test projects
+jutell-*-test/
+packages/jutell-*-test/
+
+# Environment and secrets
+*.pem
+*.key
+*.token
+
+# Local exports and backups
+*.local.json
+*.backup.json
+*.previous
 
 # Local Codex MCP settings and backups
 .codex/config.toml
