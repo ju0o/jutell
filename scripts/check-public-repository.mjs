@@ -34,6 +34,43 @@ const FOUNDATION_REQUIRED = [
   'docs/foundation/PRODUCT_BOUNDARY.md',
 ];
 
+// 예외(allowlist): 위험이 아님을 확인한 항목만 기록한다.
+// - file: 예외 적용 파일 (git ls-files 기준 경로)
+// - kind: PATTERNS 키 또는 'path'
+// - reason: 예외 이유
+// - scope: 허용 범위 (kind 탐지로 한정)
+const ALLOWED_EXCEPTIONS = [
+  {
+    file: 'docs/PROVIDER_OPENCODE.md',
+    kind: 'winPath',
+    reason: '사용자 홈 placeholder 예시({드라이브}:\\Users\\<사용자>)가 문서 설명에 필요. 운영자 절대 경로가 아님',
+    scope: '해당 파일의 winPath 탐지에만 적용',
+  },
+  {
+    file: 'docs/PUBLIC_REPOSITORY_POLICY.md',
+    kind: 'winPath',
+    reason: '금지 예시를 설명하는 데 필요한 예시 경로({드라이브}:\\Users\\<사용자>)',
+    scope: '해당 파일의 winPath 탐지에만 적용',
+  },
+  {
+    file: 'packages/cli/tests/cli.test.ts',
+    kind: 'winPath',
+    reason: 'URL 정규식 문자열(p:/\\/\\/ 형태)이 winPath 패턴에 일치할 뿐 실제 절대 경로가 아님',
+    scope: '해당 파일의 winPath 탐지에만 적용',
+  },
+];
+
+function isAllowed(file, kind) {
+  return ALLOWED_EXCEPTIONS.some((entry) => entry.file === file && entry.kind === kind);
+}
+
+for (const entry of ALLOWED_EXCEPTIONS) {
+  if (!Object.keys(PATTERNS).includes(entry.kind)) {
+    console.error(`[설정 오류] ALLOWED_EXCEPTIONS의 kind가 유효하지 않음: ${entry.kind} (${entry.file})`);
+    process.exit(1);
+  }
+}
+
 const FORBIDDEN_PATH = [
   { re: /(^|\/)\.jutell-local\//i, label: '.jutell-local 추적' },
   { re: /(^|\/)\.beginner-bridge-local\//i, label: '.beginner-bridge-local 추적' },
@@ -53,15 +90,18 @@ const FORBIDDEN_PATH = [
 
 function scanText(file, content) {
   const findings = [];
-  if (PATTERNS.winPath.test(content)) findings.push('절대 Windows 경로');
-  if (PATTERNS.skKey.test(content)) findings.push('API Key 형태(sk-...)');
-  if (PATTERNS.apiKey.test(content)) findings.push('api key 형태');
-  if (PATTERNS.token.test(content)) findings.push('token·cookie·secret 값 가능성');
+  if (PATTERNS.winPath.test(content)) findings.push('winPath');
+  if (PATTERNS.skKey.test(content)) findings.push('skKey');
+  if (PATTERNS.apiKey.test(content)) findings.push('apiKey');
+  if (PATTERNS.token.test(content)) findings.push('token');
   return findings;
 }
 
+// 탐지 수준: [위반](FAIL, exit 1) = 금지 경로 추적·Foundation 필수 문서 누락
+//           [가능성](WARN) = 콘텐츠 패턴 탐지. allowlist 예외는 WARN에서 제외한다.
 let hardIssues = 0;
 const warnings = [];
+let allowedSkips = 0;
 
 for (const file of trackedFiles()) {
   const lower = file.toLowerCase();
@@ -80,8 +120,12 @@ for (const file of trackedFiles()) {
     if (statSync(abs).size > MAX_SCAN_BYTES) continue;
   } catch { continue; }
   const content = readFileSync(abs, 'utf8');
-  for (const finding of scanText(file, content)) {
-    warnings.push(`${finding}: ${file}`);
+  for (const kind of scanText(file, content)) {
+    if (isAllowed(file, kind)) {
+      allowedSkips += 1;
+      continue;
+    }
+    warnings.push(`${kind}: ${file}`);
   }
 }
 
@@ -96,6 +140,6 @@ for (const warning of [...new Set(warnings)]) {
   console.log(`[가능성] ${warning}`);
 }
 
-console.log(`\n공개 안전 검사 완료 — 위반 ${hardIssues}건, 가능성 경고 ${new Set(warnings).size}건`);
-console.log('자동 삭제·수정은 하지 않습니다. 운영자 승인 후 직접 조치하세요.');
+console.log(`\n공개 안전 검사 완료 — 위반(FAIL) ${hardIssues}건, 가능성(WARN) ${new Set(warnings).size}건, allowlist 예외 제외 ${allowedSkips}건`);
+console.log('예외 기록: ALLOWED_EXCEPTIONS(파일 경로·탐지 유형·이유·허용 범위). 자동 삭제·수정은 하지 않습니다.');
 process.exit(hardIssues > 0 ? 1 : 0);

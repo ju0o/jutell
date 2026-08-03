@@ -27,15 +27,14 @@
 | Dashboard 개요의 "현재 사용 Provider"가 정적(Codex 고정) | 수정 | 활성 Provider를 실제 상태에서 계산 |
 | `docs/PROVIDER_OPENCODE.md`에 운영자 절대 경로 포함 | 수정 | 사용자 홈 placeholder로 교체 |
 | CLI 도움말에 `use`의 의미가 명시되지 않음 | 수정 | "연결만 준비하고 Agent를 대신 실행하지 않음" 안내 추가 |
-| `planner/Phase 8`에 "유료 가격 기능" 언급, `docs/PRODUCT_SCOPE.md`에 "유료 팀 기능" 1건 | 수정하지 않음 | 추적된 기존 문서. 삭제·이동은 운영자 승인 필요. 분류 보고만 남김 |
+| `planner/Phase 8`에 "유료 가격 기능" 언급, `docs/PRODUCT_SCOPE.md`에 "유료 팀 기능" 1건 | 분류 완료 | `planner/Phase 8`은 내부 사업·출시 전략으로 판단해 공개 저장소에서 제거, `PRIVATE_DOCUMENTS_MAP.md`에 `jutell-private/strategy/` 이동 대상으로 기록. `PRODUCT_SCOPE.md`의 "유료 팀 기능"은 공개 수준인 "팀 기능"으로 축약 |
 
 ## 수정하지 않은 이유
 
-- `planner/`와 `PRODUCT_SCOPE.md`의 유료 언급: 개인 베타 전 단계에서 임의로 문서를 제거하지 않기 위함. 운영자가 비공개 저장소로 옮길지 결정.
 - `use` 명령 이름 변경: 직전 작업에서 승인·테스트된 명령. 호환을 유지하고 문구로 의미를 명확히 함.
 
 ## 이후 작업
 
-- 운영자 승인 후 `planner/`와 유료 전략 문서를 `jutell-private` 저장소로 이동
+- `planner/Phase 8` 내용을 운영자가 `jutell-private/strategy/`로 이동 (공개 저장소에서는 제거됨)
 - 공개 베타 전 README 한 문장 정의를 실제 사용자 반응으로 재검증
 - Workflow·Task·Phase 지침 기능은 구현 전 이 문서 기준으로 설계
