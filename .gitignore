@@ -13,6 +13,10 @@ coverage/
 .jutell-local/
 .beginner-bridge-local/
 
+# JuTell project-local user configuration (examples live in examples/config/)
+.jutell.json
+.beginner-bridge.json
+
 # Local private notes
 .jutell-private/
 private/

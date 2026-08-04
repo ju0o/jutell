@@ -22,15 +22,19 @@ ZIP 생성을 지원하지 않는 환경에서는 같은 이름의 폴더 번들
 ## 2. 포함되는 것
 
 - git에 추적된 공개 파일 전부 (아래 제외 목록에 해당하지 않는 것)
+- `.agents/skills/beginner-bridge/**` — JuTell이 배포하는 공개 제품 Skill (실제 사용자 설정이 아님)
+- 예시 설정 파일 — `examples/config/jutell.example.json`, `examples/config/beginner-bridge.example.json`, `examples/instructions/AGENTS.example.md`
 - `REVIEW_BUNDLE_MANIFEST.md` (자동 생성)
 
-미추적(untracked) 파일과 로컬 데이터는 포함되지 않습니다.
+미추적(untracked) 파일과 로컬 데이터는 포함되지 않습니다. 포함 여부는 Git 추적 여부와 제품 배포 목록을 기준으로 결정합니다.
 
 ## 3. 제외되는 것
 
 | 구분 | 내용 |
 |---|---|
+| 실제 사용자 설정 | 루트 `.jutell.json`, `.beginner-bridge.json` — 설정은 CLI 또는 Dashboard가 생성하며, 저장소에는 예시만 존재 |
 | 로컬 데이터 | `.jutell-local/`, `.beginner-bridge-local/`, `.jutell-private/`, `private/`, `docs/private/` |
+| 로컬 Agent 설정 | `.codex/`, 허용 경로(`.agents/skills/beginner-bridge/**`) 밖의 `.agents/**` (설치·사용자별 복사본) |
 | 비밀정보 | `.env*`, `.pem`, `.key`, `.token`, `*.local.json`, `*.backup.json` |
 | 빌드·의존성 | `node_modules/`, `dist/`, `build/`, `coverage/`, `assets/` |
 | 산출물 | `artifacts/`, `*.tgz`, `*.log` |
@@ -44,7 +48,8 @@ ZIP 생성을 지원하지 않는 환경에서는 같은 이름의 폴더 번들
 - 생성 시각과 HEAD 커밋 (어느 시점의 저장소인지)
 - 작업 트리 상태 (커밋되지 않은 변경이 있었는지)
 - 공개 안전 검사 결과
-- 포함 규칙과 제외 원칙
+- **이 번들에 포함된 설정은 예시이며 실제 사용자 설정이 아닙니다** — manifest 첫 부분에 명시됨
+- 포함 규칙과 제외 원칙 (`.agents/skills/`는 공개 배포 자산, 실제 설정과 로컬 설치 산출물은 제외)
 - 포함 목록 전체와 제외된 추적 파일 수
 - 비밀정보 검사 결과
 

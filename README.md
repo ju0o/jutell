@@ -83,6 +83,8 @@ jutell
 
 Skill은 기본 보고 경로입니다. `.agents/skills/beginner-bridge/SKILL.md`는 호환성을 위해 ID와 경로를 유지하고 표시 이름은 JuTell로 바꿉니다. 프로젝트 설정은 `.jutell.json`을 우선 읽고, 없으면 기존 `.beginner-bridge.json`을 읽습니다. Skill은 연결된 AI Agent Provider가 보고 규칙을 읽을 수 있게 하는 공통 경로입니다.
 
+`.jutell.json`은 사용자별 로컬 설정이며 공개 저장소에 커밋하지 않습니다. 실제 설정은 CLI 또는 Dashboard가 생성합니다. 저장소에는 안전한 예시(`examples/config/jutell.example.json`)만 포함하며, `.beginner-bridge.json`은 하위 호환용으로 `examples/config/beginner-bridge.example.json`에 예시만 남깁니다.
+
 MCP는 선택형 로컬 읽기 연결입니다. MCP가 꺼지거나 실패해도 Skill 방식은 계속 사용할 수 있습니다. MCP 서버 실행, Provider 설정 등록, 실제 도구 호출은 서로 다른 상태입니다. 현재 실제 MCP 연결은 Codex를 지원하며, OpenCode는 설정 등록을 베타로 지원합니다. Claude Code와 Cline은 확장 대상입니다.
 
 로컬 관리자는 Profile, Feature, limits, Beta Journal, AI Agent Provider 연결 준비 상태를 현재 컴퓨터에서만 관리합니다.

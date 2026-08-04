@@ -23,7 +23,7 @@ JuTell 자체가 코드를 실행하거나 화면을 대신 승인하는 제품�
 
 ## Skill과 설정 파일
 
-`.agents/skills/beginner-bridge/SKILL.md`는 보고서를 만드는 실행 규칙입니다. 프로젝트 루트의 [`.jutell.json`](../.jutell.json)은 보고서의 선택 기능과 길이 제한을 정합니다. 설정 파일이 없거나 잘못되면 `balanced` 기본값으로 진행합니다.
+`.agents/skills/beginner-bridge/SKILL.md`는 보고서를 만드는 실행 규칙입니다. 프로젝트 루트의 `.jutell.json`은 보고서의 선택 기능과 길이 제한을 정하며, CLI 또는 Dashboard가 생성하는 사용자별 로컬 설정입니다 (공개 저장소에는 예시만 포함: `examples/config/jutell.example.json`). 설정 파일이 없거나 잘못되면 `balanced` 기본값으로 진행합니다.
 
 Profile은 다음과 같이 사용합니다.
 

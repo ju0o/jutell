@@ -65,6 +65,9 @@ function isAllowed(file, kind) {
 }
 
 // ZIP에 절대 넣지 않는 경로 규칙 (allowlist 중심 선택을 위한 제외 목록)
+// .agents는 폴더 이름이 아니라 파일의 출처와 역할로 판단한다:
+//   포함 — .agents/skills/beginner-bridge/** (JuTell 공개 배포 자산)
+//   제외 — 그 밖의 .agents/** (설치·사용자별 복사본 등 로컬 산출물)
 const EXCLUDED_SEGMENTS = [
   '.git',
   'node_modules',
@@ -72,6 +75,7 @@ const EXCLUDED_SEGMENTS = [
   'build',
   'coverage',
   'assets',
+  '.codex',
   '.jutell-local',
   '.beginner-bridge-local',
   '.jutell-private',
@@ -79,6 +83,8 @@ const EXCLUDED_SEGMENTS = [
   'docs/private',
   'artifacts',
 ];
+const EXCLUDED_FILE = ['.jutell.json', '.beginner-bridge.json'];
+const AGENTS_ALLOWED_PREFIX = ['.agents/skills/beginner-bridge/'];
 const EXCLUDED_SUFFIX = [
   '.env',
   '.pem',
@@ -101,8 +107,10 @@ function fail(message) {
 function isExcluded(rel) {
   const segments = rel.split('/');
   if (segments.some((seg) => EXCLUDED_SEGMENTS.includes(seg))) return true;
+  if (EXCLUDED_FILE.includes(rel)) return true;
   if (EXCLUDED_SUFFIX.some((suffix) => rel.endsWith(suffix))) return true;
   if (EXCLUDED_PATTERN.some((re) => re.test(rel))) return true;
+  if (/^\.agents\//.test(rel) && !AGENTS_ALLOWED_PREFIX.some((prefix) => rel.startsWith(prefix))) return true;
   return false;
 }
 
@@ -274,17 +282,27 @@ function makeFolderBundle(includes, manifestContent) {
 }
 
 function verifyBundleList(names) {
-  const forbidden = names.filter((entry) => {
+  const forbidden = [];
+  const fileRules = [
+    { re: /^\.jutell\.json$/i, label: '실제 .jutell.json' },
+    { re: /^\.beginner-bridge\.json$/i, label: '실제 .beginner-bridge.json' },
+    { re: /(^|\/)\.jutell-local\//i, label: '.jutell-local' },
+    { re: /(^|\/)\.beginner-bridge-local\//i, label: '.beginner-bridge-local' },
+    { re: /(^|\/)\.jutell-private\//i, label: '.jutell-private' },
+    { re: /(^|\/)private\//i, label: 'private' },
+    { re: /(^|\/)\.codex\//i, label: '.codex' },
+    { re: /\.private\.md$/i, label: '비공개 마크다운' },
+    { re: /\.internal\.md$/i, label: '내부 메모' },
+  ];
+  for (const entry of names) {
     const lower = entry.toLowerCase();
-    return (
-      /(^|\/)\.jutell-local\//.test(lower) ||
-      /(^|\/)\.beginner-bridge-local\//.test(lower) ||
-      /(^|\/)\.jutell-private\//.test(lower) ||
-      /(^|\/)private\//.test(lower) ||
-      /\.private\.md$/i.test(lower) ||
-      /\.internal\.md$/i.test(lower)
-    );
-  });
+    for (const rule of fileRules) {
+      if (rule.re.test(lower)) forbidden.push(`${rule.label}: ${entry}`);
+    }
+    if (/^\.agents\//i.test(entry) && !AGENTS_ALLOWED_PREFIX.some((prefix) => entry.startsWith(prefix))) {
+      forbidden.push(`허용되지 않은 .agents 경로: ${entry}`);
+    }
+  }
   if (forbidden.length > 0) {
     fail(`생성된 번들에 금지 경로가 포함되었습니다: ${forbidden.join(', ')}`);
   }
@@ -312,6 +330,11 @@ function main() {
   const manifest = [
     '# REVIEW_BUNDLE_MANIFEST',
     '',
+    '> **이 번들에 포함된 설정은 예시이며 실제 사용자 설정이 아닙니다.**',
+    '> `.agents/skills/`는 JuTell이 배포하는 공개 제품 자산입니다.',
+    '> 실제 사용자 설정과 로컬 설치 산출물은 제외됩니다.',
+    '> 포함 여부는 Git 추적 여부와 제품 배포 목록을 기준으로 결정합니다.',
+    '',
     `- 생성 시각: ${new Date().toISOString()}`,
     `- HEAD: ${headCommit} (${headLine})`,
     `- 작업 트리 상태: ${worktreeState}`,
@@ -322,10 +345,14 @@ function main() {
     '',
     '- git 추적 파일 중 아래를 제외한 모든 파일을 포함합니다.',
     '- 미추적(untracked) 파일과 로컬 데이터는 포함하지 않습니다.',
+    '- `.agents/skills/beginner-bridge/**`는 JuTell 공개 배포 자산이므로 포함합니다.',
+    '- 예시 설정(`examples/config/*.example.json`)만 포함하며, 실제 사용자 설정(`.jutell.json`, `.beginner-bridge.json`)은 포함하지 않습니다.',
     '',
     '## 제외 원칙',
     '',
+    '- 실제 사용자 설정: 루트 `.jutell.json`, `.beginner-bridge.json` (설정은 CLI 또는 Dashboard가 생성)',
     '- 로컬 데이터: `.jutell-local/`, `.beginner-bridge-local/`, `.jutell-private/`, `private/`, `docs/private/`',
+    '- 로컬 Agent 설정: `.codex/`, 허용 경로 밖의 `.agents/**`',
     '- 비밀정보: `.env*`, `.pem`, `.key`, `.token`, `*.local.json`, `*.backup.json`',
     '- 빌드·의존성: `node_modules/`, `dist/`, `build/`, `coverage/`, `assets/`',
     '- 산출물: `artifacts/`, `*.tgz`, `*.log`',

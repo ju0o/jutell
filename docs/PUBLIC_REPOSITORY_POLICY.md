@@ -32,6 +32,20 @@ JuTell은 공개 GitHub 저장소(ju0o/jutell)와 별도 비공개 저장소를 
 - Beta Journal·Style Lab 원본
 - 테스트 프로젝트와 빌드 산출물
 - `.jutell-local/`, `.beginner-bridge-local/` 데이터
+- 실제 사용자 설정 파일 — 루트 `.jutell.json`, `.beginner-bridge.json` (설정은 CLI 또는 Dashboard가 생성하며, 공개 저장소에는 예시만 포함)
+- 실제 Agent 설정과 사용자별 Skill 복사본 — `.codex/`, 허용 경로(`.agents/skills/beginner-bridge/**`) 밖의 `.agents/**`
+- 로컬 설치 산출물 — 설치 과정에서 생성되는 AGENTS.md, MCP 등록 파일
+
+## 예시 설정과 실제 설정의 구분
+
+| 항목 | 저장소에 포함되는 것 | 포함되지 않는 것 |
+|---|---|---|
+| JuTell 설정 | `examples/config/jutell.example.json` (예시) | 루트 `.jutell.json` (실제 사용자 설정) |
+| 하위 호환 설정 | `examples/config/beginner-bridge.example.json` (예시) | 루트 `.beginner-bridge.json` |
+| Agent 지침 | 루트 `AGENTS.md` (공개 제품 지침, Git 추적 기준) | 설치 과정에서 생성된 사용자별 AGENTS.md |
+| Skill | `.agents/skills/beginner-bridge/**` (공개 배포 자산) | 사용자별 Skill 복사본, 전역 Skill |
+
+판단 기준은 폴더 이름이 아니라 파일의 출처와 역할이다. 공개 저장소에서 Git 추적 중이며 제품 배포 목록에 포함되면 포함할 수 있고, 설치 과정에서 생성된 사용자별 파일이면 포함하지 않는다.
 
 ## 커밋 전 확인 절차
 
@@ -40,6 +54,14 @@ JuTell은 공개 GitHub 저장소(ju0o/jutell)와 별도 비공개 저장소를 
 3. `npm run check:public`을 실행해 탐지 결과가 없는지 확인한다.
 4. 판단이 필요한 파일은 커밋하지 않고 보고만 남긴다.
 5. 공개와 비공개가 섞인 문서는 공개 요약본과 비공개 상세본으로 나눈다.
+
+## Review Bundle 검사 규칙
+
+`check:public`은 `artifacts/`의 ZIP 번들도 검사한다.
+
+- **FAIL**: 번들 안에 실제 사용자 설정(`.jutell.json`, `.beginner-bridge.json`), `.jutell-local/`, `.codex/`, 허용 경로 밖의 `.agents/**`, 비공개 문서가 있으면 위반
+- **PASS**: 예시 설정(`examples/config/jutell.example.json` 등)과 `.agents/skills/beginner-bridge/**`는 통과
+- 번들은 `npm run bundle:review`로 생성하며, 생성 전에 공개 안전 검사를 먼저 실행한다.
 
 ## 공개 안전 검사 예외(allowlist)
 
