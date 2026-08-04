@@ -84,6 +84,15 @@
 | [MCP_INTEGRATION.md](MCP_INTEGRATION.md) | 선택형 로컬 MCP를 어떻게 연결하고 확인하나요? |
 | [MCP_SECURITY.md](MCP_SECURITY.md) | MCP가 어떤 정보를 읽고 보호하나요? |
 | [PROVIDER_OPENCODE.md](PROVIDER_OPENCODE.md) | OpenCode Provider(베타)는 어떻게 설정하나요? |
+| [MIGRATION_INTERNAL_IDS.md](MIGRATION_INTERNAL_IDS.md) | 내부 ID(`beginner_bridge` 등)는 언제 어떻게 바꾸나요? |
+
+## 운영자 전용 (일반 사용자는 읽지 않아도 됩니다)
+
+| 문서 | 이 문서가 답하는 질문 |
+|---|---|
+| [operator/OPERATOR_START_HERE.md](operator/OPERATOR_START_HERE.md) | 운영자가 오늘 무엇을 해야 하나요? |
+| [operator/COLLABORATION_BETA_SESSION_GUIDE.md](operator/COLLABORATION_BETA_SESSION_GUIDE.md) | 하루 협업 흐름을 어떻게 기록하나요? |
+| [operator/COLLABORATION_BETA_SESSION_FORM.md](operator/COLLABORATION_BETA_SESSION_FORM.md) | 세션 기록은 어떤 형식인가요? |
 
 ## Distribution CLI
 

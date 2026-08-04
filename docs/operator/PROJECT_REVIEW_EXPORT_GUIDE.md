@@ -32,7 +32,7 @@ ZIP 생성을 지원하지 않는 환경에서는 같은 이름의 폴더 번들
 
 | 구분 | 내용 |
 |---|---|
-| 실제 사용자 설정 | 루트 `.jutell.json`, `.beginner-bridge.json` — 설정은 CLI 또는 Dashboard가 생성하며, 저장소에는 예시만 존재 |
+| 실제 사용자 설정 | 루트 `.jutell.json`, `.beginner-bridge.json`, `opencode.json` — 설정은 CLI 또는 Dashboard가 생성하며, 저장소에는 예시만 존재 (`examples/config/*.example.json`) |
 | 로컬 데이터 | `.jutell-local/`, `.beginner-bridge-local/`, `.jutell-private/`, `private/`, `docs/private/` |
 | 로컬 Agent 설정 | `.codex/`, 허용 경로(`.agents/skills/beginner-bridge/**`) 밖의 `.agents/**` (설치·사용자별 복사본) |
 | 비밀정보 | `.env*`, `.pem`, `.key`, `.token`, `*.local.json`, `*.backup.json` |
@@ -65,3 +65,21 @@ ZIP 생성을 지원하지 않는 환경에서는 같은 이름의 폴더 번들
 - 받은 검토 의견은 [피드백 폼](OPERATOR_FEEDBACK_FORM.md)에 기록합니다.
 - 문제 유형이 JuTell 문제인지 Agent 문제인지 구분해 남깁니다 ([Dogfooding 가이드](JUTELL_DOGFOODING_GUIDE.md)).
 - 검토 의견 반영 후에는 저장소 상태를 다시 확인하고, 필요하면 번들을 새로 만듭니다.
+
+## 7. 협업 세션 피드백 포함 (V1)
+
+실제 로컬 세션 원본(`.jutell-local/collaboration-sessions/`)은 Review Bundle에 **자동으로 포함하지 않습니다**. V1에서는 다음 흐름으로 운영자가 직접 고른 안전한 요약본만 전달합니다.
+
+```
+실제 로컬 세션 기록
+→ 운영자가 하루 종료 요약 확인
+→ 민감정보 제거
+→ 선택적 검토 요약 생성
+→ Review Bundle과 함께 별도 파일로 전달
+```
+
+1. 세션 원본에서 외부 검토에 필요한 내용만 골라 `artifacts/session-feedback/COLLABORATION_SESSION_SUMMARY.md`로 복사합니다.
+2. 요약본에서 다음이 없는지 확인합니다: Prompt·답변 원문, 코드·Diff 원문, 파일 경로, API Key·Token·Cookie, 실제 사용자 정보, Private 전략.
+3. Review Bundle ZIP과 요약 파일을 함께 업로드합니다.
+
+자동으로 로컬 기록을 Bundle에 복사하지 않습니다. 번들 생성 방법은 [협업 세션 가이드](COLLABORATION_BETA_SESSION_GUIDE.md) 5번도 함께 읽습니다.

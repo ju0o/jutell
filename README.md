@@ -115,7 +115,7 @@ JuTell은 프로젝트 코드, Prompt, AI 답변 원문, 파일 내용, 파일 �
 - [Telemetry 정책](docs/TELEMETRY_POLICY.md)
 - [공개 저장소 정책](docs/PUBLIC_REPOSITORY_POLICY.md)
 - [비공개 문서 지도](docs/PRIVATE_DOCUMENTS_MAP.md)
-- [운영자 문서](docs/operator/OPERATOR_START_HERE.md) — 운영자용 가이드 모음 (문서·피드백·로드맵·검토 번들)
+- [운영자 문서](docs/operator/OPERATOR_START_HERE.md) — 운영자용 가이드 모음 (문서·피드백·협업 세션·로드맵·검토 번들)
 
 ## Ju0와의 관계
 

@@ -12,9 +12,10 @@
 |---|---|---|
 | 1 | 작은 작업 하나를 JuTell로 실행 | [일일 체크리스트](OPERATOR_DAILY_CHECKLIST.md) 시작 |
 | 2 | 실행 결과를 기록 | Dashboard의 베타 기록 (아래 3번 참고) |
-| 3 | 기억나는 불편을 한 건 기록 | [피드백 폼](OPERATOR_FEEDBACK_FORM.md) 복사해서 작성 |
-| 4 | 이번 주 진행 상황을 로드맵과 대조 | [베타 로드맵](OPERATOR_BETA_ROADMAP.md) |
-| 5 | 문서 한 개를 검토 | [문서 검토 폼](OPERATOR_DOCUMENT_REVIEW_FORM.md) |
+| 3 | 하루 흐름 전체를 기록 | [협업 베타 세션](COLLABORATION_BETA_SESSION_GUIDE.md) — 하루 단위 전체 흐름 |
+| 4 | 기억나는 불편을 한 건 기록 | [피드백 폼](OPERATOR_FEEDBACK_FORM.md) 복사해서 작성 |
+| 5 | 이번 주 진행 상황을 로드맵과 대조 | [베타 로드맵](OPERATOR_BETA_ROADMAP.md) |
+| 6 | 문서 한 개를 검토 | [문서 검토 폼](OPERATOR_DOCUMENT_REVIEW_FORM.md) |
 
 ## 2. 공개와 Private의 차이
 
@@ -75,6 +76,7 @@ Agent(OpenCode·Codex)가 만든 결과는 그대로 받아들이지 않고 다�
 
 ## 8. 다음 문서
 
+- [협업 베타 세션 가이드](COLLABORATION_BETA_SESSION_GUIDE.md) — 하루 흐름 전체 기록하기
 - [운영자 파일 가이드](OPERATOR_FILE_GUIDE.md) — 무엇을 어디서 고치는가
 - [일일 체크리스트](OPERATOR_DAILY_CHECKLIST.md) — 오늘 해야 할 일
 - [베타 로드맵](OPERATOR_BETA_ROADMAP.md) — 지금 어느 단계인가

@@ -80,6 +80,8 @@ jutell
 - 시나리오나 평가 기준이 궁금하면 [TEST_SCENARIOS.md](TEST_SCENARIOS.md)를 봅니다.
 - 기록·개인정보·Telemetry가 궁금하면 [DOCUMENTATION_MAP.md](DOCUMENTATION_MAP.md)에서 해당 문서만 선택합니다.
 
+운영자가 하루 협업 흐름을 기록하는 방법은 [운영자 문서](operator/OPERATOR_START_HERE.md)에 있습니다.
+
 ## 로컬 관리자 실행
 
 로컬 관리자 화면은 개인 베타 준비용으로 구현되어 있습니다.
