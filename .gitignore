@@ -16,6 +16,7 @@ coverage/
 # JuTell project-local user configuration (examples live in examples/config/)
 .jutell.json
 .beginner-bridge.json
+/opencode.json
 
 # Local private notes
 .jutell-private/

@@ -5,6 +5,7 @@
   "description": "JuTell by Ju0 — 로컬 저장소 스크립트와 공개 안전 검사",
   "scripts": {
     "check:public": "node scripts/check-public-repository.mjs",
-    "bundle:review": "node scripts/create-review-bundle.mjs"
+    "bundle:review": "node scripts/create-review-bundle.mjs",
+    "session:new": "node scripts/create-collaboration-session.mjs"
   }
 }

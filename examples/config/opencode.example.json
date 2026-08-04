@@ -1,0 +1,16 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    // BEGIN JUTELL MANAGED BLOCK
+    "beginner_bridge": {
+      "type": "local",
+      "command": [
+        "node",
+        "<JuTell MCP 서버 경로: assets/mcp-server/index.js>"
+      ],
+      "enabled": true,
+      "cwd": "."
+    }
+    // END JUTELL MANAGED BLOCK
+  }
+}

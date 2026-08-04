@@ -83,7 +83,7 @@ const EXCLUDED_SEGMENTS = [
   'docs/private',
   'artifacts',
 ];
-const EXCLUDED_FILE = ['.jutell.json', '.beginner-bridge.json'];
+const EXCLUDED_FILE = ['.jutell.json', '.beginner-bridge.json', 'opencode.json'];
 const AGENTS_ALLOWED_PREFIX = ['.agents/skills/beginner-bridge/'];
 const EXCLUDED_SUFFIX = [
   '.env',

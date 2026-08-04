@@ -74,6 +74,7 @@ for (const entry of ALLOWED_EXCEPTIONS) {
 const FORBIDDEN_PATH = [
   { re: /^\.jutell\.json$/i, label: '루트 .jutell.json 추적 (실제 사용자 설정)' },
   { re: /^\.beginner-bridge\.json$/i, label: '루트 .beginner-bridge.json 추적 (실제 사용자 설정)' },
+  { re: /^opencode\.json$/i, label: '루트 opencode.json 추적 (실제 사용자 설정, 예시는 examples/config/opencode.example.json)' },
   { re: /(^|\/)\.jutell-local\//i, label: '.jutell-local 추적' },
   { re: /(^|\/)\.beginner-bridge-local\//i, label: '.beginner-bridge-local 추적' },
   { re: /(^|\/)\.jutell-private\//i, label: '비공개 메모 디렉터리 추적' },
@@ -100,6 +101,7 @@ const AGENTS_ALLOWED_PREFIX = ['.agents/skills/beginner-bridge/'];
 const BUNDLE_FORBIDDEN_ENTRY = [
   { re: /^\.jutell\.json$/i, label: '번들 안 실제 .jutell.json' },
   { re: /^\.beginner-bridge\.json$/i, label: '번들 안 실제 .beginner-bridge.json' },
+  { re: /^opencode\.json$/i, label: '번들 안 실제 opencode.json' },
   { re: /(^|\/)\.jutell-local\//i, label: '번들 안 .jutell-local' },
   { re: /(^|\/)\.beginner-bridge-local\//i, label: '번들 안 .beginner-bridge-local' },
   { re: /(^|\/)\.jutell-private\//i, label: '번들 안 .jutell-private' },
