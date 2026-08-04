@@ -44,6 +44,9 @@ packages/jutell-*-test/
 .DS_Store
 Thumbs.db
 
+# Review bundle artifacts
+artifacts/
+
 # Distribution CLI build artifacts
 packages/cli/assets/
 packages/cli/*.tgz
