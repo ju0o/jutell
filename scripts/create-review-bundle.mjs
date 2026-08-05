@@ -38,6 +38,8 @@ const PATTERNS = {
   token: new RegExp(P(['\\b(secret|token|password|cookie|api[_-]?key)\\b\\s*[=:]\\s*["\']([^"\']{10,})']), 'i'),
   skKey: new RegExp(P(['sk-', '[A-Za-z0-9]{16,}'])),
   winPath: new RegExp(P(['[A-Za-z]:\\\\[^\\s"\']{3,}'])),
+  privateName: new RegExp(P(['jutell', '-', 'private']), 'i'),
+  parentEscape: new RegExp(P(['path\\.(?:resolve|join|relative)\\([\\s\\S]{0,140}?', '["\'`]\\.\\.'])),
 };
 
 // 예외(allowlist): scripts/check-public-repository.mjs의 ALLOWED_EXCEPTIONS와 동일하게 유지한다.
@@ -57,6 +59,56 @@ const ALLOWED_EXCEPTIONS = [
     file: 'packages/cli/tests/cli.test.ts',
     kind: 'winPath',
     reason: 'URL 정규식 문자열(p:/\\/\\/ 형태)이 winPath 패턴에 일치할 뿐 실제 절대 경로가 아님',
+  },
+  {
+    file: 'scripts/check-public-repository.mjs',
+    kind: 'privateName',
+    reason: '탐지 규칙 정의 문자열(금지·번들 경로 패턴) 자체가 포함됨. 공개 노출이 아니라 보호 목적',
+  },
+  {
+    file: 'scripts/create-review-bundle.mjs',
+    kind: 'privateName',
+    reason: '탐지 규칙 정의 문자열(제외 경로 패턴) 자체가 포함됨. 공개 노출이 아니라 보호 목적',
+  },
+  {
+    file: '.gitignore',
+    kind: 'privateName',
+    reason: '추적 제외 실수 방지 패턴. .gitignore에 명시해야 Git이 비공개 폴더를 제외함',
+  },
+  {
+    file: 'scripts/check-public-repository.mjs',
+    kind: 'parentEscape',
+    reason: '스크립트 자신의 저장소 루트 계산 (path.resolve(..., ..))',
+  },
+  {
+    file: 'scripts/create-review-bundle.mjs',
+    kind: 'parentEscape',
+    reason: '스크립트 자신의 저장소 루트 계산 (path.resolve(..., ..))',
+  },
+  {
+    file: 'packages/cli/scripts/build-assets.mjs',
+    kind: 'parentEscape',
+    reason: '패키지의 저장소 루트 계산 (path.resolve(packageRoot, ../..))',
+  },
+  {
+    file: 'packages/cli/src/config/paths.ts',
+    kind: 'parentEscape',
+    reason: '패키지 루트 계산 (path.resolve(path.dirname(...), .., ..))',
+  },
+  {
+    file: 'packages/cli/tests/cli.test.ts',
+    kind: 'parentEscape',
+    reason: '패키지 루트 계산 (테스트 내부 경로)',
+  },
+  {
+    file: 'packages/cli/tests/session.test.ts',
+    kind: 'parentEscape',
+    reason: '패키지 루트 계산 (테스트 내부 경로)',
+  },
+  {
+    file: 'apps/local-admin/server/index.ts',
+    kind: 'parentEscape',
+    reason: '앱 프로젝트 루트 계산 (path.resolve(appRoot, ../..))',
   },
 ];
 
@@ -137,6 +189,8 @@ function scanText(content) {
   if (PATTERNS.skKey.test(content)) findings.push('skKey');
   if (PATTERNS.apiKey.test(content)) findings.push('apiKey');
   if (PATTERNS.token.test(content)) findings.push('token');
+  if (PATTERNS.privateName.test(content)) findings.push('privateName');
+  if (PATTERNS.parentEscape.test(content)) findings.push('parentEscape');
   return findings;
 }
 
@@ -351,7 +405,7 @@ function main() {
     '## 제외 원칙',
     '',
     '- 실제 사용자 설정: 루트 `.jutell.json`, `.beginner-bridge.json` (설정은 CLI 또는 Dashboard가 생성)',
-    '- 로컬 데이터: `.jutell-local/`, `.beginner-bridge-local/`, `.jutell-private/`, `private/`, `docs/private/`',
+    '- 로컬 데이터: `.jutell-local/`, `.beginner-bridge-local/` 및 비공개 표시 폴더(`private/`, `docs/private/`, `*.private.md`, `*.internal.md`)',
     '- 로컬 Agent 설정: `.codex/`, 허용 경로 밖의 `.agents/**`',
     '- 비밀정보: `.env*`, `.pem`, `.key`, `.token`, `*.local.json`, `*.backup.json`',
     '- 빌드·의존성: `node_modules/`, `dist/`, `build/`, `coverage/`, `assets/`',

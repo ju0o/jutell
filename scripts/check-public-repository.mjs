@@ -22,6 +22,8 @@ const PATTERNS = {
   token: new RegExp(P(['\\b(secret|token|password|cookie|api[_-]?key)\\b\\s*[=:]\\s*["\']([^"\']{10,})']), 'i'),
   skKey: new RegExp(P(['sk-', '[A-Za-z0-9]{16,}'])),
   winPath: new RegExp(P(['[A-Za-z]:\\\\[^\\s"\']{3,}'])),
+  privateName: new RegExp(P(['jutell', '-', 'private']), 'i'),
+  parentEscape: new RegExp(P(['path\\.(?:resolve|join|relative)\\([\\s\\S]{0,140}?', '["\'`]\\.\\.'])),
 };
 
 const FOUNDATION_REQUIRED = [
@@ -57,6 +59,66 @@ const ALLOWED_EXCEPTIONS = [
     kind: 'winPath',
     reason: 'URL 정규식 문자열(p:/\\/\\/ 형태)이 winPath 패턴에 일치할 뿐 실제 절대 경로가 아님',
     scope: '해당 파일의 winPath 탐지에만 적용',
+  },
+  {
+    file: 'scripts/check-public-repository.mjs',
+    kind: 'privateName',
+    reason: '탐지 규칙 정의 문자열(금지·번들 경로 패턴) 자체가 포함됨. 공개 노출이 아니라 보호 목적',
+    scope: '해당 파일의 privateName 탐지에만 적용',
+  },
+  {
+    file: 'scripts/create-review-bundle.mjs',
+    kind: 'privateName',
+    reason: '탐지 규칙 정의 문자열(제외 경로 패턴) 자체가 포함됨. 공개 노출이 아니라 보호 목적',
+    scope: '해당 파일의 privateName 탐지에만 적용',
+  },
+  {
+    file: '.gitignore',
+    kind: 'privateName',
+    reason: '추적 제외 실수 방지 패턴. .gitignore에 명시해야 Git이 비공개 폴더를 제외함',
+    scope: '해당 파일의 privateName 탐지에만 적용',
+  },
+  {
+    file: 'scripts/check-public-repository.mjs',
+    kind: 'parentEscape',
+    reason: '스크립트 자신의 저장소 루트 계산 (path.resolve(..., ..))',
+    scope: '해당 파일의 parentEscape 탐지에만 적용',
+  },
+  {
+    file: 'scripts/create-review-bundle.mjs',
+    kind: 'parentEscape',
+    reason: '스크립트 자신의 저장소 루트 계산 (path.resolve(..., ..))',
+    scope: '해당 파일의 parentEscape 탐지에만 적용',
+  },
+  {
+    file: 'packages/cli/scripts/build-assets.mjs',
+    kind: 'parentEscape',
+    reason: '패키지의 저장소 루트 계산 (path.resolve(packageRoot, ../..))',
+    scope: '해당 파일의 parentEscape 탐지에만 적용',
+  },
+  {
+    file: 'packages/cli/src/config/paths.ts',
+    kind: 'parentEscape',
+    reason: '패키지 루트 계산 (path.resolve(path.dirname(...), .., ..))',
+    scope: '해당 파일의 parentEscape 탐지에만 적용',
+  },
+  {
+    file: 'packages/cli/tests/cli.test.ts',
+    kind: 'parentEscape',
+    reason: '패키지 루트 계산 (테스트 내부 경로)',
+    scope: '해당 파일의 parentEscape 탐지에만 적용',
+  },
+  {
+    file: 'packages/cli/tests/session.test.ts',
+    kind: 'parentEscape',
+    reason: '패키지 루트 계산 (테스트 내부 경로)',
+    scope: '해당 파일의 parentEscape 탐지에만 적용',
+  },
+  {
+    file: 'apps/local-admin/server/index.ts',
+    kind: 'parentEscape',
+    reason: '앱 프로젝트 루트 계산 (path.resolve(appRoot, ../..))',
+    scope: '해당 파일의 parentEscape 탐지에만 적용',
   },
 ];
 
@@ -148,6 +210,8 @@ function scanText(file, content) {
   if (PATTERNS.skKey.test(content)) findings.push('skKey');
   if (PATTERNS.apiKey.test(content)) findings.push('apiKey');
   if (PATTERNS.token.test(content)) findings.push('token');
+  if (PATTERNS.privateName.test(content)) findings.push('privateName');
+  if (PATTERNS.parentEscape.test(content)) findings.push('parentEscape');
   return findings;
 }
 
