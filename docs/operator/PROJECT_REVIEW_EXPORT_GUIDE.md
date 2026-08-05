@@ -33,7 +33,7 @@ ZIP 생성을 지원하지 않는 환경에서는 같은 이름의 폴더 번들
 | 구분 | 내용 |
 |---|---|
 | 실제 사용자 설정 | 루트 `.jutell.json`, `.beginner-bridge.json`, `opencode.json` — 설정은 CLI 또는 Dashboard가 생성하며, 저장소에는 예시만 존재 (`examples/config/*.example.json`) |
-| 로컬 데이터 | `.jutell-local/`, `.beginner-bridge-local/`, `.jutell-private/`, `private/`, `docs/private/` |
+| 로컬 데이터 | `.jutell-local/`, `.beginner-bridge-local/` 및 비공개 표시 폴더(`private/`, `docs/private/`, `*.private.md`, `*.internal.md`) |
 | 로컬 Agent 설정 | `.codex/`, 허용 경로(`.agents/skills/beginner-bridge/**`) 밖의 `.agents/**` (설치·사용자별 복사본) |
 | 비밀정보 | `.env*`, `.pem`, `.key`, `.token`, `*.local.json`, `*.backup.json` |
 | 빌드·의존성 | `node_modules/`, `dist/`, `build/`, `coverage/`, `assets/` |

@@ -22,8 +22,8 @@
 | 14 | CLI | `packages/cli/` ⚙️ | 공개 | `jutell status`, `jutell on/off` | 설치·상태·진단·제거 명령. 공개 범위 확인 필요 |
 | 15 | MCP 서버 | `apps/mcp-server/` ⚙️ | 공개 | 읽기 전용 MCP 도구 | 인증·API Key·외부 전송·원문 저장 금지 |
 | 16 | 테스트 기준 | `docs/TEST_SCENARIOS.md` 📝 | 공개 | 시나리오 C1~ | 실제 실행 결과만 사실로 보고 |
-| 17 | 새 기능 아이디어 | `jutell-private/product/EXPERIMENT_BACKLOG.md` 🔒 | 비공개 | "텍스트 음성 읽기가 있으면?" | 공개 문서에 아이디어 원문 복사 금지 |
-| 18 | 내부 결정 기록 | `jutell-private/operations/INTERNAL_DECISIONS.md` 🔒 | 비공개 | "요청 만들기는 V1만 제공" | 공개 문서에는 일반 원칙만 |
+| 17 | 새 기능 아이디어 | 운영자 전용 비공개 작업 공간 🔒 | 비공개 | "텍스트 음성 읽기가 있으면?" | 공개 문서에 아이디어 원문 복사 금지 |
+| 18 | 내부 결정 기록 | 운영자 전용 비공개 작업 공간 🔒 | 비공개 | "요청 만들기는 V1만 제공" | 공개 문서에는 일반 원칙만 |
 | 19 | 사용량 원본 | `.jutell-local/usage-counters.json` 🔒 | 로컬 | — | Dashboard에서 조회·삭제. 직접 편집 금지 |
 
 ## 직접 수정하면 안 되는 것

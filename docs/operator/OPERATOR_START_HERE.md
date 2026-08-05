@@ -42,7 +42,7 @@ npm 호환 별칭(`npm run session:new` 등)도 그대로 동작합니다. 자�
 |---|---|---|---|
 | 공개 문서 | 이 저장소 `docs/` | 공개될 수 있음 | 철학, 구조, 사용법, 운영자 가이드 |
 | 로컬 기록 | 이 프로젝트 `.jutell-local/` | 아니요 (전송·공유 안 함) | 베타 기록, 설정 기록, 사용량 카운터 |
-| Private 메모 | 다른 저장소 `jutell-private/` | 아니요 (비공개 저장소) | 실험 백로그, 내부 결정 |
+| Private 메모 | 운영자 전용 비공개 작업 공간 | 아니요 (비공개) | 실험 백로그, 내부 결정 |
 
 **주의**: private 저장소의 실제 내용을 공개 문서에 옮겨 적지 않습니다. 공개 문서에는 일반 원칙만 남깁니다.
 
@@ -75,7 +75,7 @@ npm 호환 별칭(`npm run session:new` 등)도 그대로 동작합니다. 자�
 | Agent·역할별 구분 | Session 폴더 안의 Page 파일 (`jutell session page`) |
 | 하루 정리 (좋았던 점, 불편, 발견, Agent별 차이) | `SESSION_SUMMARY.md` (`jutell session finish`) |
 | 새 기능 아이디어 | Page `⭐ JuTell 개선 아이디어`에 모은 뒤 판단 |
-| 내부 결정 (왜 이렇게 하는가) | `jutell-private/operations/INTERNAL_DECISIONS.md` (일반 원칙만) |
+| 내부 결정 (왜 이렇게 하는가) | 운영자 전용 비공개 작업 공간 (일반 원칙만) |
 | 공개 철학·정책 | `docs/foundation/` |
 
 ## 6. AI Agent 결과 검토 순서
@@ -93,8 +93,8 @@ Agent(OpenCode·Codex 등)가 만든 결과는 그대로 받아들이지 않고 
 문제를 발견했다
   └─ 해당 Page의 `내 피드백`에 기록
       ├─ 반복 확인 후 말투·표현 문제 → Style 개선 후보로 모음
-      ├─ 새 기능 아이디어 → EXPERIMENT_BACKLOG (private, 원칙만)
-      ├─ 왜 이렇게 하지? 결정 질문 → INTERNAL_DECISIONS (private, 원칙만)
+      ├─ 새 기능 아이디어 → 비공개 작업 공간 기록 (원칙만)
+      ├─ 왜 이렇게 하지? 결정 질문 → 비공개 작업 공간 기록 (원칙만)
       └─ 정책·철학이 바뀐다 → docs/foundation/ (공개)
 ```
 
@@ -105,4 +105,5 @@ Agent(OpenCode·Codex 등)가 만든 결과는 그대로 받아들이지 않고 
 - [일일 체크리스트](OPERATOR_DAILY_CHECKLIST.md) — 오늘 해야 할 일
 - [베타 로드맵](OPERATOR_BETA_ROADMAP.md) — 지금 어느 단계인가
 - [검토 번들 만들기](PROJECT_REVIEW_EXPORT_GUIDE.md) — 외부 검토용 ZIP 만들기
+- [비공개 작업 공간 경계](../OPERATOR_PRIVATE_WORKSPACE_BOUNDARY.md) — 공개와 비공개 작업 공간의 경계
 - 이전 폼(피드백·협업·문서 검토·베타 피드백)은 [보관 폴더](../deprecated/README.md)에 있습니다 — 참고용
