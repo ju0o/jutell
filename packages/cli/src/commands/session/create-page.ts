@@ -2,15 +2,16 @@ import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import type { CliIo, CliOptions, ScopePaths } from '../../types.js';
 import {
-  sessionRoot, todayStamp, readSessionMeta, saveSessionMeta,
+  todayStamp, readSessionMeta, saveSessionMeta,
   pageFileName, pageTemplate, pageLabel,
 } from './storage.js';
+import { resolveSessionRoot } from './operator-storage.js';
 import { askText, arrowList } from './prompt.js';
 
 const AGENT_CHOICES = ['OpenCode', 'Codex', 'Claude Code', 'Cline'];
 
 export async function createPageCommand(paths: ScopePaths, options: CliOptions, io: CliIo) {
-  const root = sessionRoot(paths.dataRoot);
+  const { root } = await resolveSessionRoot(paths);
   const stamp = todayStamp();
   const dir = path.join(root, stamp);
   const meta = await readSessionMeta(dir);

@@ -32,7 +32,7 @@ JuTell은 공개 GitHub 저장소(ju0o/jutell)와 별도 비공개 저장소를 
 - Beta Journal·Style Lab 원본
 - 테스트 프로젝트와 빌드 산출물
 - `.jutell-local/`, `.beginner-bridge-local/` 데이터
-- 실제 사용자 설정 파일 — 루트 `.jutell.json`, `.beginner-bridge.json` (설정은 CLI 또는 Dashboard가 생성하며, 공개 저장소에는 예시만 포함)
+- 실제 사용자 설정 파일 — 루트 `.jutell.json`, `.beginner-bridge.json`, `.jutell-operator.local.json` (설정은 CLI 또는 Dashboard가 생성하며, 공개 저장소에는 예시만 포함)
 - 실제 Agent 설정과 사용자별 Skill 복사본 — `.codex/`, 허용 경로(`.agents/skills/beginner-bridge/**`) 밖의 `.agents/**`
 - 로컬 설치 산출물 — 설치 과정에서 생성되는 AGENTS.md, MCP 등록 파일
 

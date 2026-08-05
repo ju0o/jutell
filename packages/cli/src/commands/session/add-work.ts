@@ -2,13 +2,14 @@ import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import type { CliIo, CliOptions, ScopePaths } from '../../types.js';
 import {
-  sessionRoot, todayStamp, readSessionMeta, saveSessionMeta,
+  todayStamp, readSessionMeta, saveSessionMeta,
   nextWorkNumber, workTemplate, pageLabel, listPageFiles, pad2,
 } from './storage.js';
+import { resolveSessionRoot } from './operator-storage.js';
 import { arrowList } from './prompt.js';
 
 export async function addWorkCommand(paths: ScopePaths, options: CliOptions, io: CliIo) {
-  const root = sessionRoot(paths.dataRoot);
+  const { root } = await resolveSessionRoot(paths);
   const stamp = todayStamp();
   const dir = path.join(root, stamp);
   const meta = await readSessionMeta(dir);

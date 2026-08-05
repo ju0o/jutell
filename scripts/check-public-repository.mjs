@@ -135,6 +135,7 @@ for (const entry of ALLOWED_EXCEPTIONS) {
 
 const FORBIDDEN_PATH = [
   { re: /^\.jutell\.json$/i, label: '루트 .jutell.json 추적 (실제 사용자 설정)' },
+  { re: /^\.jutell-operator\.local\.json$/i, label: '루트 .jutell-operator.local.json 추적 (운영자 로컬 설정)' },
   { re: /^\.beginner-bridge\.json$/i, label: '루트 .beginner-bridge.json 추적 (실제 사용자 설정)' },
   { re: /^opencode\.json$/i, label: '루트 opencode.json 추적 (실제 사용자 설정, 예시는 examples/config/opencode.example.json)' },
   { re: /(^|\/)\.jutell-local\//i, label: '.jutell-local 추적' },
@@ -162,6 +163,7 @@ const AGENTS_ALLOWED_PREFIX = ['.agents/skills/beginner-bridge/'];
 // 예시 파일(examples/config/jutell.example.json 등)은 통과 대상이다.
 const BUNDLE_FORBIDDEN_ENTRY = [
   { re: /^\.jutell\.json$/i, label: '번들 안 실제 .jutell.json' },
+  { re: /^\.jutell-operator\.local\.json$/i, label: '번들 안 운영자 로컬 설정 .jutell-operator.local.json' },
   { re: /^\.beginner-bridge\.json$/i, label: '번들 안 실제 .beginner-bridge.json' },
   { re: /^opencode\.json$/i, label: '번들 안 실제 opencode.json' },
   { re: /(^|\/)\.jutell-local\//i, label: '번들 안 .jutell-local' },

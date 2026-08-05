@@ -7,7 +7,7 @@
 | # | 목적 | 수정 파일 또는 화면 | 공개 여부 | 작성 예시 | 주의사항 |
 |---|---|---|---|---|---|
 | 1 | 보고 방식 조절 (Profile·Feature·limits) | Dashboard 설정 화면 | 로컬 | `balanced` 사용, `detailed` 비교 | 화면에서 저장해야 `.jutell.json`이 검증을 거침. `.jutell.json` 직접 수정은 최후 수단 |
-| 2 | 하루 협업·베타 기록 작성 | 오늘 Session 폴더: `.jutell-local/collaboration-sessions/YYYY-MM-DD/` | 로컬 | `jutell session new` → `session page`(Page 파일) → `session work` → `session move` → `session finish` | 하루 Session은 하나. Page·작업은 명령으로 추가. 프롬프트·답변 원문은 직접 붙여 넣을 때만. 비밀정보·경로·오류 원문 금지 |
+| 2 | 하루 협업·베타 기록 작성 | 오늘 Session 폴더: `.jutell-local/collaboration-sessions/YYYY-MM-DD/` (운영자 지정 위치로 변경 가능) | 로컬 | `jutell session new` → `session page`(Page 파일) → `session work` → `session move` → `session finish` | 하루 Session은 하나. Page·작업은 명령으로 추가. 프롬프트·답변 원문은 직접 붙여 넣을 때만. 비밀정보·경로·오류 원문 금지 |
 | 3 | 사용량 실험 기록·조회 | Dashboard 사용량 화면 | 로컬 | 실험 목록, 평균 길이, 가장 OFF된 Feature | 실험은 로컬 카운터가 켜졌을 때만 쌓임 (기본 OFF) |
 | 4 | 말투·표현 기록 | Dashboard Style Lab 화면 | 로컬 | "요약이 너무 건조하다" | 스타일은 아직 선택형 적용 준비 단계. 원문 저장 안 함 |
 | 5 | 요청 템플릿 만들기 | Dashboard 요청 만들기 (Request Builder) | 로컬 | "이 파일의 변경 요약을 부탁해" | 템플릿은 사용자 → AI Agent 방향. V1만 현재 지원 |
@@ -25,6 +25,7 @@
 | 17 | 새 기능 아이디어 | 운영자 전용 비공개 작업 공간 🔒 | 비공개 | "텍스트 음성 읽기가 있으면?" | 공개 문서에 아이디어 원문 복사 금지 |
 | 18 | 내부 결정 기록 | 운영자 전용 비공개 작업 공간 🔒 | 비공개 | "요청 만들기는 V1만 제공" | 공개 문서에는 일반 원칙만 |
 | 19 | 사용량 원본 | `.jutell-local/usage-counters.json` 🔒 | 로컬 | — | Dashboard에서 조회·삭제. 직접 편집 금지 |
+| 20 | Session 저장 위치 설정 | `.jutell-operator.local.json` 🔒 | 비공개 (로컬 설정) | `jutell session storage set <절대 경로>` / `reset` | 실제 경로를 공개 문서·출력에 쓰지 않습니다. Session 저장 용도 외 사용 금지 |
 
 ## 직접 수정하면 안 되는 것
 

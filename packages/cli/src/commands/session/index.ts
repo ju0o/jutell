@@ -1,14 +1,16 @@
 import path from 'node:path';
 import type { CliIo, CliOptions, ScopePaths } from '../../types.js';
-import { sessionRoot, todayStamp, readSessionMeta, listLegacyFlatFiles, pageLabel } from './storage.js';
+import { todayStamp, readSessionMeta, listLegacyFlatFiles, pageLabel } from './storage.js';
+import { resolveSessionRoot } from './operator-storage.js';
 import { createSessionCommand } from './new-session.js';
 import { createPageCommand } from './create-page.js';
 import { addWorkCommand } from './add-work.js';
 import { movePageCommand } from './move-page.js';
 import { finishSessionCommand } from './finish-session.js';
+import { storageCommand } from './storage-command.js';
 
 export async function sessionStatusCommand(paths: ScopePaths, io: CliIo) {
-  const root = sessionRoot(paths.dataRoot);
+  const { root } = await resolveSessionRoot(paths);
   const stamp = todayStamp();
   const meta = await readSessionMeta(path.join(root, stamp));
   if (!meta) {
@@ -41,6 +43,7 @@ export async function sessionCommand(paths: ScopePaths, options: CliOptions, io:
   if (sub === 'work') return addWorkCommand(paths, options, io);
   if (sub === 'move') return movePageCommand(paths, options, io);
   if (sub === 'finish') return finishSessionCommand(paths, io);
+  if (sub === 'storage') return storageCommand(paths, options, io, extraArgs.slice(1));
   if (sub === '') return sessionStatusCommand(paths, io);
-  throw new Error(`알 수 없는 session 하위 명령입니다: ${sub}\n가능한 명령: new, page, work, move, finish`);
+  throw new Error(`알 수 없는 session 하위 명령입니다: ${sub}\n가능한 명령: new, page, work, move, finish, storage`);
 }

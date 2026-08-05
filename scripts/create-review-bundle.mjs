@@ -135,7 +135,7 @@ const EXCLUDED_SEGMENTS = [
   'docs/private',
   'artifacts',
 ];
-const EXCLUDED_FILE = ['.jutell.json', '.beginner-bridge.json', 'opencode.json'];
+const EXCLUDED_FILE = ['.jutell.json', '.beginner-bridge.json', 'opencode.json', '.jutell-operator.local.json'];
 const AGENTS_ALLOWED_PREFIX = ['.agents/skills/beginner-bridge/'];
 const EXCLUDED_SUFFIX = [
   '.env',
@@ -404,7 +404,7 @@ function main() {
     '',
     '## 제외 원칙',
     '',
-    '- 실제 사용자 설정: 루트 `.jutell.json`, `.beginner-bridge.json` (설정은 CLI 또는 Dashboard가 생성)',
+    '- 실제 사용자 설정: 루트 `.jutell.json`, `.beginner-bridge.json`, `.jutell-operator.local.json` (설정은 CLI 또는 Dashboard가 생성)',
     '- 로컬 데이터: `.jutell-local/`, `.beginner-bridge-local/` 및 비공개 표시 폴더(`private/`, `docs/private/`, `*.private.md`, `*.internal.md`)',
     '- 로컬 Agent 설정: `.codex/`, 허용 경로 밖의 `.agents/**`',
     '- 비밀정보: `.env*`, `.pem`, `.key`, `.token`, `*.local.json`, `*.backup.json`',

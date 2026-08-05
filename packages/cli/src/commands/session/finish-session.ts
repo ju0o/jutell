@@ -1,10 +1,11 @@
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import type { CliIo, ScopePaths } from '../../types.js';
-import { sessionRoot, todayStamp, readSessionMeta, saveSessionMeta, summaryTemplate, SESSION_SUMMARY_FILE } from './storage.js';
+import { todayStamp, readSessionMeta, saveSessionMeta, summaryTemplate, SESSION_SUMMARY_FILE } from './storage.js';
+import { resolveSessionRoot } from './operator-storage.js';
 
 export async function finishSessionCommand(paths: ScopePaths, io: CliIo) {
-  const root = sessionRoot(paths.dataRoot);
+  const { root } = await resolveSessionRoot(paths);
   const stamp = todayStamp();
   const dir = path.join(root, stamp);
   const meta = await readSessionMeta(dir);

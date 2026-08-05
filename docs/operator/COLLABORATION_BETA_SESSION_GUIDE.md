@@ -2,7 +2,7 @@
 
 운영자는 하루에 **Session 폴더 하나**를 사용합니다. 그 안에 **Agent·역할별 Page 파일**을 만들고, 각 Page 파일에 **작업(Work)**을 계속 추가합니다. 같은 날 여러 AI Agent(OpenCode, Codex, Claude Code 등)를 동시에 써도 각 Agent의 기록이 Page 파일로 나뉘어 섞이지 않습니다.
 
-모든 기록은 이 컴퓨터의 로컬 전용 경로(`.jutell-local/`)에 남고, 외부로 전송되지 않습니다.
+모든 기록은 이 컴퓨터의 로컬에 남고, 외부로 전송되지 않습니다. 기본 저장 위치는 로컬 전용 경로(`.jutell-local/`)이며, 운영자는 [12절](#12-운영자-session-저장-위치-지정-선택)처럼 별도 설정으로 다른 로컬 폴더에 저장할 수 있습니다.
 
 ---
 
@@ -56,6 +56,9 @@ Agent별 Page 만들기 → jutell session page
 | `jutell session work` | 현재 Page에 다음 번호 작업 추가 (Page마다 번호 독립) |
 | `jutell session move` | 작업할 Page 이동 (방향키·번호 선택 또는 `--page <번호>`) |
 | `jutell session finish` | `SESSION_SUMMARY.md` 한 번만 생성, 상태를 마감됨으로 변경 |
+| `jutell session storage` | Session 저장 위치 상태 확인 (기본/운영자 지정, 사용 가능 여부) |
+| `jutell session storage set <절대 경로>` | 저장 위치를 운영자 지정으로 변경 (확인 후 저장) |
+| `jutell session storage reset` | 운영자 지정 설정만 제거, Session 기록은 유지 |
 
 npm 호환 별칭도 그대로 동작합니다: `npm run session:new`, `npm run session:page`, `npm run session:work`(`session:add`), `npm run session:move`, `npm run session:finish`, `npm run session:status`.
 
@@ -234,3 +237,57 @@ Session 기록(Page 파일·총평)에는 다음 내용을 넣지 않습니다.
 - 예전 단일 파일 기록(`YYYY-MM-DD-session-NN.md`)은 폴더 방식으로 전환하면서 **변환·이동·삭제하지 않고** 그대로 둡니다. 참고용으로만 남겨 둡니다.
 - 이전에 쓰던 여러 폼(협업 세션 폼, 피드백 폼, 문서 검토 폼, 베타 피드백 양식)은 삭제하지 않고 `docs/deprecated/`로 옮겨 참고용으로만 보관합니다.
 - 이전 폼이 필요할 때는 [보관 폴더](../deprecated/README.md)를 봅니다.
+
+## 12. 운영자 Session 저장 위치 지정 (선택)
+
+기본적으로 Session 기록은 다음 위치에 저장됩니다.
+
+```text
+<현재 프로젝트>/.jutell-local/collaboration-sessions/
+```
+
+운영자가 이 기록(GPT Prompt, Agent 답변, 운영 피드백이 담긴 Session)을 공개 저장소 작업 폴더 밖의 **별도 비공개 작업 공간**에 보관하고 싶다면, 로컬 설정 파일로 저장 위치를 바꿀 수 있습니다.
+
+### 설정 파일 (직접 작성 방식)
+
+공개 Git에 포함되지 않는 로컬 설정 파일 `.jutell-operator.local.json`을 프로젝트 루트에 둡니다.
+
+```json
+{
+  "sessionStoragePath": "<운영자가 선택한 로컬 절대 경로>"
+}
+```
+
+- 위 예시는 형태만 보여줍니다. **실제 운영자 경로를 문서·출력에 적지 않습니다.**
+- JSON이 손상되었거나, 경로가 아니라면 기본 저장 위치로 조용히 바꾸지 않고 다음처럼 알려줍니다.
+
+```text
+운영자 Session 저장 위치를 사용할 수 없습니다.
+설정을 확인하거나 제거하면 기본 로컬 저장 위치를 사용할 수 있습니다.
+```
+
+### CLI 명령 방식
+
+```powershell
+jutell session storage                 # 저장 위치 상태 확인 (경로는 출력하지 않음)
+jutell session storage set <절대 경로>  # 운영자 지정으로 변경 (확인 후 저장)
+jutell session storage reset           # 운영자 지정 설정만 제거
+```
+
+- `set`은 폴더가 없으면 만들고, 접근할 수 없으면 오류를 안내합니다. `--yes`로 확인을 건너뜁니다.
+- 절대 경로 전체를 출력하지 않습니다. 오류 안내에도 경로를 넣지 않습니다.
+
+### 저장 위치 우선순위
+
+1. `.jutell-operator.local.json`의 `sessionStoragePath`가 사용 가능하면 그 경로
+2. 설정이 없으면 `<현재 프로젝트>/.jutell-local/collaboration-sessions/`
+
+설정 파일은 있지만 경로가 잘못된 경우에는 기본 위치로 대체하지 않고 중단합니다.
+
+### 안전 규칙
+
+- 이 설정 파일은 **Session 저장 위치 용도 외에는 사용하지 않습니다.**
+- `.gitignore`에 포함되며 공개 저장소에 올리지 않습니다. 추적되면 `check:public`이 위반으로 알립니다.
+- Review Bundle에서 제외됩니다.
+- Session 기록을 외부로 전송하지 않으며, 비공개 Git 자동 commit·push를 하지 않습니다.
+- 기록 파일은 항상 운영자가 직접 관리합니다.

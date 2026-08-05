@@ -17,6 +17,7 @@ coverage/
 .jutell.json
 .beginner-bridge.json
 /opencode.json
+.jutell-operator.local.json
 
 # Local private notes
 .jutell-private/
