@@ -65,6 +65,26 @@ export function parseOptions(args: string[]): { command: string; options: CliOpt
       if (!value) throw new Error('--profile 뒤에 Profile 이름이 필요합니다.');
       options.profile = value as Profile;
       index += 1;
+    } else if (arg === '--page') {
+      const value = args[index + 1];
+      if (!value || !/^\d+$/.test(value)) throw new Error('--page 뒤에 Page 번호가 필요합니다.');
+      options.page = Number(value);
+      index += 1;
+    } else if (arg === '--agent') {
+      const value = args[index + 1];
+      if (!value) throw new Error('--agent 뒤에 Agent 이름이 필요합니다.');
+      options.agent = value;
+      index += 1;
+    } else if (arg === '--role') {
+      const value = args[index + 1];
+      if (!value) throw new Error('--role 뒤에 역할이 필요합니다.');
+      options.role = value;
+      index += 1;
+    } else if (arg === '--title') {
+      const value = args[index + 1];
+      if (!value) throw new Error('--title 뒤에 Page 제목이 필요합니다.');
+      options.title = value;
+      index += 1;
     } else if (arg === '--help' || arg === '-h') command = 'help';
     else if (arg.startsWith('-')) throw new Error(`알 수 없는 옵션입니다: ${arg}`);
     else extraArgs.push(arg);
@@ -109,6 +129,15 @@ JuTell은 Skill·MCP·지침·설정을 연결합니다.
   jutell connect        연결만 추가합니다.
   jutell disconnect     해당 연결만 끕니다.
   jutell switch         기본 Agent를 전환합니다.
+
+하루 작업 기록 (Session = 하루, Page = Agent·역할별 파일, Work = Page 안 작업)
+
+  jutell session           오늘 Session 상태를 봅니다.
+  jutell session new       오늘 Session 폴더를 만듭니다.
+  jutell session page      Agent·역할별 Page 파일을 만듭니다.
+  jutell session work      현재 Page에 다음 번호 작업을 추가합니다.
+  jutell session move      작업할 Page를 이동합니다.
+  jutell session finish    SESSION_SUMMARY.md로 하루를 마감합니다.
 
 이전 별칭: beginner-bridge
 

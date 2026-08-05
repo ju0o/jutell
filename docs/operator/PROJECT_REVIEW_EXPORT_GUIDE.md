@@ -62,7 +62,7 @@ ZIP 생성을 지원하지 않는 환경에서는 같은 이름의 폴더 번들
 
 ## 6. 검토 후
 
-- 받은 검토 의견은 [피드백 폼](OPERATOR_FEEDBACK_FORM.md)에 기록합니다.
+- 받은 검토 의견은 오늘 Session의 해당 Page `### 내 피드백`에 기록합니다. (이전 피드백 폼은 [보관 폴더](../deprecated/)에 있습니다.)
 - 문제 유형이 JuTell 문제인지 Agent 문제인지 구분해 남깁니다 ([Dogfooding 가이드](JUTELL_DOGFOODING_GUIDE.md)).
 - 검토 의견 반영 후에는 저장소 상태를 다시 확인하고, 필요하면 번들을 새로 만듭니다.
 
@@ -72,7 +72,7 @@ ZIP 생성을 지원하지 않는 환경에서는 같은 이름의 폴더 번들
 
 ```
 실제 로컬 세션 기록
-→ 운영자가 하루 종료 요약 확인
+→ 운영자가 오늘 총평 확인
 → 민감정보 제거
 → 선택적 검토 요약 생성
 → Review Bundle과 함께 별도 파일로 전달
@@ -82,4 +82,4 @@ ZIP 생성을 지원하지 않는 환경에서는 같은 이름의 폴더 번들
 2. 요약본에서 다음이 없는지 확인합니다: Prompt·답변 원문, 코드·Diff 원문, 파일 경로, API Key·Token·Cookie, 실제 사용자 정보, Private 전략.
 3. Review Bundle ZIP과 요약 파일을 함께 업로드합니다.
 
-자동으로 로컬 기록을 Bundle에 복사하지 않습니다. 번들 생성 방법은 [협업 세션 가이드](COLLABORATION_BETA_SESSION_GUIDE.md) 5번도 함께 읽습니다.
+자동으로 로컬 기록을 Bundle에 복사하지 않습니다. 번들 생성 방법은 [Session 가이드](COLLABORATION_BETA_SESSION_GUIDE.md) 10번도 함께 읽습니다.

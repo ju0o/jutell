@@ -6,16 +6,35 @@
 
 ## 1. 오늘 할 일 고르기
 
-아래에서 1~3개만 골라 진행합니다. 한 번에 많은 일을 벌이지 않습니다.
+아래에서 1~3개만 골라 진행합니다. 한 번에 많은 일을 벌이지 않습니다. 모든 기록은 **오늘 Session 폴더** 안에 **Agent·역할별 Page 파일**로 나누어 남깁니다.
 
 | 순위 | 할 일 | 방법 |
 |---|---|---|
-| 1 | 작은 작업 하나를 JuTell로 실행 | [일일 체크리스트](OPERATOR_DAILY_CHECKLIST.md) 시작 |
-| 2 | 실행 결과를 기록 | Dashboard의 베타 기록 (아래 3번 참고) |
-| 3 | 하루 흐름 전체를 기록 | [협업 베타 세션](COLLABORATION_BETA_SESSION_GUIDE.md) — 하루 단위 전체 흐름 |
-| 4 | 기억나는 불편을 한 건 기록 | [피드백 폼](OPERATOR_FEEDBACK_FORM.md) 복사해서 작성 |
-| 5 | 이번 주 진행 상황을 로드맵과 대조 | [베타 로드맵](OPERATOR_BETA_ROADMAP.md) |
-| 6 | 문서 한 개를 검토 | [문서 검토 폼](OPERATOR_DOCUMENT_REVIEW_FORM.md) |
+| 1 | 오늘 Session 만들기 | `jutell session new` — 오늘 폴더 생성 |
+| 2 | Agent·역할별 Page 만들기 | `jutell session page` — Page 파일에 작업 01 자동 생성 |
+| 3 | 작은 작업 하나를 JuTell로 실행 | [일일 체크리스트](OPERATOR_DAILY_CHECKLIST.md) 시작 |
+| 4 | 현재 Page에 작업 기록 | `jutell session work` — Page마다 번호 독립 |
+| 5 | 작업할 Page 바꾸기 | `jutell session move` |
+| 6 | 기억나는 불편을 한 건 기록 | 해당 Page의 `### 내 피드백`에 적기 |
+| 7 | 하루 마감 | `jutell session finish` — `SESSION_SUMMARY.md` 작성 |
+| 8 | 이번 주 진행 상황을 로드맵과 대조 | [베타 로드맵](OPERATOR_BETA_ROADMAP.md) |
+
+사용 흐름:
+
+```text
+Session = 하루          Page = 별도 Agent·역할 작업 파일    Work = Page 파일 안의 개별 작업
+```
+
+```text
+하루 시작          → jutell session new
+Agent별 Page 만들기 → jutell session page
+현재 Page에 작업 추가 → jutell session work
+작업할 Page 이동    → jutell session move
+하루 마감          → jutell session finish
+상태 확인          → jutell session
+```
+
+npm 호환 별칭(`npm run session:new` 등)도 그대로 동작합니다. 자세한 사용법은 [Session 가이드](COLLABORATION_BETA_SESSION_GUIDE.md)를 봅니다.
 
 ## 2. 공개와 Private의 차이
 
@@ -31,6 +50,7 @@
 
 - 설정: 이 프로젝트 루트의 `.jutell.json`
 - 로컬 데이터: 이 프로젝트 루트의 `.jutell-local/`
+  - 협업 Session 폴더 (`collaboration-sessions/YYYY-MM-DD/`) — 하루 하나, Page 파일로 나누어 작성
   - 베타 기록 (사용자가 직접 작성)
   - 설정 기록 (변경 내역)
   - 사용량 카운터 (선택형, 기본 꺼짐)
@@ -39,47 +59,50 @@
 ## 4. 베타 시작 순서
 
 1. 일일 체크리스트로 오늘 상태를 확인합니다.
-2. 작은 작업부터 `balanced` Profile로 실행합니다.
-3. 결과를 베타 기록에 남깁니다.
-4. 피드백 폼으로 한 건 이상 기록합니다.
-5. 로드맵의 현재 단계를 확인하고 진행합니다.
+2. `jutell session new`로 오늘 Session 폴더를 만듭니다.
+3. `jutell session page`로 Agent·역할별 Page 파일을 만들고 작업 01을 시작합니다.
+4. 작은 작업부터 `balanced` Profile로 실행합니다.
+5. 결과와 피드백을 해당 Page에 `jutell session work`로 이어서 기록합니다.
+6. 여러 Agent를 쓰면 `jutell session move`로 Page를 바꿔가며 기록합니다.
+7. 하루가 끝나면 `jutell session finish`로 `SESSION_SUMMARY.md`를 남깁니다.
+8. 로드맵의 현재 단계를 확인하고 진행합니다.
 
 ## 5. 작업 후 기록 위치
 
 | 무엇을 기록하나 | 어디에 |
 |---|---|
-| 제품 기능 문제 (동작이 이상함, 설명이 어려움) | Dashboard 베타 기록 |
-| 말투·표현 느낌 | Style Lab |
-| 새 기능 아이디어 | `jutell-private/product/EXPERIMENT_BACKLOG.md` (일반 원칙만) |
+| 작업 하나의 프롬프트·답변·내 피드백 | 해당 Page 파일 (`## 작업 N` 블록, `jutell session work`) |
+| Agent·역할별 구분 | Session 폴더 안의 Page 파일 (`jutell session page`) |
+| 하루 정리 (좋았던 점, 불편, 발견, Agent별 차이) | `SESSION_SUMMARY.md` (`jutell session finish`) |
+| 새 기능 아이디어 | Page `⭐ JuTell 개선 아이디어`에 모은 뒤 판단 |
 | 내부 결정 (왜 이렇게 하는가) | `jutell-private/operations/INTERNAL_DECISIONS.md` (일반 원칙만) |
 | 공개 철학·정책 | `docs/foundation/` |
 
 ## 6. AI Agent 결과 검토 순서
 
-Agent(OpenCode·Codex)가 만든 결과는 그대로 받아들이지 않고 다음 순서로 확인합니다.
+Agent(OpenCode·Codex 등)가 만든 결과는 그대로 받아들이지 않고 다음 순서로 확인합니다.
 
 1. **실제 확인과 예상을 구분**합니다. "~했을 것"은 예상, "~라고 확인했다"는 확인.
 2. 보고서의 위험 안내를 봅니다. 핵심 실패·미확인 사항·비밀정보 위험은 숨길 수 없습니다.
 3. Diff 해석으로 어떤 파일이 바뀌었는지 봅니다.
-4. 이상하면 피드백 폼에 기록합니다. Agent 문제인지 JuTell 문제인지 구분해 적습니다 ([Dogfooding 가이드](JUTELL_DOGFOODING_GUIDE.md)).
+4. 이상하면 해당 Page의 `### 내 피드백`에 기록합니다. Agent 문제인지 JuTell 문제인지 구분해 적습니다 ([Dogfooding 가이드](JUTELL_DOGFOODING_GUIDE.md)).
 
 ## 7. 기록 구분 흐름
 
 ```
 문제를 발견했다
-  ├─ 동작·설명 문제 → Dashboard 베타 기록
-  ├─ 말투·표현 문제 → Style Lab
-  ├─ 새 기능 아이디어 → EXPERIMENT_BACKLOG (private, 원칙만)
-  ├─ 왜 이렇게 하지? 결정 질문 → INTERNAL_DECISIONS (private, 원칙만)
-  └─ 정책·철학이 바뀐다 → docs/foundation/ (공개)
+  └─ 해당 Page의 `내 피드백`에 기록
+      ├─ 반복 확인 후 말투·표현 문제 → Style 개선 후보로 모음
+      ├─ 새 기능 아이디어 → EXPERIMENT_BACKLOG (private, 원칙만)
+      ├─ 왜 이렇게 하지? 결정 질문 → INTERNAL_DECISIONS (private, 원칙만)
+      └─ 정책·철학이 바뀐다 → docs/foundation/ (공개)
 ```
 
 ## 8. 다음 문서
 
-- [협업 베타 세션 가이드](COLLABORATION_BETA_SESSION_GUIDE.md) — 하루 흐름 전체 기록하기
+- [Session 가이드](COLLABORATION_BETA_SESSION_GUIDE.md) — Session·Page·Work 구조와 명령 사용법
 - [운영자 파일 가이드](OPERATOR_FILE_GUIDE.md) — 무엇을 어디서 고치는가
 - [일일 체크리스트](OPERATOR_DAILY_CHECKLIST.md) — 오늘 해야 할 일
 - [베타 로드맵](OPERATOR_BETA_ROADMAP.md) — 지금 어느 단계인가
-- [피드백 폼](OPERATOR_FEEDBACK_FORM.md) — 기록용 복사 폼
-- [문서 검토 폼](OPERATOR_DOCUMENT_REVIEW_FORM.md) — 문서 상태 확인용
 - [검토 번들 만들기](PROJECT_REVIEW_EXPORT_GUIDE.md) — 외부 검토용 ZIP 만들기
+- 이전 폼(피드백·협업·문서 검토·베타 피드백)은 [보관 폴더](../deprecated/README.md)에 있습니다 — 참고용

@@ -43,7 +43,7 @@
 - 빠져서 중요했던 정보
 - 다음 버전에 필요한 개선
 
-기록은 [BETA_FEEDBACK_TEMPLATE.md](BETA_FEEDBACK_TEMPLATE.md)를 사용합니다. 실제 프로젝트 이름, 경로, Prompt, 코드, Git diff, 오류 원문, 비밀정보는 기록하지 않습니다.
+기록은 운영자용 Session 폴더(`.jutell-local/collaboration-sessions/YYYY-MM-DD/`)에 하루 단위로 Page 파일로 나누어 작성합니다. 사용 방법은 [Session 가이드](operator/COLLABORATION_BETA_SESSION_GUIDE.md)를 따릅니다. 실제 프로젝트 이름, 경로, Prompt, 코드, Git diff, 오류 원문, 비밀정보는 기록하지 않습니다.
 
 ## 성공 판단
 
@@ -55,7 +55,7 @@
 - 보고서 길이와 이해하기 어려운 표현이 줄었습니다.
 - 공개 베타를 준비할 때 필요한 설치·사용·개인정보 설명의 개선점이 정리됐습니다.
 
-개인 베타 기록은 [로컬 관리자 화면](LOCAL_ADMIN_REQUIREMENTS.md)의 Beta Journal에 입력할 수 있습니다. 저장 전에는 프로젝트 이름·경로·Prompt·코드·비밀정보가 없는지 직접 확인합니다.
+개인 베타 기록은 Session 폴더(`.jutell-local/collaboration-sessions/YYYY-MM-DD/`)의 Page 파일에 남깁니다. 저장 전에는 프로젝트 이름·경로·Prompt·코드·비밀정보가 없는지 직접 확인합니다.
 
 MCP는 개인 베타에서 선택적으로 시험합니다. 먼저 Skill 방식으로 안전한 작은 작업을 확인한 뒤 MCP를 켜고 `get_bridge_status`와 `get_active_features`를 직접 호출합니다. 서버 실행만으로 연결 완료라고 판단하지 않으며, 실제 도구 호출 결과를 별도로 기록합니다. MCP 연결 실패 시에도 Skill 방식으로 베타를 계속할 수 있습니다.
 

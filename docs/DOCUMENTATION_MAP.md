@@ -80,7 +80,7 @@
 | [SKILL.md](../.agents/skills/beginner-bridge/SKILL.md) | 연결된 AI Agent가 보고서를 만들 때 어떤 실행 순서를 따르나요? |
 | [PERSONAL_BETA_PLAN.md](PERSONAL_BETA_PLAN.md) | 개인 베타에서 무엇을 사용하고 어떤 근거로 판단하나요? |
 | [LOCAL_ADMIN_REQUIREMENTS.md](LOCAL_ADMIN_REQUIREMENTS.md) | 로컬 관리자 V0.1이 무엇을 관리하고 무엇을 저장하지 않나요? |
-| [BETA_FEEDBACK_TEMPLATE.md](BETA_FEEDBACK_TEMPLATE.md) | 개인 베타 사용 중 불편을 어떻게 짧게 기록하나요? |
+| [deprecated/BETA_FEEDBACK_TEMPLATE.md](deprecated/BETA_FEEDBACK_TEMPLATE.md) | 이전 개인 베타 피드백 양식 (보관용) |
 | [MCP_INTEGRATION.md](MCP_INTEGRATION.md) | 선택형 로컬 MCP를 어떻게 연결하고 확인하나요? |
 | [MCP_SECURITY.md](MCP_SECURITY.md) | MCP가 어떤 정보를 읽고 보호하나요? |
 | [PROVIDER_OPENCODE.md](PROVIDER_OPENCODE.md) | OpenCode Provider(베타)는 어떻게 설정하나요? |
@@ -91,8 +91,8 @@
 | 문서 | 이 문서가 답하는 질문 |
 |---|---|
 | [operator/OPERATOR_START_HERE.md](operator/OPERATOR_START_HERE.md) | 운영자가 오늘 무엇을 해야 하나요? |
-| [operator/COLLABORATION_BETA_SESSION_GUIDE.md](operator/COLLABORATION_BETA_SESSION_GUIDE.md) | 하루 협업 흐름을 어떻게 기록하나요? |
-| [operator/COLLABORATION_BETA_SESSION_FORM.md](operator/COLLABORATION_BETA_SESSION_FORM.md) | 세션 기록은 어떤 형식인가요? |
+| [operator/COLLABORATION_BETA_SESSION_GUIDE.md](operator/COLLABORATION_BETA_SESSION_GUIDE.md) | 하루 기록을 Session(폴더)·Page(파일)·Work(작업 블록) 구조로 어떻게 이어서 쓰나요? (jutell session new / page / work / move / finish) |
+| [deprecated/README.md](deprecated/README.md) | 이전 폼들(협업 세션·피드백·문서 검토·베타 피드백)은 어디에 있나요? (참고용 보관) |
 
 ## Distribution CLI
 

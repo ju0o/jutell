@@ -1,5 +1,60 @@
 # JuTell by Ju0 — Decisions
 
+## 2026-08-06 — Session 구조를 날짜 폴더로 전환 (Page = 별도 파일, Work = 작업 블록)
+
+### 결정 내용
+
+* 협업 기록을 하루 하나의 파일(`YYYY-MM-DD-session-NN.md`)에서 **하루 하나의 폴더**(`.jutell-local/collaboration-sessions/YYYY-MM-DD/`)로 전환한다.
+* 정의: `Session = 하루(폴더)`, `Page = Agent·역할별 별도 Markdown 파일(page-NN-*.md)`, `Work = Page 파일 안의 개별 작업(## 작업 N 블록)`.
+* 폴더 안에는 `session.json`(날짜·상태·현재 Page·Page 목록), Page 파일들, `SESSION_SUMMARY.md`를 둔다. Page 파일 하나에 다른 Agent의 기록이 섞이지 않는다.
+* 명령을 `jutell session` 하위 명령으로 제공한다: `session`(상태), `new`, `page`, `work`, `move`, `finish`. npm 호환 별칭(`npm run session:new` 등)은 유지한다.
+* 기존 단일 파일 기록(`YYYY-MM-DD-session-NN.md`)은 자동 변환·이동·삭제하지 않고 그대로 둔다. 새 기록은 폴더 방식으로만 만든다.
+* Page 번호·작업 번호는 자동 계산하며 기존 내용을 덮어쓰지 않는다. `session.json`은 임시 파일 교체 방식으로 원자적으로 저장한다.
+
+### 변경 이유
+
+여러 Agent를 동시에 쓰는 다중 세션 환경에서 한 파일에 Page를 쌓는 방식은 파일이 길어지고 Agent별 Diff·비교 기록이 섞이는 문제가 생기기 때문이다. Page를 별도 파일로 분리하면 Agent·역할별 기록을 독립적으로 열고 비교할 수 있다.
+
+### 영향받은 파일
+
+* `packages/cli/src/commands/session/` (신규: new-session, create-page, add-work, move-page, finish-session, storage, prompt)
+* `packages/cli/src/cli.ts`, `packages/cli/src/output/format.ts`, `packages/cli/src/types.ts` (session 명령 배선, `--page`/`--agent`/`--role`/`--title` 옵션)
+* `packages/cli/tests/session.test.ts` (신규)
+* `package.json` (session:* 스크립트를 CLI 진입점으로 교체)
+* `scripts/session/` (이전 구현 삭제)
+* `docs/operator/COLLABORATION_BETA_SESSION_GUIDE.md`, `OPERATOR_START_HERE.md`, `OPERATOR_DAILY_CHECKLIST.md`, `OPERATOR_FILE_GUIDE.md`, `JUTELL_DOGFOODING_GUIDE.md`, `PROJECT_REVIEW_EXPORT_GUIDE.md`
+* `docs/DOCUMENTATION_MAP.md`, `docs/deprecated/README.md`, `docs/DECISIONS.md`
+
+### V0.1 범위 변경 여부
+
+없음. 기록 구조와 CLI 제공 방식만 변경하며, 중앙 서버·원격 Telemetry·새 Feature는 추가하지 않는다.
+
+## 2026-08-05 — Collaboration Session 구조 단순화 (하루 하나의 파일)
+
+### 결정 내용
+
+* 협업 기록을 여러 폼(피드백 폼, 협업 세션 폼, 문서 검토 폼, 베타 피드백 양식)을 오가는 구조에서, 하루에 **Session 파일 하나**(`.jutell-local/collaboration-sessions/YYYY-MM-DD-session-NN.md`)만 열어서 계속 이어 쓰는 구조로 단순화한다.
+* Session 파일은 `Date`, `Project`, `AI`, `Profile` Header만 필수로 가지며, 작업마다 `## 작업 N` 블록(ChatGPT → OpenCode → 내 피드백)을 복사해 이어 붙이고 파일 끝에 `# 오늘 총평`을 남긴다.
+* `npm run session:new`는 오늘 날짜·세션 번호·기본 Header만 담긴 빈 파일을 하나 생성한다. 작업 블록은 자동으로 만들지 않는다.
+* 기존 폼 문서는 삭제하지 않고 `docs/deprecated/`로 옮겨 향후 참고용으로만 보관한다.
+* 개인 베타 단계에서는 Session 파일 하나만 사용한다. 로컬 관리자 화면의 설정·기록 관리 기능은 그대로 유지한다.
+
+### 변경 이유
+
+협업 기록 구조가 문서·폼이 많아 비개발자인 운영자가 매일 어디에 무엇을 적을지 판단하기 어려웠기 때문이다. "하루에 md 파일 하나만 열어놓고 계속 이어 쓰는 것"으로 기록 부담을 줄인다.
+
+### 영향받은 파일
+
+* `scripts/create-collaboration-session.mjs`
+* `docs/operator/COLLABORATION_BETA_SESSION_GUIDE.md`
+* `docs/operator/OPERATOR_START_HERE.md`, `OPERATOR_DAILY_CHECKLIST.md`, `OPERATOR_FILE_GUIDE.md`, `JUTELL_DOGFOODING_GUIDE.md`, `PROJECT_REVIEW_EXPORT_GUIDE.md`, `OPERATOR_BETA_ROADMAP.md`
+* `docs/DOCUMENTATION_MAP.md`, `docs/PERSONAL_BETA_PLAN.md`, `docs/START_HERE.md`, `docs/DECISIONS.md`
+* `docs/deprecated/` (이전 폼 보관: `COLLABORATION_BETA_SESSION_FORM.md`, `OPERATOR_FEEDBACK_FORM.md`, `OPERATOR_DOCUMENT_REVIEW_FORM.md`, `BETA_FEEDBACK_TEMPLATE.md`)
+
+### V0.1 범위 변경 여부
+
+없음. 기록 구조와 문서 정리만 변경하며, 중앙 서버·원격 Telemetry·새 Feature는 추가하지 않는다.
+
 ## 2026-08-03 — AI Agent Provider 공통 표시
 
 * 사용자 화면과 일반 안내 문서는 특정 Agent 이름보다 `AI Agent Provider`를 기본 개념으로 사용한다.
