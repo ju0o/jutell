@@ -47,6 +47,7 @@ packages/jutell-*-test/
 # Local editor and operating-system files
 .vscode/
 .idea/
+.opencode/
 .DS_Store
 Thumbs.db
 
