@@ -9,7 +9,6 @@ import { onCommand, offCommand } from './commands/lifecycle.js';
 import { providerCommand } from './commands/provider.js';
 import { useCommand, connectCommand, disconnectCommand, switchCommand } from './commands/use.js';
 import { sessionCommand } from './commands/session/index.js';
-import { workspaceCommand } from './commands/workspace/index.js';
 import type { CliIo } from './types.js';
 
 function safeError(message: string, verbose: boolean) {
@@ -42,7 +41,6 @@ export async function run(argv: string[] = process.argv.slice(2), io: CliIo = cr
     else if (command === 'disconnect') await disconnectCommand(paths, options, io, [command, ...extraArgs]);
     else if (command === 'switch') await switchCommand(paths, options, io, [command, ...extraArgs]);
     else if (command === 'session') await sessionCommand(paths, options, io, extraArgs);
-    else if (command === 'workspace') return await workspaceCommand(options, io, extraArgs);
     else throw new Error(`알 수 없는 명령입니다: ${command}`);
     return 0;
   } catch (error) {

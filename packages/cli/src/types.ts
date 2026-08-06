@@ -21,7 +21,6 @@ export type CliOptions = {
   disableAll: boolean;
   keepData: boolean;
   removeData: boolean;
-  workspacePath?: string;
   page?: number;
   agent?: string;
   role?: string;

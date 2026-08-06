@@ -69,7 +69,7 @@ describe('OPERATOR SESSION STORAGE (운영자 저장 위치 설정)', () => {
 
   it('2. storage set으로 지정한 경로에만 저장되고 공개 프로젝트 안에 Session 원본이 생기지 않는다', async () => {
     const { root, project, env } = await fixture();
-    const custom = path.join(root, 'private-workspace');
+    const custom = path.join(root, 'private-sessions');
     const setResult = await runCli(['session', 'storage', 'set', custom, '--yes'], project, env);
     expect(setResult.code).toBe(0);
     expect(setResult.stdout).toContain('운영자 Session 저장 위치를 설정했습니다');
@@ -121,7 +121,7 @@ describe('OPERATOR SESSION STORAGE (운영자 저장 위치 설정)', () => {
 
   it('6. reset은 설정만 제거하고 Session 기록은 지우지 않으며 기본 위치로 돌아간다', async () => {
     const { root, project, env } = await fixture();
-    const custom = path.join(root, 'custom-workspace');
+    const custom = path.join(root, 'custom-sessions');
     await runCli(['session', 'storage', 'set', custom, '--yes'], project, env);
     await runCli(['session', 'new'], project, env);
     const keepFile = path.join(custom, todayStamp(), 'keep-me.md');

@@ -61,18 +61,6 @@ const ALLOWED_EXCEPTIONS = [
     scope: '해당 파일의 winPath 탐지에만 적용',
   },
   {
-    file: 'packages/cli/tests/workspace.test.ts',
-    kind: 'winPath',
-    reason: '절대 경로 거부 검증용 고정 fixture(드라이브 문자:\\Users\\someone\\public 형태). 실제 운영자 경로가 아닌 테스트용 가상 경로',
-    scope: '해당 파일의 winPath 탐지에만 적용',
-  },
-  {
-    file: 'docs/WORKSPACE_MODE.md',
-    kind: 'privateName',
-    reason: 'private 폴더 이름을 하드코딩하지 말라는 문서 예시 문자열(jutell-private). 실제 비공개 경로가 아님',
-    scope: '해당 파일의 privateName 탐지에만 적용',
-  },
-  {
     file: 'scripts/check-public-repository.mjs',
     kind: 'privateName',
     reason: '탐지 규칙 정의 문자열(금지·번들 경로 패턴) 자체가 포함됨. 공개 노출이 아니라 보호 목적',
@@ -130,18 +118,6 @@ const ALLOWED_EXCEPTIONS = [
     file: 'packages/cli/tests/operator-storage.test.ts',
     kind: 'parentEscape',
     reason: '패키지 루트 계산 (테스트 내부 경로)',
-    scope: '해당 파일의 parentEscape 탐지에만 적용',
-  },
-  {
-    file: 'packages/cli/tests/workspace.test.ts',
-    kind: 'parentEscape',
-    reason: '패키지 루트 계산 (테스트 내부 경로)',
-    scope: '해당 파일의 parentEscape 탐지에만 적용',
-  },
-  {
-    file: 'packages/cli/src/commands/workspace/doctor.ts',
-    kind: 'parentEscape',
-    reason: '폴더가 공개·비공개 Git 경로 안에 있는지 판정하는 방어 코드(path.relative 후 startsWith("..")). 탈출이 아니라 탈출 판정 로직',
     scope: '해당 파일의 parentEscape 탐지에만 적용',
   },
   {

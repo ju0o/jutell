@@ -29,7 +29,7 @@
 | 문서 | 이 문서가 답하는 질문 |
 |---|---|
 | [PUBLIC_REPOSITORY_POLICY.md](PUBLIC_REPOSITORY_POLICY.md) | 공개 저장소에 무엇을 올리고 올리지 않나요? |
-| [OPERATOR_PRIVATE_WORKSPACE_BOUNDARY.md](OPERATOR_PRIVATE_WORKSPACE_BOUNDARY.md) | 공개 저장소와 운영자 비공개 작업 공간의 경계는 어떻게 되나요? |
+| [OPERATOR_PRIVATE_DATA_BOUNDARY.md](OPERATOR_PRIVATE_DATA_BOUNDARY.md) | 공개 제품과 운영자 비공개 자료의 경계는 어떻게 되나요? |
 | [PRIVATE_DOCUMENTS_MAP.md](PRIVATE_DOCUMENTS_MAP.md) | 비공개 전략은 어디에 보관하나요? |
 
 ## 제품 원칙
@@ -92,7 +92,6 @@
 | 문서 | 이 문서가 답하는 질문 |
 |---|---|
 | [operator/OPERATOR_START_HERE.md](operator/OPERATOR_START_HERE.md) | 운영자가 오늘 무엇을 해야 하나요? |
-| [WORKSPACE_MODE.md](WORKSPACE_MODE.md) | 선택형 Workspace 모드를 어떻게 시작하고 점검하나요? |
 | [operator/COLLABORATION_BETA_SESSION_GUIDE.md](operator/COLLABORATION_BETA_SESSION_GUIDE.md) | 하루 기록을 Session(폴더)·Page(파일)·Work(작업 블록) 구조로 어떻게 이어서 쓰나요? (jutell session new / page / work / move / finish) |
 | [deprecated/README.md](deprecated/README.md) | 이전 폼들(협업 세션·피드백·문서 검토·베타 피드백)은 어디에 있나요? (참고용 보관) |
 
