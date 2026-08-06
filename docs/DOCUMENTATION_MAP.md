@@ -30,6 +30,7 @@
 |---|---|
 | [PUBLIC_REPOSITORY_POLICY.md](PUBLIC_REPOSITORY_POLICY.md) | 공개 저장소에 무엇을 올리고 올리지 않나요? |
 | [OPERATOR_PRIVATE_DATA_BOUNDARY.md](OPERATOR_PRIVATE_DATA_BOUNDARY.md) | 공개 제품과 운영자 비공개 자료의 경계는 어떻게 되나요? |
+| [LOCAL_DATA_STORAGE.md](LOCAL_DATA_STORAGE.md) | JuTell이 로컬에 어떤 파일을 만들고, 위치를 확인·변경·삭제하나요? |
 | [PRIVATE_DOCUMENTS_MAP.md](PRIVATE_DOCUMENTS_MAP.md) | 비공개 전략은 어디에 보관하나요? |
 
 ## 제품 원칙
