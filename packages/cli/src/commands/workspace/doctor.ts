@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { stdin as input } from 'node:process';
 import type { CliIo, CliOptions } from '../../types.js';
 import { resolveWorkspace } from '../../workspace/resolver.js';
 import { formatWorkspaceIssues } from '../../workspace/validation.js';
@@ -117,7 +118,9 @@ export async function workspaceDoctorCommand(options: CliOptions, io: CliIo) {
 
   if (options.fix) {
     if (missingDirs.length > 0) {
-      if (!options.yes && !(await io.ask(`없는 폴더 ${missingDirs.length}개를 만들까요?`, true))) {
+      // --fix는 누락 폴더 생성만 하므로(설정·기존 콘텐츠 무변경) 비대화형·파이프에서는 확인 없이 진행하고,
+      // 대화형(TTY)일 때만 사용자 확인을 받는다. 파이프에서 확인을 기다리면 멈추는 문제를 막는다.
+      if (!options.yes && input.isTTY && !(await io.ask(`없는 폴더 ${missingDirs.length}개를 만들까요?`, true))) {
         io.write('폴더 생성을 건너뛰었습니다.');
       } else {
         for (const { key, relative } of missingDirs) {
