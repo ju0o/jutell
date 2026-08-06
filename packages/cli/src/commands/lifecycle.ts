@@ -5,7 +5,7 @@ import { ensureBridgeConfig, setMcpDisabled, setMcpEnabled } from '../installer/
 import { installSkill, recordSkillFiles, removeAddedSkillFiles, removeManagedSkillFiles } from '../installer/skill.js';
 import { agentsFile, ensureJuTellAgentsBlock, removeJuTellAgentsBlock } from '../installer/agents.js';
 import { registerMcp, removeMcp } from '../config/managed.js';
-import { removeOpenCodeMcp, setOpenCodeEnabled } from '../installer/opencode.js';
+import { removeOpenCodeMcp, readOpenCodeRegistration, setOpenCodeEnabled } from '../installer/opencode.js';
 import { scopeLabel } from '../output/format.js';
 import { codexDetected, nodeMajorVersion, operatingSystem } from '../process/system.js';
 import type { CliIo, CliOptions, ScopePaths } from '../types.js';
@@ -62,6 +62,8 @@ export async function enableCommand(paths: ScopePaths, options: CliOptions, io: 
     if (!options.skillOnly) {
       const enabled = await setMcpEnabled(paths, true);
       await registerMcp(paths, packageRoot(), enabled.mcp?.enabled === true);
+      const opencode = await readOpenCodeRegistration(paths, packageRoot(), enabled.mcp?.enabled === true);
+      if (opencode.registered) await setOpenCodeEnabled(paths, packageRoot(), true);
     }
     await recordSkillFiles(paths, skillResult.changed);
     if (!options.oneCommand) {

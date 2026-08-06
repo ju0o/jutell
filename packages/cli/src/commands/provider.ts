@@ -1,6 +1,7 @@
 import { readBridgeConfig, readCodexRegistration } from '../config/managed.js';
 import { AGENT_PROVIDERS, findProvider, type AgentProvider } from '../installer/providers.js';
 import { opencodeDetected, readOpenCodeRegistration, registerOpenCodeMcp, setOpenCodeEnabled } from '../installer/opencode.js';
+import { setMcpDisabled, setMcpEnabled } from '../installer/config.js';
 import { codexDetected } from '../process/system.js';
 import { packageRoot } from '../config/paths.js';
 import type { CliIo, CliOptions, ScopePaths } from '../types.js';
@@ -51,6 +52,8 @@ async function summaryCommand(paths: ScopePaths, io: CliIo) {
   }
   io.write(`\n현재 권장 Agent: ${active.length ? active.join(', ') : '없음'}`);
   io.write(`JuTell 자동 적용: ${config.config.mcp?.enabled ? '켜짐' : '꺼짐'}`);
+  if (config.config.mcp?.enabled && active.length === 0) io.write('주의: 연결 정책은 켜져 있지만 자동 시작할 활성 Provider 항목이 없습니다. jutell use <agent> 를 실행하거나 provider enable 을 사용해 주세요.');
+  else if (!config.config.mcp?.enabled && active.length > 0) io.write('주의: 연결 정책은 꺼져 있지만 Provider 자동 시작이 켜져 있습니다. 일치시키려면 jutell use <agent> 또는 jutell off 을 실행해 주세요.');
 }
 
 async function statusCommand(paths: ScopePaths, io: CliIo) {
@@ -85,18 +88,20 @@ export async function providerCommand(paths: ScopePaths, options: CliOptions, io
   if (sub === 'status') return statusCommand(paths, io);
   if (sub === 'setup') {
     requireTarget(args);
-    const current = await readOpenCodeRegistration(paths, packageRoot(), false);
+    const policy = (await readBridgeConfig(paths)).config.mcp?.enabled === true;
+    const current = await readOpenCodeRegistration(paths, packageRoot(), policy);
     if (current.conflict) throw new Error('OpenCode 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.');
-    io.write(`JuTell OpenCode 연결 설정 미리보기\n\n설정 파일: ${openCodeScopeLabel(paths)}\n상태: ${current.registered ? '이미 등록됨 (최신 설정으로 갱신)' : '새로 등록'}\n활성화: 기본 OFF (jutell provider enable opencode 로 켭니다)\n\n${current.preview}`);
+    io.write(`JuTell OpenCode 연결 설정 미리보기\n\n설정 파일: ${openCodeScopeLabel(paths)}\n상태: ${current.registered ? '이미 등록됨 (최신 설정으로 갱신)' : '새로 등록'}\n새 세션 자동 시작: 연결 정책(.jutell.json) 기준 (현재 ${policy ? '켜짐' : '꺼짐'})\n\n${current.preview}`);
     if (!options.yes && !(await io.ask('위 변경을 진행할까요?'))) return { cancelled: true };
-    await registerOpenCodeMcp(paths, packageRoot(), false);
+    await registerOpenCodeMcp(paths, packageRoot(), policy);
     io.write('OpenCode 연결 설정을 등록했습니다. 기존 설정은 보존했고 JuTell 관리 블록만 추가했습니다.');
     return { cancelled: false };
   }
   if (sub === 'enable') {
     requireTarget(args);
     await registerOpenCodeMcp(paths, packageRoot(), true);
-    io.write('OpenCode JuTell MCP를 활성화했습니다. 새 OpenCode 세션부터 사용할 수 있습니다.');
+    await setMcpEnabled(paths, true);
+    io.write('OpenCode JuTell MCP를 활성화했습니다. 연결 정책을 켜고 새 OpenCode 세션부터 자동으로 사용할 수 있습니다.');
     return { cancelled: false };
   }
   if (sub === 'disable') {
@@ -107,6 +112,8 @@ export async function providerCommand(paths: ScopePaths, options: CliOptions, io
       return { cancelled: false };
     }
     await setOpenCodeEnabled(paths, packageRoot(), false);
+    const codex = await readCodexRegistration(paths, packageRoot(), false);
+    if (!codex.enabled) await setMcpDisabled(paths);
     io.write('OpenCode JuTell MCP를 비활성화했습니다. 설정 항목은 유지됩니다.');
     return { cancelled: false };
   }

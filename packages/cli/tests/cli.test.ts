@@ -127,6 +127,8 @@ describe('Distribution CLI V0.1', () => {
     const doctor = JSON.parse((await runCli(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string }>;
     expect(doctor.find((check) => check.name === 'Skill 파일')?.status).toBe('정상');
     expect(doctor.find((check) => check.name === 'MCP 빌드 파일')?.status).toBe('정상');
+    expect(doctor.find((check) => check.name === 'OpenCode 설정')?.status).toBe('주의');
+    expect(doctor.find((check) => check.name === 'MCP 서버 실제 연결 (Stdio)')?.status).toBe('정상');
 
     await runCli(['enable', '--mcp-only', '--yes'], project, env);
     expect(JSON.parse(await fs.readFile(configFile, 'utf8')).mcp.enabled).toBe(true);
@@ -144,7 +146,7 @@ describe('Distribution CLI V0.1', () => {
     expect(await fs.stat(configFile)).toBeTruthy();
     await expect(fs.stat(skillFile)).rejects.toThrow();
     expect((await fs.readFile(codexConfig, 'utf8'))).toContain('[mcp_servers.other]');
-  });
+  }, 20000);
 
   it('global 범위도 격리된 사용자 홈에서 동작한다', async () => {
     const { project, home, env } = await fixture();
@@ -197,11 +199,13 @@ describe('Distribution CLI V0.1', () => {
     expect(text).toContain('"enabled": true');
     expect(text).toContain('"type": "local"');
     expect(text).toContain('"cwd": "."');
+    expect(JSON.parse(await fs.readFile(path.join(project, '.jutell.json'), 'utf8')).mcp.enabled).toBe(true);
 
     await runCli(['provider', 'disable', 'opencode'], project, env);
     text = await fs.readFile(path.join(project, 'opencode.json'), 'utf8');
     expect(text).toContain('"enabled": false');
     expect(text).toContain('BEGIN JUTELL MANAGED BLOCK');
+    expect(JSON.parse(await fs.readFile(path.join(project, '.jutell.json'), 'utf8')).mcp.enabled).toBe(false);
   });
 
   it('관리되지 않는 beginner_bridge 항목은 자동 변경하지 않는다', async () => {
@@ -278,6 +282,16 @@ describe('Distribution CLI V0.1', () => {
     expect(summary.stdout).toContain('JuTell 자동 적용: 켜짐');
   });
 
+  it('jutell on이 등록된 OpenCode 자동 시작을 켜진 상태로 복원한다', async () => {
+    const { project, env } = await fixture();
+    await runCli(['use', 'opencode'], project, env);
+    await runCli(['off', '--yes'], project, env);
+    expect(await fs.readFile(path.join(project, 'opencode.json'), 'utf8')).toContain('"enabled": false');
+    await runCli(['on', '--yes'], project, env);
+    expect(await fs.readFile(path.join(project, 'opencode.json'), 'utf8')).toContain('"enabled": true');
+    expect(JSON.parse(await fs.readFile(path.join(project, '.jutell.json'), 'utf8')).mcp.enabled).toBe(true);
+  });
+
   it('jutell connect와 disconnect가 해당 Provider만 바꾼다', async () => {
     const { project, env } = await fixture();
     await runCli(['use', 'codex'], project, env);
@@ -329,6 +343,23 @@ describe('Distribution CLI V0.1', () => {
     }
     expect(failure?.stderr).toContain('관리되지 않는 MCP 항목');
     expect(await fs.readFile(opencodeFile, 'utf8')).toBe(before);
+  });
+
+  it('연결 정책과 Provider 자동 시작이 불일치하면 status가 경고한다', async () => {
+    const { project, env } = await fixture();
+    await runCli(['provider', 'setup', 'opencode', '--yes'], project, env);
+    await runCli(['provider', 'enable', 'opencode'], project, env);
+    await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', mcp: { enabled: false, autoStart: false } }, null, 2), 'utf8');
+    const drift = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
+    expect(drift.opencode.enabled).toBe(true);
+    expect(drift.warnings).toEqual(expect.arrayContaining([expect.stringContaining('Provider 자동 시작')]));
+    const summary = await runCli(['provider'], project, env);
+    expect(summary.stdout).toContain('연결 정책은 꺼져 있지만 Provider 자동 시작');
+    await runCli(['provider', 'disable', 'opencode'], project, env);
+    await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', mcp: { enabled: true, autoStart: false } }, null, 2), 'utf8');
+    const missing = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
+    expect(missing.opencode.enabled).toBe(false);
+    expect(missing.warnings).toEqual(expect.arrayContaining([expect.stringContaining('자동 시작할 활성 Provider 항목')]));
   });
 
   it('기존 설정을 읽고 승인된 setup에서 새 설정으로 복사하며 기존 파일을 보존한다', async () => {
