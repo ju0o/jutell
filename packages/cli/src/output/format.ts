@@ -47,7 +47,12 @@ export function parseOptions(args: string[]): { command: string; options: CliOpt
     const arg = args[index];
     if (arg === '--project') options.scope = 'project';
     else if (arg === '--global') options.scope = 'global';
-    else if (arg === '--yes' || arg === '-y') options.yes = true;
+    else if (arg === '--workspace') {
+      const value = args[index + 1];
+      if (!value) throw new Error('--workspace 뒤에 Workspace 경로가 필요합니다.');
+      options.workspacePath = value;
+      index += 1;
+    } else if (arg === '--yes' || arg === '-y') options.yes = true;
     else if (arg === '--json') options.json = true;
     else if (arg === '--status-only') options.statusOnly = true;
     else if (arg === '--verbose') options.verbose = true;
@@ -130,6 +135,15 @@ JuTell은 Skill·MCP·지침·설정을 연결합니다.
   jutell disconnect     해당 연결만 끕니다.
   jutell switch         기본 Agent를 전환합니다.
 
+Workspace (선택, 운영자·고급 사용자용)
+
+  jutell workspace init          새 Workspace를 만듭니다.
+  jutell workspace status        Workspace 상태를 확인합니다.
+  jutell workspace doctor        Workspace 설정과 구조를 점검합니다.
+  jutell workspace doctor --fix  없는 폴더만 안전하게 만들어줍니다.
+  jutell workspace <명령> --workspace <경로>
+                                 지정한 위치의 Workspace를 대상으로 합니다.
+
 하루 작업 기록 (Session = 하루, Page = Agent·역할별 파일, Work = Page 안 작업)
 
   jutell session           오늘 Session 상태를 봅니다.
@@ -138,6 +152,11 @@ JuTell은 Skill·MCP·지침·설정을 연결합니다.
   jutell session work      현재 Page에 다음 번호 작업을 추가합니다.
   jutell session move      작업할 Page를 이동합니다.
   jutell session finish    SESSION_SUMMARY.md로 하루를 마감합니다.
+  jutell session storage   Session 저장 위치 상태를 확인합니다 (운영자용).
+  jutell session storage set <절대 경로>
+                           Session 저장 위치를 운영자 지정으로 바꿉니다.
+  jutell session storage reset
+                           운영자 지정을 제거하고 기본 저장 위치로 돌아갑니다.
 
 이전 별칭: beginner-bridge
 
