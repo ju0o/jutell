@@ -115,6 +115,16 @@ const ALLOWED_EXCEPTIONS = [
     kind: 'parentEscape',
     reason: '앱 프로젝트 루트 계산 (path.resolve(appRoot, ../..))',
   },
+  {
+    file: 'packages/cli/tests/mcpProbe.test.ts',
+    kind: 'winPath',
+    reason: 'MCP Probe의 Windows 경로·임시 디렉터리 처리 검증용 테스트 fixture 문자열. 실제 사용자·운영자 절대 경로가 아님. 임시 경로 및 절대 경로 방어 검증 목적이며 해당 파일·winPath 탐지에만 허용. 다른 파일이나 다른 탐지 유형에는 적용하지 않음',
+  },
+  {
+    file: 'packages/cli/tests/mcpProbe.test.ts',
+    kind: 'parentEscape',
+    reason: 'MCP Probe의 상위 경로 탈출 방어 검증용 테스트 fixture 문자열(path.join(임시, ..)). 실제 사용자·운영자 경로가 아님. 경로 탈출 보호 검증 목적이며 해당 파일·parentEscape 탐지에만 허용. 다른 파일이나 다른 탐지 유형에는 적용하지 않음',
+  },
 ];
 
 function isAllowed(file, kind) {
