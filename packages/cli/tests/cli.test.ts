@@ -66,9 +66,9 @@ describe('Distribution CLI V0.1', () => {
     }
 
     const statusOnly = await runCli(['--status-only'], project, env);
-      expect(statusOnly.stdout).toContain('AI Agent Provider: Codex (현재 지원)');
-      expect(statusOnly.stdout).toContain('AI Agent 연결 준비: 활성화됨');
-    expect(statusOnly.stdout).toContain('실제 도구 호출: 확인하지 않음');
+      expect(statusOnly.stdout).toContain('JuTell 연결 정책: 켜짐');
+      expect(statusOnly.stdout).toContain('Codex MCP: 활성화됨');
+    expect(statusOnly.stdout).toContain('MCP 서버 응답: 확인하지 않음');
     expect((await fs.readFile(path.join(project, 'AGENTS.md'), 'utf8')).match(/BEGIN JUTELL MANAGED BLOCK/g)).toHaveLength(1);
     expect((await fs.readFile(path.join(project, '.codex', 'config.toml'), 'utf8')).match(/BEGINNER_BRIDGE_CLI_MCP_BEGIN/g)).toHaveLength(1);
   });
@@ -392,6 +392,34 @@ describe('Distribution CLI V0.1', () => {
     const stopped = await fetch(`${url}/api/mcp/stop`, { method: 'POST', body: '{}' });
     expect((await stopped.json()).server.state).toBe('stopped');
     await new Promise<void>((resolve) => { child.once('exit', () => resolve()); child.kill(); });
+  });
+
+  it('OpenCode만 등록되고 정책이 켜진 상태에서 Codex 미등록 경고가 나지 않는다', async () => {
+    const { project, env } = await fixture();
+    const opencodeFile = path.join(project, 'opencode.json');
+    await fs.writeFile(opencodeFile, '{\n  "$schema": "https://opencode.ai/config.json",\n  "mcp": {\n    // BEGIN JUTELL MANAGED BLOCK\n    "beginner_bridge": { "type": "local", "command": ["node", "server.js"], "enabled": true, "cwd": "." },\n    // END JUTELL MANAGED BLOCK\n  }\n}\n', 'utf8');
+    await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', features: {}, limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 }, mcp: { enabled: true, autoStart: false } }, null, 2), 'utf8');
+    const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
+    expect(status.codexPreparation).toBe('not_registered');
+    expect(status.opencodePreparation).toBe('enabled');
+    expect(status.anyProviderRegistered).toBe(true);
+    expect(status.anyProviderEnabled).toBe(true);
+    expect(status.mcpRegistered).toBe(true);
+    expect(status.mcpEnabled).toBe(true);
+    expect(status.warnings).not.toContain(expect.stringContaining('어느 Provider에도 JuTell MCP가 등록되지'));
+    const human = (await runCli(['status'], project, env)).stdout;
+    expect(human).toContain('JuTell 연결 정책: 켜짐');
+    expect(human).toContain('OpenCode MCP: 활성화됨');
+    expect(human).not.toContain('MCP: 등록되지 않음');
+    expect(human).not.toContain('AI Agent Provider 설정 미등록');
+  });
+
+  it('Codex·OpenCode 모두 미등록인데 정책만 켜진 경우 경고가 나온다 (regression)', async () => {
+    const { project, env } = await fixture();
+    await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', features: {}, limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 }, mcp: { enabled: true, autoStart: false } }, null, 2), 'utf8');
+    const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
+    expect(status.anyProviderRegistered).toBe(false);
+    expect(status.warnings).toEqual(expect.arrayContaining([expect.stringContaining('어느 Provider에도 JuTell MCP가 등록되지')]));
   });
 
   it('실제 tarball을 임시 npm prefix에 설치한 뒤 두 CLI bin이 실행된다', async () => {

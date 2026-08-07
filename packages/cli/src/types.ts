@@ -86,6 +86,9 @@ export type StatusResult = {
   mcpRegistered: boolean;
   mcpEnabled: boolean;
   codexPreparation: 'not_registered' | 'registered' | 'enabled' | 'error';
+  opencodePreparation: 'not_registered' | 'registered' | 'enabled' | 'conflict';
+  anyProviderRegistered: boolean;
+  anyProviderEnabled: boolean;
   actualConnection: 'not_checked' | 'success' | 'failure';
   opencode: { registered: boolean; conflict: boolean; enabled: boolean };
   profile: Profile;

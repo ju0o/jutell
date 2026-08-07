@@ -34,14 +34,16 @@ export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
   const agentsManaged = await hasJuTellAgentsBlock(paths.targetRoot);
   const opencode = await readOpenCodeRegistration(paths, packageRoot(), false);
   const codexPreparation = registration.conflict ? 'error' : !registration.registered ? 'not_registered' : registration.enabled ? 'enabled' : 'registered';
+  const opencodePreparation = opencode.conflict ? 'conflict' : !opencode.registered ? 'not_registered' : opencode.enabled ? 'enabled' : 'registered';
+  const anyProviderRegistered = registration.registered || opencode.registered;
+  const anyProviderEnabled = registration.enabled || opencode.enabled;
   const warnings: string[] = [];
   if (!config.valid) warnings.push('설정 파일을 읽지 못해 balanced 기본값을 사용 중입니다.');
-  if (registration.conflict) warnings.push('같은 이름의 관리되지 않는 MCP 설정이 있어 자동 변경하지 않았습니다.');
-  if (registration.conflict) warnings.push('같은 이름의 관리되지 않는 MCP 설정이 있어 자동 변경하지 않았습니다.');
+  if (registration.conflict) warnings.push('같은 이름의 관리되지 않는 Codex MCP 설정이 있어 자동 변경하지 않았습니다.');
   if (opencode.conflict) warnings.push('OpenCode 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.');
-  if (config.config.mcp?.enabled && !registration.registered) warnings.push('MCP가 켜져 있지만 AI Agent Provider 설정이 등록되지 않았습니다.');
-  if (config.config.mcp?.enabled && !registration.enabled && !opencode.enabled) warnings.push('연결 정책(.jutell.json)은 켜져 있지만 새 세션에서 자동 시작할 활성 Provider 항목이 없습니다. jutell use <agent> 를 실행해 주세요.');
-  if (!config.config.mcp?.enabled && (registration.enabled || opencode.enabled)) warnings.push('연결 정책(.jutell.json)은 꺼져 있지만 Provider 자동 시작은 켜져 있습니다. 일치시키려면 jutell use <agent> 또는 jutell off을 실행해 주세요.');
+  if (config.config.mcp?.enabled && !anyProviderRegistered) warnings.push('MCP 연결 정책은 켜져 있지만 Codex·OpenCode 어느 Provider에도 JuTell MCP가 등록되지 않았습니다. jutell use <agent> 를 실행해 주세요.');
+  if (config.config.mcp?.enabled && anyProviderRegistered && !anyProviderEnabled) warnings.push('연결 정책(.jutell.json)은 켜져 있지만 새 세션에서 자동 시작할 활성 Provider 항목이 없습니다. jutell use <agent> 를 실행해 주세요.');
+  if (!config.config.mcp?.enabled && anyProviderEnabled) warnings.push('연결 정책(.jutell.json)은 꺼져 있지만 Provider 자동 시작은 켜져 있습니다. 일치시키려면 jutell use <agent> 또는 jutell off을 실행해 주세요.');
   return {
     cliVersion: versions.cli,
     skillVersion: await exists(path.join(paths.skillRoot, 'SKILL.md')) ? versions.skill : '설치되지 않음',
@@ -54,9 +56,12 @@ export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
     opencodeDetected: opencodeDetected(),
     skillInstalled,
     agentsManaged,
-    mcpRegistered: registration.registered,
+    mcpRegistered: anyProviderRegistered,
     mcpEnabled: config.config.mcp?.enabled === true,
     codexPreparation,
+    opencodePreparation,
+    anyProviderRegistered,
+    anyProviderEnabled,
     actualConnection: 'not_checked',
     opencode: { registered: opencode.registered, conflict: opencode.conflict, enabled: opencode.enabled },
     profile: config.config.profile,
@@ -73,9 +78,12 @@ export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
 export async function statusCommand(paths: ScopePaths, options: CliOptions, io: CliIo) {
   const status = await getStatus(paths);
   if (options.json) { io.write(JSON.stringify(status, null, 2)); return status; }
-  const preparation = { not_registered: '설정 미등록', registered: '등록됨', enabled: '활성화됨', error: '오류' }[status.codexPreparation];
+  const codexLabel = { not_registered: '미등록', registered: '등록됨', enabled: '활성화됨', error: '오류' }[status.codexPreparation];
+  const opencodeLabel = { not_registered: '미등록', registered: '등록됨', enabled: '활성화됨', conflict: '충돌' }[status.opencodePreparation];
   const actual = { not_checked: '확인하지 않음', success: '마지막 확인 성공', failure: '마지막 확인 실패' }[status.actualConnection];
-  io.write(`JuTell 상태\n\nCLI: ${status.cliVersion}\nSkill: ${status.skillInstalled ? '설치됨' : '설치되지 않음'}\nAGENTS.md: ${status.agentsManaged ? 'JuTell 블록 있음' : 'JuTell 블록 없음'}\nMCP: ${status.mcpRegistered ? '등록됨' : '등록되지 않음'} / ${status.mcpEnabled ? '활성화' : '비활성화'}\nAI Agent Provider: Codex (현재 지원)\nAI Agent 연결 준비: ${preparation}\n새 세션 자동 시작: Codex ${status.codexPreparation === 'enabled' ? '켜짐' : status.mcpRegistered ? '꺼짐' : '미등록'} / OpenCode (베타) ${status.opencode.enabled ? '켜짐' : status.opencode.registered ? '꺼짐' : '미등록'}\n실제 도구 호출: ${actual}\nOpenCode (베타): ${status.opencode.registered ? `MCP 등록됨${status.opencode.enabled ? ' / 활성화' : ''}` : status.opencode.conflict ? '충돌 확인 필요' : 'MCP 미등록'}${status.opencodeDetected ? '' : ' (감지: 직접 확인 필요)'}\nProfile: ${status.profile}\n활성 Feature: ${status.activeFeatureCount}개\n설치 범위: ${status.installationScope === 'global' ? '사용자 전역' : '현재 프로젝트'}\nAI Agent 감지: ${status.codexDetected ? '예' : '직접 확인 필요'}\n로컬 관리자: ${status.localAdmin}\n로컬 사용량 카운터: ${status.usageCountersEnabled ? '켜짐' : '꺼짐'}\nTelemetry: ${status.telemetry}\n외부 전송: ${status.externalTransmission}\n설정 위치: ${status.configLocation}`);
+  const codexDetectedLabel = status.codexDetected ? '감지됨' : '미감지';
+  const opencodeDetectedLabel = status.opencodeDetected ? '감지됨' : status.opencode.registered ? '설정 있음(명령 미감지)' : '미감지';
+  io.write(`JuTell 상태\n\nCLI: ${status.cliVersion}\nSkill: ${status.skillInstalled ? '설치됨' : '설치되지 않음'}\nAGENTS.md: ${status.agentsManaged ? 'JuTell 블록 있음' : 'JuTell 블록 없음'}\nJuTell 연결 정책: ${status.mcpEnabled ? '켜짐' : '꺼짐'}\nCodex MCP: ${codexLabel}${status.codexDetected ? ` (명령 ${codexDetectedLabel})` : ''}\nOpenCode MCP: ${opencodeLabel}${status.opencode.enabled ? ' (새 세션 자동 시작 켜짐)' : ''}${status.opencodeDetected ? '' : ` (명령 ${opencodeDetectedLabel})`}\nMCP 서버 응답: ${actual}\n현재 Agent 세션 적용: 직접 확인 필요\nProfile: ${status.profile}\n활성 Feature: ${status.activeFeatureCount}개\n설치 범위: ${status.installationScope === 'global' ? '사용자 전역' : '현재 프로젝트'}\n로컬 관리자: ${status.localAdmin}\n로컬 사용량 카운터: ${status.usageCountersEnabled ? '켜짐' : '꺼짐'}\nTelemetry: ${status.telemetry}\n외부 전송: ${status.externalTransmission}\n설정 위치: ${status.configLocation}`);
   for (const warning of status.warnings) io.write(`주의: ${warning}`);
   return status;
 }
@@ -106,8 +114,8 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   const checks: CheckResult[] = [];
   checks.push({ name: 'Node 버전', status: nodeMajorVersion() >= 18 ? '정상' : '오류', detail: `현재 Node ${process.versions.node}` });
   checks.push({ name: '운영체제', status: ['Windows', 'macOS', 'Linux'].includes(operatingSystem()) ? '정상' : '직접 확인 필요', detail: operatingSystem() });
-  checks.push({ name: 'AI Agent Provider 설치 또는 설정', status: codexDetected() || await exists(paths.codexConfigFile) ? '정상' : '직접 확인 필요', detail: codexDetected() ? '현재 지원 Provider 명령을 확인했습니다.' : 'Provider 명령 또는 설정을 자동 확인하지 못했습니다.' });
-  checks.push({ name: 'OpenCode 감지', status: opencodeDetected() || await exists(paths.opencodeConfigFile) ? '정상' : '직접 확인 필요', detail: opencodeDetected() ? 'OpenCode 명령을 확인했습니다.' : 'OpenCode 명령을 자동 확인하지 못했습니다. 설정 파일 위치만 확인했습니다.' });
+  checks.push({ name: 'AI Agent Provider 설치 또는 설정', status: codexDetected() || opencodeDetected() || await exists(paths.codexConfigFile) || await exists(paths.opencodeConfigFile) ? '정상' : '직접 확인 필요', detail: codexDetected() || await exists(paths.codexConfigFile) || opencodeDetected() || await exists(paths.opencodeConfigFile) ? 'Provider 명령 또는 설정을 확인했습니다.' : 'Provider 명령과 설정을 모두 자동 확인하지 못했습니다.' });
+  checks.push({ name: 'OpenCode 명령 감지', status: opencodeDetected() ? '정상' : '직접 확인 필요', detail: opencodeDetected() ? 'opencode --version 명령을 확인했습니다.' : 'opencode 명령을 자동 확인하지 못했습니다. PATH·shell 실행 권한을 확인해 주세요.' });
   checks.push({ name: 'Skill 파일', status: skillText?.includes('name: beginner-bridge') ? '정상' : '오류', detail: skillText ? 'Skill 파일을 확인했습니다.' : 'Skill 파일이 없습니다.' });
   checks.push({ name: 'MCP 빌드 파일', status: await exists(mcpEntry) ? '정상' : '오류', detail: await exists(mcpEntry) ? '패키지에 포함되어 있습니다.' : 'MCP 빌드 파일이 없습니다.' });
   checks.push({ name: 'MCP 설정', status: registration.conflict ? '오류' : registration.registered ? '정상' : '주의', detail: registration.conflict ? '관리되지 않는 동일 이름 설정이 있습니다.' : registration.registered ? 'JuTell 관리 블록을 확인했습니다.' : '등록되지 않았습니다.' });
