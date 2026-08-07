@@ -48,6 +48,7 @@ export function beginnerReportRules(config: BridgeConfig) {
     limits: config.limits,
     evidenceRule: '실제로 확인한 사실, 코드만 보고 예상한 내용, 확인하지 못한 내용을 구분합니다.',
     statusRule: '검증 결과와 보고서 상태를 일치시킵니다.',
+    diffRule: '코드 또는 Diff를 사용자에게 보여줄 경우, 바로 뒤에 무엇을 수정했고 사용자에게 어떤 영향이 있는지 기능 단위로 설명합니다.',
     safetyRequirements: SAFETY_REQUIREMENTS,
     notCollected: ['프로젝트 코드', 'Git diff', 'Prompt', 'AI 답변 원문', '파일 경로', '비밀정보'],
   };

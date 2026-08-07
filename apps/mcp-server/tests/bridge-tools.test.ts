@@ -48,7 +48,7 @@ describe('JuTell MCP read-only data', () => {
     expect(normalized.limits).toEqual(oldConfig.limits);
   });
 
-  it('returns only active rules and mandatory safety requirements', () => {
+  it('returns only active rules and mandatory safety requirements, and exposes the diff rule', () => {
     const config = { ...DEFAULT_CONFIG, features: { ...DEFAULT_CONFIG.features, glossary: false, internalChanges: false } };
     const rules = beginnerReportRules(config);
     expect(rules.activeReportSections).not.toContain('개발 용어 설명');
@@ -56,5 +56,6 @@ describe('JuTell MCP read-only data', () => {
     expect(safeReportRequirements().alwaysReport).toContain('작업 실패');
     expect(rules.notCollected).toContain('Prompt');
     expect(rules.notCollected).toContain('비밀정보');
+    expect(rules.diffRule).toMatch(/코드 또는 Diff/);
   });
 });
