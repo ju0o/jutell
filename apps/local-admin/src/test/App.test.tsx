@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 
-const config = { version: 1 as const, profile: 'balanced' as const, features: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true }, limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 }, mcp: { enabled: false, autoStart: false }, usageMeasurement: { localCountersEnabled: false } };
+const config = { version: 1 as const, profile: 'balanced' as const, features: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true }, limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 }, mcp: { enabled: false }, usageMeasurement: { localCountersEnabled: false } };
 const feedback = { feedback: [] };
 const history = { history: [] };
 const templates = { templates: [{ name: 'FEATURE_REQUEST.md', description: '새 기능·화면 추가', content: '# 기능 요청서\n' }], source: 'project' };
@@ -14,7 +14,7 @@ beforeEach(() => {
     const url = String(input);
     if (url.endsWith('/api/config')) return new Response(JSON.stringify({ config, fallback: false, metadata: { configVersion: 1, skillVersion: 'not-recorded' }, lastChangedAt: null }), { status: 200 });
     if (url.endsWith('/api/readiness')) return new Response(JSON.stringify({ config: { exists: true, valid: true, profile: 'balanced', activeFeatures: 12 }, skill: { exists: true }, agents: { exists: true, jutellBlock: true }, safetyRules: { exists: true }, sessionApplied: 'manual_check_required' }), { status: 200 });
-    if (url.endsWith('/api/mcp/status')) return new Response(JSON.stringify({ settings: { enabled: false, autoStart: false }, server: { state: 'stopped' }, preparation: 'not_registered', codex: { registered: false, path: '.codex/config.toml', conflict: false, enabled: false }, providers: [
+    if (url.endsWith('/api/mcp/status')) return new Response(JSON.stringify({ settings: { enabled: false }, server: { state: 'stopped' }, preparation: 'not_registered', codex: { registered: false, path: '.codex/config.toml', conflict: false, enabled: false }, providers: [
       { id: 'codex', label: 'Codex', status: 'supported', detected: true, registered: false, conflict: false, enabled: false, lastCheckedAt: null },
       { id: 'opencode', label: 'OpenCode', status: 'beta', detected: true, registered: false, conflict: false, enabled: false, lastCheckedAt: null },
       { id: 'claude-code', label: 'Claude Code', status: 'planned', detected: false, registered: false, conflict: false, enabled: false, lastCheckedAt: null },

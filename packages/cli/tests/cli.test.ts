@@ -127,7 +127,7 @@ describe('Distribution CLI V0.1', () => {
     const doctor = JSON.parse((await runCli(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string }>;
     expect(doctor.find((check) => check.name === 'Skill 파일')?.status).toBe('정상');
     expect(doctor.find((check) => check.name === 'MCP 빌드 파일')?.status).toBe('정상');
-    expect(doctor.find((check) => check.name === 'OpenCode 설정')?.status).toBe('주의');
+    expect(doctor.find((check) => check.name === 'OpenCode MCP')?.status).toBe('주의');
     expect(doctor.find((check) => check.name === 'MCP 서버 실제 연결 (Stdio)')?.status).toBe('정상');
 
     await runCli(['enable', '--mcp-only', '--yes'], project, env);
@@ -349,14 +349,14 @@ describe('Distribution CLI V0.1', () => {
     const { project, env } = await fixture();
     await runCli(['provider', 'setup', 'opencode', '--yes'], project, env);
     await runCli(['provider', 'enable', 'opencode'], project, env);
-    await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', mcp: { enabled: false, autoStart: false } }, null, 2), 'utf8');
+    await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', mcp: { enabled: false } }, null, 2), 'utf8');
     const drift = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
     expect(drift.opencode.enabled).toBe(true);
     expect(drift.warnings).toEqual(expect.arrayContaining([expect.stringContaining('Provider 자동 시작')]));
     const summary = await runCli(['provider'], project, env);
     expect(summary.stdout).toContain('연결 정책은 꺼져 있지만 Provider 자동 시작');
     await runCli(['provider', 'disable', 'opencode'], project, env);
-    await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', mcp: { enabled: true, autoStart: false } }, null, 2), 'utf8');
+    await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', mcp: { enabled: true } }, null, 2), 'utf8');
     const missing = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
     expect(missing.opencode.enabled).toBe(false);
     expect(missing.warnings).toEqual(expect.arrayContaining([expect.stringContaining('자동 시작할 활성 Provider 항목')]));
@@ -365,7 +365,7 @@ describe('Distribution CLI V0.1', () => {
   it('기존 설정을 읽고 승인된 setup에서 새 설정으로 복사하며 기존 파일을 보존한다', async () => {
     const { project, env } = await fixture();
     const legacyFile = path.join(project, '.beginner-bridge.json');
-    await fs.writeFile(legacyFile, JSON.stringify({ version: 1, profile: 'learning', features: {}, limits: {}, mcp: { enabled: false, autoStart: false } }), 'utf8');
+    await fs.writeFile(legacyFile, JSON.stringify({ version: 1, profile: 'learning', features: {}, limits: {}, mcp: { enabled: false } }), 'utf8');
     const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
     expect(status.profile).toBe('learning');
     await runCli(['setup', '--project', '--yes'], project, env);
@@ -398,7 +398,7 @@ describe('Distribution CLI V0.1', () => {
     const { project, env } = await fixture();
     const opencodeFile = path.join(project, 'opencode.json');
     await fs.writeFile(opencodeFile, '{\n  "$schema": "https://opencode.ai/config.json",\n  "mcp": {\n    // BEGIN JUTELL MANAGED BLOCK\n    "beginner_bridge": { "type": "local", "command": ["node", "server.js"], "enabled": true, "cwd": "." },\n    // END JUTELL MANAGED BLOCK\n  }\n}\n', 'utf8');
-    await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', features: {}, limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 }, mcp: { enabled: true, autoStart: false } }, null, 2), 'utf8');
+    await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', features: {}, limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 }, mcp: { enabled: true } }, null, 2), 'utf8');
     const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
     expect(status.codexPreparation).toBe('not_registered');
     expect(status.opencodePreparation).toBe('enabled');
@@ -416,7 +416,7 @@ describe('Distribution CLI V0.1', () => {
 
   it('Codex·OpenCode 모두 미등록인데 정책만 켜진 경우 경고가 나온다 (regression)', async () => {
     const { project, env } = await fixture();
-    await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', features: {}, limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 }, mcp: { enabled: true, autoStart: false } }, null, 2), 'utf8');
+    await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', features: {}, limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 }, mcp: { enabled: true } }, null, 2), 'utf8');
     const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
     expect(status.anyProviderRegistered).toBe(false);
     expect(status.warnings).toEqual(expect.arrayContaining([expect.stringContaining('어느 Provider에도 JuTell MCP가 등록되지')]));
@@ -438,11 +438,11 @@ describe('Distribution CLI V0.1', () => {
     const legacyBin = path.join(binDirectory, process.platform === 'win32' ? 'beginner-bridge.cmd' : 'beginner-bridge');
     const installedEnv = { ...env, PATH: `${binDirectory}${path.delimiter}${env.PATH ?? ''}` };
     const version = await execFileAsync(jutellBin, ['--version'], { cwd: project, env: installedEnv, shell: true, windowsHide: true });
-    expect(version.stdout.trim()).toBe('0.2.0');
+    expect(version.stdout.trim()).toBe('0.2.1');
     const help = await execFileAsync(jutellBin, ['--help'], { cwd: project, env: installedEnv, shell: true, windowsHide: true });
-    expect(help.stdout).toContain('JuTell CLI 0.2.0');
+    expect(help.stdout).toContain('JuTell CLI 0.2.1');
     const legacy = await execFileAsync(legacyBin, ['--version'], { cwd: project, env: installedEnv, shell: true, windowsHide: true });
-    expect(legacy.stdout).toContain('0.2.0');
+    expect(legacy.stdout).toContain('0.2.1');
     expect(legacy.stdout).toContain('이전 명령입니다');
   }, 30000);
 });

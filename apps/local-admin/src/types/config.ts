@@ -24,7 +24,6 @@ export type Config = {
   };
   mcp: {
     enabled: boolean;
-    autoStart: boolean;
   };
   usageMeasurement: {
     localCountersEnabled: boolean;
@@ -46,7 +45,7 @@ export type McpProviderStatus = {
 export type McpAction = 'preview' | 'register' | 'remove' | 'start' | 'stop' | 'check' | 'connect' | 'disconnect' | 'set-default';
 
 export type McpStatus = {
-  settings: { enabled: boolean; autoStart: boolean };
+  settings: { enabled: boolean };
   server: { state: 'running' | 'stopped' | 'starting' | 'error'; error?: string };
   codex: { registered: boolean; path: string; conflict: boolean; enabled: boolean };
   providers: McpProviderStatus[];

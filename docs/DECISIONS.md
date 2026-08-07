@@ -1,5 +1,34 @@
 # JuTell by Ju0 — Decisions
 
+## 2026-08-07 — 공식 베타 전 일관성 정리 (Doctor Provider 분리, autoStart 정리, Skill 버전)
+
+### 결정 내용
+
+* Doctor·Status의 MCP 표시를 `Codex MCP`와 `OpenCode MCP`로 Provider별로 분리하고, `MCP 서버 실제 연결`, `현재 Agent 세션 적용`을 별도 항목으로 유지한다. "어느 Provider에도 등록되지 않음" 경고는 둘 다 미등록일 때만 나온다.
+* 설정 `mcp.autoStart`는 어떤 기능에도 사용되지 않으므로 신규 스키마에서 제거한다. 기존 값은 하위 호환으로 읽고 무시하며 자동 삭제·재작성하지 않는다. 문서에는 deprecation으로 기록한다.
+* Skill에 기계 판독 가능한 버전(`jutellSkillVersion`)을 기록한다. 프로젝트 원본 Skill이 정본이며 npm assets 복사본은 동일 버전을 유지한다. Doctor는 설치 사본이 원본과 일치하는지 확인한다.
+* `현재 Agent 세션 적용`은 해당 Agent 세션에서 직접 확인해야 하므로 항상 `직접 확인 필요`로 표시한다. 실제 도구 호출을 확인하지 않았다는 이유만으로 경고하지 않는다.
+* 패키지 전체 버전은 문서·CLI·설정·UI를 함께 전환하므로 `0.2.1`로 올린다. Git 커밋은 만들되 원격 push는 하지 않는다.
+* 코드 또는 Diff를 설명할 때는 원문 제시 시에만 한 줄씩 해설하지 않고 기능 단위로 설명한다. 파일 역할·변경 전 문제·변경 내용·사용자 영향·주의 영향·확인/예상 구분을 따른다.
+
+### 변경 이유
+
+공식 베타 진입 전에 Provider별 상태가 뒤섞여 보이고, 실제 확인하지 않은 결과(현재 세션 적용)가 사실처럼 보이거나, 문서와 CLI·설정·UI 버전이 어긋나는 일관성 문제를 정리하기 위해서다.
+
+### 영향받은 파일
+
+* `packages/cli/src/commands/status.ts`, `src/installer/config.ts`, `src/config/managed.ts`, `src/types.ts`, `src/process/mcpProbe.ts`, `src/output/format.ts`, `assets/`
+* `packages/cli/tests/cli.test.ts`
+* `apps/mcp-server/src/config/bridge-config.ts`, `src/tools/bridge-tools.ts`, `tests/bridge-tools.test.ts`
+* `apps/local-admin/server/config/schema.ts`, `server/types.ts`, `server/app.test.ts`, `src/types/config.ts`, `src/App.tsx`, `src/test/App.test.tsx`
+* `.agents/skills/beginner-bridge/SKILL.md`, `references/report-format.md`, `packages/cli/assets/skill/`
+* `examples/config/jutell.example.json`
+* `docs/DECISIONS.md`, `docs/MCP_INTEGRATION.md`, `docs/PROVIDER_OPENCODE.md`, `docs/CLI_INSTALLATION.md`, `docs/START_HERE.md`, `README.md`
+
+### V0.1 범위 변경 여부
+
+없음. 표시·설정·버전 일관성과 Skill 문서 규칙만 정리하며, 중앙 서버·원격 Telemetry·새 Feature·npm publish는 추가하지 않는다.
+
 ## 2026-08-06 — Session 구조를 날짜 폴더로 전환 (Page = 별도 파일, Work = 작업 블록)
 
 ### 결정 내용

@@ -93,7 +93,7 @@ export const DEFAULT_CONFIG: Config = {
   profile: 'balanced',
   features: { ...PROFILES.balanced.features },
   limits: { ...PROFILES.balanced.limits },
-  mcp: { enabled: false, autoStart: false },
+  mcp: { enabled: false },
   usageMeasurement: { localCountersEnabled: false },
 };
 
@@ -141,8 +141,8 @@ export function validateConfig(input: unknown): ValidationResult {
       return { ok: false, error: `${key}는 ${range.min}~${range.max} 사이의 정수여야 합니다.` };
     }
   }
-  if ('mcp' in input && (!isRecord(input.mcp) || !hasOnlyKeys(input.mcp, ['enabled', 'autoStart']) || typeof input.mcp.enabled !== 'boolean' || typeof input.mcp.autoStart !== 'boolean')) {
-    return { ok: false, error: 'MCP 설정은 enabled와 autoStart만 사용할 수 있습니다.' };
+  if ('mcp' in input && (!isRecord(input.mcp) || !hasOnlyKeys(input.mcp, ['enabled', 'autoStart']) || typeof input.mcp.enabled !== 'boolean' || (input.mcp.autoStart !== undefined && typeof input.mcp.autoStart !== 'boolean'))) {
+    return { ok: false, error: 'MCP 설정은 enabled(ON/OFF)만 사용할 수 있습니다.' };
   }
   if ('usageMeasurement' in input && (!isRecord(input.usageMeasurement) || !hasOnlyKeys(input.usageMeasurement, ['localCountersEnabled']) || typeof input.usageMeasurement.localCountersEnabled !== 'boolean')) {
     return { ok: false, error: 'usageMeasurement 설정은 localCountersEnabled(ON/OFF)만 사용할 수 있습니다.' };
@@ -162,7 +162,7 @@ export function validateConfig(input: unknown): ValidationResult {
       profile,
       features,
       limits: { ...(input.limits as Limits) },
-      mcp: ('mcp' in input ? { ...(input.mcp as McpSettings) } : { ...DEFAULT_CONFIG.mcp }),
+      mcp: ('mcp' in input ? { enabled: isRecord(input.mcp) ? input.mcp.enabled as boolean : false } : { ...DEFAULT_CONFIG.mcp }),
       usageMeasurement: ('usageMeasurement' in input ? { ...(input.usageMeasurement as Config['usageMeasurement']) } : { ...DEFAULT_CONFIG.usageMeasurement }),
       ...('voice' in input ? { voice: { preset: input.voice && isRecord(input.voice) && typeof input.voice.preset === 'string' ? input.voice.preset as 'default' | 'plain' | 'learning' | 'jutell' : 'default' } } : {}),
     },
@@ -182,7 +182,7 @@ export function changedFields(before: Config, after: Config) {
       changes.push({ field: `limits.${key}`, before: before.limits[key], after: after.limits[key] });
     }
   }
-  for (const key of ['enabled', 'autoStart'] as Array<keyof McpSettings>) {
+  for (const key of ['enabled'] as Array<keyof McpSettings>) {
     if (before.mcp[key] !== after.mcp[key]) changes.push({ field: `mcp.${key}`, before: before.mcp[key], after: after.mcp[key] });
   }
   if (before.usageMeasurement.localCountersEnabled !== after.usageMeasurement.localCountersEnabled) {

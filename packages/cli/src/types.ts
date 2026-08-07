@@ -63,7 +63,6 @@ export type BridgeConfig = {
   };
   mcp?: {
     enabled: boolean;
-    autoStart: boolean;
   };
   usageMeasurement?: {
     localCountersEnabled: boolean;

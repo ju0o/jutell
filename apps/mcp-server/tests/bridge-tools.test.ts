@@ -1,23 +1,33 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_CONFIG, normalizeConfig } from '../src/config/bridge-config.js';
-import { activeFeatures, beginnerReportRules, bridgeStatus, reportPreferences, safeReportRequirements } from '../src/tools/bridge-tools.js';
+import { activeFeatures, beginnerReportRules, bridgeStatus, parseSkillVersion, reportPreferences, safeReportRequirements } from '../src/tools/bridge-tools.js';
 
 describe('JuTell MCP read-only data', () => {
   it('keeps old settings valid when mcp is absent', () => {
     const oldConfig = { version: 1, profile: 'balanced', features: DEFAULT_CONFIG.features, limits: DEFAULT_CONFIG.limits };
-    expect(normalizeConfig(oldConfig).mcp).toEqual({ enabled: false, autoStart: false });
+    expect(normalizeConfig(oldConfig).mcp).toEqual({ enabled: false });
   });
 
-  it('rejects unsupported mcp fields by falling back safely', () => {
-    const invalid = normalizeConfig({ ...DEFAULT_CONFIG, mcp: { enabled: true, autoStart: false, token: 'hidden' } });
-    expect(invalid).toEqual(DEFAULT_CONFIG);
+  it('drops unsupported mcp fields and keeps only the enabled flag', () => {
+    const invalid = normalizeConfig({ ...DEFAULT_CONFIG, mcp: { enabled: true, token: 'hidden' } });
+    expect(invalid.mcp).toEqual({ enabled: true });
+  });
+
+  it('accepts a legacy autoStart value but ignores it for output', () => {
+    const legacy = normalizeConfig({ ...DEFAULT_CONFIG, mcp: { enabled: true, autoStart: true } });
+    expect(legacy.mcp).toEqual({ enabled: true });
   });
 
   it('returns status without project content or secrets', () => {
-    const status = bridgeStatus({ config: DEFAULT_CONFIG, configExists: true, skillExists: true, agentsExists: true });
+    const status = bridgeStatus({ config: DEFAULT_CONFIG, configExists: true, skillExists: true, agentsExists: true, skillText: undefined });
     expect(status.externalTransmission).toBe(false);
     expect(status.telemetryEnabled).toBe(false);
-    expect(JSON.stringify(status)).not.toMatch(/prompt|diff|apiKey|token|password|cookie/i);
+    expect(JSON.stringify(status)).not.toMatch(/prompt|diff|apiKey|token|password|cookie|autoStart/i);
+  });
+
+  it('parses a machine-readable skill version from the SKILL.md frontmatter', () => {
+    expect(parseSkillVersion('---\nname: beginner-bridge\njutellSkillVersion: "0.2.1"\n---\nbody')).toBe('0.2.1');
+    expect(parseSkillVersion(undefined)).toBeUndefined();
   });
 
   it('returns every feature and current report preferences', () => {

@@ -35,7 +35,7 @@ describe('config validation', () => {
     void mcp;
     const result = validateConfig(oldConfig);
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.value.mcp).toEqual({ enabled: false, autoStart: false });
+    if (result.ok) expect(result.value.mcp).toEqual({ enabled: false });
   });
   it('fills missing helper feature keys with the selected Profile defaults', () => {
     const { nextActionSuggestions, requestClarificationGuide, manualEditGuidance, requestBuilder, ...oldFeatures } = DEFAULT_CONFIG.features;
@@ -54,7 +54,7 @@ describe('config validation', () => {
     expect(validateConfig({ ...DEFAULT_CONFIG, profile: 'unknown' }).ok).toBe(false);
     expect(validateConfig({ ...DEFAULT_CONFIG, features: { ...DEFAULT_CONFIG.features, unknown: true } }).ok).toBe(false);
     expect(validateConfig({ ...DEFAULT_CONFIG, limits: { ...DEFAULT_CONFIG.limits, maxMainFiles: 0 } }).ok).toBe(false);
-    expect(validateConfig({ ...DEFAULT_CONFIG, mcp: { enabled: true, autoStart: false, unsupported: true } }).ok).toBe(false);
+    expect(validateConfig({ ...DEFAULT_CONFIG, mcp: { enabled: true, unsupported: true } }).ok).toBe(false);
   });
   it('accepts an older configuration without usageMeasurement and defaults to OFF', () => {
     const { usageMeasurement, ...oldConfig } = DEFAULT_CONFIG;

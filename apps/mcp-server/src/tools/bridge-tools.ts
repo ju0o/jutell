@@ -4,7 +4,13 @@ import { FEATURE_CATALOG, SAFETY_REQUIREMENTS } from './catalog.js';
 const profileLabel: Record<BridgeConfig['profile'], string> = { minimal: '최소 보고', balanced: '균형 보고', learning: '학습 보고', detailed: '상세 보고' };
 const reportLength = (value: number) => value <= 8 ? '짧음' : value <= 12 ? '보통' : '자세함';
 
-export function bridgeStatus(context: { config: BridgeConfig; configExists: boolean; skillExists: boolean; agentsExists: boolean }) {
+export function parseSkillVersion(skillText: string | undefined) {
+  if (!skillText) return undefined;
+  const match = skillText.match(/jutellSkillVersion\s*:\s*["']?([0-9A-Za-z.\-]+)/);
+  return match ? match[1] : undefined;
+}
+
+export function bridgeStatus(context: { config: BridgeConfig; configExists: boolean; skillExists: boolean; agentsExists: boolean; skillText: string | undefined }) {
   return {
     configFileExists: context.configExists,
     skillFileExists: context.skillExists,
@@ -12,11 +18,10 @@ export function bridgeStatus(context: { config: BridgeConfig; configExists: bool
     profile: context.config.profile,
     activeFeatureCount: Object.values(context.config.features).filter(Boolean).length,
     configVersion: context.config.version,
-    skillVersion: 'not-recorded',
+    skillVersion: parseSkillVersion(context.skillText),
     externalTransmission: false,
     telemetryEnabled: false,
     mcpEnabled: context.config.mcp.enabled,
-    autoStart: context.config.mcp.autoStart,
   };
 }
 

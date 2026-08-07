@@ -170,9 +170,21 @@ Claude Code와 Cline은 `준비 중`으로 안내만 출력하며 설정을 만�
 
 JuTell MCP 서버가 stdio 표준으로 도구를 제공하는지는 로컬 핸드셰이크로 직접 검증했습니다 (2026-08-03).
 
-- `initialize` 응답: `JuTell 0.1.0`
+- `initialize` 응답: `JuTell 0.2.1`
 - `tools/list`: `get_active_features`, `get_beginner_report_rules`, `get_bridge_status`, `get_report_preferences`, `get_safe_report_requirements` 5개
 - `tools/call get_bridge_status`: 설정 조회 성공 (profile, activeFeatures, 외부 전송 없음 확인)
+
+### 상태 읽는 법 (Provider별)
+
+CLI·관리자 화면은 OpenCode MCP 연결을 다음 상태로 구분해 표시합니다. "현재 Agent 세션 적용"은 해당 Agent 세션에서 직접 확인해야 하므로 항상 `직접 확인 필요`로 남깁니다.
+
+| 상태 | 의미 |
+|---|---|
+| OpenCode MCP: 미등록 | 프로젝트 `opencode.json`에 `mcp.beginner_bridge` JuTell 관리 항목이 없습니다. |
+| OpenCode MCP: 등록됨 | 관리 항목은 있지만 `enabled`가 꺼져 있습니다. |
+| OpenCode MCP: 활성화됨 | 관리 항목과 활성 상태가 확인됐습니다 (새 세션 자동 시작 켜짐). |
+| OpenCode MCP: 충돌 | 같은 이름의 관리되지 않는 항목이 있어 자동 변경하지 않았습니다. |
+| 실제 도구 호출 (MCP 서버 응답) | 서버가 도구를 제공하는지 로컬 핸드셰이크로 확인한 별도 상태입니다. |
 
 현재 검증 환경에는 OpenCode CLI가 PATH에 없어, OpenCode 앱 세션에서 실제로 JuTell 도구를 호출하는 단계는 운영자가 직접 확인해야 합니다. 확인 방법:
 

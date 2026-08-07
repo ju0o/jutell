@@ -24,7 +24,7 @@ const startPrompt = `이 프로젝트의 AGENTS.md,
 설정으로 꺼진 항목은 생략하되,
 실패, 중요한 미확인 사항, 범위 밖 변경과 안전 문제는 숨기지 마세요.`;
 
-function cloneConfig(config: Config): Config { return { version: 1, profile: config.profile, features: { ...config.features }, limits: { ...config.limits }, mcp: { enabled: config.mcp?.enabled ?? false, autoStart: config.mcp?.autoStart ?? false }, usageMeasurement: { localCountersEnabled: config.usageMeasurement?.localCountersEnabled ?? false }, ...(config.voice ? { voice: { ...config.voice } } : {}) }; }
+function cloneConfig(config: Config): Config { return { version: 1, profile: config.profile, features: { ...config.features }, limits: { ...config.limits }, mcp: { enabled: config.mcp?.enabled ?? false }, usageMeasurement: { localCountersEnabled: config.usageMeasurement?.localCountersEnabled ?? false }, ...(config.voice ? { voice: { ...config.voice } } : {}) }; }
 function featureLabel(id: string) { return FEATURE_CATALOG.find((item) => item.id === id)?.label ?? id; }
 function profileLabel(profile: Profile) { return PROFILE_CATALOG[profile].label; }
 

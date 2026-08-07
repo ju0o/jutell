@@ -3,7 +3,7 @@ import net from 'node:net';
 import path from 'node:path';
 import { assets, packageRoot, safeLocation } from '../config/paths.js';
 import { codexDetected, nodeMajorVersion, operatingSystem } from '../process/system.js';
-import { exists, readBridgeConfig, readCodexRegistration, readText, readVersionInfo, FEATURE_IDS } from '../config/managed.js';
+import { exists, parseSkillVersion, readBridgeConfig, readCodexRegistration, readText, readVersionInfo, FEATURE_IDS } from '../config/managed.js';
 import { setupCommand } from './lifecycle.js';
 import { hasJuTellAgentsBlock } from '../installer/agents.js';
 import { opencodeDetected, readOpenCodeRegistration } from '../installer/opencode.js';
@@ -31,6 +31,7 @@ export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
   const registration = await readCodexRegistration(paths, packageRoot(), config.config.mcp?.enabled === true);
   const versions = await readVersionInfo();
   const skillInstalled = await exists(path.join(paths.skillRoot, 'SKILL.md'));
+  const installedSkillText = await readText(path.join(paths.skillRoot, 'SKILL.md'));
   const agentsManaged = await hasJuTellAgentsBlock(paths.targetRoot);
   const opencode = await readOpenCodeRegistration(paths, packageRoot(), false);
   const codexPreparation = registration.conflict ? 'error' : !registration.registered ? 'not_registered' : registration.enabled ? 'enabled' : 'registered';
@@ -46,7 +47,7 @@ export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
   if (!config.config.mcp?.enabled && anyProviderEnabled) warnings.push('연결 정책(.jutell.json)은 꺼져 있지만 Provider 자동 시작은 켜져 있습니다. 일치시키려면 jutell use <agent> 또는 jutell off을 실행해 주세요.');
   return {
     cliVersion: versions.cli,
-    skillVersion: await exists(path.join(paths.skillRoot, 'SKILL.md')) ? versions.skill : '설치되지 않음',
+    skillVersion: skillInstalled ? (parseSkillVersion(installedSkillText) ?? versions.skill) : '설치되지 않음',
     mcpVersion: versions.mcp,
     adminVersion: versions.admin,
     installationScope: paths.scope,
@@ -117,9 +118,15 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   checks.push({ name: 'AI Agent Provider 설치 또는 설정', status: codexDetected() || opencodeDetected() || await exists(paths.codexConfigFile) || await exists(paths.opencodeConfigFile) ? '정상' : '직접 확인 필요', detail: codexDetected() || await exists(paths.codexConfigFile) || opencodeDetected() || await exists(paths.opencodeConfigFile) ? 'Provider 명령 또는 설정을 확인했습니다.' : 'Provider 명령과 설정을 모두 자동 확인하지 못했습니다.' });
   checks.push({ name: 'OpenCode 명령 감지', status: opencodeDetected() ? '정상' : '직접 확인 필요', detail: opencodeDetected() ? 'opencode --version 명령을 확인했습니다.' : 'opencode 명령을 자동 확인하지 못했습니다. PATH·shell 실행 권한을 확인해 주세요.' });
   checks.push({ name: 'Skill 파일', status: skillText?.includes('name: beginner-bridge') ? '정상' : '오류', detail: skillText ? 'Skill 파일을 확인했습니다.' : 'Skill 파일이 없습니다.' });
+  const skillVersion = parseSkillVersion(skillText);
+  const sourceSkillText = await readText(path.join(assets().skill, 'SKILL.md'));
+  const sourceVersion = parseSkillVersion(sourceSkillText);
+  const skillMatch = Boolean(skillText && sourceSkillText && skillText === sourceSkillText);
+  checks.push({ name: 'Skill 버전', status: skillMatch ? '정상' : skillVersion ? '주의' : '직접 확인 필요', detail: skillMatch ? `스킬 버전 ${sourceVersion ?? '(버전 기록 없음)'} (설치 사본 일치).` : skillVersion ? `설치 사본 버전 ${skillVersion}이 원본과 다릅니다. jutell use <agent> 로 재설치하세요.` : '설치된 Skill에 버전 기록이 없습니다.' });
+  checks.push({ name: '현재 Agent 세션 적용', status: '직접 확인 필요', detail: '실제로 Skill과 규칙을 읽었는지 여부는 해당 Agent 세션에서 직접 확인해야 합니다.' });
   checks.push({ name: 'MCP 빌드 파일', status: await exists(mcpEntry) ? '정상' : '오류', detail: await exists(mcpEntry) ? '패키지에 포함되어 있습니다.' : 'MCP 빌드 파일이 없습니다.' });
-  checks.push({ name: 'MCP 설정', status: registration.conflict ? '오류' : registration.registered ? '정상' : '주의', detail: registration.conflict ? '관리되지 않는 동일 이름 설정이 있습니다.' : registration.registered ? 'JuTell 관리 블록을 확인했습니다.' : '등록되지 않았습니다.' });
-  checks.push({ name: 'OpenCode 설정', status: opencode.conflict ? '오류' : opencode.registered ? (opencode.enabled ? '정상' : '주의') : '주의', detail: opencode.conflict ? '관리되지 않는 동일 이름 항목이 있습니다.' : opencode.registered ? `JuTell 관리 블록을 확인했습니다. 새 세션 자동 시작: ${opencode.enabled ? '켜짐' : '꺼짐'}.` : 'OpenCode MCP가 등록되지 않았습니다.' });
+  checks.push({ name: 'Codex MCP', status: registration.conflict ? '오류' : registration.registered ? '정상' : '주의', detail: registration.conflict ? '관리되지 않는 동일 이름 설정이 있습니다.' : registration.registered ? `JuTell 관리 블록을 확인했습니다. 새 세션 자동 시작: ${registration.enabled ? '켜짐' : '꺼짐'}.` : '등록되지 않았습니다.' });
+  checks.push({ name: 'OpenCode MCP', status: opencode.conflict ? '오류' : opencode.registered ? (opencode.enabled ? '정상' : '주의') : '주의', detail: opencode.conflict ? '관리되지 않는 동일 이름 항목이 있습니다.' : opencode.registered ? `JuTell 관리 블록을 확인했습니다. 새 세션 자동 시작: ${opencode.enabled ? '켜짐' : '꺼짐'}.` : 'OpenCode MCP가 등록되지 않았습니다.' });
   checks.push({ name: '.jutell.json', status: config.valid ? '정상' : '오류', detail: config.exists ? (config.valid ? '설정 형식을 확인했습니다.' : '설정이 올바르지 않아 기본값을 사용합니다.') : '없으면 기본 설정을 사용합니다.' });
   const featuresValid = Object.keys(config.config.features).every((id) => FEATURE_IDS.includes(id));
   const limitsValid = config.config.limits.maxMainFiles >= 1 && config.config.limits.maxMainFiles <= 10 && config.config.limits.maxGlossaryTerms >= 0 && config.config.limits.maxGlossaryTerms <= 10 && config.config.limits.compactReportMaxSentences >= 4 && config.config.limits.compactReportMaxSentences <= 30;

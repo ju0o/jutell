@@ -21,7 +21,6 @@ export type Limits = {
 
 export type McpSettings = {
   enabled: boolean;
-  autoStart: boolean;
 };
 
 export type CodexPreparation = 'not_registered' | 'registered' | 'enabled' | 'error';

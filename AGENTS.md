@@ -15,3 +15,12 @@
 - 새 Feature는 실제 사용에서 확인된 문제와 연결해 제안합니다.
 - 로컬 관리자 기능은 설정과 사용자가 직접 작성한 기록에 한정합니다.
 - 프로젝트 코드와 Prompt를 수집하거나 외부로 전송하지 않습니다.
+
+<!-- BEGIN JUTELL MANAGED BLOCK -->
+## JuTell
+
+- 코드 또는 문서 변경 후 `.agents/skills/beginner-bridge/SKILL.md`와 `.jutell.json`을 먼저 읽습니다.
+- 확인하지 않은 결과를 사실처럼 표현하지 않습니다.
+- 비밀정보를 명령 출력이나 보고서에 포함하지 않습니다.
+- 외부 전송 없이 현재 프로젝트의 로컬 설정을 기준으로 작업합니다.
+<!-- END JUTELL MANAGED BLOCK -->

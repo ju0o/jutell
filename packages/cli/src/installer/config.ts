@@ -22,7 +22,7 @@ export async function ensureBridgeConfig(paths: ScopePaths, profile: Profile | u
     ...current,
     version: 1,
     ...(profile ? { profile } : {}),
-    mcp: current.mcp && typeof current.mcp === 'object' ? current.mcp : { enabled: false, autoStart: false },
+    mcp: (() => { const m = current.mcp as BridgeConfig['mcp'] | undefined; return { enabled: m?.enabled === true }; })(),
   } as BridgeConfig & Record<string, unknown>;
   const before = JSON.stringify(current, null, 2);
   const after = JSON.stringify(next, null, 2);
@@ -33,7 +33,7 @@ export async function ensureBridgeConfig(paths: ScopePaths, profile: Profile | u
 export async function setMcpEnabled(paths: ScopePaths, enabled: boolean) {
   const loaded = await readBridgeConfig(paths);
   const current = await readObject(paths);
-  const next = { ...(current ?? loaded.config), version: 1, mcp: { ...(loaded.config.mcp ?? { enabled: false, autoStart: false }), enabled, autoStart: false } } as BridgeConfig;
+  const next = { ...(current ?? loaded.config), version: 1, mcp: { ...(loaded.config.mcp ?? { enabled: false }), enabled } } as BridgeConfig;
   await writeBridgeConfig(paths, next);
   return next;
 }

@@ -15,7 +15,7 @@ const fallbackConfig: BridgeConfig = {
   profile: 'balanced',
   features: Object.fromEntries(FEATURE_IDS.map((id) => [id, true])),
   limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 },
-  mcp: { enabled: false, autoStart: false },
+  mcp: { enabled: false },
   usageMeasurement: { localCountersEnabled: false },
 };
 
@@ -74,7 +74,7 @@ export function normalizeConfig(value: unknown): BridgeConfig {
     profile,
     features,
     limits: { maxMainFiles: numberOr('maxMainFiles', 5), maxGlossaryTerms: numberOr('maxGlossaryTerms', 3), compactReportMaxSentences: numberOr('compactReportMaxSentences', 12) },
-    mcp: { enabled: inputMcp.enabled === true, autoStart: inputMcp.autoStart === true },
+    mcp: { enabled: inputMcp.enabled === true },
     usageMeasurement: { localCountersEnabled: inputUsageMeasurement.localCountersEnabled === true },
     ...(typeof inputVoice.preset === 'string' ? { voice: { preset: inputVoice.preset as 'default' | 'plain' | 'learning' | 'jutell' } } : {}),
   };
@@ -149,6 +149,13 @@ export async function removeMcp(paths: ScopePaths, packageRoot: string) {
 
 export async function readVersionInfo() {
   const content = await readText(assets().version);
-  if (!content) return { cli: '0.2.0', skill: '확인 필요', mcp: '0.1.0', admin: '0.1.0' };
-  try { return JSON.parse(content) as { cli: string; skill: string; mcp: string; admin: string }; } catch { return { cli: '0.2.0', skill: '확인 필요', mcp: '0.1.0', admin: '0.1.0' }; }
+  const fallback = { cli: '0.2.1', skill: '확인 필요', mcp: '0.1.0', admin: '0.1.0' };
+  if (!content) return fallback;
+  try { return JSON.parse(content) as { cli: string; skill: string; mcp: string; admin: string }; } catch { return fallback; }
+}
+
+export function parseSkillVersion(skillText: string | undefined) {
+  if (!skillText) return undefined;
+  const match = skillText.match(/jutellSkillVersion\s*:\s*["']?([0-9A-Za-z.\-]+)/);
+  return match ? match[1] : undefined;
 }
