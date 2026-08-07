@@ -3,7 +3,7 @@
 JuTell by Ju0의 로컬 설치·상태·진단·관리자 실행 CLI입니다. 아직 npm에 공개하지 않았습니다.
 
 ```bash
-npm install -g ./jutell-0.2.0.tgz
+npm install -g ./jutell-0.2.1.tgz
 jutell setup
 jutell status
 ```

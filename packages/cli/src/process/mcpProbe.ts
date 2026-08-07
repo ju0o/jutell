@@ -15,7 +15,7 @@ const INITIALIZE = JSON.stringify({
   jsonrpc: '2.0',
   id: 1,
   method: 'initialize',
-  params: { protocolVersion: PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: 'jutell-doctor', version: '0.2.0' } },
+  params: { protocolVersion: PROTOCOL_VERSION, capabilities: {}, clientInfo: { name: 'jutell-doctor', version: '0.2.1' } },
 });
 const INITIALIZED = JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' });
 const TOOLS_LIST = JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} });

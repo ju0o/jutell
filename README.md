@@ -55,7 +55,7 @@ AI가 빠르게 코드를 바꾸어도 무엇이 바뀌었는지, 실제로 확�
 cd packages/cli
 npm install
 npm pack
-npm install -g ./jutell-0.2.0.tgz
+npm install -g ./jutell-0.2.1.tgz
 ```
 
 설치가 끝나면 프로젝트 폴더에서 `jutell` 한 번만 실행합니다. 사용 중인 AI Agent와 보고 방식을 묻는 안내를 따라 고르면 Skill·AGENTS.md·MCP 연결과 관리자 화면이 한 번에 준비됩니다. 공개 후의 목표 흐름은 다음과 같습니다.

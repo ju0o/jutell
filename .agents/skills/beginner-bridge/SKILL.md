@@ -1,5 +1,7 @@
 ---
 name: beginner-bridge
+jutellSkillVersion: "0.2.1"
+schemaVersion: 1
 description: JuTell by Ju0 creates concise, evidence-based work reports for non-developers, separating observed facts, code-based expectations, verification results, risks, and user actions. The legacy Skill ID is retained for compatibility.
 ---
 
@@ -97,6 +99,17 @@ Codex 작업 결과를 비개발자가 이해할 수 있는 하나의 보고서�
 * 변경 내용 설명: 코드를 수정하지 않고 현재 변경만 설명한다.
 * 특정 코드·파일 설명: 전체 완료 보고서가 아니라 요청한 범위의 기능 블록과 파일 역할을 설명한다.
 * 계획 요청: 예상 범위와 검증 계획을 설명하고 완료된 것처럼 쓰지 않는다.
+
+## 코드 또는 Diff 설명
+
+코드나 Diff 원문을 요청받았거나 실제로 사용자에게 보여준 경우에만 다음을 따른다.
+
+* 코드·Diff 원문이 없으면 이 규칙을 강제하지 않는다.
+* 모든 줄을 한 줄씩 해설하지 않고 기능 단위로 묶어 설명한다.
+* 파일 역할을 한 문장으로 설명한다.
+* 변경 전 문제, 변경한 내용, 사용자에게 보이는 변화를 구분해 설명한다.
+* 수정 시 주의할 영향과 확인된 사실·예상을 구분한다.
+* Diff가 매우 길면 핵심 구간만 설명하고 전체 원문을 반복하지 않는다.
 
 ## 참고 문서
 

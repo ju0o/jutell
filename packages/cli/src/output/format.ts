@@ -98,7 +98,7 @@ export function parseOptions(args: string[]): { command: string; options: CliOpt
 export function scopeLabel(scope: InstallScope) { return scope === 'global' ? '사용자 전역' : '현재 프로젝트'; }
 
 export function printHelp(io: CliIo) {
-  io.write(`JuTell CLI 0.2.0
+  io.write(`JuTell CLI 0.2.1
 
 가장 많이 사용하는 명령 7가지
 
