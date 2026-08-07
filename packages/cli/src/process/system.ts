@@ -3,8 +3,8 @@ import os from 'node:os';
 import type { CliIo } from '../types.js';
 
 export function codexDetected() {
-  const result = spawnSync(process.platform === 'win32' ? 'codex.cmd' : 'codex', ['--version'], { stdio: 'ignore', windowsHide: true });
-  return result.status === 0;
+  const result = spawnSync('codex', ['--version'], { stdio: 'ignore', windowsHide: true, shell: process.platform === 'win32' || undefined });
+  return result.status === 0 && !result.error;
 }
 
 export function nodeMajorVersion() {

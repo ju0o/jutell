@@ -62,8 +62,8 @@ function tryParseJson(text: string): Record<string, unknown> | undefined {
 }
 
 export function opencodeDetected() {
-  const result = spawnSync(process.platform === 'win32' ? 'opencode.cmd' : 'opencode', ['--version'], { stdio: 'ignore', windowsHide: true });
-  return result.status === 0;
+  const result = spawnSync('opencode', ['--version'], { stdio: 'ignore', windowsHide: true, shell: process.platform === 'win32' || undefined });
+  return result.status === 0 && !result.error;
 }
 
 export async function resolveOpenCodeConfigFile(paths: ScopePaths) {
