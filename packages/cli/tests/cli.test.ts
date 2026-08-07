@@ -243,12 +243,13 @@ describe('Distribution CLI V0.1', () => {
     await fs.writeFile(opencodeFile, JSON.stringify({ model: 'deepseek/deepseek-chat', mcp: { jira: { type: 'remote', url: 'https://example.com/mcp' } } }, null, 2), 'utf8');
 
     const first = await runCli(['use', 'opencode'], project, env);
-    expect(first.stdout).toContain('OpenCode 연결 완료');
-    expect(first.stdout).toContain('✓ 설정 백업');
-    expect(first.stdout).toContain('✓ JuTell MCP 등록');
-    expect(first.stdout).toContain('✓ MCP 활성화');
-    expect(first.stdout).toContain('✓ 기존 OpenCode 설정 보존');
-    expect(first.stdout).toContain('새 OpenCode 세션에서 바로 사용할 수 있습니다.');
+    expect(first.stdout).toContain('OpenCode 연결이 끝났습니다');
+    expect(first.stdout).toContain('새 대화를 열면');
+    expect(first.stdout).toContain('JuTell이 자동으로 적용됩니다');
+    expect(first.stdout).toContain('AI 연결 설정');
+    expect(first.stdout).toContain('JuTell 규칙 연결');
+    expect(first.stdout).toContain('기존 OpenCode 설정 보존');
+    expect(first.stdout).toContain('실제 적용 여부는 새 대화에서 확인할 수 있습니다');
     const text = await fs.readFile(opencodeFile, 'utf8');
     expect(text.match(/BEGIN JUTELL MANAGED BLOCK/g)).toHaveLength(1);
     expect(text).toContain('"enabled": true');
@@ -259,7 +260,7 @@ describe('Distribution CLI V0.1', () => {
     expect(await fs.readFile(path.join(project, 'AGENTS.md'), 'utf8')).toContain('BEGIN JUTELL MANAGED BLOCK');
 
     const repeated = await runCli(['use', 'opencode'], project, env);
-    expect(repeated.stdout).toContain('OpenCode 연결 완료');
+    expect(repeated.stdout).toContain('OpenCode 연결이 끝났습니다');
     expect((await fs.readFile(opencodeFile, 'utf8')).match(/BEGIN JUTELL MANAGED BLOCK/g)).toHaveLength(1);
     expect((await fs.readFile(opencodeFile, 'utf8')).match(/"beginner_bridge"/g)).toHaveLength(1);
   });
@@ -268,7 +269,7 @@ describe('Distribution CLI V0.1', () => {
     const { project, env } = await fixture();
     await runCli(['use', 'opencode'], project, env);
     const useCodex = await runCli(['use', 'codex'], project, env);
-    expect(useCodex.stdout).toContain('Codex 연결 완료');
+    expect(useCodex.stdout).toContain('Codex 연결이 끝났습니다');
     expect(useCodex.stdout).toContain('기존 다른 Agent 연결은 유지했습니다.');
     const codexText = await fs.readFile(path.join(project, '.codex', 'config.toml'), 'utf8');
     expect(codexText).toContain('[mcp_servers.beginner_bridge]');
@@ -445,4 +446,16 @@ describe('Distribution CLI V0.1', () => {
     expect(legacy.stdout).toContain('0.2.1');
     expect(legacy.stdout).toContain('이전 명령입니다');
   }, 30000);
+
+  it('도움말에서 핵심 명령만 강조하고 session storage는 하위 도움말로 안내한다', async () => {
+    const { project, env } = await fixture();
+    const help = await runCli(['--help'], project, env);
+    expect(help.stdout).toContain('jutell use opencode');
+    expect(help.stdout).toContain('session help');
+    expect(help.stdout).not.toContain('session storage set');
+    expect(help.stdout).not.toContain('session storage reset');
+    const sessionHelp = await runCli(['session', 'help'], project, env);
+    expect(sessionHelp.stdout).toContain('session storage set <절대 경로>');
+    expect(sessionHelp.stdout).toContain('session storage reset');
+  });
 });

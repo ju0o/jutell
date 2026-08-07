@@ -100,23 +100,22 @@ export function scopeLabel(scope: InstallScope) { return scope === 'global' ? '�
 export function printHelp(io: CliIo) {
   io.write(`JuTell CLI 0.2.1
 
-가장 많이 사용하는 명령 7가지
+시작할 때는 jutell만 입력하면 됩니다.
+처음 연결하면 안내에 따라 AI Agent와 보고 방식을 고르고
+연결을 준비한 뒤 관리자 화면을 엽니다.
+
+자주 쓰는 명령
 
   jutell                처음 시작: 설치·연결·관리자 화면을 준비합니다.
-  jutell on             연결을 켭니다.
-  jutell off            연결을 끕니다.
+  jutell use codex      Codex에 연결합니다 (권장).
+  jutell use opencode   OpenCode에 연결합니다.
   jutell status         현재 연결 상태를 확인합니다.
   jutell doctor         문제가 있는지 점검합니다.
-  jutell use codex      Codex에 연결합니다 (권장).
-  jutell use opencode   OpenCode에 연결합니다 (베타).
+  jutell on             연결을 켭니다.
+  jutell off            연결을 끕니다.
 
-처음 실행할 때는 jutell 만 입력하면 됩니다.
-사용 중인 AI Agent와 보고 방식을 묻는 안내에 따라 고르면 연결이 준비됩니다.
-설정은 언제든 관리자 화면 또는 jutell use 명령으로 바꿀 수 있습니다.
-
-use·connect는 Agent를 대신 실행하거나 소유하지 않습니다.
-Agent는 사용자가 선택한 도구로 그대로 실행되며,
-JuTell은 Skill·MCP·지침·설정을 연결합니다.
+연결 후 새 대화를 열면 JuTell이 자동으로 적용됩니다.
+JuTell은 AI Agent를 대신 실행하지 않고 연결과 보고만 도와줍니다.
 
 고급 명령 (보통 사용할 필요가 없습니다)
 
@@ -124,28 +123,19 @@ JuTell은 Skill·MCP·지침·설정을 연결합니다.
   jutell setup          설치를 다시 진행합니다.
   jutell enable         연결을 켭니다 (on과 같음).
   jutell disable        연결을 끕니다 (off와 같음).
-  jutell uninstall      설치를 제거합니다.
   jutell provider       Agent 연결 상태를 자세히 봅니다.
   jutell connect        연결만 추가합니다.
   jutell disconnect     해당 연결만 끕니다.
   jutell switch         기본 Agent를 전환합니다.
+  jutell uninstall      설치를 제거합니다.
 
-하루 작업 기록 (Session = 하루, Page = Agent·역할별 파일, Work = Page 안 작업)
+하루 작업 기록
 
-  jutell session           오늘 Session 상태를 봅니다.
-  jutell session new       오늘 Session 폴더를 만듭니다.
-  jutell session page      Agent·역할별 Page 파일을 만듭니다.
-  jutell session work      현재 Page에 다음 번호 작업을 추가합니다.
-  jutell session move      작업할 Page를 이동합니다.
-  jutell session finish    SESSION_SUMMARY.md로 하루를 마감합니다.
-  jutell session storage   Session 저장 위치 상태를 확인합니다 (운영자용).
-  jutell session storage set <절대 경로>
-                           Session 저장 위치를 운영자 지정으로 바꿉니다.
-  jutell session storage reset
-                           운영자 지정을 제거하고 기본 저장 위치로 돌아갑니다.
+  jutell session        오늘 기록 상태를 봅니다.
+  jutell session help   하루 기록의 하위 명령을 보여줍니다.
 
 이전 별칭: beginner-bridge
 
-실제 npm 배포 전에는 로컬 패키지 검증만 지원합니다. 업데이트는 다음 명령을 사용하세요.
+실제 배포 전에는 로컬 패키지 검증만 지원합니다. 업데이트는 다음 명령을 사용하세요.
   npm update -g jutell`);
 }

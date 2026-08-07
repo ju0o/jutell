@@ -44,12 +44,9 @@ async function verifyRegistration(paths: ScopePaths, provider: AgentProvider) {
 }
 
 function printSuccess(io: CliIo, provider: AgentProvider, extra: { detected: boolean; skill?: boolean; agents?: boolean; othersDisabled?: boolean; keepNote?: boolean }) {
-  io.write(`${provider.label} 연결 완료\n\n✓ 설정 백업\n✓ JuTell MCP 등록\n✓ MCP 활성화\n✓ 기존 ${provider.label} 설정 보존`);
-  if (extra.skill) io.write('\n✓ Skill 연결');
-  if (extra.agents) io.write('\n✓ AGENTS.md 지침 연결');
+  io.write(`${provider.label} 연결이 끝났습니다.\n\n이제 ${provider.label}에서 새 대화를 열면\nJuTell이 자동으로 적용됩니다.\n실제 적용 여부는 새 대화에서 확인할 수 있습니다.\n\n연결 확인\n- AI 연결 설정\n- JuTell 규칙 연결\n- 기존 ${provider.label} 설정 보존`);
   if (extra.othersDisabled) io.write('\n\n다른 Agent의 JuTell 연결은 비활성화했습니다.');
   if (extra.keepNote) io.write('\n기존 다른 Agent 연결은 유지했습니다.');
-  io.write(`\n\n새 ${provider.label} 세션에서 바로 사용할 수 있습니다.`);
   if (!extra.detected) io.write(`\n참고: ${provider.label} 명령을 찾지 못했습니다. 설치 후 다시 실행하세요.`);
 }
 
