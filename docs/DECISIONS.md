@@ -1,5 +1,29 @@
 # JuTell by Ju0 — Decisions
 
+## 2026-08-22 — J01 독립 리뷰 반영 (CLI Profile 기본값 정합화, 버전 0.3.0, 출력 계약 공백 확인)
+
+### 결정 내용
+
+* 독립 리뷰(CHANGES_REQUESTED)의 세 가지 지적을 닫는다.
+* J01-CLI-001: Distribution CLI의 설정 정규화가 누락된 Feature를 항상 켬으로 채우던 문제를 고친다. MCP·로컬 관리자와 같은 Profile 기본값 규칙(`minimal`은 설명형 변경 요약 등 설명 계열 끔)을 따르고, 명시적으로 적은 값은 그대로 유지한다.
+* J01-VERSION-003: 새 Feature 추가에 맞춰 Skill·CLI·MCP 서버 보고 버전과 설치 문서의 tarball 표기를 `0.2.1`에서 `0.3.0`으로 함께 올린다. mcp-server·local-admin의 npm package.json 버전(별도 0.1.0 트랙)은 올리지 않는다.
+* J01-TEST-002: 현재 JuTell에는 최종 비개발자 보고서를 코드로 렌더링하는 경로가 없다(보고서 생성은 AI Agent가 Skill 문서를 따라 수행). 렌더러를 임의로 만들지 않고, 실제 제약 표면인 Skill 참조 문서 내용과 MCP 규칙 게이팅을 영구 회귀 테스트로 고정한다. 행위 기반 출력 계약 테스트는 별도 아키텍처 결정이 필요함을 기록한다.
+
+### 변경 이유
+
+독립 Codex 리뷰에서 CLI와 MCP의 explainedDiff Profile 기본값 불일치(P1), 규칙 문자열 존재만 확인하는 테스트의 한계(P1), Feature 추가에 대한 버전 미갱신(P2)이 확인됐기 때문이다.
+
+### 영향받은 파일
+
+* `packages/cli/src/config/managed.ts`, `tests/config-normalization.test.ts`(신규), `tests/version-consistency.test.ts`(신규), `tests/cli.test.ts`
+* `apps/mcp-server/tests/skill-contract.test.ts`(신규), `src/index.ts`
+* `.agents/skills/beginner-bridge/SKILL.md`, `README.md`, `docs/CLI_INSTALLATION.md`, `docs/START_HERE.md`, `packages/cli/README.md`, `packages/cli/scripts/build-assets.mjs`
+* `docs/DECISIONS.md`
+
+### V0.1 범위 변경 여부
+
+없음. 리뷰 지적 수정, 버전 동기화, 테스트 보강이다. 렌더링 엔진·중앙 서버·원격 Telemetry·새 Feature는 추가하지 않는다.
+
 ## 2026-08-22 — J01 설명형 변경 요약 (explainedDiff) 추가
 
 ### 결정 내용

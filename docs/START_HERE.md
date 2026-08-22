@@ -59,7 +59,7 @@ Prompt, 코드, 파일 경로, 비밀정보를 피드백에 그대로 적지 않
 cd packages/cli
 npm install
 npm pack
-npm install -g ./jutell-0.2.1.tgz
+npm install -g ./jutell-0.3.0.tgz
 ```
 
 설치한 뒤 실제 프로젝트 폴더에서 `jutell`만 실행합니다.

@@ -1,6 +1,6 @@
 {
   "name": "jutell",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "JuTell by Ju0 local installer and dashboard CLI",
   "type": "module",
   "bin": {

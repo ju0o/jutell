@@ -9,11 +9,17 @@ const LEGACY_BEGIN_MARKER = '# BEGINNER_BRIDGE_MCP_BEGIN';
 const LEGACY_END_MARKER = '# BEGINNER_BRIDGE_MCP_END';
 export const FEATURE_IDS = ['changeSummary', 'userVisibleChanges', 'internalChanges', 'mainFiles', 'explainedDiff', 'glossary', 'validationResults', 'riskAssessment', 'userActions', 'nextActionSuggestions', 'requestClarificationGuide', 'manualEditGuidance', 'requestBuilder'];
 export const PROFILES = ['minimal', 'balanced', 'learning', 'detailed'] as const;
+export const PROFILE_FEATURES: Record<(typeof PROFILES)[number], Record<string, boolean>> = {
+  minimal: { changeSummary: true, userVisibleChanges: true, internalChanges: false, mainFiles: false, explainedDiff: false, glossary: false, validationResults: true, riskAssessment: false, userActions: true, nextActionSuggestions: false, requestClarificationGuide: false, manualEditGuidance: false, requestBuilder: true },
+  balanced: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, explainedDiff: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true },
+  learning: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, explainedDiff: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true },
+  detailed: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, explainedDiff: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true },
+};
 
 const fallbackConfig: BridgeConfig = {
   version: 1,
   profile: 'balanced',
-  features: Object.fromEntries(FEATURE_IDS.map((id) => [id, true])),
+  features: { ...PROFILE_FEATURES.balanced },
   limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 },
   mcp: { enabled: false },
   usageMeasurement: { localCountersEnabled: false },
@@ -63,7 +69,7 @@ export function normalizeConfig(value: unknown): BridgeConfig {
   const input = value as Record<string, unknown>;
   const profile = typeof input.profile === 'string' && PROFILES.includes(input.profile as typeof PROFILES[number]) ? input.profile as BridgeConfig['profile'] : 'balanced';
   const inputFeatures = input.features && typeof input.features === 'object' && !Array.isArray(input.features) ? input.features as Record<string, unknown> : {};
-  const features = Object.fromEntries(FEATURE_IDS.map((id) => [id, typeof inputFeatures[id] === 'boolean' ? inputFeatures[id] : true]));
+  const features = Object.fromEntries(FEATURE_IDS.map((id) => [id, typeof inputFeatures[id] === 'boolean' ? inputFeatures[id] : PROFILE_FEATURES[profile][id]]));
   const inputLimits = input.limits && typeof input.limits === 'object' && !Array.isArray(input.limits) ? input.limits as Record<string, unknown> : {};
   const numberOr = (key: string, fallback: number) => typeof inputLimits[key] === 'number' && Number.isInteger(inputLimits[key]) ? inputLimits[key] as number : fallback;
   const inputMcp = input.mcp && typeof input.mcp === 'object' && !Array.isArray(input.mcp) ? input.mcp as Record<string, unknown> : {};

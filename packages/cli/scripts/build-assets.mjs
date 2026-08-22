@@ -51,6 +51,6 @@ const sourceConfig = JSON.parse(await fs.readFile(path.join(repoRoot, '.jutell.j
 sourceConfig.mcp = { enabled: false };
 sourceConfig.voice = { preset: 'default' };
 await fs.writeFile(path.join(assetsRoot, 'default-config.json'), `${JSON.stringify(sourceConfig, null, 2)}\n`, 'utf8');
-await fs.writeFile(path.join(assetsRoot, 'version.json'), `${JSON.stringify({ cli: '0.2.1', skill: '확인 필요', mcp: '0.1.0', admin: '0.1.0' }, null, 2)}\n`, 'utf8');
+await fs.writeFile(path.join(assetsRoot, 'version.json'), `${JSON.stringify({ cli: '0.3.0', skill: '확인 필요', mcp: '0.1.0', admin: '0.1.0' }, null, 2)}\n`, 'utf8');
 
 console.log('JuTell distribution assets prepared.');

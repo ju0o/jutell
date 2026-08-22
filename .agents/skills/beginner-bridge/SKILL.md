@@ -1,6 +1,6 @@
 ---
 name: beginner-bridge
-jutellSkillVersion: "0.2.1"
+jutellSkillVersion: "0.3.0"
 schemaVersion: 1
 description: JuTell by Ju0 creates concise, evidence-based work reports for non-developers, separating observed facts, code-based expectations, verification results, risks, and user actions. The legacy Skill ID is retained for compatibility.
 ---
