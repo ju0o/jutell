@@ -1,5 +1,34 @@
 # JuTell by Ju0 — Decisions
 
+## 2026-08-22 — J01 설명형 변경 요약 (explainedDiff) 추가
+
+### 결정 내용
+
+* 새 Feature `explainedDiff`를 추가한다. 의미 있는 변경(기능 동작·화면 변화·데이터 처리 변화)은 무엇을 바꿨나요·왜 바꿨나요·어디를 바꿨나요·실제 중요한 변경 순으로 묶어 설명할 수 있다.
+* 변경 이유의 근거(Agent 결과, 사용자 요청, 코드 비교)가 없으면 추측하지 않고 "변경 이유는 Agent 결과에서 확인되지 않았습니다."로 표시한다.
+* 버튼 문구·색상·여백·표시 문구·이동 경로처럼 직접 다듬을 수 있는 위치의 코드 근거가 있을 때만 "내가 직접 다듬고 싶다면?" 항목을 덧붙인다. 인증·권한·결제·데이터베이스 같은 영역은 간단한 화면 다듬기 대상으로 제시하지 않는다.
+* 관련 파일과 변경은 기능 단위로 묶고 전체 Diff 원문을 반복하지 않는다. 단순 작업(문구 한 개, 색상 한 곳 등)에는 이 형식을 강제하지 않는다.
+* 형식 상세는 Skill 참조 문서 `explained-diff-format.md`에 두고, 용어 설명은 기존 glossary 체계를 재사용한다. 별도 보고 체계나 용어 체계를 만들지 않는다.
+* Profile 기본값은 `minimal` 끔, `balanced`·`learning`·`detailed` 켬이다. 구버전 설정에 키가 없으면 오류로 보지 않고 선택한 Profile 기본값으로 채운다.
+* MCP `get_beginner_report_rules` 응답에 `explainedDiffRule`을 활성일 때만 추가한다. 기존 필드와 이전 세션 호환을 유지하는 additive 변경이다.
+
+### 변경 이유
+
+Owner가 Dual Dogfooding Framework 01에서 선정한 첫 개선 과제(J01)다. 기존 보고는 무엇을 바꿨는지와 어느 파일이 바뀌었는지는 알려주지만, 왜 바뀌었는지와 실제 중요한 차이를 비개발자가 한 번에 이해하기 어렵다는 문제를 줄이기 위함이다. 근거 없는 이유와 다듬기 위치는 만들지 않는 환각 방지 규칙을 함께 고정한다.
+
+### 영향받은 파일
+
+* `.agents/skills/beginner-bridge/SKILL.md`, `references/explained-diff-format.md`(신규), `references/feature-registry.md`, `references/report-format.md`
+* `apps/mcp-server/src/config/bridge-config.ts`, `src/tools/catalog.ts`, `src/tools/bridge-tools.ts`, `tests/bridge-tools.test.ts`
+* `apps/local-admin/server/types.ts`, `server/config/schema.ts`, `server/app.test.ts`, `src/types/config.ts`, `src/lib/catalog.ts`, `src/features/usage-experiments/UsageExperiments.tsx`, `src/test/App.test.tsx`
+* `packages/cli/src/config/managed.ts`
+* `.jutell.json`, `examples/config/jutell.example.json`, `examples/config/beginner-bridge.example.json`
+* `docs/FEATURE_CONFIGURATION.md`, `docs/DECISIONS.md`
+
+### V0.1 범위 변경 여부
+
+보고 설명 방식의 확장이다. 중앙 서버, 원격 Telemetry, 외부 전송, 코드 수집은 추가하지 않는다. 기존 6개 보고 항목과 설정·MCP JSON 계약은 이전 세션과 호환을 유지한다.
+
 ## 2026-08-07 — 공식 베타 전 일관성 정리 (Doctor Provider 분리, autoStart 정리, Skill 버전)
 
 ### 결정 내용

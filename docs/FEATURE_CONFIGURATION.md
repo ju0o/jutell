@@ -21,6 +21,7 @@ JuTell 보고서의 선택 기능을 프로젝트별 로컬 설정으로 조절�
     "userVisibleChanges": true,
     "internalChanges": true,
     "mainFiles": true,
+    "explainedDiff": true,
     "glossary": true,
     "validationResults": true,
     "riskAssessment": true,
@@ -50,6 +51,7 @@ JSON에는 주석을 넣지 않는다.
 | `userVisibleChanges` | 사용자가 보는 화면이나 사용 방법의 변화 설명 |
 | `internalChanges` | 프로그램 내부 동작의 변화 설명 |
 | `mainFiles` | 주요 수정 파일과 역할 설명 |
+| `explainedDiff` | 의미 있는 변경을 무엇을·왜·어디·중요한 변경으로 묶어 설명 (형식은 Skill 참조 문서 따름) |
 | `glossary` | 필요한 개발 용어에 쉬운 설명 추가 |
 | `validationResults` | 테스트·타입 검사·빌드·브라우저 확인 결과 설명 |
 | `riskAssessment` | 위험도와 위험 근거 설명 |
@@ -61,7 +63,7 @@ JSON에는 주석을 넣지 않는다.
 
 기본값은 모든 Feature가 `true`다. Feature 값은 반드시 boolean이어야 한다.
 
-`nextActionSuggestions`가 꺼지면 보고서 끝의 다음 행동 제안을 생략한다. 단, 안전·데이터 손실과 관련된 사용자 행동은 `userActions`와 같은 강제 예외로 계속 보고한다. `requestBuilder`는 보고서 내용이 아니라 요청 만들기 탭의 템플릿 제공 여부만 조절한다.
+`nextActionSuggestions`가 꺼지면 보고서 끝의 다음 행동 제안을 생략한다. 단, 안전·데이터 손실과 관련된 사용자 행동은 `userActions`와 같은 강제 예외로 계속 보고한다. `requestBuilder`는 보고서 내용이 아니라 요청 만들기 탭의 템플릿 제공 여부만 조절한다. `explainedDiff`는 근거가 확인된 변경에만 설명을 덧붙인다. 변경 이유나 다듬기 위치의 근거가 없으면 추측으로 만들지 않고 "변경 이유는 Agent 결과에서 확인되지 않았습니다."처럼 표시하거나 해당 항목을 생략한다. 데이터 손실·보안 관련 중요 변경은 꺼져 있어도 짧게 남긴다.
 
 ## 4. Profile
 
@@ -69,7 +71,7 @@ Profile은 여러 Feature와 길이 제한의 기본 묶음이다. 명시적으�
 
 | Profile | 기본 Feature | 권장 limits |
 |---|---|---|
-| `minimal` | `internalChanges`, `mainFiles`, `glossary`, `riskAssessment`, `nextActionSuggestions`, `requestClarificationGuide`, `manualEditGuidance` 끔; `requestBuilder` 포함 나머지 켬 | 주요 파일 3개, 용어 1개, 8문장 |
+| `minimal` | `internalChanges`, `mainFiles`, `explainedDiff`, `glossary`, `riskAssessment`, `nextActionSuggestions`, `requestClarificationGuide`, `manualEditGuidance` 끔; `requestBuilder` 포함 나머지 켬 | 주요 파일 3개, 용어 1개, 8문장 |
 | `balanced` | 모두 켬 | 주요 파일 5개, 용어 3개, 12문장 |
 | `learning` | 모두 켬 | 주요 파일 5개, 용어 6개, 12문장 |
 | `detailed` | 모두 켬 | 주요 파일 5개, 용어 6개, 18문장 |
@@ -139,7 +141,7 @@ Profile은 여러 Feature와 길이 제한의 기본 묶음이다. 명시적으�
 }
 ```
 
-이 설정에서는 변경 요약, 사용자 변화, 검증 결과, 필요한 사용자 행동을 유지하고 내부 변화·주요 파일·용어·일반 위험도 설명과 다음 행동 제안은 기본적으로 줄인다. 실패와 중요한 미확인 사항은 유지한다. `requestBuilder`는 보고서와 무관하므로 이 설정에서도 켜져 있다.
+이 설정에서는 변경 요약, 사용자 변화, 검증 결과, 필요한 사용자 행동을 유지하고 내부 변화·주요 파일·변경 의미 설명·용어·일반 위험도 설명과 다음 행동 제안은 기본적으로 줄인다. 실패와 중요한 미확인 사항은 유지한다. `requestBuilder`는 보고서와 무관하므로 이 설정에서도 켜져 있다.
 
 ### 8.2 용어 학습용 `learning`
 

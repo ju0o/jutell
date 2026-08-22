@@ -31,8 +31,9 @@ describe('JuTell MCP read-only data', () => {
   });
 
   it('returns every feature and current report preferences', () => {
-    expect(activeFeatures(DEFAULT_CONFIG)).toHaveLength(12);
+    expect(activeFeatures(DEFAULT_CONFIG)).toHaveLength(13);
     expect(activeFeatures(DEFAULT_CONFIG).find((item) => item.id === 'glossary')).toMatchObject({ name: '개발 용어 설명', active: true });
+    expect(activeFeatures(DEFAULT_CONFIG).find((item) => item.id === 'explainedDiff')).toMatchObject({ name: '설명형 변경 요약', active: true });
     expect(activeFeatures(DEFAULT_CONFIG).find((item) => item.id === 'requestBuilder')).toMatchObject({ name: '요청 만들기', active: true });
     expect(reportPreferences(DEFAULT_CONFIG)).toMatchObject({ profile: 'balanced', profileName: '균형 보고', limits: DEFAULT_CONFIG.limits });
   });
@@ -57,5 +58,63 @@ describe('JuTell MCP read-only data', () => {
     expect(rules.notCollected).toContain('Prompt');
     expect(rules.notCollected).toContain('비밀정보');
     expect(rules.diffRule).toMatch(/코드 또는 Diff/);
+  });
+});
+
+describe('explainedDiff (J01 explained diff reporting)', () => {
+  const sections = ['무엇을 바꿨나요?', '왜 바꿨나요?', '어디를 바꿨나요?', '실제 중요한 변경', '내가 직접 다듬고 싶다면?'];
+
+  it('exposes the five beginner-friendly sections for a normal meaningful change', () => {
+    const rule = beginnerReportRules(DEFAULT_CONFIG).explainedDiffRule;
+    expect(rule.sections).toEqual(sections);
+    expect(rule.when).toMatch(/의미 있는 변경/);
+  });
+
+  it('never fabricates a reason when the why evidence is missing', () => {
+    expect(beginnerReportRules(DEFAULT_CONFIG).explainedDiffRule.noEvidenceRules.why).toMatch(/추측하지 않고/);
+    expect(beginnerReportRules(DEFAULT_CONFIG).explainedDiffRule.noEvidenceRules.why).toContain('변경 이유는 Agent 결과에서 확인되지 않았습니다.');
+  });
+
+  it('groups related changes instead of repeating the whole diff', () => {
+    expect(beginnerReportRules(DEFAULT_CONFIG).explainedDiffRule.groupingRule).toMatch(/묶어 설명/);
+    expect(beginnerReportRules(DEFAULT_CONFIG).explainedDiffRule.groupingRule).toContain('전체 Diff 원문을 반복하지 않습니다');
+  });
+
+  it('requires code evidence before offering a customization hint', () => {
+    expect(beginnerReportRules(DEFAULT_CONFIG).explainedDiffRule.noEvidenceRules.customization).toMatch(/근거가 없으면/);
+    expect(beginnerReportRules(DEFAULT_CONFIG).explainedDiffRule.noEvidenceRules.customization).toContain('만들지 않습니다');
+  });
+
+  it('does not present risky areas as simple visual customization points', () => {
+    expect(beginnerReportRules(DEFAULT_CONFIG).explainedDiffRule.noEvidenceRules.riskyArea).toContain('제시하지 않');
+  });
+
+  it('fills explainedDiff with the Profile default for configs written before it existed', () => {
+    const oldConfig = { version: 1, profile: 'balanced', features: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true }, limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 } };
+    const normalized = normalizeConfig(oldConfig);
+    expect(normalized.features.explainedDiff).toBe(true);
+    expect(beginnerReportRules(normalized).explainedDiffRule).toBeDefined();
+  });
+
+  it('omits only the explained diff guidance when the feature is off and keeps other fields intact', () => {
+    const rules = beginnerReportRules({ ...DEFAULT_CONFIG, features: { ...DEFAULT_CONFIG.features, explainedDiff: false } });
+    expect(rules.explainedDiffRule).toBeUndefined();
+    expect(rules.diffRule).toMatch(/코드 또는 Diff/);
+    expect(rules.evidenceRule).toBeDefined();
+    expect(rules.statusRule).toBeDefined();
+    expect(rules.safetyRequirements.length).toBeGreaterThan(0);
+    expect(rules.notCollected).toContain('비밀정보');
+  });
+
+  it('keeps explainedDiff off in the minimal profile by default', () => {
+    const normalized = normalizeConfig({ version: 1, profile: 'minimal', limits: { maxMainFiles: 3, maxGlossaryTerms: 1, compactReportMaxSentences: 8 } });
+    expect(normalized.features.explainedDiff).toBe(false);
+    expect(beginnerReportRules(normalized).explainedDiffRule).toBeUndefined();
+  });
+
+  it('keeps glossary behavior unchanged while explained diff guidance is present', () => {
+    const rules = beginnerReportRules(DEFAULT_CONFIG);
+    expect(rules.activeReportSections).toContain('개발 용어 설명');
+    expect(activeFeatures(DEFAULT_CONFIG).find((item) => item.id === 'glossary')).toMatchObject({ active: true });
   });
 });

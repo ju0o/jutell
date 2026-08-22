@@ -7,7 +7,7 @@ export const BEGIN_MARKER = '# BEGINNER_BRIDGE_CLI_MCP_BEGIN';
 export const END_MARKER = '# BEGINNER_BRIDGE_CLI_MCP_END';
 const LEGACY_BEGIN_MARKER = '# BEGINNER_BRIDGE_MCP_BEGIN';
 const LEGACY_END_MARKER = '# BEGINNER_BRIDGE_MCP_END';
-export const FEATURE_IDS = ['changeSummary', 'userVisibleChanges', 'internalChanges', 'mainFiles', 'glossary', 'validationResults', 'riskAssessment', 'userActions', 'nextActionSuggestions', 'requestClarificationGuide', 'manualEditGuidance', 'requestBuilder'];
+export const FEATURE_IDS = ['changeSummary', 'userVisibleChanges', 'internalChanges', 'mainFiles', 'explainedDiff', 'glossary', 'validationResults', 'riskAssessment', 'userActions', 'nextActionSuggestions', 'requestClarificationGuide', 'manualEditGuidance', 'requestBuilder'];
 export const PROFILES = ['minimal', 'balanced', 'learning', 'detailed'] as const;
 
 const fallbackConfig: BridgeConfig = {

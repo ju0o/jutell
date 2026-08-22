@@ -40,6 +40,19 @@ export function reportPreferences(config: BridgeConfig) {
   };
 }
 
+export const EXPLAINED_DIFF_SECTIONS = ['무엇을 바꿨나요?', '왜 바꿨나요?', '어디를 바꿨나요?', '실제 중요한 변경', '내가 직접 다듬고 싶다면?'] as const;
+
+const explainedDiffRule = {
+  when: '의미 있는 변경(기능 동작·화면 변화·데이터 처리 변화)을 보고할 때',
+  sections: EXPLAINED_DIFF_SECTIONS,
+  groupingRule: '관련된 파일과 변경은 기능 단위로 묶어 설명하고 전체 Diff 원문을 반복하지 않습니다.',
+  noEvidenceRules: {
+    why: '변경 이유의 근거가 없으면 추측하지 않고 "변경 이유는 Agent 결과에서 확인되지 않았습니다."로 표시합니다.',
+    customization: '문구·색상·여백·이동 경로처럼 직접 다듬을 수 있는 위치의 코드 근거가 없으면 "내가 직접 다듬고 싶다면?" 섹션을 만들지 않습니다.',
+    riskyArea: '인증·권한·결제·데이터베이스처럼 위험한 영역은 간단한 화면 다듬기 대상으로 제시하지 않고 주의가 필요하다고 표시합니다.',
+  },
+} as const;
+
 export function beginnerReportRules(config: BridgeConfig) {
   const active = Object.entries(config.features).filter(([, enabled]) => enabled).map(([id]) => FEATURE_CATALOG[id as FeatureId].label);
   return {
@@ -49,6 +62,7 @@ export function beginnerReportRules(config: BridgeConfig) {
     evidenceRule: '실제로 확인한 사실, 코드만 보고 예상한 내용, 확인하지 못한 내용을 구분합니다.',
     statusRule: '검증 결과와 보고서 상태를 일치시킵니다.',
     diffRule: '코드 또는 Diff를 사용자에게 보여줄 경우, 바로 뒤에 무엇을 수정했고 사용자에게 어떤 영향이 있는지 기능 단위로 설명합니다.',
+    ...(config.features.explainedDiff ? { explainedDiffRule } : {}),
     safetyRequirements: SAFETY_REQUIREMENTS,
     notCollected: ['프로젝트 코드', 'Git diff', 'Prompt', 'AI 답변 원문', '파일 경로', '비밀정보'],
   };

@@ -8,6 +8,7 @@
 | `userVisibleChanges` | 켬 | 일반 화면·사용 방법 변화 | 중요한 안전 영향 | 없음 |
 | `internalChanges` | 켬 | 일반 내부 동작 설명 | 데이터 손실·보안·범위 밖 영향 | 없음 |
 | `mainFiles` | 켬 | 주요 파일 역할 설명 | 사용자가 요청한 파일 설명 | `maxMainFiles` |
+| `explainedDiff` | 켬 | 일반 변경 의미 설명 | 데이터 손실·보안 관련 중요 변경 | 없음 |
 | `glossary` | 켬 | 선택적 용어 괄호 설명 | 안전 판단에 필요한 의미 | `maxGlossaryTerms` |
 | `validationResults` | 켬 | 통과한 검증의 일반 설명 | 핵심 검증 실패·작업 보류 | 없음 |
 | `riskAssessment` | 켬 | 일반 위험도 설명 | 높은 위험·판정 불가·비밀정보 위험 | 없음 |

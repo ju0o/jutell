@@ -2,16 +2,16 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
 export type Profile = 'minimal' | 'balanced' | 'learning' | 'detailed';
-export type FeatureId = 'changeSummary' | 'userVisibleChanges' | 'internalChanges' | 'mainFiles' | 'glossary' | 'validationResults' | 'riskAssessment' | 'userActions' | 'nextActionSuggestions' | 'requestClarificationGuide' | 'manualEditGuidance' | 'requestBuilder';
+export type FeatureId = 'changeSummary' | 'userVisibleChanges' | 'internalChanges' | 'mainFiles' | 'explainedDiff' | 'glossary' | 'validationResults' | 'riskAssessment' | 'userActions' | 'nextActionSuggestions' | 'requestClarificationGuide' | 'manualEditGuidance' | 'requestBuilder';
 export type Limits = { maxMainFiles: number; maxGlossaryTerms: number; compactReportMaxSentences: number };
 export type BridgeConfig = { version: 1; profile: Profile; features: Record<FeatureId, boolean>; limits: Limits; mcp: { enabled: boolean }; usageMeasurement: { localCountersEnabled: boolean } };
 
-export const FEATURE_IDS: FeatureId[] = ['changeSummary', 'userVisibleChanges', 'internalChanges', 'mainFiles', 'glossary', 'validationResults', 'riskAssessment', 'userActions', 'nextActionSuggestions', 'requestClarificationGuide', 'manualEditGuidance', 'requestBuilder'];
+export const FEATURE_IDS: FeatureId[] = ['changeSummary', 'userVisibleChanges', 'internalChanges', 'mainFiles', 'explainedDiff', 'glossary', 'validationResults', 'riskAssessment', 'userActions', 'nextActionSuggestions', 'requestClarificationGuide', 'manualEditGuidance', 'requestBuilder'];
 export const PROFILE_FEATURES: Record<Profile, Record<FeatureId, boolean>> = {
-  minimal: { changeSummary: true, userVisibleChanges: true, internalChanges: false, mainFiles: false, glossary: false, validationResults: true, riskAssessment: false, userActions: true, nextActionSuggestions: false, requestClarificationGuide: false, manualEditGuidance: false, requestBuilder: true },
-  balanced: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true },
-  learning: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true },
-  detailed: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true },
+  minimal: { changeSummary: true, userVisibleChanges: true, internalChanges: false, mainFiles: false, explainedDiff: false, glossary: false, validationResults: true, riskAssessment: false, userActions: true, nextActionSuggestions: false, requestClarificationGuide: false, manualEditGuidance: false, requestBuilder: true },
+  balanced: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, explainedDiff: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true },
+  learning: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, explainedDiff: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true },
+  detailed: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, explainedDiff: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true },
 };
 export const DEFAULT_CONFIG: BridgeConfig = {
   version: 1,

@@ -27,7 +27,7 @@ type ExperimentSummary = { total: number; completed: number; inProgress: number;
 type UsageData = { summary: ExperimentSummary | null; experiments: Experiment[] };
 
 const profileLabels: Record<Profile, string> = { minimal: '최소 보고', balanced: '균형 보고', learning: '학습 보고', detailed: '상세 보고' };
-const featureLabels: Record<string, string> = { changeSummary: '변경 요약', userVisibleChanges: '사용자에게 보이는 변화', internalChanges: '내부 변경', mainFiles: '주요 파일', glossary: '개발 용어 설명', validationResults: '검증 결과', riskAssessment: '위험 평가', userActions: '사용자 작업', nextActionSuggestions: '다음 행동 제안', requestClarificationGuide: '요청 명확화 안내', manualEditGuidance: '직접 수정 안내', requestBuilder: '요청 만들기' };
+const featureLabels: Record<string, string> = { changeSummary: '변경 요약', userVisibleChanges: '사용자에게 보이는 변화', internalChanges: '내부 변경', mainFiles: '주요 파일', explainedDiff: '설명형 변경 요약', glossary: '개발 용어 설명', validationResults: '검증 결과', riskAssessment: '위험 평가', userActions: '사용자 작업', nextActionSuggestions: '다음 행동 제안', requestClarificationGuide: '요청 명확화 안내', manualEditGuidance: '직접 수정 안내', requestBuilder: '요청 만들기' };
 
 export function UsageExperiments({ config, onMessage, onConfigSaved }: { config: Config; onMessage: (text: string, tone: 'success' | 'error') => void; onConfigSaved: (config: Config) => void }) {
   const [counters, setCounters] = useState<CountersState>({ exists: false, corrupt: false, counters: null });

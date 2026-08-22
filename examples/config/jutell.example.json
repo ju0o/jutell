@@ -6,6 +6,7 @@
     "userVisibleChanges": true,
     "internalChanges": true,
     "mainFiles": true,
+    "explainedDiff": true,
     "glossary": true,
     "validationResults": true,
     "riskAssessment": true,

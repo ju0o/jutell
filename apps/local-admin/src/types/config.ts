@@ -4,6 +4,7 @@ export type FeatureId =
   | 'userVisibleChanges'
   | 'internalChanges'
   | 'mainFiles'
+  | 'explainedDiff'
   | 'glossary'
   | 'validationResults'
   | 'riskAssessment'

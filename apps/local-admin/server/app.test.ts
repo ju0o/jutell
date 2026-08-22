@@ -38,8 +38,8 @@ describe('config validation', () => {
     if (result.ok) expect(result.value.mcp).toEqual({ enabled: false });
   });
   it('fills missing helper feature keys with the selected Profile defaults', () => {
-    const { nextActionSuggestions, requestClarificationGuide, manualEditGuidance, requestBuilder, ...oldFeatures } = DEFAULT_CONFIG.features;
-    void nextActionSuggestions; void requestClarificationGuide; void manualEditGuidance; void requestBuilder;
+    const { explainedDiff, nextActionSuggestions, requestClarificationGuide, manualEditGuidance, requestBuilder, ...oldFeatures } = DEFAULT_CONFIG.features;
+    void explainedDiff; void nextActionSuggestions; void requestClarificationGuide; void manualEditGuidance; void requestBuilder;
     const minimal = { version: 1, profile: 'minimal' as const, features: oldFeatures, limits: { maxMainFiles: 3, maxGlossaryTerms: 1, compactReportMaxSentences: 8 } };
     const result = validateConfig(minimal);
     expect(result.ok).toBe(true);
@@ -47,6 +47,7 @@ describe('config validation', () => {
       expect(result.value.features.nextActionSuggestions).toBe(false);
       expect(result.value.features.requestClarificationGuide).toBe(false);
       expect(result.value.features.manualEditGuidance).toBe(false);
+      expect(result.value.features.explainedDiff).toBe(false);
       expect(result.value.features.requestBuilder).toBe(true);
     }
   });

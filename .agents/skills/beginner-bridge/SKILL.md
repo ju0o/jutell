@@ -73,7 +73,7 @@ Codex 작업 결과를 비개발자가 이해할 수 있는 하나의 보고서�
    * 보고서 상태: 확인 완료, 추가 확인 필요, 일부 확인, 작업 보류, 범위 밖
 10. 위험도는 변경 영향도를 기준으로 판단한다. 검증 도구가 없다는 이유만으로 위험도를 판정 불가로 만들지 않는다. 여러 조건이 겹치면 가장 높은 위험도를 적용한다.
 11. 필요한 용어만 처음 등장할 때 설명한다. 기술 전용 용어는 해당 기술이 사용되는 것을 확인한 경우에만 설명한다. 기본 사전에 없는 용어는 추측하지 않는다.
-12. 활성 Feature와 `references/report-format.md`에 따라 하나의 비개발자용 최종 보고를 작성한다.
+12. 활성 Feature와 `references/report-format.md`에 따라 하나의 비개발자용 최종 보고를 작성한다. `explainedDiff`가 활성이면 의미 있는 변경에 같은 근거로 설명형 변경 요약을 덧붙인다.
 13. `nextActionSuggestions`가 활성일 때 보고서 끝에 다음 행동 제안을 **최대 3개**만 추가한다. 다음 경우에만 제안한다.
     * 사용자가 직접 확인해야 할 항목이 남은 경우
     * 검증되지 않아 보류된 항목이 있는 경우
@@ -122,6 +122,7 @@ Codex 작업 결과를 비개발자가 이해할 수 있는 하나의 보고서�
 * `docs/TEST_SCENARIOS.md` — V0.1 시나리오와 평가 기준
 * `docs/FEATURE_CONFIGURATION.md` — 로컬 Feature 설정, Profile과 우선순위
 * `references/glossary-ko.md` — 핵심 용어와 문맥 주의사항
+* `references/explained-diff-format.md` — 의미 있는 변경의 설명형 요약 형식
 * `references/feature-registry.md` — Feature ID와 강제 보고 예외
 * `references/report-format.md` — 보고서 형식
 * `references/risk-level-guide.md` — 위험도 예시와 우선순위
