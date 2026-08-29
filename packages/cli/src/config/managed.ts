@@ -144,7 +144,7 @@ function hasJuTellMcpEvidence(content: string, key: string) {
   // JuTell's server always contains `assets/mcp-server` or `apps/mcp-server` in args (see buildMcpBlock)
   // Unrelated custom entries (e.g. jira, other, even a custom `jutell` pointing to `not-mcp-server.js`) do not –
   // this prevents broadly adopting arbitrary unmarked MCP entries.
-  return /(?:assets|apps)\/mcp-server/i.test(slice);
+  return /(?:assets|apps)[\\/]mcp-server/i.test(slice);
 }
 
 function tomlString(value: string) {

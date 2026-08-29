@@ -127,10 +127,21 @@ export async function readOpenCodeRegistration(paths: ScopePaths, packageRoot: s
   const legacyManaged = managedText.includes(JSON.stringify(LEGACY_OPENCODE_MCP_KEY));
   const canonicalRegistered = canonicalEntry !== undefined;
   const legacyRegistered = legacyEntry !== undefined;
-  const registered = canonicalManaged || legacyManaged;
+  function isJuTellEntry(entry: unknown): boolean {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return false;
+    const cmd = (entry as Record<string, unknown>).command;
+    if (!Array.isArray(cmd)) return false;
+    return cmd.some((c) => typeof c === 'string' && /(?:assets|apps)[\\/]mcp-server/i.test(c));
+  }
+  const canonicalHeuristic = !canonicalManaged && canonicalRegistered && isJuTellEntry(canonicalEntry);
+  const legacyHeuristic = !legacyManaged && legacyRegistered && isJuTellEntry(legacyEntry);
+  const registered = canonicalManaged || legacyManaged || canonicalHeuristic || legacyHeuristic;
   const conflict = !registered && (canonicalRegistered || legacyRegistered);
-  const enabledFlag = canonicalManaged && canonicalEntry && typeof canonicalEntry === 'object' && !Array.isArray(canonicalEntry)
-    ? (canonicalEntry as Record<string, unknown>).enabled === true : false;
+  const enabledFlag = (() => {
+    if (canonicalManaged && canonicalEntry && typeof canonicalEntry === 'object') return (canonicalEntry as Record<string, unknown>).enabled === true;
+    if (canonicalHeuristic && canonicalEntry && typeof canonicalEntry === 'object') return (canonicalEntry as Record<string, unknown>).enabled === true;
+    return false;
+  })();
   return {
     file,
     exists: text.trim().length > 0,

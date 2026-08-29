@@ -66,7 +66,7 @@ function hasJuTellMcpEvidence(content: string, key: string) {
   const keyPattern = new RegExp(`^\\s*\\[mcp_servers\\.${key}\\]\\s*$`, 'm');
   const m = content.match(keyPattern);
   if (!m || m.index === undefined) return false;
-  return /(?:assets|apps)\/mcp-server/i.test(content.slice(m.index, m.index + 1200));
+  return /(?:assets|apps)[\\/]mcp-server/i.test(content.slice(m.index, m.index + 1200));
 }
 
 function filePath(_projectRoot: string) {
@@ -264,9 +264,23 @@ export async function readOpenCodeRegistration(projectRoot: string, enabled = fa
   const legacyManaged = managedText.includes(JSON.stringify(LEGACY_OPENCODE_MCP_KEY));
   const canonicalRegistered = canonicalEntry !== undefined;
   const legacyRegistered = legacyEntry !== undefined;
-  const registered = canonicalManaged || legacyManaged;
+  function isJuTellEntry(entry: unknown): boolean {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return false;
+    const cmd = (entry as Record<string, unknown>).command;
+    if (!Array.isArray(cmd)) return false;
+    return cmd.some((c) => typeof c === 'string' && /(?:assets|apps)[\\/]mcp-server/i.test(c));
+  }
+  const canonicalHeuristic = !canonicalManaged && canonicalRegistered && isJuTellEntry(canonicalEntry);
+  const legacyHeuristic = !legacyManaged && legacyRegistered && isJuTellEntry(legacyEntry);
+  const registered = canonicalManaged || legacyManaged || canonicalHeuristic || legacyHeuristic;
   const conflict = !registered && (canonicalRegistered || legacyRegistered);
-  const enabledFlag = [canonicalManaged ? canonicalEntry : undefined, legacyManaged ? legacyEntry : undefined].some((entry) => entry && typeof entry === 'object' && !Array.isArray(entry) && (entry as Record<string, unknown>).enabled === true);
+  const enabledFlag = (() => {
+    if (canonicalManaged && canonicalEntry && typeof canonicalEntry === 'object') return (canonicalEntry as Record<string, unknown>).enabled === true;
+    if (canonicalHeuristic && canonicalEntry && typeof canonicalEntry === 'object') return (canonicalEntry as Record<string, unknown>).enabled === true;
+    if (legacyManaged && legacyEntry && typeof legacyEntry === 'object') return (legacyEntry as Record<string, unknown>).enabled === true;
+    if (legacyHeuristic && legacyEntry && typeof legacyEntry === 'object') return (legacyEntry as Record<string, unknown>).enabled === true;
+    return false;
+  })();
   return { file, exists: text.trim().length > 0, registered, conflict, enabled: enabledFlag, canonicalRegistered, legacyRegistered, bothRegistered: canonicalRegistered && legacyRegistered, preview: serializeWithManaged(parsed ?? {}, enabled) };
 }
 

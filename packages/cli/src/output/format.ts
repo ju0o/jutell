@@ -42,7 +42,7 @@ export function parseOptions(args: string[]): { command: string; options: CliOpt
   let index = 0;
   const extraArgs: string[] = [];
   if (args[0] && !args[0].startsWith('-')) { command = args[0]; defaultInvocation = false; index = 1; }
-  const options: CliOptions = { scope: 'project', yes: false, activateMcp: false, oneCommand: false, statusOnly: false, json: false, verbose: false, openBrowser: true, fix: false, skillOnly: false, mcpOnly: false, disableSkill: false, disableMcp: false, disableAll: false, keepData: false, removeData: false };
+  const options: CliOptions = { scope: 'project', yes: false, activateMcp: false, oneCommand: false, statusOnly: false, json: false, verbose: false, openBrowser: true, fix: false, skillOnly: false, mcpOnly: false, disableSkill: false, disableMcp: false, disableAll: false, keepData: false, removeData: false, clean: false } as CliOptions;
   for (; index < args.length; index += 1) {
     const arg = args[index];
     if (arg === '--project') options.scope = 'project';
@@ -60,6 +60,7 @@ export function parseOptions(args: string[]): { command: string; options: CliOpt
     else if (arg === '--all') options.disableAll = true;
     else if (arg === '--keep-data') options.keepData = true;
     else if (arg === '--remove-data') options.removeData = true;
+    else if (arg === '--clean' || arg === '--remove-legacy') (options as Record<string, unknown>).clean = true;
     else if (arg === '--profile') {
       const value = args[index + 1];
       if (!value) throw new Error('--profile 뒤에 Profile 이름이 필요합니다.');
@@ -109,6 +110,7 @@ export function printHelp(io: CliIo) {
   jutell                처음 시작: 설치·연결·관리자 화면을 준비합니다.
   jutell use codex      Codex에 연결합니다 (권장).
   jutell use opencode   OpenCode에 연결합니다.
+  jutell use claude     Claude Code에 연결합니다 (베타).
   jutell status         현재 연결 상태를 확인합니다.
   jutell doctor         문제가 있는지 점검합니다.
   jutell on             연결을 켭니다.
@@ -128,6 +130,9 @@ JuTell은 AI Agent를 대신 실행하지 않고 연결과 보고만 도와줍�
   jutell disconnect     해당 연결만 끕니다.
   jutell switch         기본 Agent를 전환합니다.
   jutell uninstall      설치를 제거합니다.
+  jutell upgrade        설치된 Skill/설정/MCP를 최신으로 새로고침합니다.
+  jutell migrate        레거시 beginner_bridge → jutell 로 안전하게 옮깁니다.
+  jutell migrate --clean 레거시 정리를 수행합니다 (canonical 확인 후).
 
 하루 작업 기록
 

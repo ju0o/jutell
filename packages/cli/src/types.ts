@@ -21,6 +21,7 @@ export type CliOptions = {
   disableAll: boolean;
   keepData: boolean;
   removeData: boolean;
+  clean?: boolean;
   page?: number;
   agent?: string;
   role?: string;
