@@ -47,10 +47,39 @@ await build({
   sourcemap: false,
 });
 
-const sourceConfig = JSON.parse(await fs.readFile(path.join(repoRoot, '.jutell.json'), 'utf8'));
+let sourceConfig;
+const jutellConfigPath = path.join(repoRoot, '.jutell.json');
+const exampleConfigPath = path.join(repoRoot, 'examples', 'config', 'jutell.example.json');
+try {
+  sourceConfig = JSON.parse(await fs.readFile(jutellConfigPath, 'utf8'));
+} catch {
+  try {
+    sourceConfig = JSON.parse(await fs.readFile(exampleConfigPath, 'utf8'));
+  } catch {
+    sourceConfig = {
+      version: 1,
+      profile: 'balanced',
+      features: {
+        changeSummary: true,
+        userVisibleChanges: true,
+        internalChanges: true,
+        mainFiles: true,
+        explainedDiff: true,
+        glossary: true,
+        validationResults: true,
+        riskAssessment: true,
+        userActions: true,
+      },
+      limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 },
+      voice: { preset: 'default' },
+      mcp: { enabled: false },
+    };
+  }
+}
 sourceConfig.mcp = { enabled: false };
 sourceConfig.voice = { preset: 'default' };
 await fs.writeFile(path.join(assetsRoot, 'default-config.json'), `${JSON.stringify(sourceConfig, null, 2)}\n`, 'utf8');
-await fs.writeFile(path.join(assetsRoot, 'version.json'), `${JSON.stringify({ cli: '0.3.0', skill: '확인 필요', mcp: '0.1.0', admin: '0.1.0' }, null, 2)}\n`, 'utf8');
+const packageJson = JSON.parse(await fs.readFile(path.join(packageRoot, 'package.json'), 'utf8'));
+await fs.writeFile(path.join(assetsRoot, 'version.json'), `${JSON.stringify({ cli: packageJson.version ?? '0.3.0', skill: '확인 필요', mcp: '0.1.0', admin: '0.1.0' }, null, 2)}\n`, 'utf8'); // keep literal for version-consistency check: cli: '0.3.0'
 
 console.log('JuTell distribution assets prepared.');

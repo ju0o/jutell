@@ -72,7 +72,11 @@ Telemetry는 비활성화되어 있고, CLI는 프로젝트 코드·Prompt·AI �
 
 ## 지원 범위와 제한
 
-Windows 11, macOS, Linux를 기준으로 경로와 실행 파일을 처리합니다. 실제 검증은 현재 Windows 환경에서 수행합니다. CLI는 Codex·OpenCode·Claude Code 설치 여부를 자동으로 확인할 수 있지만, 실제 AI Agent 세션에서 MCP 도구를 호출했는지는 대신 판정하지 않습니다.
+- Windows: VERIFIED — Windows 11에서 `npm install -g ./jutell-*.tgz` 설치, `jutell use codex` 연결, `jutell status`/`doctor`, MCP 서버 5개 도구 응답, 로컬 관리자 빌드 실행을 검증했습니다. 공개 베타 검증 기준은 Windows입니다.
+- macOS: UNVERIFIED — 경로·실행 파일 처리는 Node 기준으로 구현되어 있으나 실제 macOS 환경에서 설치·연결·MCP 호출을 검증하지 않았습니다. Node 이식성만으로 검증된 것으로 간주하지 않습니다.
+- Linux: UNVERIFIED — 동일하게 코드는 이식 가능하나 실제 Linux 환경 검증은 수행하지 않았습니다.
+
+CLI는 Codex·OpenCode·Claude Code 설치 여부를 자동으로 확인할 수 있지만, 실제 AI Agent 세션에서 MCP 도구를 호출했는지는 대신 판정하지 않습니다.
 
 업데이트 기능은 V0.1에 포함하지 않습니다. 공개 후 패키지 업데이트에는 다음 명령을 사용할 수 있습니다.
 

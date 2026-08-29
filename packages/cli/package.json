@@ -1,7 +1,31 @@
 {
   "name": "jutell",
   "version": "0.3.0",
-  "description": "JuTell by Ju0 local installer and dashboard CLI",
+  "description": "JuTell by Ju0 — non-developer harness for AI coding agents (Skill, MCP, local dashboard)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ju0o/jutell.git"
+  },
+  "homepage": "https://github.com/ju0o/jutell#readme",
+  "bugs": {
+    "url": "https://github.com/ju0o/jutell/issues"
+  },
+  "keywords": [
+    "jutell",
+    "ai",
+    "agent",
+    "harness",
+    "mcp",
+    "skill",
+    "codex",
+    "opencode",
+    "claude-code"
+  ],
+  "author": "Ju0",
+  "engines": {
+    "node": ">=18"
+  },
   "type": "module",
   "bin": {
     "jutell": "dist/index.js",
@@ -10,7 +34,8 @@
   "files": [
     "dist",
     "assets",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/build-assets.mjs",
