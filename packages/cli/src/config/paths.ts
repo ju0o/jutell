@@ -62,6 +62,23 @@ export function resolveScope(scope: InstallScope, cwd = process.cwd()): ScopePat
 }
 
 export function safeLocation(scope: InstallScope, kind: 'config' | 'codex') {
-  if (scope === 'global') return kind === 'config' ? '사용자 전역 설정' : '사용자 Codex 설정';
-  return kind === 'config' ? '현재 프로젝트/.jutell.json' : '현재 프로젝트/.codex/config.toml';
+  if (kind === 'codex') return '사용자 Codex 설정 (전역)';
+  if (scope === 'global') return '사용자 전역 설정';
+  return '현재 프로젝트/.jutell.json';
+}
+
+/**
+ * Real Codex CLI only reads MCP server definitions from its global
+ * `$CODEX_HOME/config.toml` — it never consumes a project-scoped
+ * `<project>/.codex/config.toml` (verified empirically: `codex mcp list`
+ * returns no servers when only a project-scope file exists). So any
+ * ScopePaths used to read/write/remove a Codex MCP registration must
+ * always target the real global file, regardless of the invocation's
+ * `--project`/`--global` scope — otherwise JuTell would report success
+ * while Codex never actually sees the server. `.jutell.json`, the Skill,
+ * and the AGENTS.md block are unaffected and keep following the
+ * requested scope; only the Codex MCP file location is forced.
+ */
+export function codexScopedPaths(paths: ScopePaths): ScopePaths {
+  return { ...paths, scope: 'global', codexConfigFile: path.join(codexHome(), 'config.toml') };
 }

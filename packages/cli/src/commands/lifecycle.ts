@@ -1,5 +1,5 @@
 import { promises as fs } from 'node:fs';
-import { assets, packageRoot, safeLocation } from '../config/paths.js';
+import { assets, codexScopedPaths, packageRoot, safeLocation } from '../config/paths.js';
 import { readBridgeConfig, readCodexRegistration, snapshot, restore } from '../config/managed.js';
 import { ensureBridgeConfig, setMcpDisabled, setMcpEnabled } from '../installer/config.js';
 import { installSkill, recordSkillFiles, removeAddedSkillFiles, removeManagedSkillFiles } from '../installer/skill.js';
@@ -23,7 +23,7 @@ export async function setupCommand(paths: ScopePaths, options: CliOptions, io: C
   if (!options.yes && !(await io.ask('위 변경을 진행할까요?'))) return { cancelled: true };
 
   const configSnapshot = await snapshot(paths.configFile);
-  const codexSnapshot = await snapshot(paths.codexConfigFile);
+  const codexSnapshot = await snapshot(codexScopedPaths(paths).codexConfigFile);
   const agentsSnapshot = paths.scope === 'project' ? await snapshot(agentsFile(paths.targetRoot)) : undefined;
   let skillResult: { conflicts: string[]; changed: string[] } = { conflicts: [], changed: [] };
   try {
@@ -32,11 +32,15 @@ export async function setupCommand(paths: ScopePaths, options: CliOptions, io: C
     if (paths.scope === 'project' && !options.mcpOnly) await ensureJuTellAgentsBlock(paths.targetRoot);
     if (!options.skillOnly) {
       if (options.activateMcp) await setMcpEnabled(paths, true);
-      await registerMcp(paths, packageRoot(), options.activateMcp || ensured.config.mcp?.enabled === true);
+      // Codex only reads MCP servers from its global config, so registration
+      // always targets that file regardless of --project/--global (see
+      // codexScopedPaths). .jutell.json/Skill/AGENTS.md above stay scoped
+      // to what the user requested.
+      await registerMcp(codexScopedPaths(paths), packageRoot(), options.activateMcp || ensured.config.mcp?.enabled === true);
     }
     await recordSkillFiles(paths, skillResult.changed);
     if (!options.oneCommand) {
-      io.write(`설치가 완료되었습니다.\n\n설치 범위: ${scopeLabel(paths.scope)}\nProfile: ${ensured.config.profile}\nSkill: ${skillResult.conflicts.length ? '충돌 파일을 보존함' : '설치됨'}\nMCP: ${options.skillOnly ? '변경하지 않음' : `등록됨 (${options.activateMcp ? '활성화' : '기본 활성화: 꺼짐'})`}\n설정: ${safeLocation(paths.scope, 'config')}\n\n다음 실행: jutell`);
+      io.write(`설치가 완료되었습니다.\n\n설치 범위: ${scopeLabel(paths.scope)}\nProfile: ${ensured.config.profile}\nSkill: ${skillResult.conflicts.length ? '충돌 파일을 보존함' : '설치됨'}\nMCP: ${options.skillOnly ? '변경하지 않음' : `등록됨 (${options.activateMcp ? '활성화' : '기본 활성화: 꺼짐'})`}\n설정: ${safeLocation(paths.scope, 'config')}${options.skillOnly ? '' : `\nCodex MCP: ${safeLocation(paths.scope, 'codex')} (Codex는 전역 설정만 읽습니다)`}\n\n다음 실행: jutell`);
       if (skillResult.conflicts.length) io.write(`\n주의: 기존 파일을 덮어쓰지 않았습니다: ${skillResult.conflicts.join(', ')}`);
     }
     return { cancelled: false, skillResult };
@@ -52,7 +56,7 @@ export async function setupCommand(paths: ScopePaths, options: CliOptions, io: C
 export async function enableCommand(paths: ScopePaths, options: CliOptions, io: CliIo) {
   if (!options.yes && !(await io.ask(`JuTell을 ${scopeLabel(paths.scope)}에서 활성화할까요?`))) return { cancelled: true };
   const configSnapshot = await snapshot(paths.configFile);
-  const codexSnapshot = await snapshot(paths.codexConfigFile);
+  const codexSnapshot = await snapshot(codexScopedPaths(paths).codexConfigFile);
   const agentsSnapshot = paths.scope === 'project' ? await snapshot(agentsFile(paths.targetRoot)) : undefined;
   let skillResult: { conflicts: string[]; changed: string[] } = { conflicts: [], changed: [] };
   try {
@@ -61,7 +65,8 @@ export async function enableCommand(paths: ScopePaths, options: CliOptions, io: 
     if (paths.scope === 'project' && !options.mcpOnly) await ensureJuTellAgentsBlock(paths.targetRoot);
     if (!options.skillOnly) {
       const enabled = await setMcpEnabled(paths, true);
-      await registerMcp(paths, packageRoot(), enabled.mcp?.enabled === true);
+      // Codex MCP registration always targets the global config (see codexScopedPaths).
+      await registerMcp(codexScopedPaths(paths), packageRoot(), enabled.mcp?.enabled === true);
       const opencode = await readOpenCodeRegistration(paths, packageRoot(), enabled.mcp?.enabled === true);
       if (opencode.registered) await setOpenCodeEnabled(paths, packageRoot(), true);
     }
@@ -85,15 +90,23 @@ export async function disableCommand(paths: ScopePaths, options: CliOptions, io:
   const disableSkill = options.disableSkill;
   const disableMcp = options.disableMcp || (!disableSkill && !options.disableAll);
   if (!options.yes && !(await io.ask(`JuTell 연결을 ${scopeLabel(paths.scope)}에서 비활성화할까요?`))) return { cancelled: true };
+  let codexSkipped = false;
   if (disableMcp) {
     const config = await setMcpDisabled(paths);
-    await registerMcp(paths, packageRoot(), config.mcp?.enabled === true);
+    // Codex MCP registration is a single global entry shared by every
+    // project on this machine (see codexScopedPaths). A project-scoped
+    // disable only turns off *this project's* connection policy; it does
+    // not reach into that shared global entry unless the user explicitly
+    // asked for --global, so other projects using Codex + JuTell keep working.
+    if (paths.scope === 'global') await registerMcp(codexScopedPaths(paths), packageRoot(), config.mcp?.enabled === true);
+    else codexSkipped = true;
     await setOpenCodeEnabled(paths, packageRoot(), false);
   }
   if (disableSkill) await removeManagedSkillFiles(assets().skill, paths.skillRoot, paths);
   if (disableSkill && paths.scope === 'project') await removeJuTellAgentsBlock(paths.targetRoot);
   io.write(`비활성화했습니다. Skill: ${disableSkill ? '비활성화됨' : '유지됨'}, MCP: ${disableMcp ? '비활성화됨' : '유지됨'}.`);
   io.write('설정과 Beta Journal 데이터는 보존했습니다.');
+  if (codexSkipped) io.write('Codex MCP 연결(전역 설정)은 다른 프로젝트와 공유되어 그대로 두었습니다. 모든 프로젝트에서 끄려면 jutell disable --global 을 실행하세요.');
   return { cancelled: false };
 }
 
@@ -101,7 +114,13 @@ export async function uninstallCommand(paths: ScopePaths, options: CliOptions, i
   const removeData = options.removeData;
   const dataMessage = removeData ? '설정과 Beta Journal도 삭제합니다.' : '설정과 Beta Journal은 보존합니다.';
   if (!options.yes && !(await io.ask(`JuTell을 제거할까요? ${dataMessage}`))) return { cancelled: true };
-  await removeMcp(paths, packageRoot());
+  // Codex MCP registration is a single global entry shared by every project
+  // on this machine (see codexScopedPaths). Removing JuTell from one project
+  // must not silently break that shared connection for other projects, so a
+  // project-scoped uninstall leaves it in place unless the user asked for
+  // --global.
+  const codexSkipped = paths.scope !== 'global';
+  if (!codexSkipped) await removeMcp(codexScopedPaths(paths), packageRoot());
   await removeManagedSkillFiles(assets().skill, paths.skillRoot, paths);
   if (paths.scope === 'project') await removeJuTellAgentsBlock(paths.targetRoot);
   await removeOpenCodeMcp(paths, packageRoot());
@@ -110,6 +129,7 @@ export async function uninstallCommand(paths: ScopePaths, options: CliOptions, i
     await fs.rm(paths.dataRoot, { recursive: true, force: true });
   }
   io.write(`제거했습니다. ${removeData ? '설정과 Beta Journal도 삭제했습니다.' : '설정과 Beta Journal은 보존했습니다.'}`);
+  if (codexSkipped) io.write('Codex MCP 연결(전역 설정)은 다른 프로젝트와 공유되어 제거하지 않았습니다. 모든 프로젝트에서 제거하려면 jutell uninstall --global 을 실행하세요.');
   return { cancelled: false };
 }
 

@@ -3,7 +3,7 @@ import { AGENT_PROVIDERS, findProvider, type AgentProvider } from '../installer/
 import { opencodeDetected, readOpenCodeRegistration, registerOpenCodeMcp, setOpenCodeEnabled } from '../installer/opencode.js';
 import { setMcpDisabled, setMcpEnabled } from '../installer/config.js';
 import { codexDetected } from '../process/system.js';
-import { packageRoot } from '../config/paths.js';
+import { codexScopedPaths, packageRoot } from '../config/paths.js';
 import type { CliIo, CliOptions, ScopePaths } from '../types.js';
 
 export type ProviderConnectionStatus = {
@@ -15,7 +15,9 @@ export type ProviderConnectionStatus = {
 };
 
 export async function readProviderStatuses(paths: ScopePaths): Promise<ProviderConnectionStatus[]> {
-  const codex = await readCodexRegistration(paths, packageRoot(), false);
+  // Codex only reads its global config (see codexScopedPaths), regardless
+  // of this invocation's --project/--global scope.
+  const codex = await readCodexRegistration(codexScopedPaths(paths), packageRoot(), false);
   const opencode = await readOpenCodeRegistration(paths, packageRoot(), false);
   return AGENT_PROVIDERS.map((provider) => {
     if (provider.status === 'planned') return { provider, detected: false, registered: false, conflict: false, enabled: false };
@@ -57,13 +59,13 @@ async function summaryCommand(paths: ScopePaths, io: CliIo) {
 }
 
 async function statusCommand(paths: ScopePaths, io: CliIo) {
-  const codex = await readCodexRegistration(paths, packageRoot(), false);
+  const codex = await readCodexRegistration(codexScopedPaths(paths), packageRoot(), false);
   const opencode = await readOpenCodeRegistration(paths, packageRoot(), false);
   io.write(`JuTell AI Agent Provider 상태
 
 ${providerLabel('codex')}
   감지: ${codexDetected() ? '예' : '직접 확인 필요'}
-  설정 파일: 현재 Provider 설정 (.codex/config.toml)
+  설정 파일: 사용자 전역 Codex 설정 (Codex는 프로젝트 설정을 읽지 않음)
   MCP 등록: ${codex.registered ? '등록됨' : codex.conflict ? '충돌 확인 필요' : '등록되지 않음'}
   활성화: ${codex.registered ? (codex.enabled ? '예' : '아니오') : '등록되지 않음'}
 
@@ -112,7 +114,7 @@ export async function providerCommand(paths: ScopePaths, options: CliOptions, io
       return { cancelled: false };
     }
     await setOpenCodeEnabled(paths, packageRoot(), false);
-    const codex = await readCodexRegistration(paths, packageRoot(), false);
+    const codex = await readCodexRegistration(codexScopedPaths(paths), packageRoot(), false);
     if (!codex.enabled) await setMcpDisabled(paths);
     io.write('OpenCode JuTell MCP를 비활성화했습니다. 설정 항목은 유지됩니다.');
     return { cancelled: false };

@@ -1,7 +1,7 @@
 import { promises as fs } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
-import { assets, packageRoot, safeLocation } from '../config/paths.js';
+import { assets, codexScopedPaths, packageRoot, safeLocation } from '../config/paths.js';
 import { codexDetected, nodeMajorVersion, operatingSystem } from '../process/system.js';
 import { exists, parseSkillVersion, readBridgeConfig, readCodexRegistration, readText, readVersionInfo, FEATURE_IDS } from '../config/managed.js';
 import { setupCommand } from './lifecycle.js';
@@ -28,7 +28,11 @@ async function adminState(paths: ScopePaths) {
 
 export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
   const config = await readBridgeConfig(paths);
-  const registration = await readCodexRegistration(paths, packageRoot(), config.config.mcp?.enabled === true);
+  // Codex only reads MCP servers from its global config, so status always
+  // checks that real file regardless of the invocation's scope (see
+  // codexScopedPaths) — otherwise a project-scope status could report
+  // "등록됨" for a file Codex never actually consumes.
+  const registration = await readCodexRegistration(codexScopedPaths(paths), packageRoot(), config.config.mcp?.enabled === true);
   const versions = await readVersionInfo();
   const skillInstalled = await exists(path.join(paths.skillRoot, 'SKILL.md'));
   const installedSkillText = await readText(path.join(paths.skillRoot, 'SKILL.md'));
@@ -88,7 +92,7 @@ export async function statusCommand(paths: ScopePaths, options: CliOptions, io: 
   const actual = { not_checked: '확인하지 않음', success: '마지막 확인 성공', failure: '마지막 확인 실패' }[status.actualConnection];
   const codexDetectedLabel = status.codexDetected ? '감지됨' : '미감지';
   const opencodeDetectedLabel = status.opencodeDetected ? '감지됨' : status.opencode.registered ? '설정 있음(명령 미감지)' : '미감지';
-  io.write(`JuTell 상태\n\nCLI: ${status.cliVersion}\nSkill: ${status.skillInstalled ? '설치됨' : '설치되지 않음'}\nAGENTS.md: ${status.agentsManaged ? 'JuTell 블록 있음' : 'JuTell 블록 없음'}\nJuTell 연결 정책: ${status.mcpEnabled ? '켜짐' : '꺼짐'}\nCodex MCP: ${codexLabel}${status.codexDetected ? ` (명령 ${codexDetectedLabel})` : ''}\nOpenCode MCP: ${opencodeLabel}${status.opencode.enabled ? ' (새 세션 자동 시작 켜짐)' : ''}${status.opencodeDetected ? '' : ` (명령 ${opencodeDetectedLabel})`}\nMCP 서버 응답: ${actual}\n현재 Agent 세션 적용: 직접 확인 필요\nProfile: ${status.profile}\n활성 Feature: ${status.activeFeatureCount}개\n설치 범위: ${status.installationScope === 'global' ? '사용자 전역' : '현재 프로젝트'}\n로컬 관리자: ${status.localAdmin}\n로컬 사용량 카운터: ${status.usageCountersEnabled ? '켜짐' : '꺼짐'}\nTelemetry: ${status.telemetry}\n외부 전송: ${status.externalTransmission}\n설정 위치: ${status.configLocation}`);
+  io.write(`JuTell 상태\n\nCLI: ${status.cliVersion}\nSkill: ${status.skillInstalled ? '설치됨' : '설치되지 않음'}\nAGENTS.md: ${status.agentsManaged ? 'JuTell 블록 있음' : 'JuTell 블록 없음'}\nJuTell 연결 정책: ${status.mcpEnabled ? '켜짐' : '꺼짐'}\nCodex MCP (전역, Codex는 프로젝트 설정을 읽지 않음): ${codexLabel}${status.codexDetected ? ` (명령 ${codexDetectedLabel})` : ''}\nOpenCode MCP: ${opencodeLabel}${status.opencode.enabled ? ' (새 세션 자동 시작 켜짐)' : ''}${status.opencodeDetected ? '' : ` (명령 ${opencodeDetectedLabel})`}\nMCP 서버 응답: ${actual}\n현재 Agent 세션 적용: 직접 확인 필요\nProfile: ${status.profile}\n활성 Feature: ${status.activeFeatureCount}개\n설치 범위 (설정·Skill·AGENTS.md): ${status.installationScope === 'global' ? '사용자 전역' : '현재 프로젝트'}\n로컬 관리자: ${status.localAdmin}\n로컬 사용량 카운터: ${status.usageCountersEnabled ? '켜짐' : '꺼짐'}\nTelemetry: ${status.telemetry}\n외부 전송: ${status.externalTransmission}\n설정 위치: ${status.configLocation}`);
   for (const warning of status.warnings) io.write(`주의: ${warning}`);
   return status;
 }
@@ -109,7 +113,8 @@ async function writeCheck(paths: ScopePaths) {
 
 export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]> {
   const config = await readBridgeConfig(paths);
-  const registration = await readCodexRegistration(paths, packageRoot(), config.config.mcp?.enabled === true);
+  const codexPaths = codexScopedPaths(paths);
+  const registration = await readCodexRegistration(codexPaths, packageRoot(), config.config.mcp?.enabled === true);
   const opencode = await readOpenCodeRegistration(paths, packageRoot(), false);
   const skillFile = path.join(paths.skillRoot, 'SKILL.md');
   const skillText = await readText(skillFile);
@@ -119,7 +124,7 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   const checks: CheckResult[] = [];
   checks.push({ name: 'Node 버전', status: nodeMajorVersion() >= 18 ? '정상' : '오류', detail: `현재 Node ${process.versions.node}` });
   checks.push({ name: '운영체제', status: ['Windows', 'macOS', 'Linux'].includes(operatingSystem()) ? '정상' : '직접 확인 필요', detail: operatingSystem() });
-  checks.push({ name: 'AI Agent Provider 설치 또는 설정', status: codexDetected() || opencodeDetected() || await exists(paths.codexConfigFile) || await exists(paths.opencodeConfigFile) ? '정상' : '직접 확인 필요', detail: codexDetected() || await exists(paths.codexConfigFile) || opencodeDetected() || await exists(paths.opencodeConfigFile) ? 'Provider 명령 또는 설정을 확인했습니다.' : 'Provider 명령과 설정을 모두 자동 확인하지 못했습니다.' });
+  checks.push({ name: 'AI Agent Provider 설치 또는 설정', status: codexDetected() || opencodeDetected() || await exists(codexPaths.codexConfigFile) || await exists(paths.opencodeConfigFile) ? '정상' : '직접 확인 필요', detail: codexDetected() || await exists(codexPaths.codexConfigFile) || opencodeDetected() || await exists(paths.opencodeConfigFile) ? 'Provider 명령 또는 설정을 확인했습니다.' : 'Provider 명령과 설정을 모두 자동 확인하지 못했습니다.' });
   checks.push({ name: 'OpenCode 명령 감지', status: opencodeDetected() ? '정상' : '직접 확인 필요', detail: opencodeDetected() ? 'opencode --version 명령을 확인했습니다.' : 'opencode 명령을 자동 확인하지 못했습니다. PATH·shell 실행 권한을 확인해 주세요.' });
   checks.push({ name: 'Skill 파일', status: skillText?.includes('name: beginner-bridge') ? '정상' : '오류', detail: skillText ? 'Skill 파일을 확인했습니다.' : 'Skill 파일이 없습니다.' });
   const skillVersion = parseSkillVersion(skillText);
@@ -139,8 +144,8 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   checks.push({ name: '로컬 관리자 빌드', status: await exists(adminEntry) ? '정상' : '오류', detail: await exists(adminEntry) ? '관리자 화면 파일을 확인했습니다.' : '관리자 화면 파일이 없습니다.' });
   checks.push({ name: '포트 사용 가능 여부', status: await portAvailable() ? '정상' : '주의', detail: '127.0.0.1의 임시 포트를 확인했습니다.' });
   checks.push({ name: '쓰기 권한', status: await writeCheck(paths) ? '정상' : '오류', detail: '로컬 상태 폴더에 임시 파일을 만들고 삭제했습니다.' });
-  const backupExists = await exists(`${paths.codexConfigFile}.previous`);
-  checks.push({ name: '설정 백업 상태', status: !await exists(paths.codexConfigFile) || backupExists ? '정상' : '주의', detail: !await exists(paths.codexConfigFile) ? '아직 Provider 설정을 변경하지 않았습니다.' : backupExists ? '이전 설정 백업을 확인했습니다.' : '기존 Provider 설정 백업이 없습니다.' });
+  const backupExists = await exists(`${codexPaths.codexConfigFile}.previous`);
+  checks.push({ name: '설정 백업 상태', status: !await exists(codexPaths.codexConfigFile) || backupExists ? '정상' : '주의', detail: !await exists(codexPaths.codexConfigFile) ? '아직 Provider 설정을 변경하지 않았습니다.' : backupExists ? '이전 설정 백업을 확인했습니다.' : '기존 Provider 설정 백업이 없습니다.' });
   const externalCode = /(?:https?:\/\/(?!127\.0\.0\.1)|https?\.request|net\.connect)/i.test(mcpText);
   checks.push({ name: '외부 전송 코드', status: externalCode ? '오류' : '정상', detail: externalCode ? 'MCP 빌드에서 외부 네트워크 관련 코드를 찾았습니다.' : 'MCP 빌드에 외부 전송 패턴이 없습니다.' });
   const probe = await probeMcpServer(mcpEntry);

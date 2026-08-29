@@ -36,7 +36,7 @@ afterEach(async () => {
 
 describe('Distribution CLI V0.1', () => {
   it('처음 jutell 한 번으로 기본 연결과 대시보드를 준비한다', async () => {
-    const { project, env } = await fixture();
+    const { project, home, env } = await fixture();
     const child = spawn(process.execPath, [entry, '--yes', '--no-open'], { cwd: project, env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
     let output = '';
     const url = await new Promise<string>((resolve, reject) => {
@@ -59,7 +59,11 @@ describe('Distribution CLI V0.1', () => {
       expect(config.mcp.enabled).toBe(true);
       expect(await fs.readFile(path.join(project, 'AGENTS.md'), 'utf8')).toContain('BEGIN JUTELL MANAGED BLOCK');
       expect(await fs.stat(path.join(project, '.agents', 'skills', 'beginner-bridge', 'SKILL.md'))).toBeTruthy();
-      expect(await fs.readFile(path.join(project, '.codex', 'config.toml'), 'utf8')).toContain('enabled = true');
+      // Codex MCP registration always lands in the global Codex config
+      // (see codexScopedPaths), never in the project — Codex itself never
+      // reads a project-scoped .codex/config.toml.
+      expect(await fs.readFile(path.join(home, '.codex', 'config.toml'), 'utf8')).toContain('enabled = true');
+      await expect(fs.stat(path.join(project, '.codex', 'config.toml'))).rejects.toThrow();
     } finally {
       child.kill();
       await new Promise<void>((resolve) => child.once('exit', () => resolve()));
@@ -67,10 +71,10 @@ describe('Distribution CLI V0.1', () => {
 
     const statusOnly = await runCli(['--status-only'], project, env);
       expect(statusOnly.stdout).toContain('JuTell 연결 정책: 켜짐');
-      expect(statusOnly.stdout).toContain('Codex MCP: 활성화됨');
+      expect(statusOnly.stdout).toContain('Codex MCP (전역, Codex는 프로젝트 설정을 읽지 않음): 활성화됨');
     expect(statusOnly.stdout).toContain('MCP 서버 응답: 확인하지 않음');
     expect((await fs.readFile(path.join(project, 'AGENTS.md'), 'utf8')).match(/BEGIN JUTELL MANAGED BLOCK/g)).toHaveLength(1);
-    expect((await fs.readFile(path.join(project, '.codex', 'config.toml'), 'utf8')).match(/JUTELL_CLI_MCP_BEGIN/g)).toHaveLength(1);
+    expect((await fs.readFile(path.join(home, '.codex', 'config.toml'), 'utf8')).match(/JUTELL_CLI_MCP_BEGIN/g)).toHaveLength(1);
   });
 
   it('on과 off가 연결만 바꾸고 설정과 Beta Journal을 보존한다', async () => {
@@ -99,8 +103,12 @@ describe('Distribution CLI V0.1', () => {
   });
 
   it('설치·반복 설치·상태·활성화·비활성화·제거를 안전하게 처리한다', async () => {
-    const { project, env } = await fixture();
-    const codexConfig = path.join(project, '.codex', 'config.toml');
+    const { project, home, env } = await fixture();
+    // Codex MCP registration always lands in the global Codex config (see
+    // codexScopedPaths) regardless of --project/--global, so the seeded
+    // "unrelated" entry and every codex-related assertion below target the
+    // global file, not the project.
+    const codexConfig = path.join(home, '.codex', 'config.toml');
     await fs.mkdir(path.dirname(codexConfig), { recursive: true });
     await fs.writeFile(codexConfig, '[mcp_servers.other]\ncommand = "other"\n', 'utf8');
 
@@ -113,6 +121,7 @@ describe('Distribution CLI V0.1', () => {
     const firstCodex = await fs.readFile(codexConfig, 'utf8');
     expect(firstCodex).toContain('[mcp_servers.other]');
     expect(firstCodex.match(/JUTELL_CLI_MCP_BEGIN/g)).toHaveLength(1);
+    await expect(fs.stat(path.join(project, '.codex', 'config.toml'))).rejects.toThrow();
 
     await runCli(['setup', '--project', '--profile', 'learning', '--yes'], project, env);
     const repeatedCodex = await fs.readFile(codexConfig, 'utf8');
@@ -130,23 +139,45 @@ describe('Distribution CLI V0.1', () => {
     expect(doctor.find((check) => check.name === 'OpenCode MCP')?.status).toBe('주의');
     expect(doctor.find((check) => check.name === 'MCP 서버 실제 연결 (Stdio)')?.status).toBe('정상');
 
+    // "enable" is a connect-intent command: it always reaches the real
+    // (global) Codex file, same as `use`/`connect`, or it wouldn't work.
     await runCli(['enable', '--mcp-only', '--yes'], project, env);
     expect(JSON.parse(await fs.readFile(configFile, 'utf8')).mcp.enabled).toBe(true);
     expect(await fs.readFile(codexConfig, 'utf8')).toContain('enabled = true');
-    await runCli(['disable', '--mcp', '--yes'], project, env);
+    // "disable" in project scope (no --global) must NOT reach into that
+    // shared global entry - other projects on this machine may still rely
+    // on it. Only .jutell.json's own connection policy flips.
+    const disabled = await runCli(['disable', '--mcp', '--yes'], project, env);
     expect(JSON.parse(await fs.readFile(configFile, 'utf8')).mcp.enabled).toBe(false);
-    expect(await fs.readFile(codexConfig, 'utf8')).toContain('enabled = false');
+    expect(await fs.readFile(codexConfig, 'utf8')).toContain('enabled = true');
+    expect(disabled.stdout).toContain('다른 프로젝트와 공유되어 그대로 두었습니다');
 
     await runCli(['disable', '--skill', '--yes'], project, env);
     await expect(fs.stat(skillFile)).rejects.toThrow();
     await runCli(['enable', '--skill-only', '--yes'], project, env);
     expect(await fs.stat(skillFile)).toBeTruthy();
 
-    await runCli(['uninstall', '--keep-data', '--yes'], project, env);
+    // Likewise, a project-scoped uninstall must not remove the shared
+    // global Codex registration or the unrelated entry beside it.
+    const uninstalled = await runCli(['uninstall', '--keep-data', '--yes'], project, env);
     expect(await fs.stat(configFile)).toBeTruthy();
     await expect(fs.stat(skillFile)).rejects.toThrow();
-    expect((await fs.readFile(codexConfig, 'utf8'))).toContain('[mcp_servers.other]');
+    const afterUninstall = await fs.readFile(codexConfig, 'utf8');
+    expect(afterUninstall).toContain('[mcp_servers.other]');
+    expect(afterUninstall).toContain('[mcp_servers.jutell]');
+    expect(uninstalled.stdout).toContain('다른 프로젝트와 공유되어 제거하지 않았습니다');
   }, 20000);
+
+  it('uninstall --global은 공유되는 전역 Codex MCP 등록을 실제로 제거한다', async () => {
+    const { project, home, env } = await fixture();
+    await runCli(['use', 'codex'], project, env);
+    const codexConfig = path.join(home, '.codex', 'config.toml');
+    expect(await fs.readFile(codexConfig, 'utf8')).toContain('[mcp_servers.jutell]');
+
+    const uninstalled = await runCli(['uninstall', '--global', '--keep-data', '--yes'], project, env);
+    expect(uninstalled.stdout).not.toContain('다른 프로젝트와 공유되어 제거하지 않았습니다');
+    expect(await fs.readFile(codexConfig, 'utf8')).not.toContain('[mcp_servers.jutell]');
+  });
 
   it('global 범위도 격리된 사용자 홈에서 동작한다', async () => {
     const { project, home, env } = await fixture();
@@ -267,14 +298,16 @@ describe('Distribution CLI V0.1', () => {
   });
 
   it('jutell use codex가 Codex 연결을 켜고 기존 OpenCode 연결을 유지한다', async () => {
-    const { project, env } = await fixture();
+    const { project, home, env } = await fixture();
     await runCli(['use', 'opencode'], project, env);
     const useCodex = await runCli(['use', 'codex'], project, env);
     expect(useCodex.stdout).toContain('Codex 연결이 끝났습니다');
     expect(useCodex.stdout).toContain('기존 다른 Agent 연결은 유지했습니다.');
-    const codexText = await fs.readFile(path.join(project, '.codex', 'config.toml'), 'utf8');
+    expect(useCodex.stdout).toContain('Codex는 MCP 서버 목록을 사용자 전역 설정에서만 읽습니다');
+    const codexText = await fs.readFile(path.join(home, '.codex', 'config.toml'), 'utf8');
     expect(codexText).toContain('[mcp_servers.jutell]');
     expect(codexText).toContain('enabled = true');
+    await expect(fs.stat(path.join(project, '.codex', 'config.toml'))).rejects.toThrow();
     expect(await fs.readFile(path.join(project, 'opencode.json'), 'utf8')).toContain('"enabled": true');
 
     const summary = await runCli(['provider'], project, env);
@@ -295,24 +328,63 @@ describe('Distribution CLI V0.1', () => {
   });
 
   it('jutell connect와 disconnect가 해당 Provider만 바꾼다', async () => {
-    const { project, env } = await fixture();
+    const { project, home, env } = await fixture();
     await runCli(['use', 'codex'], project, env);
     await runCli(['connect', 'opencode'], project, env);
     expect(await fs.readFile(path.join(project, 'opencode.json'), 'utf8')).toContain('"enabled": true');
-    expect(await fs.readFile(path.join(project, '.codex', 'config.toml'), 'utf8')).toContain('enabled = true');
+    expect(await fs.readFile(path.join(home, '.codex', 'config.toml'), 'utf8')).toContain('enabled = true');
 
     await runCli(['disconnect', 'opencode'], project, env);
     expect(await fs.readFile(path.join(project, 'opencode.json'), 'utf8')).toContain('"enabled": false');
-    expect(await fs.readFile(path.join(project, '.codex', 'config.toml'), 'utf8')).toContain('enabled = true');
+    expect(await fs.readFile(path.join(home, '.codex', 'config.toml'), 'utf8')).toContain('enabled = true');
     expect(JSON.parse(await fs.readFile(path.join(project, '.jutell.json'), 'utf8')).mcp.enabled).toBe(true);
   });
 
+  it('jutell disconnect codex는 --project로 실행해도 공유되는 전역 Codex 등록을 실제로 끊는다', async () => {
+    const { project, home, env } = await fixture();
+    await runCli(['use', 'codex'], project, env);
+    const codexConfig = path.join(home, '.codex', 'config.toml');
+    expect(await fs.readFile(codexConfig, 'utf8')).toContain('enabled = true');
+
+    // disconnect (unlike disable/uninstall) is a dedicated, single-provider
+    // connection command - like `use`, it always targets the real (global)
+    // Codex file, or it would silently do nothing.
+    const disconnected = await runCli(['disconnect', 'codex'], project, env);
+    expect(disconnected.stdout).toContain('Codex 연결을 끊었습니다');
+    const after = await fs.readFile(codexConfig, 'utf8');
+    expect(after).toContain('[mcp_servers.jutell]');
+    expect(after).toContain('enabled = false');
+  });
+
+  it('use codex 실패 시 이미 등록한 전역 Codex MCP도 롤백된다', async () => {
+    const { project, home, env } = await fixture();
+    const codexFile = path.join(home, '.codex', 'config.toml');
+    await fs.mkdir(path.dirname(codexFile), { recursive: true });
+    const before = '[mcp_servers.other]\ncommand = "other"\n';
+    await fs.writeFile(codexFile, before, 'utf8');
+    // Force a failure *after* the Codex MCP registration write by blocking
+    // the skill-manifest directory `use codex` writes to right afterwards
+    // (see registerProviderEnabled -> recordSkillFiles in commands/use.ts).
+    await fs.writeFile(path.join(project, '.jutell-local'), 'blocked', 'utf8');
+
+    let failure: { stderr?: string } | undefined;
+    try {
+      await runCli(['use', 'codex'], project, env);
+    } catch (error) {
+      failure = error as { stderr?: string };
+    }
+    expect(failure).toBeTruthy();
+    // The global Codex file must be restored to exactly its pre-run state -
+    // the unrelated entry preserved and no half-applied jutell block left behind.
+    expect(await fs.readFile(codexFile, 'utf8')).toBe(before);
+  });
+
   it('jutell switch opencode가 Codex를 비활성화하고 OpenCode만 활성화한다', async () => {
-    const { project, env } = await fixture();
+    const { project, home, env } = await fixture();
     await runCli(['use', 'codex'], project, env);
     const switched = await runCli(['switch', 'opencode'], project, env);
     expect(switched.stdout).toContain('다른 Agent의 JuTell 연결은 비활성화했습니다.');
-    expect(await fs.readFile(path.join(project, '.codex', 'config.toml'), 'utf8')).toContain('enabled = false');
+    expect(await fs.readFile(path.join(home, '.codex', 'config.toml'), 'utf8')).toContain('enabled = false');
     expect(await fs.readFile(path.join(project, 'opencode.json'), 'utf8')).toContain('"enabled": true');
     const summary = await runCli(['provider'], project, env);
     expect(summary.stdout).toMatch(/Codex\s+연결됨 · 비활성/);
@@ -424,9 +496,9 @@ describe('Distribution CLI V0.1', () => {
     expect(status.warnings).toEqual(expect.arrayContaining([expect.stringContaining('어느 Provider에도 JuTell MCP가 등록되지')]));
   });
 
-  it('CASE A: 아무 등록도 없으면 use codex가 canonical jutell을 만든다', async () => {
-    const { project, env } = await fixture();
-    const codexFile = path.join(project, '.codex', 'config.toml');
+  it('CASE A: 아무 등록도 없으면 use codex가 canonical jutell을 전역 Codex 설정에 만든다', async () => {
+    const { project, home, env } = await fixture();
+    const codexFile = path.join(home, '.codex', 'config.toml');
     await fs.mkdir(path.dirname(codexFile), { recursive: true });
     await fs.writeFile(codexFile, '# 빈 설정\n', 'utf8');
     await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', mcp: { enabled: true } }), 'utf8');
@@ -436,11 +508,14 @@ describe('Distribution CLI V0.1', () => {
     expect(after).toContain('[mcp_servers.jutell]');
     expect(after).not.toContain('beginner_bridge');
     expect(after.match(/\[mcp_servers\.jutell\]/g)).toHaveLength(1);
+    // A project-scope .codex/config.toml is never written - Codex would
+    // never read it anyway.
+    await expect(fs.stat(path.join(project, '.codex', 'config.toml'))).rejects.toThrow();
   });
 
   it('CASE B: canonical만 있으면 use codex가 중복을 만들지 않는다', async () => {
-    const { project, env } = await fixture();
-    const codexFile = path.join(project, '.codex', 'config.toml');
+    const { project, home, env } = await fixture();
+    const codexFile = path.join(home, '.codex', 'config.toml');
     await fs.mkdir(path.dirname(codexFile), { recursive: true });
     await fs.writeFile(codexFile, '# JUTELL_CLI_MCP_BEGIN\n[mcp_servers.jutell]\ncommand = "node"\nargs = ["server.js"]\nenabled = true\n# JUTELL_CLI_MCP_END\n', 'utf8');
     await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', mcp: { enabled: true } }), 'utf8');
@@ -453,8 +528,8 @@ describe('Distribution CLI V0.1', () => {
   });
 
   it('CASE E: legacy-only에서 use를 두 번 실행해도 both 상태에서 멈추고 중복이 없다', async () => {
-    const { project, env } = await fixture();
-    const codexFile = path.join(project, '.codex', 'config.toml');
+    const { project, home, env } = await fixture();
+    const codexFile = path.join(home, '.codex', 'config.toml');
     await fs.mkdir(path.dirname(codexFile), { recursive: true });
     const legacy = '# BEGINNER_BRIDGE_CLI_MCP_BEGIN\n[mcp_servers.beginner_bridge]\ncommand = "node"\nargs = ["server.js"]\nenabled = true\n# BEGINNER_BRIDGE_CLI_MCP_END\n';
     await fs.writeFile(codexFile, legacy, 'utf8');
@@ -484,8 +559,11 @@ describe('Distribution CLI V0.1', () => {
   });
 
   it('CASE C: legacy Codex registration만 있으면 status/doctor가 인식하고 use가 보존하면서 canonical jutell을 만든다', async () => {
-    const { project, env } = await fixture();
-    const codexFile = path.join(project, '.codex', 'config.toml');
+    const { project, home, env } = await fixture();
+    // Codex only reads its global config, so status/doctor/use for codex
+    // all check/write there (see codexScopedPaths), regardless of this
+    // invocation's --project (default) scope.
+    const codexFile = path.join(home, '.codex', 'config.toml');
     await fs.mkdir(path.dirname(codexFile), { recursive: true });
     const legacy = '# BEGINNER_BRIDGE_CLI_MCP_BEGIN\n[mcp_servers.beginner_bridge]\ncommand = "node"\nargs = ["server.js"]\nenabled = true\n# BEGINNER_BRIDGE_CLI_MCP_END\n';
     await fs.writeFile(codexFile, legacy, 'utf8');
@@ -509,8 +587,8 @@ describe('Distribution CLI V0.1', () => {
   });
 
   it('CASE D: canonical과 legacy Codex key가 모두 있으면 경고하고 자동 정리하지 않는다', async () => {
-    const { project, env } = await fixture();
-    const codexFile = path.join(project, '.codex', 'config.toml');
+    const { project, home, env } = await fixture();
+    const codexFile = path.join(home, '.codex', 'config.toml');
     await fs.mkdir(path.dirname(codexFile), { recursive: true });
     const both = '# JUTELL_CLI_MCP_BEGIN\n[mcp_servers.jutell]\ncommand = "node"\nargs = ["server.js"]\nenabled = true\n# JUTELL_CLI_MCP_END\n\n[mcp_servers.beginner_bridge]\ncommand = "node"\nargs = ["legacy.js"]\nenabled = true\n';
     await fs.writeFile(codexFile, both, 'utf8');
@@ -552,15 +630,26 @@ describe('Distribution CLI V0.1', () => {
     expect(await fs.readFile(opencodeFile, 'utf8')).toBe(both);
   });
 
-  it('명시적 uninstall은 managed legacy Codex block을 제거하고 다른 설정은 보존한다', async () => {
-    const { project, env } = await fixture();
-    const codexFile = path.join(project, '.codex', 'config.toml');
+  it('명시적 uninstall --global은 managed legacy Codex block을 제거하고 다른 설정은 보존한다', async () => {
+    const { project, home, env } = await fixture();
+    const codexFile = path.join(home, '.codex', 'config.toml');
     await fs.mkdir(path.dirname(codexFile), { recursive: true });
     await fs.writeFile(codexFile, '[mcp_servers.other]\ncommand = "other"\n\n# BEGINNER_BRIDGE_CLI_MCP_BEGIN\n[mcp_servers.beginner_bridge]\ncommand = "node"\nenabled = false\n# BEGINNER_BRIDGE_CLI_MCP_END\n', 'utf8');
-    await runCli(['uninstall', '--keep-data', '--yes'], project, env);
+    await runCli(['uninstall', '--global', '--keep-data', '--yes'], project, env);
     const after = await fs.readFile(codexFile, 'utf8');
     expect(after).toContain('[mcp_servers.other]');
     expect(after).not.toContain('beginner_bridge');
+  });
+
+  it('uninstall (기본 --project)은 공유되는 전역 Codex 설정을 건드리지 않는다', async () => {
+    const { project, home, env } = await fixture();
+    const codexFile = path.join(home, '.codex', 'config.toml');
+    await fs.mkdir(path.dirname(codexFile), { recursive: true });
+    const seeded = '[mcp_servers.other]\ncommand = "other"\n\n# BEGINNER_BRIDGE_CLI_MCP_BEGIN\n[mcp_servers.beginner_bridge]\ncommand = "node"\nenabled = false\n# BEGINNER_BRIDGE_CLI_MCP_END\n';
+    await fs.writeFile(codexFile, seeded, 'utf8');
+    const uninstalled = await runCli(['uninstall', '--keep-data', '--yes'], project, env);
+    expect(await fs.readFile(codexFile, 'utf8')).toBe(seeded);
+    expect(uninstalled.stdout).toContain('다른 프로젝트와 공유되어 제거하지 않았습니다');
   });
 
   it('실제 tarball을 임시 npm prefix에 설치한 뒤 두 CLI bin이 실행된다', async () => {

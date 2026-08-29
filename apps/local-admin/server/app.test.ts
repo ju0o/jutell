@@ -7,6 +7,8 @@ import { startLocalAdminServer } from './app.js';
 import { getStoragePaths, writeJsonAtomically } from './storage/files.js';
 
 let root = '';
+let codexHome = '';
+let previousCodexHome: string | undefined;
 let server: Awaited<ReturnType<typeof startLocalAdminServer>>['server'];
 let base = '';
 
@@ -17,6 +19,13 @@ async function request(route: string, options?: RequestInit) {
 
 beforeEach(async () => {
   root = await fs.mkdtemp(path.join(os.tmpdir(), 'beginner-bridge-admin-'));
+  // Codex only reads MCP servers from its global $CODEX_HOME/config.toml
+  // (see apps/local-admin/server/mcp/config.ts), so tests must isolate that
+  // location too — otherwise they would read/write the real developer
+  // machine's global Codex config.
+  codexHome = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-admin-codex-home-'));
+  previousCodexHome = process.env.CODEX_HOME;
+  process.env.CODEX_HOME = codexHome;
   await writeJsonAtomically(path.join(root, '.beginner-bridge.json'), DEFAULT_CONFIG);
   const started = await startLocalAdminServer({ projectRoot: root, port: 0 });
   server = started.server;
@@ -25,7 +34,10 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await new Promise<void>((resolve) => server.close(() => resolve()));
+  if (previousCodexHome === undefined) delete process.env.CODEX_HOME;
+  else process.env.CODEX_HOME = previousCodexHome;
   await fs.rm(root, { recursive: true, force: true });
+  await fs.rm(codexHome, { recursive: true, force: true });
 });
 
 describe('config validation', () => {
@@ -164,15 +176,16 @@ describe('local config API', () => {
     expect(checked.body.connection.state).toBe('not_checked');
   });
 
-  it('previews, adds, and removes only the managed Codex MCP block', async () => {
-    const codexDir = path.join(root, '.codex');
-    await fs.mkdir(codexDir, { recursive: true });
-    const codexFile = path.join(codexDir, 'config.toml');
+  it('previews, adds, and removes only the managed Codex MCP block (in the global Codex config, not the project)', async () => {
+    const codexFile = path.join(codexHome, 'config.toml');
     await fs.writeFile(codexFile, '[mcp_servers.other]\ncommand = "other"\n', 'utf8');
     const preview = await request('/api/mcp/preview', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
-    expect(preview.body.path).toBe('.codex/config.toml');
+    expect(preview.body.path).toBe(codexFile);
     expect(preview.body.preview).toContain('apps/mcp-server/dist/index.js');
+    expect(preview.body.preview).not.toContain('cwd');
     expect(preview.body.preview).not.toContain(root);
+    // The project-scoped file must never be created by this flow.
+    expect(await fs.access(path.join(root, '.codex', 'config.toml')).then(() => true, () => false)).toBe(false);
     const registered = await request('/api/mcp/register', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
     expect(registered.status).toBe(200);
     const afterRegister = await fs.readFile(codexFile, 'utf8');

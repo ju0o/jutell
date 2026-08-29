@@ -1,4 +1,5 @@
 import { promises as fs } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
@@ -6,7 +7,18 @@ const BEGIN_MARKER = '# JUTELL_MCP_BEGIN';
 const END_MARKER = '# JUTELL_MCP_END';
 const LEGACY_BEGIN_MARKER = '# BEGINNER_BRIDGE_MCP_BEGIN';
 const LEGACY_END_MARKER = '# BEGINNER_BRIDGE_MCP_END';
-const RELATIVE_CONFIG_PATH = '.codex/config.toml';
+
+// Real Codex CLI only reads MCP server definitions from its global
+// $CODEX_HOME/config.toml — never a project-scoped .codex/config.toml
+// (verified empirically: `codex mcp list` returns no servers when only a
+// project-scope file exists). So the dashboard's Codex registration must
+// always target that real global file, regardless of which project's
+// dashboard is running — a `projectRoot`-relative file would report
+// "connected" while Codex never actually sees the server.
+function codexHome() {
+  const override = process.env.CODEX_HOME;
+  return path.resolve(override && override.trim() ? override : path.join(os.homedir(), '.codex'));
+}
 
 const OPENCODE_BEGIN_MARKER = 'BEGIN JUTELL MANAGED BLOCK';
 const OPENCODE_END_MARKER = 'END JUTELL MANAGED BLOCK';
@@ -44,8 +56,8 @@ export function providerDetected(id: string) {
   return result.status === 0;
 }
 
-function filePath(projectRoot: string) {
-  return path.join(projectRoot, '.codex', 'config.toml');
+function filePath(_projectRoot: string) {
+  return path.join(codexHome(), 'config.toml');
 }
 
 function configuredServerEntry() {
@@ -60,7 +72,8 @@ export function buildMcpConfigBlock(enabled: boolean) {
     '[mcp_servers.jutell]',
     'command = "node"',
     `args = [${JSON.stringify(serverEntry ?? 'apps/mcp-server/dist/index.js')}]`,
-    'cwd = "."',
+    // No `cwd` here: this block is written to Codex's global config, shared
+    // across every project, so it must not be pinned to one project's dir.
     `enabled = ${enabled ? 'true' : 'false'}`,
     'required = false',
     'default_tools_approval_mode = "prompt"',
@@ -81,7 +94,7 @@ export async function readCodexMcpRegistration(projectRoot: string, enabled = fa
   const registered = Boolean(canonicalBlock || legacyBlock);
   const conflict = !registered && (canonicalRegistered || legacyRegistered);
   const enabledFlag = [canonicalBlock, legacyBlock].some((block) => /^\s*enabled\s*=\s*true\s*$/m.test(block));
-  return { path: RELATIVE_CONFIG_PATH, exists: Boolean(text), registered, conflict, enabled: enabledFlag, canonicalRegistered, legacyRegistered, bothRegistered: canonicalRegistered && legacyRegistered, preview: buildMcpConfigBlock(enabled) };
+  return { path: filePath(projectRoot), exists: Boolean(text), registered, conflict, enabled: enabledFlag, canonicalRegistered, legacyRegistered, bothRegistered: canonicalRegistered && legacyRegistered, preview: buildMcpConfigBlock(enabled) };
 }
 
 async function backup(file: string) {

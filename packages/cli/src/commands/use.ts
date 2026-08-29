@@ -1,4 +1,4 @@
-import { assets, packageRoot } from '../config/paths.js';
+import { assets, codexScopedPaths, packageRoot } from '../config/paths.js';
 import { readCodexRegistration, registerMcp, snapshot, restore } from '../config/managed.js';
 import { ensureBridgeConfig, setMcpEnabled } from '../installer/config.js';
 import { installSkill, recordSkillFiles, removeAddedSkillFiles } from '../installer/skill.js';
@@ -26,25 +26,28 @@ function detectProvider(provider: AgentProvider) {
 
 async function registrationSnapshots(paths: ScopePaths): Promise<FileSnapshot[]> {
   const opencode = await readOpenCodeRegistration(paths, packageRoot(), false);
-  const files = [paths.configFile, paths.codexConfigFile, opencode.file];
+  const files = [paths.configFile, paths.codexConfigFile, codexScopedPaths(paths).codexConfigFile, opencode.file];
   if (paths.scope === 'project') files.push(agentsFile(paths.targetRoot));
   return Promise.all(files.map((file) => snapshot(file)));
 }
 
 async function registerProviderEnabled(paths: ScopePaths, provider: AgentProvider, io: CliIo) {
-  if (provider.id === 'codex') await registerMcp(paths, packageRoot(), true);
+  if (provider.id === 'codex') await registerMcp(codexScopedPaths(paths), packageRoot(), true);
   else await registerOpenCodeMcp(paths, packageRoot(), true);
   const current = provider.id === 'codex'
-    ? await readCodexRegistration(paths, packageRoot(), true)
+    ? await readCodexRegistration(codexScopedPaths(paths), packageRoot(), true)
     : await readOpenCodeRegistration(paths, packageRoot(), true);
   if (current.canonicalRegistered && current.legacyRegistered) {
     io.write('\n이전 beginner_bridge 항목을 그대로 두고 새 jutell 항목을 추가했습니다.\n이전 항목은 자동으로 삭제하지 않습니다. 제거는 추후 안전한 마이그레이션에서 안내합니다.');
+  }
+  if (provider.id === 'codex') {
+    io.write('\nCodex는 MCP 서버 목록을 사용자 전역 설정에서만 읽습니다.\nJuTell 프로젝트 규칙(AGENTS.md, Skill, 설정)은 이 프로젝트에 그대로 두고,\nCodex MCP 연결만 사용자 전역 설정(Codex 홈)에 등록했습니다.');
   }
 }
 
 async function verifyRegistration(paths: ScopePaths, provider: AgentProvider) {
   const current = provider.id === 'codex'
-    ? await readCodexRegistration(paths, packageRoot(), true)
+    ? await readCodexRegistration(codexScopedPaths(paths), packageRoot(), true)
     : await readOpenCodeRegistration(paths, packageRoot(), true);
   if (!current.canonicalRegistered || !current.enabled) throw new Error(`${provider.label} 연결 설정을 검증하지 못했습니다. jutell doctor를 실행해 주세요.`);
 }
@@ -106,10 +109,13 @@ export async function disconnectCommand(paths: ScopePaths, options: CliOptions, 
   const provider = await resolveTarget(args, io);
   if (!provider) return { cancelled: true };
   if (provider.id === 'codex') {
-    const current = await readCodexRegistration(paths, packageRoot(), false);
+    // Codex only ever reads its global config, so disconnect must target
+    // the same global file `use codex` registered against, regardless of
+    // the invocation's --project/--global scope (see codexScopedPaths).
+    const current = await readCodexRegistration(codexScopedPaths(paths), packageRoot(), false);
     if (current.conflict) throw new Error('Codex 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.');
     if (!current.registered) { io.write('연결된 Codex JuTell MCP가 없습니다. 먼저 jutell use codex 를 실행하세요.'); return { cancelled: false }; }
-    await registerMcp(paths, packageRoot(), false);
+    await registerMcp(codexScopedPaths(paths), packageRoot(), false);
   } else {
     const current = await readOpenCodeRegistration(paths, packageRoot(), false);
     if (current.conflict) throw new Error('OpenCode 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.');
@@ -127,9 +133,9 @@ export async function switchCommand(paths: ScopePaths, options: CliOptions, io: 
   const snapshots = await registrationSnapshots(paths);
   try {
     if (provider.id !== 'codex') {
-      const codex = await readCodexRegistration(paths, packageRoot(), false);
+      const codex = await readCodexRegistration(codexScopedPaths(paths), packageRoot(), false);
       if (codex.conflict) throw new Error('Codex 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.');
-      if (codex.registered && codex.enabled) await registerMcp(paths, packageRoot(), false);
+      if (codex.registered && codex.enabled) await registerMcp(codexScopedPaths(paths), packageRoot(), false);
     }
     if (provider.id !== 'opencode') {
       const opencode = await readOpenCodeRegistration(paths, packageRoot(), false);
