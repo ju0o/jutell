@@ -6,7 +6,8 @@ import type { ScopePaths } from '../types.js';
 
 export const OPENCODE_BEGIN_MARKER = 'BEGIN JUTELL MANAGED BLOCK';
 export const OPENCODE_END_MARKER = 'END JUTELL MANAGED BLOCK';
-export const OPENCODE_MCP_KEY = 'beginner_bridge';
+export const OPENCODE_MCP_KEY = 'jutell';
+export const LEGACY_OPENCODE_MCP_KEY = 'beginner_bridge';
 
 export type OpenCodeRegistration = {
   file: string;
@@ -14,6 +15,9 @@ export type OpenCodeRegistration = {
   registered: boolean;
   conflict: boolean;
   enabled: boolean;
+  canonicalRegistered: boolean;
+  legacyRegistered: boolean;
+  bothRegistered: boolean;
   preview: string;
 };
 
@@ -112,14 +116,32 @@ function serializeWithManaged(config: Record<string, unknown>, enabled: boolean,
 export async function readOpenCodeRegistration(paths: ScopePaths, packageRoot: string, enabled: boolean): Promise<OpenCodeRegistration> {
   const file = await resolveOpenCodeConfigFile(paths);
   const text = await readText(file) ?? '';
-  const registered = text.includes(`// ${OPENCODE_BEGIN_MARKER}`) && text.includes(`// ${OPENCODE_END_MARKER}`);
   const parsed = tryParseJson(text);
-  const entry = parsed?.mcp && typeof parsed.mcp === 'object' && !Array.isArray(parsed.mcp)
-    ? (parsed.mcp as Record<string, unknown>)[OPENCODE_MCP_KEY] : undefined;
-  const conflict = !registered && entry !== undefined;
-  const enabledFlag = registered && entry !== undefined && typeof entry === 'object' && !Array.isArray(entry)
-    ? (entry as Record<string, unknown>).enabled === true : false;
-  return { file, exists: text.trim().length > 0, registered, conflict, enabled: enabledFlag, preview: serializeWithManaged(parsed ?? {}, enabled, packageRoot) };
+  const rawMcp = parsed?.mcp && typeof parsed.mcp === 'object' && !Array.isArray(parsed.mcp) ? parsed.mcp as Record<string, unknown> : {};
+  const canonicalEntry = rawMcp[OPENCODE_MCP_KEY];
+  const legacyEntry = rawMcp[LEGACY_OPENCODE_MCP_KEY];
+  const begin = text.indexOf(`// ${OPENCODE_BEGIN_MARKER}`);
+  const end = text.indexOf(`// ${OPENCODE_END_MARKER}`);
+  const managedText = begin >= 0 && end > begin ? text.slice(begin, end) : '';
+  const canonicalManaged = managedText.includes(JSON.stringify(OPENCODE_MCP_KEY));
+  const legacyManaged = managedText.includes(JSON.stringify(LEGACY_OPENCODE_MCP_KEY));
+  const canonicalRegistered = canonicalEntry !== undefined;
+  const legacyRegistered = legacyEntry !== undefined;
+  const registered = canonicalManaged || legacyManaged;
+  const conflict = !registered && (canonicalRegistered || legacyRegistered);
+  const enabledFlag = canonicalManaged && canonicalEntry && typeof canonicalEntry === 'object' && !Array.isArray(canonicalEntry)
+    ? (canonicalEntry as Record<string, unknown>).enabled === true : false;
+  return {
+    file,
+    exists: text.trim().length > 0,
+    registered,
+    conflict,
+    enabled: enabledFlag,
+    canonicalRegistered,
+    legacyRegistered,
+    bothRegistered: canonicalRegistered && legacyRegistered,
+    preview: serializeWithManaged(parsed ?? {}, enabled, packageRoot),
+  };
 }
 
 async function writeConfig(file: string, text: string) {
@@ -130,6 +152,7 @@ async function writeConfig(file: string, text: string) {
 export async function registerOpenCodeMcp(paths: ScopePaths, packageRoot: string, enabled: boolean) {
   const current = await readOpenCodeRegistration(paths, packageRoot, enabled);
   if (current.conflict) throw new Error('OpenCode 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.');
+  if (current.canonicalRegistered && current.enabled === enabled) return current;
   const text = await readText(current.file) ?? '';
   const parsed = tryParseJson(text);
   if (text.trim() && !parsed) throw new Error('OpenCode 설정 파일을 읽지 못해 자동 변경하지 않았습니다.');
@@ -142,11 +165,18 @@ export async function registerOpenCodeMcp(paths: ScopePaths, packageRoot: string
 export async function setOpenCodeEnabled(paths: ScopePaths, packageRoot: string, enabled: boolean) {
   const current = await readOpenCodeRegistration(paths, packageRoot, enabled);
   if (current.conflict || !current.registered) return current;
+  if (!current.canonicalRegistered || current.enabled === enabled) return current;
   await backupFile(current.file);
   const text = await readText(current.file) ?? '';
   const parsed = tryParseJson(text);
   if (!parsed) throw new Error('OpenCode 설정 파일을 읽지 못해 자동 변경하지 않았습니다.');
-  await writeConfig(current.file, `${serializeWithManaged(parsed, enabled, packageRoot)}\n`);
+  const copy = { ...parsed };
+  const rawMcp = copy.mcp && typeof copy.mcp === 'object' && !Array.isArray(copy.mcp) ? copy.mcp as Record<string, unknown> : {};
+  const mcpCopy = { ...rawMcp };
+  delete mcpCopy[OPENCODE_MCP_KEY];
+  if (Object.keys(mcpCopy).length === 0) delete copy.mcp;
+  else copy.mcp = mcpCopy;
+  await writeConfig(current.file, `${serializeWithManaged(copy, enabled, packageRoot)}\n`);
   return readOpenCodeRegistration(paths, packageRoot, enabled);
 }
 
@@ -160,7 +190,11 @@ export async function removeOpenCodeMcp(paths: ScopePaths, packageRoot: string) 
   if (!parsed) throw new Error('OpenCode 설정 파일을 읽지 못해 자동 변경하지 않았습니다.');
   const copy = { ...parsed };
   const rawMcp = copy.mcp && typeof copy.mcp === 'object' && !Array.isArray(copy.mcp) ? copy.mcp as Record<string, unknown> : {};
-  delete rawMcp[OPENCODE_MCP_KEY];
+  const begin = text.indexOf(`// ${OPENCODE_BEGIN_MARKER}`);
+  const end = text.indexOf(`// ${OPENCODE_END_MARKER}`);
+  const managedText = begin >= 0 && end > begin ? text.slice(begin, end) : '';
+  if (managedText.includes(JSON.stringify(OPENCODE_MCP_KEY))) delete rawMcp[OPENCODE_MCP_KEY];
+  if (managedText.includes(JSON.stringify(LEGACY_OPENCODE_MCP_KEY))) delete rawMcp[LEGACY_OPENCODE_MCP_KEY];
   if (Object.keys(rawMcp).length === 0) delete copy.mcp;
   else copy.mcp = rawMcp;
   await writeConfig(current.file, `${JSON.stringify(copy, null, 2)}\n`);

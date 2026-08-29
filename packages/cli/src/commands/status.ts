@@ -42,6 +42,10 @@ export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
   if (!config.valid) warnings.push('설정 파일을 읽지 못해 balanced 기본값을 사용 중입니다.');
   if (registration.conflict) warnings.push('같은 이름의 관리되지 않는 Codex MCP 설정이 있어 자동 변경하지 않았습니다.');
   if (opencode.conflict) warnings.push('OpenCode 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.');
+  if (registration.bothRegistered) warnings.push('Codex에 canonical jutell과 legacy beginner_bridge MCP가 모두 있습니다. 자동 정리하지 않았습니다. 이전 항목 제거는 추후 안전한 마이그레이션에서 안내합니다.');
+  if (opencode.bothRegistered) warnings.push('OpenCode에 canonical jutell과 legacy beginner_bridge MCP가 모두 있습니다. 자동 정리하지 않았습니다. 이전 항목 제거는 추후 안전한 마이그레이션에서 안내합니다.');
+  if (registration.legacyRegistered && !registration.canonicalRegistered) warnings.push('Codex에 이전 beginner_bridge 항목만 있습니다. jutell use codex 를 실행하면 보존하면서 새 jutell 항목을 추가합니다.');
+  if (opencode.legacyRegistered && !opencode.canonicalRegistered) warnings.push('OpenCode에 이전 beginner_bridge 항목만 있습니다. jutell use opencode 를 실행하면 보존하면서 새 jutell 항목을 추가합니다.');
   if (config.config.mcp?.enabled && !anyProviderRegistered) warnings.push('MCP 연결 정책은 켜져 있지만 Codex·OpenCode 어느 Provider에도 JuTell MCP가 등록되지 않았습니다. jutell use <agent> 를 실행해 주세요.');
   if (config.config.mcp?.enabled && anyProviderRegistered && !anyProviderEnabled) warnings.push('연결 정책(.jutell.json)은 켜져 있지만 새 세션에서 자동 시작할 활성 Provider 항목이 없습니다. jutell use <agent> 를 실행해 주세요.');
   if (!config.config.mcp?.enabled && anyProviderEnabled) warnings.push('연결 정책(.jutell.json)은 꺼져 있지만 Provider 자동 시작은 켜져 있습니다. 일치시키려면 jutell use <agent> 또는 jutell off을 실행해 주세요.');
@@ -127,7 +131,7 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   checks.push({ name: 'MCP 빌드 파일', status: await exists(mcpEntry) ? '정상' : '오류', detail: await exists(mcpEntry) ? '패키지에 포함되어 있습니다.' : 'MCP 빌드 파일이 없습니다.' });
   checks.push({ name: 'Codex MCP', status: registration.conflict ? '오류' : registration.registered ? '정상' : '주의', detail: registration.conflict ? '관리되지 않는 동일 이름 설정이 있습니다.' : registration.registered ? `JuTell 관리 블록을 확인했습니다. 새 세션 자동 시작: ${registration.enabled ? '켜짐' : '꺼짐'}.` : '등록되지 않았습니다.' });
   checks.push({ name: 'OpenCode MCP', status: opencode.conflict ? '오류' : opencode.registered ? (opencode.enabled ? '정상' : '주의') : '주의', detail: opencode.conflict ? '관리되지 않는 동일 이름 항목이 있습니다.' : opencode.registered ? `JuTell 관리 블록을 확인했습니다. 새 세션 자동 시작: ${opencode.enabled ? '켜짐' : '꺼짐'}.` : 'OpenCode MCP가 등록되지 않았습니다.' });
-  checks.push({ name: '.jutell.json', status: config.valid ? '정상' : '오류', detail: config.exists ? (config.valid ? '설정 형식을 확인했습니다.' : '설정이 올바르지 않아 기본값을 사용합니다.') : '없으면 기본 설정을 사용합니다.' });
+  checks.push({ name: config.source === 'legacy' ? '.beginner-bridge.json' : '.jutell.json', status: config.valid ? '정상' : '오류', detail: config.exists ? (config.valid ? (config.source === 'legacy' ? '이전 설정 파일을 읽었습니다. 새 .jutell.json이 없으면 사용합니다.' : '설정 형식을 확인했습니다.') : '설정이 올바르지 않아 기본값을 사용합니다.') : '없으면 기본 설정을 사용합니다.' });
   const featuresValid = Object.keys(config.config.features).every((id) => FEATURE_IDS.includes(id));
   const limitsValid = config.config.limits.maxMainFiles >= 1 && config.config.limits.maxMainFiles <= 10 && config.config.limits.maxGlossaryTerms >= 0 && config.config.limits.maxGlossaryTerms <= 10 && config.config.limits.compactReportMaxSentences >= 4 && config.config.limits.compactReportMaxSentences <= 30;
   checks.push({ name: '공식 Feature ID', status: featuresValid ? '정상' : '오류', detail: featuresValid ? '현재 공식 ID만 확인했습니다.' : '지원하지 않는 Feature ID가 있습니다.' });

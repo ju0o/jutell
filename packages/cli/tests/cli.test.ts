@@ -70,7 +70,7 @@ describe('Distribution CLI V0.1', () => {
       expect(statusOnly.stdout).toContain('Codex MCP: 활성화됨');
     expect(statusOnly.stdout).toContain('MCP 서버 응답: 확인하지 않음');
     expect((await fs.readFile(path.join(project, 'AGENTS.md'), 'utf8')).match(/BEGIN JUTELL MANAGED BLOCK/g)).toHaveLength(1);
-    expect((await fs.readFile(path.join(project, '.codex', 'config.toml'), 'utf8')).match(/BEGINNER_BRIDGE_CLI_MCP_BEGIN/g)).toHaveLength(1);
+    expect((await fs.readFile(path.join(project, '.codex', 'config.toml'), 'utf8')).match(/JUTELL_CLI_MCP_BEGIN/g)).toHaveLength(1);
   });
 
   it('on과 off가 연결만 바꾸고 설정과 Beta Journal을 보존한다', async () => {
@@ -112,11 +112,11 @@ describe('Distribution CLI V0.1', () => {
     expect(JSON.parse(await fs.readFile(configFile, 'utf8')).profile).toBe('learning');
     const firstCodex = await fs.readFile(codexConfig, 'utf8');
     expect(firstCodex).toContain('[mcp_servers.other]');
-    expect(firstCodex.match(/BEGINNER_BRIDGE_CLI_MCP_BEGIN/g)).toHaveLength(1);
+    expect(firstCodex.match(/JUTELL_CLI_MCP_BEGIN/g)).toHaveLength(1);
 
     await runCli(['setup', '--project', '--profile', 'learning', '--yes'], project, env);
     const repeatedCodex = await fs.readFile(codexConfig, 'utf8');
-    expect(repeatedCodex.match(/BEGINNER_BRIDGE_CLI_MCP_BEGIN/g)).toHaveLength(1);
+    expect(repeatedCodex.match(/JUTELL_CLI_MCP_BEGIN/g)).toHaveLength(1);
     expect(repeatedCodex.match(/\[mcp_servers\.other\]/g)).toHaveLength(1);
 
     const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
@@ -153,7 +153,7 @@ describe('Distribution CLI V0.1', () => {
     await runCli(['setup', '--global', '--yes'], project, env);
     expect(await fs.stat(path.join(home, '.agents', 'skills', 'beginner-bridge', 'SKILL.md'))).toBeTruthy();
     expect(JSON.parse(await fs.readFile(path.join(home, '.jutell.json'), 'utf8')).mcp.enabled).toBe(false);
-    expect((await fs.readFile(path.join(home, '.codex', 'config.toml'), 'utf8'))).toContain('[mcp_servers.beginner_bridge]');
+    expect((await fs.readFile(path.join(home, '.codex', 'config.toml'), 'utf8'))).toContain('[mcp_servers.jutell]');
   });
 
   it('provider list와 provider status가 Provider를 구분해 보여준다', async () => {
@@ -175,7 +175,8 @@ describe('Distribution CLI V0.1', () => {
     await runCli(['provider', 'setup', 'opencode', '--yes'], project, env);
     const first = await fs.readFile(opencodeFile, 'utf8');
     expect(first).toContain('BEGIN JUTELL MANAGED BLOCK');
-    expect(first).toContain('"beginner_bridge"');
+    expect(first).toContain('"jutell"');
+    expect(first).not.toContain('"beginner_bridge"');
     expect(first).toContain('"jira"');
     expect(first).toContain('"deepseek/deepseek-chat"');
     expect(first.match(/BEGIN JUTELL MANAGED BLOCK/g)).toHaveLength(1);
@@ -183,7 +184,7 @@ describe('Distribution CLI V0.1', () => {
     await runCli(['provider', 'setup', 'opencode', '--yes'], project, env);
     const repeated = await fs.readFile(opencodeFile, 'utf8');
     expect(repeated.match(/BEGIN JUTELL MANAGED BLOCK/g)).toHaveLength(1);
-    expect(repeated.match(/"beginner_bridge"/g)).toHaveLength(1);
+    expect(repeated.match(/"jutell"/g)).toHaveLength(1);
     expect(repeated).toContain('"jira"');
     expect(await fs.readFile(`${opencodeFile}.previous`, 'utf8')).toContain('"deepseek/deepseek-chat"');
   });
@@ -233,7 +234,7 @@ describe('Distribution CLI V0.1', () => {
     await runCli(['uninstall', '--keep-data', '--yes'], project, env);
     const after = await fs.readFile(opencodeFile, 'utf8');
     expect(after).not.toContain('BEGIN JUTELL MANAGED BLOCK');
-    expect(after).not.toContain('beginner_bridge');
+    expect(after).not.toContain('"jutell"');
     expect(after).toContain('deepseek-chat');
   });
 
@@ -262,7 +263,7 @@ describe('Distribution CLI V0.1', () => {
     const repeated = await runCli(['use', 'opencode'], project, env);
     expect(repeated.stdout).toContain('OpenCode 연결이 끝났습니다');
     expect((await fs.readFile(opencodeFile, 'utf8')).match(/BEGIN JUTELL MANAGED BLOCK/g)).toHaveLength(1);
-    expect((await fs.readFile(opencodeFile, 'utf8')).match(/"beginner_bridge"/g)).toHaveLength(1);
+    expect((await fs.readFile(opencodeFile, 'utf8')).match(/"jutell"/g)).toHaveLength(1);
   });
 
   it('jutell use codex가 Codex 연결을 켜고 기존 OpenCode 연결을 유지한다', async () => {
@@ -272,7 +273,7 @@ describe('Distribution CLI V0.1', () => {
     expect(useCodex.stdout).toContain('Codex 연결이 끝났습니다');
     expect(useCodex.stdout).toContain('기존 다른 Agent 연결은 유지했습니다.');
     const codexText = await fs.readFile(path.join(project, '.codex', 'config.toml'), 'utf8');
-    expect(codexText).toContain('[mcp_servers.beginner_bridge]');
+    expect(codexText).toContain('[mcp_servers.jutell]');
     expect(codexText).toContain('enabled = true');
     expect(await fs.readFile(path.join(project, 'opencode.json'), 'utf8')).toContain('"enabled": true');
 
@@ -402,15 +403,15 @@ describe('Distribution CLI V0.1', () => {
     await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', features: {}, limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 }, mcp: { enabled: true } }, null, 2), 'utf8');
     const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
     expect(status.codexPreparation).toBe('not_registered');
-    expect(status.opencodePreparation).toBe('enabled');
+    expect(status.opencodePreparation).toBe('registered');
     expect(status.anyProviderRegistered).toBe(true);
-    expect(status.anyProviderEnabled).toBe(true);
+    expect(status.anyProviderEnabled).toBe(false);
     expect(status.mcpRegistered).toBe(true);
     expect(status.mcpEnabled).toBe(true);
     expect(status.warnings).not.toContain(expect.stringContaining('어느 Provider에도 JuTell MCP가 등록되지'));
     const human = (await runCli(['status'], project, env)).stdout;
     expect(human).toContain('JuTell 연결 정책: 켜짐');
-    expect(human).toContain('OpenCode MCP: 활성화됨');
+    expect(human).toContain('OpenCode MCP: 등록됨');
     expect(human).not.toContain('MCP: 등록되지 않음');
     expect(human).not.toContain('AI Agent Provider 설정 미등록');
   });
@@ -421,6 +422,145 @@ describe('Distribution CLI V0.1', () => {
     const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
     expect(status.anyProviderRegistered).toBe(false);
     expect(status.warnings).toEqual(expect.arrayContaining([expect.stringContaining('어느 Provider에도 JuTell MCP가 등록되지')]));
+  });
+
+  it('CASE A: 아무 등록도 없으면 use codex가 canonical jutell을 만든다', async () => {
+    const { project, env } = await fixture();
+    const codexFile = path.join(project, '.codex', 'config.toml');
+    await fs.mkdir(path.dirname(codexFile), { recursive: true });
+    await fs.writeFile(codexFile, '# 빈 설정\n', 'utf8');
+    await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', mcp: { enabled: true } }), 'utf8');
+
+    await runCli(['use', 'codex'], project, env);
+    const after = await fs.readFile(codexFile, 'utf8');
+    expect(after).toContain('[mcp_servers.jutell]');
+    expect(after).not.toContain('beginner_bridge');
+    expect(after.match(/\[mcp_servers\.jutell\]/g)).toHaveLength(1);
+  });
+
+  it('CASE B: canonical만 있으면 use codex가 중복을 만들지 않는다', async () => {
+    const { project, env } = await fixture();
+    const codexFile = path.join(project, '.codex', 'config.toml');
+    await fs.mkdir(path.dirname(codexFile), { recursive: true });
+    await fs.writeFile(codexFile, '# JUTELL_CLI_MCP_BEGIN\n[mcp_servers.jutell]\ncommand = "node"\nargs = ["server.js"]\nenabled = true\n# JUTELL_CLI_MCP_END\n', 'utf8');
+    await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', mcp: { enabled: true } }), 'utf8');
+
+    await runCli(['use', 'codex'], project, env);
+    const after = await fs.readFile(codexFile, 'utf8');
+    expect(after.match(/\[mcp_servers\.jutell\]/g)).toHaveLength(1);
+    expect(after).not.toContain('beginner_bridge');
+    expect(after).toContain('enabled = true');
+  });
+
+  it('CASE E: legacy-only에서 use를 두 번 실행해도 both 상태에서 멈추고 중복이 없다', async () => {
+    const { project, env } = await fixture();
+    const codexFile = path.join(project, '.codex', 'config.toml');
+    await fs.mkdir(path.dirname(codexFile), { recursive: true });
+    const legacy = '# BEGINNER_BRIDGE_CLI_MCP_BEGIN\n[mcp_servers.beginner_bridge]\ncommand = "node"\nargs = ["server.js"]\nenabled = true\n# BEGINNER_BRIDGE_CLI_MCP_END\n';
+    await fs.writeFile(codexFile, legacy, 'utf8');
+    await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', mcp: { enabled: true } }), 'utf8');
+
+    await runCli(['use', 'codex'], project, env);
+    const first = await fs.readFile(codexFile, 'utf8');
+    expect(first.match(/\[mcp_servers\.jutell\]/g)).toHaveLength(1);
+    expect(first.match(/\[mcp_servers\.beginner_bridge\]/g)).toHaveLength(1);
+
+    await runCli(['use', 'codex'], project, env);
+    const second = await fs.readFile(codexFile, 'utf8');
+    expect(second).toBe(first);
+    expect(second.match(/\[mcp_servers\.jutell\]/g)).toHaveLength(1);
+    expect(second.match(/\[mcp_servers\.beginner_bridge\]/g)).toHaveLength(1);
+  });
+
+  it('C4-002: doctor가 실제로 읽은 설정 source를 표시한다', async () => {
+    const { project, env } = await fixture();
+    await fs.writeFile(path.join(project, '.beginner-bridge.json'), JSON.stringify({ version: 1, profile: 'learning', mcp: { enabled: false } }), 'utf8');
+    const doctor = JSON.parse((await runCli(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string; detail: string }>;
+    const configCheck = doctor.find((check) => check.name === '.beginner-bridge.json');
+    expect(configCheck).toBeTruthy();
+    expect(configCheck?.detail).toContain('이전 설정 파일을 읽었습니다');
+    const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
+    expect(status.configLocation).toContain('.beginner-bridge.json');
+  });
+
+  it('CASE C: legacy Codex registration만 있으면 status/doctor가 인식하고 use가 보존하면서 canonical jutell을 만든다', async () => {
+    const { project, env } = await fixture();
+    const codexFile = path.join(project, '.codex', 'config.toml');
+    await fs.mkdir(path.dirname(codexFile), { recursive: true });
+    const legacy = '# BEGINNER_BRIDGE_CLI_MCP_BEGIN\n[mcp_servers.beginner_bridge]\ncommand = "node"\nargs = ["server.js"]\nenabled = true\n# BEGINNER_BRIDGE_CLI_MCP_END\n';
+    await fs.writeFile(codexFile, legacy, 'utf8');
+    await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', mcp: { enabled: true } }), 'utf8');
+
+    const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
+    expect(status.codexPreparation).toBe('registered');
+    expect(status.warnings).toEqual(expect.arrayContaining([expect.stringContaining('이전 beginner_bridge 항목만 있습니다')]));
+    const doctor = JSON.parse((await runCli(['doctor', '--json'], project, env)).stdout);
+    expect(doctor.find((check: { name: string }) => check.name === 'Codex MCP')?.status).toBe('정상');
+
+    const used = await runCli(['use', 'codex'], project, env);
+    expect(used.stdout).toContain('이전 beginner_bridge 항목을 그대로 두고');
+    const after = await fs.readFile(codexFile, 'utf8');
+    expect(after).toContain('[mcp_servers.jutell]');
+    expect(after).toContain('[mcp_servers.beginner_bridge]');
+    expect(after.match(/\[mcp_servers\.jutell\]/g)).toHaveLength(1);
+    expect(after.match(/\[mcp_servers\.beginner_bridge\]/g)).toHaveLength(1);
+    const afterStatus = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
+    expect(afterStatus.warnings).toEqual(expect.arrayContaining([expect.stringContaining('모두 있습니다')]));
+  });
+
+  it('CASE D: canonical과 legacy Codex key가 모두 있으면 경고하고 자동 정리하지 않는다', async () => {
+    const { project, env } = await fixture();
+    const codexFile = path.join(project, '.codex', 'config.toml');
+    await fs.mkdir(path.dirname(codexFile), { recursive: true });
+    const both = '# JUTELL_CLI_MCP_BEGIN\n[mcp_servers.jutell]\ncommand = "node"\nargs = ["server.js"]\nenabled = true\n# JUTELL_CLI_MCP_END\n\n[mcp_servers.beginner_bridge]\ncommand = "node"\nargs = ["legacy.js"]\nenabled = true\n';
+    await fs.writeFile(codexFile, both, 'utf8');
+    const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
+    expect(status.warnings).toEqual(expect.arrayContaining([expect.stringContaining('모두 있습니다')]));
+
+    await runCli(['use', 'codex'], project, env);
+    expect(await fs.readFile(codexFile, 'utf8')).toBe(both);
+  });
+
+  it('CASE C: legacy OpenCode registration을 감지하고 use가 보존하면서 canonical jutell을 만든다', async () => {
+    const { project, env } = await fixture();
+    const opencodeFile = path.join(project, 'opencode.json');
+    const legacy = '{\n  "mcp": {\n    // BEGIN JUTELL MANAGED BLOCK\n    "beginner_bridge": { "type": "local", "command": ["node", "legacy.js"], "enabled": true, "cwd": "." },\n    // END JUTELL MANAGED BLOCK\n  }\n}\n';
+    await fs.writeFile(opencodeFile, legacy, 'utf8');
+    await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', mcp: { enabled: true } }), 'utf8');
+    const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
+    expect(status.opencodePreparation).toBe('registered');
+    expect(status.warnings).toEqual(expect.arrayContaining([expect.stringContaining('이전 beginner_bridge 항목만 있습니다')]));
+
+    const used = await runCli(['use', 'opencode'], project, env);
+    expect(used.stdout).toContain('이전 beginner_bridge 항목을 그대로 두고');
+    const after = await fs.readFile(opencodeFile, 'utf8');
+    expect(after).toContain('"jutell"');
+    expect(after).toContain('"beginner_bridge"');
+    expect(after.match(/"jutell"/g)).toHaveLength(1);
+    expect(after.match(/"beginner_bridge"/g)).toHaveLength(1);
+  });
+
+  it('CASE D: canonical과 legacy OpenCode key가 모두 있으면 경고하고 자동 정리하지 않는다', async () => {
+    const { project, env } = await fixture();
+    const opencodeFile = path.join(project, 'opencode.json');
+    const both = '{\n  "mcp": {\n    "beginner_bridge": { "type": "local", "command": ["node", "legacy.js"], "enabled": true },\n    // BEGIN JUTELL MANAGED BLOCK\n    "jutell": { "type": "local", "command": ["node", "server.js"], "enabled": true, "cwd": "." },\n    // END JUTELL MANAGED BLOCK\n  }\n}\n';
+    await fs.writeFile(opencodeFile, both, 'utf8');
+    const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
+    expect(status.warnings).toEqual(expect.arrayContaining([expect.stringContaining('OpenCode에 canonical jutell')]));
+
+    await runCli(['use', 'opencode'], project, env);
+    expect(await fs.readFile(opencodeFile, 'utf8')).toBe(both);
+  });
+
+  it('명시적 uninstall은 managed legacy Codex block을 제거하고 다른 설정은 보존한다', async () => {
+    const { project, env } = await fixture();
+    const codexFile = path.join(project, '.codex', 'config.toml');
+    await fs.mkdir(path.dirname(codexFile), { recursive: true });
+    await fs.writeFile(codexFile, '[mcp_servers.other]\ncommand = "other"\n\n# BEGINNER_BRIDGE_CLI_MCP_BEGIN\n[mcp_servers.beginner_bridge]\ncommand = "node"\nenabled = false\n# BEGINNER_BRIDGE_CLI_MCP_END\n', 'utf8');
+    await runCli(['uninstall', '--keep-data', '--yes'], project, env);
+    const after = await fs.readFile(codexFile, 'utf8');
+    expect(after).toContain('[mcp_servers.other]');
+    expect(after).not.toContain('beginner_bridge');
   });
 
   it('실제 tarball을 임시 npm prefix에 설치한 뒤 두 CLI bin이 실행된다', async () => {

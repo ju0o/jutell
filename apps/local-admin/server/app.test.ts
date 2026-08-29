@@ -177,13 +177,14 @@ describe('local config API', () => {
     expect(registered.status).toBe(200);
     const afterRegister = await fs.readFile(codexFile, 'utf8');
     expect(afterRegister).toContain('[mcp_servers.other]');
-    expect(afterRegister).toContain('# BEGINNER_BRIDGE_MCP_BEGIN');
+    expect(afterRegister).toContain('# JUTELL_MCP_BEGIN');
+    expect(afterRegister).toContain('[mcp_servers.jutell]');
     expect(await fs.readFile(`${codexFile}.previous`, 'utf8')).toContain('[mcp_servers.other]');
     const removed = await request('/api/mcp/remove', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
     expect(removed.status).toBe(200);
     const afterRemove = await fs.readFile(codexFile, 'utf8');
     expect(afterRemove).toContain('[mcp_servers.other]');
-    expect(afterRemove).not.toContain('# BEGINNER_BRIDGE_MCP_BEGIN');
+    expect(afterRemove).not.toContain('# JUTELL_MCP_BEGIN');
   });
 
   it('rejects invalid JSON settings without replacing the existing file', async () => {

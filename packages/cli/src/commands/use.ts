@@ -31,16 +31,22 @@ async function registrationSnapshots(paths: ScopePaths): Promise<FileSnapshot[]>
   return Promise.all(files.map((file) => snapshot(file)));
 }
 
-async function registerProviderEnabled(paths: ScopePaths, provider: AgentProvider) {
+async function registerProviderEnabled(paths: ScopePaths, provider: AgentProvider, io: CliIo) {
   if (provider.id === 'codex') await registerMcp(paths, packageRoot(), true);
   else await registerOpenCodeMcp(paths, packageRoot(), true);
+  const current = provider.id === 'codex'
+    ? await readCodexRegistration(paths, packageRoot(), true)
+    : await readOpenCodeRegistration(paths, packageRoot(), true);
+  if (current.canonicalRegistered && current.legacyRegistered) {
+    io.write('\n이전 beginner_bridge 항목을 그대로 두고 새 jutell 항목을 추가했습니다.\n이전 항목은 자동으로 삭제하지 않습니다. 제거는 추후 안전한 마이그레이션에서 안내합니다.');
+  }
 }
 
 async function verifyRegistration(paths: ScopePaths, provider: AgentProvider) {
   const current = provider.id === 'codex'
     ? await readCodexRegistration(paths, packageRoot(), true)
     : await readOpenCodeRegistration(paths, packageRoot(), true);
-  if (!current.registered || !current.enabled) throw new Error(`${provider.label} 연결 설정을 검증하지 못했습니다. jutell doctor를 실행해 주세요.`);
+  if (!current.canonicalRegistered || !current.enabled) throw new Error(`${provider.label} 연결 설정을 검증하지 못했습니다. jutell doctor를 실행해 주세요.`);
 }
 
 function printSuccess(io: CliIo, provider: AgentProvider, extra: { detected: boolean; skill?: boolean; agents?: boolean; othersDisabled?: boolean; keepNote?: boolean }) {
@@ -67,7 +73,7 @@ export async function useCommand(paths: ScopePaths, options: CliOptions, io: Cli
     changed = skillResult.changed;
     if (paths.scope === 'project') await ensureJuTellAgentsBlock(paths.targetRoot);
     await setMcpEnabled(paths, true);
-    await registerProviderEnabled(paths, provider);
+    await registerProviderEnabled(paths, provider, io);
     await recordSkillFiles(paths, changed);
     await verifyRegistration(paths, provider);
     printSuccess(io, provider, { detected, skill: true, agents: paths.scope === 'project', keepNote: true });
@@ -86,7 +92,7 @@ export async function connectCommand(paths: ScopePaths, options: CliOptions, io:
   try {
     await ensureBridgeConfig(paths, undefined);
     await setMcpEnabled(paths, true);
-    await registerProviderEnabled(paths, provider);
+    await registerProviderEnabled(paths, provider, io);
     await verifyRegistration(paths, provider);
     printSuccess(io, provider, { detected, keepNote: true });
     return { cancelled: false };
@@ -132,7 +138,7 @@ export async function switchCommand(paths: ScopePaths, options: CliOptions, io: 
     }
     await ensureBridgeConfig(paths, undefined);
     await setMcpEnabled(paths, true);
-    await registerProviderEnabled(paths, provider);
+    await registerProviderEnabled(paths, provider, io);
     await verifyRegistration(paths, provider);
     printSuccess(io, provider, { detected, othersDisabled: true });
     return { cancelled: false };

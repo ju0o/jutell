@@ -3,10 +3,14 @@ import path from 'node:path';
 import { assets } from './paths.js';
 import type { BridgeConfig, FileSnapshot, ScopePaths } from '../types.js';
 
-export const BEGIN_MARKER = '# BEGINNER_BRIDGE_CLI_MCP_BEGIN';
-export const END_MARKER = '# BEGINNER_BRIDGE_CLI_MCP_END';
+export const BEGIN_MARKER = '# JUTELL_CLI_MCP_BEGIN';
+export const END_MARKER = '# JUTELL_CLI_MCP_END';
+const PREVIOUS_BEGIN_MARKER = '# BEGINNER_BRIDGE_CLI_MCP_BEGIN';
+const PREVIOUS_END_MARKER = '# BEGINNER_BRIDGE_CLI_MCP_END';
 const LEGACY_BEGIN_MARKER = '# BEGINNER_BRIDGE_MCP_BEGIN';
 const LEGACY_END_MARKER = '# BEGINNER_BRIDGE_MCP_END';
+const CANONICAL_MCP_KEY = 'jutell';
+const LEGACY_MCP_KEY = 'beginner_bridge';
 export const FEATURE_IDS = ['changeSummary', 'userVisibleChanges', 'internalChanges', 'mainFiles', 'explainedDiff', 'glossary', 'validationResults', 'riskAssessment', 'userActions', 'nextActionSuggestions', 'requestClarificationGuide', 'manualEditGuidance', 'requestBuilder'];
 export const PROFILES = ['minimal', 'balanced', 'learning', 'detailed'] as const;
 export const PROFILE_FEATURES: Record<(typeof PROFILES)[number], Record<string, boolean>> = {
@@ -108,8 +112,28 @@ function markerPair(begin: string, end: string) {
   return new RegExp(`${begin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?${end.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'm');
 }
 
-function managedPattern() {
-  return new RegExp(`(?:${markerPair(BEGIN_MARKER, END_MARKER).source}|${markerPair(LEGACY_BEGIN_MARKER, LEGACY_END_MARKER).source})`, 'm');
+function managedPatterns() {
+  return [
+    markerPair(BEGIN_MARKER, END_MARKER),
+    markerPair(PREVIOUS_BEGIN_MARKER, PREVIOUS_END_MARKER),
+    markerPair(LEGACY_BEGIN_MARKER, LEGACY_END_MARKER),
+  ];
+}
+
+function managedBlocks(content: string) {
+  return managedPatterns().flatMap((pattern) => content.match(pattern)?.[0] ?? []);
+}
+
+function withoutManagedBlocks(content: string) {
+  return managedPatterns().reduce((text, pattern) => text.replace(pattern, ''), content);
+}
+
+function withoutCanonicalBlock(content: string) {
+  return content.replace(markerPair(BEGIN_MARKER, END_MARKER), '');
+}
+
+function hasMcpKey(content: string, key: string) {
+  return new RegExp(`^\\s*\\[mcp_servers\\.${key}\\]\\s*$`, 'm').test(content);
 }
 
 function tomlString(value: string) {
@@ -118,7 +142,7 @@ function tomlString(value: string) {
 
 export function buildMcpBlock(scope: ScopePaths, packageRoot: string, enabled: boolean) {
   const serverEntry = path.join(packageRoot, 'assets', 'mcp-server', 'index.js');
-  const lines = [BEGIN_MARKER, '[mcp_servers.beginner_bridge]', `command = ${tomlString(process.execPath)}`, `args = [${tomlString(serverEntry)}]`];
+  const lines = [BEGIN_MARKER, `[mcp_servers.${CANONICAL_MCP_KEY}]`, `command = ${tomlString(process.execPath)}`, `args = [${tomlString(serverEntry)}]`];
   if (scope.scope === 'project') lines.push('cwd = "."');
   lines.push(`enabled = ${enabled ? 'true' : 'false'}`, 'required = false', 'default_tools_approval_mode = "prompt"', END_MARKER);
   return lines.join('\n');
@@ -126,18 +150,33 @@ export function buildMcpBlock(scope: ScopePaths, packageRoot: string, enabled: b
 
 export async function readCodexRegistration(paths: ScopePaths, packageRoot: string, enabled: boolean) {
   const content = await readText(paths.codexConfigFile) ?? '';
-  const registered = managedPattern().test(content);
-  const conflict = !registered && /^\s*\[mcp_servers\.beginner_bridge\]\s*$/m.test(content);
-  const managedText = registered ? content.match(managedPattern())?.[0] ?? '' : '';
-  const enabledFlag = /^\s*enabled\s*=\s*true\s*$/m.test(managedText);
-  return { content, exists: content.length > 0, registered, conflict, enabled: enabledFlag, preview: buildMcpBlock(paths, packageRoot, enabled) };
+  const blocks = managedBlocks(content);
+  const canonicalManaged = blocks.find((block) => hasMcpKey(block, CANONICAL_MCP_KEY));
+  const legacyManaged = blocks.find((block) => hasMcpKey(block, LEGACY_MCP_KEY));
+  const canonicalRegistered = hasMcpKey(content, CANONICAL_MCP_KEY);
+  const legacyRegistered = hasMcpKey(content, LEGACY_MCP_KEY);
+  const registered = Boolean(canonicalManaged || legacyManaged);
+  const conflict = !registered && (canonicalRegistered || legacyRegistered);
+  const enabledFlag = canonicalManaged ? /^\s*enabled\s*=\s*true\s*$/m.test(canonicalManaged) : false;
+  return {
+    content,
+    exists: content.length > 0,
+    registered,
+    conflict,
+    enabled: enabledFlag,
+    canonicalRegistered,
+    legacyRegistered,
+    bothRegistered: canonicalRegistered && legacyRegistered,
+    preview: buildMcpBlock(paths, packageRoot, enabled),
+  };
 }
 
 export async function registerMcp(paths: ScopePaths, packageRoot: string, enabled: boolean) {
   const current = await readCodexRegistration(paths, packageRoot, enabled);
   if (current.conflict) throw new Error('Codex 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.');
+  if (current.canonicalRegistered && current.enabled === enabled) return current;
   await backupFile(paths.codexConfigFile);
-  const withoutManaged = current.content.replace(managedPattern(), '').replace(/\n{3,}/g, '\n\n').trimEnd();
+  const withoutManaged = withoutCanonicalBlock(current.content).replace(/\n{3,}/g, '\n\n').trimEnd();
   const next = `${withoutManaged}${withoutManaged ? '\n\n' : ''}${current.preview}\n`;
   await writeTextSafely(paths.codexConfigFile, next);
   return readCodexRegistration(paths, packageRoot, enabled);
@@ -148,7 +187,7 @@ export async function removeMcp(paths: ScopePaths, packageRoot: string) {
   if (current.conflict) throw new Error('관리되지 않는 같은 이름의 MCP 항목은 자동으로 제거하지 않습니다.');
   if (!current.registered) return current;
   await backupFile(paths.codexConfigFile);
-  const next = current.content.replace(managedPattern(), '').replace(/\n{3,}/g, '\n\n').trim();
+  const next = withoutManagedBlocks(current.content).replace(/\n{3,}/g, '\n\n').trim();
   await writeTextSafely(paths.codexConfigFile, next ? `${next}\n` : '');
   return readCodexRegistration(paths, packageRoot, false);
 }
