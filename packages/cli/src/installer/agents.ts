@@ -7,7 +7,8 @@ export const JUTELL_AGENTS_END = '<!-- END JUTELL MANAGED BLOCK -->';
 const managedBlock = `${JUTELL_AGENTS_BEGIN}
 ## JuTell
 
-- 코드 또는 문서 변경 후 \`.agents/skills/beginner-bridge/SKILL.md\`와 \`.jutell.json\`을 먼저 읽습니다.
+- 코드 또는 문서 변경 후 \`.agents/skills/beginner-bridge/SKILL.md\`와 \`.jutell.json\`을 먼저 읽습니다. 소유자 대상 구현/보고 전에는 JuTell 보고 규칙을 먼저 적용해 최종 답변을 작성합니다.
+- JuTell MCP가 보이면 canonical \`jutell\` 서버를 사용합니다. \`jutell\`과 legacy \`beginner_bridge\`가 모두 보이면 \`jutell\`을 우선하고 \`beginner_bridge\`는 호환용으로만 사용합니다.
 - 확인하지 않은 결과를 사실처럼 표현하지 않습니다.
 - 비밀정보를 명령 출력이나 보고서에 포함하지 않습니다.
 - 외부 전송 없이 현재 프로젝트의 로컬 설정을 기준으로 작업합니다.
