@@ -46,7 +46,7 @@ npm install -g ./jutell-0.3.0.tgz
 - `AGENTS.md`의 JuTell 관리 블록
 - 선택한 AI Agent Provider 설정의 JuTell MCP 관리 블록과 활성 상태
 
-AGENTS.md의 기존 내용과 다른 Provider MCP 설정은 보존합니다. 현재 실제 연결 Provider는 Codex이며, `on`과 `off`는 설정 및 Beta Journal을 삭제하지 않습니다.
+AGENTS.md의 기존 내용과 다른 Provider MCP 설정은 보존합니다. 현재 실제 연결 Provider는 Codex이며 OpenCode와 Claude Code는 베타로 지원을 확인합니다. `on`과 `off`는 설정 및 Beta Journal을 삭제하지 않습니다. 빠른 연결은 `jutell use codex` / `jutell use opencode` / `jutell use claude`를 사용합니다.
 
 이전 설치에서 사용하던 `beginner-bridge` 명령도 같은 기능의 호환 별칭으로 동작하며, 실행 시 `jutell` 사용을 안내합니다.
 
@@ -66,13 +66,13 @@ AGENTS.md의 기존 내용과 다른 Provider MCP 설정은 보존합니다. 현
 
 ## 상태와 개인정보
 
-`status`의 기본 출력은 비개발자가 읽기 쉬운 요약이며 전체 절대 경로와 비밀 값을 표시하지 않습니다. AI Agent 연결 준비 상태는 `설정 미등록`, `등록됨`, `활성화됨`, `오류`로 구분하고, 실제 도구 호출은 `확인하지 않음`, `마지막 확인 성공`, `마지막 확인 실패`로 따로 표시합니다. 현재 지원 Provider는 Codex이며, 실제 호출을 확인하지 않았다는 이유만으로 설치 경고를 표시하지 않습니다. `--json`은 자동 점검용 구조화 결과입니다.
+`status`의 기본 출력은 비개발자가 읽기 쉬운 요약이며 전체 절대 경로와 비밀 값을 표시하지 않습니다. AI Agent 연결 준비 상태는 `설정 미등록`, `등록됨`, `활성화됨`, `오류/충돌`로 구분하고, 실제 도구 호출은 `확인하지 않음`, `마지막 확인 성공`, `마지막 확인 실패`로 따로 표시합니다. 현재 지원 Provider는 Codex(지원)와 OpenCode·Claude Code(베타)이며, 실제 호출을 확인하지 않았다는 이유만으로 설치 경고를 표시하지 않습니다. `--json`은 자동 점검용 구조화 결과입니다.
 
 Telemetry는 비활성화되어 있고, CLI는 프로젝트 코드·Prompt·AI 답변·Git diff·API Key·환경변수·사용자 식별 정보를 수집하거나 외부로 보내지 않습니다. MCP는 선택 기능이며 Skill fallback은 유지됩니다.
 
 ## 지원 범위와 제한
 
-Windows 11, macOS, Linux를 기준으로 경로와 실행 파일을 처리합니다. 실제 검증은 현재 Windows 환경에서 수행합니다. CLI는 현재 지원 Provider인 Codex 설치 여부를 자동으로 확인할 수 있지만, 실제 AI Agent 세션에서 MCP 도구를 호출했는지는 대신 판정하지 않습니다.
+Windows 11, macOS, Linux를 기준으로 경로와 실행 파일을 처리합니다. 실제 검증은 현재 Windows 환경에서 수행합니다. CLI는 Codex·OpenCode·Claude Code 설치 여부를 자동으로 확인할 수 있지만, 실제 AI Agent 세션에서 MCP 도구를 호출했는지는 대신 판정하지 않습니다.
 
 업데이트 기능은 V0.1에 포함하지 않습니다. 공개 후 패키지 업데이트에는 다음 명령을 사용할 수 있습니다.
 

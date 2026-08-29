@@ -49,9 +49,9 @@
 
 ### 현재 V0.1 실행 범위
 
-`apps/local-admin/`은 Node 로컬 API와 Vite 화면을 함께 실행합니다. 설정·Profile·Feature·limits 조회와 저장, 기본값 복원, 설정 기록 삭제, 개인 베타 피드백의 작성·수정·개별 삭제·전체 삭제, 선택형 로컬 MCP 서버와 AI Agent Provider 설정 관리를 제공합니다. 현재 실제 Provider 연결은 Codex이며, OpenCode는 베타로 설정 등록을 지원합니다. MCP 도구는 읽기 전용입니다. 로컬 이벤트와 원격 Telemetry는 여전히 구현하지 않습니다.
+`apps/local-admin/`은 Node 로컬 API와 Vite 화면을 함께 실행합니다. 설정·Profile·Feature·limits 조회와 저장, 기본값 복원, 설정 기록 삭제, 개인 베타 피드백의 작성·수정·개별 삭제·전체 삭제, 선택형 로컬 MCP 서버와 AI Agent Provider 설정 관리를 제공합니다. 현재 실제 Provider 연결은 Codex(지원)와 OpenCode·Claude Code(베타)가 설정 등록을 지원합니다. MCP 도구는 읽기 전용입니다. 로컬 이벤트와 원격 Telemetry는 여전히 구현하지 않습니다.
 
-관리자 화면은 AI Agent 세션을 자동으로 바꾸지 않습니다. `.jutell.json`을 저장한 뒤 사용 중인 Agent가 `AGENTS.md`, `SKILL.md`, 설정 파일을 읽도록 작업 요청에 안내해야 하며, 화면은 이 준비 상태를 직접 확인할 수 있게 보여줍니다. 현재 실제 연결 확인은 Codex에서 수행하며, OpenCode는 베타 상태입니다. 화면의 보고서 적용 확인은 세션에 이미 적용됐다는 뜻이 아니라 수동 확인이 필요하다는 뜻입니다.
+관리자 화면은 AI Agent 세션을 자동으로 바꾸지 않습니다. `.jutell.json`을 저장한 뒤 사용 중인 Agent가 `AGENTS.md`, `SKILL.md`, 설정 파일을 읽도록 작업 요청에 안내해야 하며, 화면은 이 준비 상태를 직접 확인할 수 있게 보여줍니다. 현재 실제 연결 확인은 Codex(지원)와 OpenCode·Claude Code(베타)에서 수행하며, 화면의 보고서 적용 확인은 세션에 이미 적용됐다는 뜻이 아니라 수동 확인이 필요하다는 뜻입니다.
 
 MCP 연결도 세 상태를 나눕니다. 로컬 서버 실행, 현재 Provider 설정 등록, 실제 AI Agent 도구 호출은 서로 다릅니다. 실제 호출을 확인하지 못하면 연결 완료가 아니라 `AI Agent 세션에서 직접 확인 필요`로 표시합니다.
 

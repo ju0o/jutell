@@ -70,9 +70,9 @@ jutell
 
 3. 관리자 화면의 `AI Agent 연결`에서 `MCP 사용`을 켭니다.
 4. `연결 설정 미리 보기`로 프로젝트 설정을 확인합니다.
-5. `Provider 연결 설정 생성`을 누릅니다. 현재는 Codex 설정이 생성됩니다. OpenCode는 `jutell use opencode` 명령 한 번으로 등록·활성화까지 준비합니다.
+5. `Provider 연결 설정 생성`을 누릅니다. Codex·OpenCode·Claude Code 설정이 생성됩니다. `jutell use codex` / `jutell use opencode` / `jutell use claude` 명령 한 번으로 등록·활성화까지 준비하는 것을 권장합니다.
 6. `MCP 서버 시작`을 누릅니다.
-7. 현재 연결 Provider인 Codex의 새 세션 또는 재시작 후 다음 확인 문구를 전달합니다. OpenCode 사용자는 `jutell use opencode`로 연결한 뒤 같은 문구를 새 OpenCode 세션에 전달합니다.
+7. 현재 연결 Provider의 새 세션 또는 재시작 후 다음 확인 문구를 전달합니다. 예: Codex는 `codex mcp list`로, OpenCode는 프로젝트 `opencode.json`과 `opencode mcp`로, Claude Code는 `claude mcp list`로 등록을 확인한 뒤 같은 문구를 새 세션에 전달합니다.
 
    ```text
    JuTell MCP 연결 상태를 확인해주세요.
@@ -85,21 +85,22 @@ jutell
 
 ## 4. 생성되는 프로젝트 설정
 
-관리자는 기존 `.codex/config.toml`을 먼저 읽고, 다른 설정을 보존한 뒤 JuTell 관리 블록만 추가합니다.
+관리자는 기존 Codex `config.toml`(전역) 또는 `~/.claude.json`·`opencode.json`을 먼저 읽고, 다른 설정을 보존한 뒤 JuTell 관리 블록만 추가합니다.
+
+Canonical Codex 예시:
 
 ```toml
-# BEGINNER_BRIDGE_MCP_BEGIN
-[mcp_servers.beginner_bridge]
-command = "node"
-args = ["apps/mcp-server/dist/index.js"]
-cwd = "."
-enabled = false
+# JUTELL_CLI_MCP_BEGIN
+[mcp_servers.jutell]
+command = "C:/Program Files/nodejs/node.exe"
+args = ["<package>/assets/mcp-server/index.js"]
+enabled = true
 required = false
 default_tools_approval_mode = "prompt"
-# BEGINNER_BRIDGE_MCP_END
+# JUTELL_CLI_MCP_END
 ```
 
-관리 블록은 현재 설정의 MCP 사용 여부에 맞춰 `enabled`를 작성합니다. 설정 파일 전체를 덮어쓰지 않으며, 같은 이름의 관리되지 않는 항목이 있으면 자동 변경하지 않습니다.
+이전 `beginner_bridge` 항목은 하위 호환용으로 보존하며 자동으로 삭제하지 않습니다. 관리 블록은 현재 설정의 MCP 사용 여부에 맞춰 `enabled`를 작성합니다. 설정 파일 전체를 덮어쓰지 않으며, 같은 이름의 관리되지 않는 항목이 있으면 자동 변경하지 않습니다. 단, 과거 JuTell/legacy 항목이 마커 없이 남아 있는 경우(`mcp-server`를 가리키는 unmarked `beginner_bridge`)는 JuTell legacy로 인식해 canonical `jutell`을 안전하게 추가합니다.
 
 ## 5. 끄기와 제거
 
@@ -121,7 +122,7 @@ default_tools_approval_mode = "prompt"
 | 실제 도구 호출: 확인하지 않음 | AI Agent 세션에서 도구 호출 결과를 아직 확인하지 않았습니다. |
 | 실제 도구 호출: 마지막 확인 성공/실패 | 연결된 Provider에서 직접 확인한 결과입니다. |
 
-서버가 실행 중이라는 이유만으로 실제 연결 완료라고 표시하지 않습니다. 연결 준비가 `활성화됨`이면 `AI Agent 연결 준비 완료`로 표시하고, 실제 도구 호출은 별도 상태로 표시합니다. 현재 이 상태를 실제로 확인할 수 있는 Provider는 Codex이며, OpenCode는 베타로 등록 상태만 확인합니다.
+서버가 실행 중이라는 이유만으로 실제 연결 완료라고 표시하지 않습니다. 연결 준비가 `활성화됨`이면 `AI Agent 연결 준비 완료`로 표시하고, 실제 도구 호출은 별도 상태로 표시합니다. 현재 이 상태를 실제로 확인할 수 있는 Provider는 Codex(지원)와 OpenCode·Claude Code(베타)이며, 세 Provider 모두 `jutell use <provider>` 후 `status`/`doctor`와 `mcp list` health 체크로 확인할 수 있습니다.
 
 ### mcp.autoStart 관련 참고 (deprecated)
 

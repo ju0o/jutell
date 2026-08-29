@@ -5,7 +5,7 @@ import path from 'node:path';
 import { changedFields, DEFAULT_CONFIG, validateConfig } from './config/schema.js';
 import { ensureStorage, getStoragePaths, readArray, readConfig, readJson, saveFeedback, writeJsonAtomically, type StoragePaths } from './storage/files.js';
 import { validateFeedback } from './validation/feedback.js';
-import { readCodexMcpRegistration, registerCodexMcp, removeCodexMcp, readOpenCodeRegistration, registerOpenCodeMcp, setOpenCodeMcpEnabled, providerDetected } from './mcp/config.js';
+import { readCodexMcpRegistration, registerCodexMcp, removeCodexMcp, readOpenCodeRegistration, registerOpenCodeMcp, setOpenCodeMcpEnabled, readClaudeMcpRegistration, providerDetected } from './mcp/config.js';
 import { getMcpRuntimeState, startMcpRuntime, stopMcpRuntime } from './mcp/runtime.js';
 import { readRequestTemplates, REQUEST_TEMPLATE_LIST } from './templates/request-templates.js';
 import { deleteUsageCounters, readUsageCounters, recordTemplateCopy } from './usage/counters.js';
@@ -128,15 +128,16 @@ async function readReadiness(projectRoot: string, paths: StoragePaths): Promise<
 }
 
 async function readProviderStatuses(projectRoot: string, config: Config) {
-  const [codex, opencode] = await Promise.all([
+  const [codex, opencode, claude] = await Promise.all([
     readCodexMcpRegistration(projectRoot, config.mcp.enabled),
     readOpenCodeRegistration(projectRoot, config.mcp.enabled),
+    readClaudeMcpRegistration(projectRoot, config.mcp.enabled),
   ]);
   const base = { lastCheckedAt: lastMcpCheckAt };
   return [
     { id: 'codex', label: 'Codex', status: 'supported', detected: providerDetected('codex'), registered: codex.registered, conflict: codex.conflict, enabled: codex.enabled, ...base },
     { id: 'opencode', label: 'OpenCode', status: 'beta', detected: providerDetected('opencode'), registered: opencode.registered, conflict: opencode.conflict, enabled: opencode.enabled, ...base },
-    { id: 'claude-code', label: 'Claude Code', status: 'planned', detected: false, registered: false, conflict: false, enabled: false, ...base },
+    { id: 'claude-code', label: 'Claude Code', status: 'beta', detected: providerDetected('claude-code'), registered: claude.registered, conflict: claude.conflict, enabled: claude.enabled, ...base },
     { id: 'cline', label: 'Cline', status: 'planned', detected: false, registered: false, conflict: false, enabled: false, ...base },
   ];
 }
@@ -158,26 +159,30 @@ async function readMcpStatus(projectRoot: string, paths: StoragePaths) {
 
 type ProviderAction = 'connect' | 'disconnect' | 'default';
 
-async function providerRequest(input: unknown): Promise<{ provider: 'codex' | 'opencode' } | { error: string }> {
+async function providerRequest(input: unknown): Promise<{ provider: 'codex' | 'opencode' | 'claude-code' | 'claude' } | { error: string }> {
   const value = input && typeof input === 'object' ? input as { provider?: unknown; confirm?: unknown } : {};
   const provider = value.provider;
-  if (provider !== 'codex' && provider !== 'opencode') return { error: '연결할 Agent를 codex 또는 opencode 중에서 선택하세요.' };
+  if (provider !== 'codex' && provider !== 'opencode' && provider !== 'claude-code' && provider !== 'claude') return { error: '연결할 Agent를 codex, opencode 또는 claude 중에서 선택하세요.' };
   if (value.confirm !== true) return { error: 'Provider 연결 변경 확인이 필요합니다.' };
-  return { provider };
+  // normalize alias
+  const normalized = provider === 'claude' ? 'claude-code' as const : provider as 'codex' | 'opencode' | 'claude-code';
+  return { provider: normalized as never };
 }
 
-async function applyProviderAction(projectRoot: string, provider: 'codex' | 'opencode', action: ProviderAction, config: Config) {
+async function applyProviderAction(projectRoot: string, provider: 'codex' | 'opencode' | 'claude-code' | 'claude', action: ProviderAction, config: Config) {
   const opencode = await readOpenCodeRegistration(projectRoot, config.mcp.enabled);
   const codex = await readCodexMcpRegistration(projectRoot, config.mcp.enabled);
   if (action === 'disconnect') {
     if (provider === 'codex') await registerCodexMcp(projectRoot, false);
-    else await setOpenCodeMcpEnabled(projectRoot, false);
+    else if (provider === 'opencode') await setOpenCodeMcpEnabled(projectRoot, false);
+    else return config; // claude disconnect via CLI `jutell disconnect claude` is canonical; dashboard shows status only
     return config;
   }
   if (action === 'default' && provider !== 'codex' && codex.registered && codex.enabled) await registerCodexMcp(projectRoot, false);
   if (action === 'default' && provider !== 'opencode' && opencode.registered && opencode.enabled) await setOpenCodeMcpEnabled(projectRoot, false);
   if (provider === 'codex') await registerCodexMcp(projectRoot, true);
-  else await registerOpenCodeMcp(projectRoot, true);
+  else if (provider === 'opencode') await registerOpenCodeMcp(projectRoot, true);
+  else return config;
   if (action === 'connect' || action === 'default') return { ...config, mcp: { ...config.mcp, enabled: true } };
   return config;
 }

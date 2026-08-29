@@ -136,6 +136,17 @@ function hasMcpKey(content: string, key: string) {
   return new RegExp(`^\\s*\\[mcp_servers\\.${key}\\]\\s*$`, 'm').test(content);
 }
 
+function hasJuTellMcpEvidence(content: string, key: string) {
+  const keyPattern = new RegExp(`^\\s*\\[mcp_servers\\.${key}\\]\\s*$`, 'm');
+  const match = content.match(keyPattern);
+  if (!match || match.index === undefined) return false;
+  const slice = content.slice(match.index, match.index + 1200);
+  // JuTell's server always contains `assets/mcp-server` or `apps/mcp-server` in args (see buildMcpBlock)
+  // Unrelated custom entries (e.g. jira, other, even a custom `jutell` pointing to `not-mcp-server.js`) do not –
+  // this prevents broadly adopting arbitrary unmarked MCP entries.
+  return /(?:assets|apps)\/mcp-server/i.test(slice);
+}
+
 function tomlString(value: string) {
   return JSON.stringify(value.replaceAll('\\', '/'));
 }
@@ -155,9 +166,33 @@ export async function readCodexRegistration(paths: ScopePaths, packageRoot: stri
   const legacyManaged = blocks.find((block) => hasMcpKey(block, LEGACY_MCP_KEY));
   const canonicalRegistered = hasMcpKey(content, CANONICAL_MCP_KEY);
   const legacyRegistered = hasMcpKey(content, LEGACY_MCP_KEY);
-  const registered = Boolean(canonicalManaged || legacyManaged);
+  const canonicalHeuristic = !canonicalManaged && canonicalRegistered && hasJuTellMcpEvidence(content, CANONICAL_MCP_KEY);
+  const legacyHeuristic = !legacyManaged && legacyRegistered && hasJuTellMcpEvidence(content, LEGACY_MCP_KEY);
+  const registered = Boolean(canonicalManaged || legacyManaged || canonicalHeuristic || legacyHeuristic);
   const conflict = !registered && (canonicalRegistered || legacyRegistered);
-  const enabledFlag = canonicalManaged ? /^\s*enabled\s*=\s*true\s*$/m.test(canonicalManaged) : false;
+  const enabledFlag = (() => {
+    if (canonicalManaged) return /^\s*enabled\s*=\s*true\s*$/m.test(canonicalManaged);
+    if (canonicalHeuristic) {
+      const keyPattern = new RegExp(`^\\s*\\[mcp_servers\\.${CANONICAL_MCP_KEY}\\]\\s*$`, 'm');
+      const m = content.match(keyPattern);
+      if (m && m.index !== undefined) {
+        const slice = content.slice(m.index, m.index + 1200);
+        return /^\s*enabled\s*=\s*true\s*$/m.test(slice);
+      }
+    }
+    if (legacyManaged) return false;
+    if (legacyHeuristic) {
+      const keyPattern = new RegExp(`^\\s*\\[mcp_servers\\.${LEGACY_MCP_KEY}\\]\\s*$`, 'm');
+      const m = content.match(keyPattern);
+      if (m && m.index !== undefined) {
+        const slice = content.slice(m.index, m.index + 1200);
+        // legacy-only state is treated as registered but not enabled for canonical;
+        // status warning will guide to `jutell use codex` to add canonical.
+        return false;
+      }
+    }
+    return false;
+  })();
   return {
     content,
     exists: content.length > 0,

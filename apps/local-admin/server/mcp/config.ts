@@ -50,10 +50,23 @@ export type OpenCodeMcpRegistration = {
 };
 
 export function providerDetected(id: string) {
-  if (id !== 'codex' && id !== 'opencode') return false;
-  const executable = id === 'codex' ? 'codex.cmd' : 'opencode.cmd';
+  if (id !== 'codex' && id !== 'opencode' && id !== 'claude-code' && id !== 'claude') return false;
+  const map: Record<string, string> = { codex: 'codex.cmd', opencode: 'opencode.cmd', 'claude-code': 'claude.cmd', claude: 'claude.cmd' };
+  const executable = map[id] ?? `${id}.cmd`;
   const result = spawnSync(process.platform === 'win32' ? executable : executable.replace('.cmd', ''), ['--version'], { stdio: 'ignore', windowsHide: true });
   return result.status === 0;
+}
+
+function claudeHome() {
+  const override = process.env.CLAUDE_CONFIG_DIR;
+  return path.resolve(override && override.trim() ? override : path.join(os.homedir()));
+}
+
+function hasJuTellMcpEvidence(content: string, key: string) {
+  const keyPattern = new RegExp(`^\\s*\\[mcp_servers\\.${key}\\]\\s*$`, 'm');
+  const m = content.match(keyPattern);
+  if (!m || m.index === undefined) return false;
+  return /(?:assets|apps)\/mcp-server/i.test(content.slice(m.index, m.index + 1200));
 }
 
 function filePath(_projectRoot: string) {
@@ -91,9 +104,23 @@ export async function readCodexMcpRegistration(projectRoot: string, enabled = fa
   const legacyBlock = text.match(new RegExp(`${LEGACY_BEGIN_MARKER}[\\s\\S]*?${LEGACY_END_MARKER}`, 'm'))?.[0] ?? '';
   const canonicalRegistered = /^\s*\[mcp_servers\.jutell\]\s*$/m.test(text);
   const legacyRegistered = /^\s*\[mcp_servers\.beginner_bridge\]\s*$/m.test(text);
-  const registered = Boolean(canonicalBlock || legacyBlock);
+  const canonicalHeuristic = !canonicalBlock && canonicalRegistered && hasJuTellMcpEvidence(text, 'jutell');
+  const legacyHeuristic = !legacyBlock && legacyRegistered && hasJuTellMcpEvidence(text, 'beginner_bridge');
+  const registered = Boolean(canonicalBlock || legacyBlock || canonicalHeuristic || legacyHeuristic);
   const conflict = !registered && (canonicalRegistered || legacyRegistered);
-  const enabledFlag = [canonicalBlock, legacyBlock].some((block) => /^\s*enabled\s*=\s*true\s*$/m.test(block));
+  const enabledFlag = (() => {
+    if (canonicalBlock) return /^\s*enabled\s*=\s*true\s*$/m.test(canonicalBlock);
+    if (canonicalHeuristic) {
+      const m = text.match(/^\s*\[mcp_servers\.jutell\]\s*$/m);
+      if (m && m.index !== undefined) return /^\s*enabled\s*=\s*true\s*$/m.test(text.slice(m.index, m.index + 1200));
+    }
+    if (legacyBlock) return /^\s*enabled\s*=\s*true\s*$/m.test(legacyBlock);
+    if (legacyHeuristic) {
+      const m = text.match(/^\s*\[mcp_servers\.beginner_bridge\]\s*$/m);
+      if (m && m.index !== undefined) return /^\s*enabled\s*=\s*true\s*$/m.test(text.slice(m.index, m.index + 1200));
+    }
+    return false;
+  })();
   return { path: filePath(projectRoot), exists: Boolean(text), registered, conflict, enabled: enabledFlag, canonicalRegistered, legacyRegistered, bothRegistered: canonicalRegistered && legacyRegistered, preview: buildMcpConfigBlock(enabled) };
 }
 
@@ -272,4 +299,51 @@ export async function setOpenCodeMcpEnabled(projectRoot: string, enabled: boolea
   await backup(current.file);
   await writeOpenCodeFile(current.file, `${serializeWithManaged(parsed, enabled)}\n`);
   return readOpenCodeRegistration(projectRoot, enabled);
+}
+
+export type ClaudeMcpRegistration = {
+  file: string;
+  claudeScope: 'local' | 'user';
+  exists: boolean;
+  registered: boolean;
+  conflict: boolean;
+  enabled: boolean;
+  canonicalRegistered: boolean;
+  legacyRegistered: boolean;
+  bothRegistered: boolean;
+  preview: string;
+};
+
+function claudeConfigFile() {
+  return path.join(claudeHome(), '.claude.json');
+}
+
+function claudeScopeFor(_projectRoot: string, scopeHint?: string) {
+  // local-admin is always project-scoped (local) – same as CLI default
+  return 'local' as const;
+}
+
+export async function readClaudeMcpRegistration(projectRoot: string, _enabled = false): Promise<ClaudeMcpRegistration> {
+  const file = claudeConfigFile();
+  let text = '';
+  try { text = await fs.readFile(file, 'utf8'); } catch { text = ''; }
+  let parsed: Record<string, unknown> | undefined;
+  try { parsed = text.trim() ? JSON.parse(text) as Record<string, unknown> : {}; } catch { parsed = undefined; }
+  if (!parsed) return { file, claudeScope: 'local', exists: Boolean(text), registered: false, conflict: false, enabled: false, canonicalRegistered: false, legacyRegistered: false, bothRegistered: false, preview: JSON.stringify({ scope: 'local', type: 'stdio', command: 'node', args: ['assets/mcp-server/index.js'] }, null, 2) };
+  const projects = parsed.projects as Record<string, unknown> | undefined;
+  const normalizedRoot = projectRoot.replace(/\\/g, '/');
+  let mcp: Record<string, unknown> | undefined;
+  for (const [k, v] of Object.entries(projects ?? {})) {
+    if (k.replace(/\\/g, '/').toLowerCase() === normalizedRoot.toLowerCase()) {
+      const entry = v as Record<string, unknown>;
+      const servers = entry.mcpServers as Record<string, unknown> | undefined;
+      mcp = servers;
+      break;
+    }
+  }
+  // also check top-level (user scope) as fallback for global status truth
+  const topMcp = parsed.mcpServers as Record<string, unknown> | undefined;
+  const entry = mcp?.jutell ?? topMcp?.jutell;
+  const registered = entry !== undefined;
+  return { file, claudeScope: 'local', exists: Boolean(text), registered, conflict: false, enabled: registered, canonicalRegistered: registered, legacyRegistered: false, bothRegistered: false, preview: JSON.stringify({ scope: 'local', type: 'stdio', command: 'node', args: ['assets/mcp-server/index.js'] }, null, 2) };
 }

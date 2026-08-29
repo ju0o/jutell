@@ -217,7 +217,8 @@ describe('local config API', () => {
     const codex = status.body.providers.find((provider: { id: string }) => provider.id === 'codex');
     expect(codex).toMatchObject({ status: 'supported', registered: false, conflict: false, enabled: false });
     const planned = status.body.providers.find((provider: { id: string }) => provider.id === 'claude-code');
-    expect(planned).toMatchObject({ status: 'planned', detected: false, registered: false });
+    expect(planned).toMatchObject({ status: 'beta', registered: false });
+    expect(typeof planned.detected).toBe('boolean');
     expect(typeof codex.detected).toBe('boolean');
   });
 
