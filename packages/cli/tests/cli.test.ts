@@ -19,7 +19,7 @@ async function fixture() {
   const home = path.join(root, 'home');
   await fs.mkdir(project, { recursive: true });
   await fs.mkdir(home, { recursive: true });
-  return { root, project, home, env: { ...process.env, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex') } };
+  return { root, project, home, env: { ...process.env, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: home } };
 }
 
 async function runCli(args: string[], cwd: string, env: NodeJS.ProcessEnv) {
@@ -391,16 +391,12 @@ describe('Distribution CLI V0.1', () => {
     expect(summary.stdout).toMatch(/OpenCode\s+연결됨 · 활성/);
   });
 
-  it('미지원 Agent는 안내만 출력하고 설정 파일을 만들지 않는다', async () => {
+  it('여전히 준비 중인 Agent(Cline)는 안내만 출력하고 설정 파일을 만들지 않는다', async () => {
     const { project, env } = await fixture();
-    const claude = await runCli(['use', 'claude'], project, env);
-    expect(claude.stdout).toContain('Claude Code 연결은 아직 준비 중입니다.');
-    expect(claude.stdout).toContain('현재 사용할 수 있는 Agent는 Codex와 OpenCode입니다.');
     const cline = await runCli(['use', 'cline'], project, env);
     expect(cline.stdout).toContain('Cline 연결은 아직 준비 중입니다.');
     await expect(fs.stat(path.join(project, 'opencode.json'))).rejects.toThrow();
     const summary = await runCli(['provider'], project, env);
-    expect(summary.stdout).toMatch(/Claude Code\s+준비 중/);
     expect(summary.stdout).toMatch(/Cline\s+준비 중/);
   });
 
@@ -687,4 +683,124 @@ describe('Distribution CLI V0.1', () => {
     expect(sessionHelp.stdout).toContain('session storage set <절대 경로>');
     expect(sessionHelp.stdout).toContain('session storage reset');
   });
+
+  // V1.2: Claude Code provider adapter. Real Claude Code (verified via an
+  // isolated CLAUDE_CONFIG_DIR) has no per-project file the way Codex was
+  // found to need one - `local`/`user` MCP scope both live inside the same
+  // `.claude.json`, keyed by project path or top-level respectively. These
+  // tests shell out to the real `claude` binary (via `claude mcp add/remove`,
+  // matching how JuTell registers Claude - see installer/claude.ts), so they
+  // require Claude Code to be installed on the machine running the suite.
+  it('jutell use claude가 canonical jutell을 local(프로젝트) 범위에 등록하고 프로젝트 규칙을 적용한다', async () => {
+    const { project, home, env } = await fixture();
+    const used = await runCli(['use', 'claude'], project, env);
+    expect(used.stdout).toContain('Claude Code 연결이 끝났습니다');
+    expect(used.stdout).toContain('기존 Claude Code 설정 보존');
+
+    const claudeJson = JSON.parse(await fs.readFile(path.join(home, '.claude.json'), 'utf8'));
+    expect(claudeJson.mcpServers).toBeUndefined(); // nothing at user/global scope
+    const projectEntry = claudeJson.projects?.[project.replace(/\\/g, '/')] ?? claudeJson.projects?.[project];
+    expect(projectEntry?.mcpServers?.jutell).toBeTruthy();
+    expect(projectEntry.mcpServers.jutell.command).toBe(process.execPath);
+
+    // Same project-scope rules as Codex/OpenCode: AGENTS.md + Skill installed.
+    expect(await fs.readFile(path.join(project, 'AGENTS.md'), 'utf8')).toContain('BEGIN JUTELL MANAGED BLOCK');
+    expect(await fs.stat(path.join(project, '.agents', 'skills', 'beginner-bridge', 'SKILL.md'))).toBeTruthy();
+  }, 20000);
+
+  it('jutell use claude를 반복 실행해도 중복 없이 idempotent하다', async () => {
+    const { project, home, env } = await fixture();
+    await runCli(['use', 'claude'], project, env);
+    const first = await fs.readFile(path.join(home, '.claude.json'), 'utf8');
+    await runCli(['use', 'claude'], project, env);
+    const second = await fs.readFile(path.join(home, '.claude.json'), 'utf8');
+    const firstParsed = JSON.parse(first);
+    const secondParsed = JSON.parse(second);
+    const key = Object.keys(firstParsed.projects)[0];
+    expect(Object.keys(secondParsed.projects[key].mcpServers)).toEqual(['jutell']);
+  }, 20000);
+
+  it('jutell use claude는 같은 파일의 무관한 Claude 설정(다른 프로젝트, 다른 MCP 서버)을 보존한다', async () => {
+    const { project, home, env } = await fixture();
+    const otherProject = path.join(home, 'unrelated-other-project');
+    const claudeJsonFile = path.join(home, '.claude.json');
+    await fs.writeFile(claudeJsonFile, JSON.stringify({
+      mcpServers: { 'some-user-tool': { type: 'stdio', command: 'node', args: ['other.js'] } },
+      projects: { [otherProject.replace(/\\/g, '/')]: { mcpServers: { 'other-project-tool': { type: 'stdio', command: 'node', args: ['x.js'] } } } },
+    }, null, 2), 'utf8');
+
+    await runCli(['use', 'claude'], project, env);
+
+    const after = JSON.parse(await fs.readFile(claudeJsonFile, 'utf8'));
+    expect(after.mcpServers['some-user-tool']).toBeTruthy();
+    const otherKey = Object.keys(after.projects).find((k) => k !== project && k !== project.replace(/\\/g, '/'));
+    expect(after.projects[otherKey as string].mcpServers['other-project-tool']).toBeTruthy();
+  }, 20000);
+
+  it('jutell use claude --global은 user 범위(최상위 mcpServers)에 등록한다', async () => {
+    const { project, home, env } = await fixture();
+    await runCli(['use', 'claude', '--global'], project, env);
+    const claudeJson = JSON.parse(await fs.readFile(path.join(home, '.claude.json'), 'utf8'));
+    expect(claudeJson.mcpServers?.jutell).toBeTruthy();
+    expect(claudeJson.projects?.[project]).toBeUndefined();
+  }, 20000);
+
+  it('status/doctor가 Claude Code MCP 상태를 정확히 보여준다', async () => {
+    const { project, env } = await fixture();
+    const before = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
+    expect(before.claudePreparation).toBe('not_registered');
+    expect(before.claude.registered).toBe(false);
+
+    await runCli(['use', 'claude'], project, env);
+
+    const after = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
+    expect(after.claudePreparation).toBe('enabled');
+    expect(after.claude.registered).toBe(true);
+    const doctor = JSON.parse((await runCli(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string; detail: string }>;
+    const check = doctor.find((c) => c.name === 'Claude Code MCP');
+    expect(check?.status).toBe('정상');
+    expect(check?.detail).toContain('local');
+  }, 20000);
+
+  it('jutell disconnect claude가 등록을 실제로 제거하고 무관한 설정은 보존한다', async () => {
+    const { project, home, env } = await fixture();
+    await runCli(['use', 'claude'], project, env);
+    const claudeJsonFile = path.join(home, '.claude.json');
+    const before = JSON.parse(await fs.readFile(claudeJsonFile, 'utf8'));
+    const key = Object.keys(before.projects)[0];
+    // seed an unrelated sibling entry in the same project's mcpServers map
+    before.projects[key].mcpServers['sibling-tool'] = { type: 'stdio', command: 'node', args: ['sibling.js'] };
+    await fs.writeFile(claudeJsonFile, JSON.stringify(before, null, 2), 'utf8');
+
+    const disconnected = await runCli(['disconnect', 'claude'], project, env);
+    expect(disconnected.stdout).toContain('Claude Code 연결을 끊었습니다');
+
+    const after = JSON.parse(await fs.readFile(claudeJsonFile, 'utf8'));
+    expect(after.projects[key].mcpServers.jutell).toBeUndefined();
+    expect(after.projects[key].mcpServers['sibling-tool']).toBeTruthy();
+
+    const second = await runCli(['disconnect', 'claude'], project, env);
+    expect(second.stdout).toContain('연결된 Claude Code JuTell MCP가 없습니다');
+  }, 20000);
+
+  it('use claude 실패 시 이미 등록한 Claude MCP도 롤백된다', async () => {
+    const { project, home, env } = await fixture();
+    // Force a failure *after* the Claude MCP registration write, the same
+    // way the Codex rollback test does (block the skill-manifest directory
+    // `use` writes to right after registerProviderEnabled).
+    await fs.writeFile(path.join(project, '.jutell-local'), 'blocked', 'utf8');
+
+    let failure: { stderr?: string } | undefined;
+    try {
+      await runCli(['use', 'claude'], project, env);
+    } catch (error) {
+      failure = error as { stderr?: string };
+    }
+    expect(failure).toBeTruthy();
+
+    const claudeJsonFile = path.join(home, '.claude.json');
+    const stillClean = !(await fs.access(claudeJsonFile).then(() => true, () => false))
+      || !JSON.parse(await fs.readFile(claudeJsonFile, 'utf8')).projects?.[project]?.mcpServers?.jutell;
+    expect(stillClean).toBe(true);
+  }, 20000);
 });

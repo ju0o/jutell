@@ -48,6 +48,7 @@ export type ScopePaths = {
   legacyConfigFile: string;
   codexConfigFile: string;
   opencodeConfigFile: string;
+  claudeConfigFile: string;
   dataRoot: string;
   legacyDataRoot: string;
 };
@@ -80,16 +81,19 @@ export type StatusResult = {
   configValid: boolean;
   codexDetected: boolean;
   opencodeDetected: boolean;
+  claudeDetected: boolean;
   skillInstalled: boolean;
   agentsManaged: boolean;
   mcpRegistered: boolean;
   mcpEnabled: boolean;
   codexPreparation: 'not_registered' | 'registered' | 'enabled' | 'error';
   opencodePreparation: 'not_registered' | 'registered' | 'enabled' | 'conflict';
+  claudePreparation: 'not_registered' | 'registered' | 'enabled' | 'conflict';
   anyProviderRegistered: boolean;
   anyProviderEnabled: boolean;
   actualConnection: 'not_checked' | 'success' | 'failure';
   opencode: { registered: boolean; conflict: boolean; enabled: boolean };
+  claude: { registered: boolean; conflict: boolean; enabled: boolean };
   profile: Profile;
   activeFeatureCount: number;
   configLocation: string;

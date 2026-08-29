@@ -2,11 +2,12 @@ import { promises as fs } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
 import { assets, codexScopedPaths, packageRoot, safeLocation } from '../config/paths.js';
-import { codexDetected, nodeMajorVersion, operatingSystem } from '../process/system.js';
+import { claudeDetected, codexDetected, nodeMajorVersion, operatingSystem } from '../process/system.js';
 import { exists, parseSkillVersion, readBridgeConfig, readCodexRegistration, readText, readVersionInfo, FEATURE_IDS } from '../config/managed.js';
 import { setupCommand } from './lifecycle.js';
 import { hasJuTellAgentsBlock } from '../installer/agents.js';
 import { opencodeDetected, readOpenCodeRegistration } from '../installer/opencode.js';
+import { readClaudeRegistration } from '../installer/claude.js';
 import { probeMcpServer } from '../process/mcpProbe.js';
 import type { CheckResult, CliIo, CliOptions, ScopePaths, StatusResult } from '../types.js';
 
@@ -38,10 +39,12 @@ export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
   const installedSkillText = await readText(path.join(paths.skillRoot, 'SKILL.md'));
   const agentsManaged = await hasJuTellAgentsBlock(paths.targetRoot);
   const opencode = await readOpenCodeRegistration(paths, packageRoot(), false);
+  const claude = await readClaudeRegistration(paths, packageRoot(), false);
   const codexPreparation = registration.conflict ? 'error' : !registration.registered ? 'not_registered' : registration.enabled ? 'enabled' : 'registered';
   const opencodePreparation = opencode.conflict ? 'conflict' : !opencode.registered ? 'not_registered' : opencode.enabled ? 'enabled' : 'registered';
-  const anyProviderRegistered = registration.registered || opencode.registered;
-  const anyProviderEnabled = registration.enabled || opencode.enabled;
+  const claudePreparation = claude.conflict ? 'conflict' : !claude.registered ? 'not_registered' : claude.enabled ? 'enabled' : 'registered';
+  const anyProviderRegistered = registration.registered || opencode.registered || claude.registered;
+  const anyProviderEnabled = registration.enabled || opencode.enabled || claude.enabled;
   const warnings: string[] = [];
   if (!config.valid) warnings.push('설정 파일을 읽지 못해 balanced 기본값을 사용 중입니다.');
   if (registration.conflict) warnings.push('같은 이름의 관리되지 않는 Codex MCP 설정이 있어 자동 변경하지 않았습니다.');
@@ -50,7 +53,7 @@ export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
   if (opencode.bothRegistered) warnings.push('OpenCode에 canonical jutell과 legacy beginner_bridge MCP가 모두 있습니다. 자동 정리하지 않았습니다. 이전 항목 제거는 추후 안전한 마이그레이션에서 안내합니다.');
   if (registration.legacyRegistered && !registration.canonicalRegistered) warnings.push('Codex에 이전 beginner_bridge 항목만 있습니다. jutell use codex 를 실행하면 보존하면서 새 jutell 항목을 추가합니다.');
   if (opencode.legacyRegistered && !opencode.canonicalRegistered) warnings.push('OpenCode에 이전 beginner_bridge 항목만 있습니다. jutell use opencode 를 실행하면 보존하면서 새 jutell 항목을 추가합니다.');
-  if (config.config.mcp?.enabled && !anyProviderRegistered) warnings.push('MCP 연결 정책은 켜져 있지만 Codex·OpenCode 어느 Provider에도 JuTell MCP가 등록되지 않았습니다. jutell use <agent> 를 실행해 주세요.');
+  if (config.config.mcp?.enabled && !anyProviderRegistered) warnings.push('MCP 연결 정책은 켜져 있지만 Codex·OpenCode·Claude Code 어느 Provider에도 JuTell MCP가 등록되지 않았습니다. jutell use <agent> 를 실행해 주세요.');
   if (config.config.mcp?.enabled && anyProviderRegistered && !anyProviderEnabled) warnings.push('연결 정책(.jutell.json)은 켜져 있지만 새 세션에서 자동 시작할 활성 Provider 항목이 없습니다. jutell use <agent> 를 실행해 주세요.');
   if (!config.config.mcp?.enabled && anyProviderEnabled) warnings.push('연결 정책(.jutell.json)은 꺼져 있지만 Provider 자동 시작은 켜져 있습니다. 일치시키려면 jutell use <agent> 또는 jutell off을 실행해 주세요.');
   return {
@@ -63,16 +66,19 @@ export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
     configValid: config.valid,
     codexDetected: codexDetected(),
     opencodeDetected: opencodeDetected(),
+    claudeDetected: claudeDetected(),
     skillInstalled,
     agentsManaged,
     mcpRegistered: anyProviderRegistered,
     mcpEnabled: config.config.mcp?.enabled === true,
     codexPreparation,
     opencodePreparation,
+    claudePreparation,
     anyProviderRegistered,
     anyProviderEnabled,
     actualConnection: 'not_checked',
     opencode: { registered: opencode.registered, conflict: opencode.conflict, enabled: opencode.enabled },
+    claude: { registered: claude.registered, conflict: claude.conflict, enabled: claude.enabled },
     profile: config.config.profile,
     activeFeatureCount: Object.values(config.config.features).filter(Boolean).length,
     configLocation: config.source === 'legacy' ? '기존 설정(.beginner-bridge.json)' : safeLocation(paths.scope, 'config'),
@@ -89,10 +95,13 @@ export async function statusCommand(paths: ScopePaths, options: CliOptions, io: 
   if (options.json) { io.write(JSON.stringify(status, null, 2)); return status; }
   const codexLabel = { not_registered: '미등록', registered: '등록됨', enabled: '활성화됨', error: '오류' }[status.codexPreparation];
   const opencodeLabel = { not_registered: '미등록', registered: '등록됨', enabled: '활성화됨', conflict: '충돌' }[status.opencodePreparation];
+  const claudeLabel = { not_registered: '미등록', registered: '등록됨', enabled: '활성화됨', conflict: '충돌' }[status.claudePreparation];
   const actual = { not_checked: '확인하지 않음', success: '마지막 확인 성공', failure: '마지막 확인 실패' }[status.actualConnection];
   const codexDetectedLabel = status.codexDetected ? '감지됨' : '미감지';
   const opencodeDetectedLabel = status.opencodeDetected ? '감지됨' : status.opencode.registered ? '설정 있음(명령 미감지)' : '미감지';
-  io.write(`JuTell 상태\n\nCLI: ${status.cliVersion}\nSkill: ${status.skillInstalled ? '설치됨' : '설치되지 않음'}\nAGENTS.md: ${status.agentsManaged ? 'JuTell 블록 있음' : 'JuTell 블록 없음'}\nJuTell 연결 정책: ${status.mcpEnabled ? '켜짐' : '꺼짐'}\nCodex MCP (전역, Codex는 프로젝트 설정을 읽지 않음): ${codexLabel}${status.codexDetected ? ` (명령 ${codexDetectedLabel})` : ''}\nOpenCode MCP: ${opencodeLabel}${status.opencode.enabled ? ' (새 세션 자동 시작 켜짐)' : ''}${status.opencodeDetected ? '' : ` (명령 ${opencodeDetectedLabel})`}\nMCP 서버 응답: ${actual}\n현재 Agent 세션 적용: 직접 확인 필요\nProfile: ${status.profile}\n활성 Feature: ${status.activeFeatureCount}개\n설치 범위 (설정·Skill·AGENTS.md): ${status.installationScope === 'global' ? '사용자 전역' : '현재 프로젝트'}\n로컬 관리자: ${status.localAdmin}\n로컬 사용량 카운터: ${status.usageCountersEnabled ? '켜짐' : '꺼짐'}\nTelemetry: ${status.telemetry}\n외부 전송: ${status.externalTransmission}\n설정 위치: ${status.configLocation}`);
+  const claudeDetectedLabel = status.claudeDetected ? '감지됨' : status.claude.registered ? '설정 있음(명령 미감지)' : '미감지';
+  const claudeScopeNote = status.installationScope === 'global' ? '사용자 전역(user)' : '현재 프로젝트(local)';
+  io.write(`JuTell 상태\n\nCLI: ${status.cliVersion}\nSkill: ${status.skillInstalled ? '설치됨' : '설치되지 않음'}\nAGENTS.md: ${status.agentsManaged ? 'JuTell 블록 있음' : 'JuTell 블록 없음'}\nJuTell 연결 정책: ${status.mcpEnabled ? '켜짐' : '꺼짐'}\nCodex MCP (전역, Codex는 프로젝트 설정을 읽지 않음): ${codexLabel}${status.codexDetected ? ` (명령 ${codexDetectedLabel})` : ''}\nOpenCode MCP: ${opencodeLabel}${status.opencode.enabled ? ' (새 세션 자동 시작 켜짐)' : ''}${status.opencodeDetected ? '' : ` (명령 ${opencodeDetectedLabel})`}\nClaude Code MCP (${claudeScopeNote}): ${claudeLabel}${status.claudeDetected ? '' : ` (명령 ${claudeDetectedLabel})`}\nMCP 서버 응답: ${actual}\n현재 Agent 세션 적용: 직접 확인 필요\nProfile: ${status.profile}\n활성 Feature: ${status.activeFeatureCount}개\n설치 범위 (설정·Skill·AGENTS.md): ${status.installationScope === 'global' ? '사용자 전역' : '현재 프로젝트'}\n로컬 관리자: ${status.localAdmin}\n로컬 사용량 카운터: ${status.usageCountersEnabled ? '켜짐' : '꺼짐'}\nTelemetry: ${status.telemetry}\n외부 전송: ${status.externalTransmission}\n설정 위치: ${status.configLocation}`);
   for (const warning of status.warnings) io.write(`주의: ${warning}`);
   return status;
 }
@@ -116,6 +125,7 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   const codexPaths = codexScopedPaths(paths);
   const registration = await readCodexRegistration(codexPaths, packageRoot(), config.config.mcp?.enabled === true);
   const opencode = await readOpenCodeRegistration(paths, packageRoot(), false);
+  const claude = await readClaudeRegistration(paths, packageRoot(), false);
   const skillFile = path.join(paths.skillRoot, 'SKILL.md');
   const skillText = await readText(skillFile);
   const mcpEntry = path.join(assets().mcpServer, 'index.js');
@@ -124,7 +134,8 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   const checks: CheckResult[] = [];
   checks.push({ name: 'Node 버전', status: nodeMajorVersion() >= 18 ? '정상' : '오류', detail: `현재 Node ${process.versions.node}` });
   checks.push({ name: '운영체제', status: ['Windows', 'macOS', 'Linux'].includes(operatingSystem()) ? '정상' : '직접 확인 필요', detail: operatingSystem() });
-  checks.push({ name: 'AI Agent Provider 설치 또는 설정', status: codexDetected() || opencodeDetected() || await exists(codexPaths.codexConfigFile) || await exists(paths.opencodeConfigFile) ? '정상' : '직접 확인 필요', detail: codexDetected() || await exists(codexPaths.codexConfigFile) || opencodeDetected() || await exists(paths.opencodeConfigFile) ? 'Provider 명령 또는 설정을 확인했습니다.' : 'Provider 명령과 설정을 모두 자동 확인하지 못했습니다.' });
+  const anyProviderDetectedOrConfigured = codexDetected() || opencodeDetected() || claudeDetected() || await exists(codexPaths.codexConfigFile) || await exists(paths.opencodeConfigFile) || claude.exists;
+  checks.push({ name: 'AI Agent Provider 설치 또는 설정', status: anyProviderDetectedOrConfigured ? '정상' : '직접 확인 필요', detail: anyProviderDetectedOrConfigured ? 'Provider 명령 또는 설정을 확인했습니다.' : 'Provider 명령과 설정을 모두 자동 확인하지 못했습니다.' });
   checks.push({ name: 'OpenCode 명령 감지', status: opencodeDetected() ? '정상' : '직접 확인 필요', detail: opencodeDetected() ? 'opencode --version 명령을 확인했습니다.' : 'opencode 명령을 자동 확인하지 못했습니다. PATH·shell 실행 권한을 확인해 주세요.' });
   checks.push({ name: 'Skill 파일', status: skillText?.includes('name: beginner-bridge') ? '정상' : '오류', detail: skillText ? 'Skill 파일을 확인했습니다.' : 'Skill 파일이 없습니다.' });
   const skillVersion = parseSkillVersion(skillText);
@@ -136,6 +147,7 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   checks.push({ name: 'MCP 빌드 파일', status: await exists(mcpEntry) ? '정상' : '오류', detail: await exists(mcpEntry) ? '패키지에 포함되어 있습니다.' : 'MCP 빌드 파일이 없습니다.' });
   checks.push({ name: 'Codex MCP', status: registration.conflict ? '오류' : registration.registered ? '정상' : '주의', detail: registration.conflict ? '관리되지 않는 동일 이름 설정이 있습니다.' : registration.registered ? `JuTell 관리 블록을 확인했습니다. 새 세션 자동 시작: ${registration.enabled ? '켜짐' : '꺼짐'}.` : '등록되지 않았습니다.' });
   checks.push({ name: 'OpenCode MCP', status: opencode.conflict ? '오류' : opencode.registered ? (opencode.enabled ? '정상' : '주의') : '주의', detail: opencode.conflict ? '관리되지 않는 동일 이름 항목이 있습니다.' : opencode.registered ? `JuTell 관리 블록을 확인했습니다. 새 세션 자동 시작: ${opencode.enabled ? '켜짐' : '꺼짐'}.` : 'OpenCode MCP가 등록되지 않았습니다.' });
+  checks.push({ name: 'Claude Code MCP', status: claude.registered ? '정상' : '주의', detail: claude.registered ? `${claude.claudeScope} 범위(${claude.claudeScope === 'user' ? '사용자 전역' : '현재 프로젝트'})에 등록되어 있습니다.` : 'Claude Code MCP가 등록되지 않았습니다.' });
   checks.push({ name: config.source === 'legacy' ? '.beginner-bridge.json' : '.jutell.json', status: config.valid ? '정상' : '오류', detail: config.exists ? (config.valid ? (config.source === 'legacy' ? '이전 설정 파일을 읽었습니다. 새 .jutell.json이 없으면 사용합니다.' : '설정 형식을 확인했습니다.') : '설정이 올바르지 않아 기본값을 사용합니다.') : '없으면 기본 설정을 사용합니다.' });
   const featuresValid = Object.keys(config.config.features).every((id) => FEATURE_IDS.includes(id));
   const limitsValid = config.config.limits.maxMainFiles >= 1 && config.config.limits.maxMainFiles <= 10 && config.config.limits.maxGlossaryTerms >= 0 && config.config.limits.maxGlossaryTerms <= 10 && config.config.limits.compactReportMaxSentences >= 4 && config.config.limits.compactReportMaxSentences <= 30;

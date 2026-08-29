@@ -1,8 +1,9 @@
 import { readBridgeConfig, readCodexRegistration } from '../config/managed.js';
 import { AGENT_PROVIDERS, findProvider, type AgentProvider } from '../installer/providers.js';
 import { opencodeDetected, readOpenCodeRegistration, registerOpenCodeMcp, setOpenCodeEnabled } from '../installer/opencode.js';
+import { readClaudeRegistration } from '../installer/claude.js';
 import { setMcpDisabled, setMcpEnabled } from '../installer/config.js';
-import { codexDetected } from '../process/system.js';
+import { claudeDetected, codexDetected } from '../process/system.js';
 import { codexScopedPaths, packageRoot } from '../config/paths.js';
 import type { CliIo, CliOptions, ScopePaths } from '../types.js';
 
@@ -19,9 +20,11 @@ export async function readProviderStatuses(paths: ScopePaths): Promise<ProviderC
   // of this invocation's --project/--global scope.
   const codex = await readCodexRegistration(codexScopedPaths(paths), packageRoot(), false);
   const opencode = await readOpenCodeRegistration(paths, packageRoot(), false);
+  const claude = await readClaudeRegistration(paths, packageRoot(), false);
   return AGENT_PROVIDERS.map((provider) => {
     if (provider.status === 'planned') return { provider, detected: false, registered: false, conflict: false, enabled: false };
     if (provider.id === 'codex') return { provider, detected: codexDetected(), registered: codex.registered, conflict: codex.conflict, enabled: codex.enabled };
+    if (provider.id === 'claude-code') return { provider, detected: claudeDetected(), registered: claude.registered, conflict: claude.conflict, enabled: claude.enabled };
     return { provider, detected: opencodeDetected(), registered: opencode.registered, conflict: opencode.conflict, enabled: opencode.enabled };
   });
 }
@@ -33,6 +36,10 @@ function providerLabel(id: string) {
 
 function openCodeScopeLabel(paths: ScopePaths) {
   return paths.scope === 'global' ? '사용자 OpenCode 설정' : '현재 프로젝트/opencode.json';
+}
+
+function claudeScopeLabel(paths: ScopePaths) {
+  return paths.scope === 'global' ? '사용자 전역 Claude 설정 (user)' : '현재 프로젝트 Claude 설정 (local, 공유되지 않음)';
 }
 
 async function listCommand(io: CliIo) {
@@ -61,6 +68,7 @@ async function summaryCommand(paths: ScopePaths, io: CliIo) {
 async function statusCommand(paths: ScopePaths, io: CliIo) {
   const codex = await readCodexRegistration(codexScopedPaths(paths), packageRoot(), false);
   const opencode = await readOpenCodeRegistration(paths, packageRoot(), false);
+  const claude = await readClaudeRegistration(paths, packageRoot(), false);
   io.write(`JuTell AI Agent Provider 상태
 
 ${providerLabel('codex')}
@@ -73,13 +81,20 @@ ${providerLabel('opencode')}
   감지: ${opencodeDetected() ? '예' : '직접 확인 필요'}
   설정 파일: ${openCodeScopeLabel(paths)}
   MCP 등록: ${opencode.registered ? '등록됨' : opencode.conflict ? '충돌 확인 필요' : '등록되지 않음'}
-  활성화: ${opencode.registered ? (opencode.enabled ? '예' : '아니오') : '등록되지 않음'}`);
+  활성화: ${opencode.registered ? (opencode.enabled ? '예' : '아니오') : '등록되지 않음'}
+
+${providerLabel('claude-code')}
+  감지: ${claudeDetected() ? '예' : '직접 확인 필요'}
+  설정 파일: ${claudeScopeLabel(paths)}
+  MCP 등록: ${claude.registered ? '등록됨' : '등록되지 않음'}
+  활성화: ${claude.registered ? '예' : '등록되지 않음'}`);
 }
 
 function requireTarget(args: string[]) {
   const target = args[1];
   if (!target) throw new Error('설정할 Provider 이름이 필요합니다. 예: jutell provider setup opencode');
   if (target === 'codex') throw new Error('Codex는 기존 jutell setup / on / off 또는 jutell use codex 명령을 사용하세요.');
+  if (target === 'claude' || target === 'claude-code') throw new Error('Claude Code는 jutell use claude 명령을 사용하세요.');
   if (target !== 'opencode') throw new Error('provider 설정 명령은 opencode만 지원합니다. 일반 연결은 jutell use <agent> 를 사용하세요.');
 }
 

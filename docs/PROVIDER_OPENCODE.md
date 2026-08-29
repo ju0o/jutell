@@ -164,7 +164,7 @@ jutell provider enable opencode
 jutell provider disable opencode
 ```
 
-Claude Code와 Cline은 `준비 중`으로 안내만 출력하며 설정을 만들지 않습니다. 기존 `jutell setup`과 Codex 연결은 그대로 유지됩니다.
+Claude Code는 `jutell use claude`로 연결합니다 (베타, `claude mcp add`를 통한 local/user 범위 등록). Cline은 `준비 중`으로 안내만 출력하며 설정을 만들지 않습니다. 기존 `jutell setup`과 Codex 연결은 그대로 유지됩니다.
 
 ## 11. 실제 호출 확인
 

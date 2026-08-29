@@ -15,12 +15,12 @@ MCP는 Skill의 대체재가 아닙니다. MCP 서버가 중지되거나 연결�
 
 | Provider | 현재 상태 | 의미 |
 |---|---|---|
-| Codex | 현재 지원 | 로컬 MCP 설정 등록과 실제 호출 확인을 지원합니다. |
+| Codex | 현재 지원 | 로컬 MCP 설정 등록과 실제 호출 확인을 지원합니다. Codex는 MCP 서버 목록을 사용자 전역 설정에서만 읽으므로, `--project`/`--global` 범위와 무관하게 항상 사용자 전역 Codex 설정에 등록합니다. |
 | OpenCode | 베타 | 로컬 `stdio` MCP 설정 등록을 지원하며, 실제 호출 확인은 사용자 환경에서 진행합니다. |
-| Claude Code | 확장 준비 | 공통 Provider 구조에는 포함하지만 연결 기능은 아직 제공하지 않습니다. |
+| Claude Code | 베타 | `claude mcp add/remove`를 통해 local(프로젝트, 기본값)·user(전역) 범위에 등록합니다. 실제 호출 확인을 지원합니다. |
 | Cline | 확장 준비 | 공통 Provider 구조에는 포함하지만 연결 기능은 아직 제공하지 않습니다. |
 
-현재 실제 연결 Provider는 Codex입니다. 연결 방식은 Codex가 지원하는 로컬 `stdio` 서버와 프로젝트 범위 `.codex/config.toml`을 사용합니다. OpenCode는 베타로, 프로젝트 `opencode.json`에 로컬 `stdio` 서버를 등록하는 방식을 지원합니다. 자세한 내용은 [OpenCode 연결 문서](PROVIDER_OPENCODE.md)를 참고합니다. 다른 AI Agent Provider도 같은 Skill·MCP 구조로 확장할 수 있지만, Claude Code와 Cline 연결은 아직 지원하지 않습니다. ChatGPT 웹의 원격 연결은 이 문서의 지원 범위가 아닙니다.
+현재 실제 연결 Provider는 Codex·OpenCode·Claude Code입니다. Codex는 로컬 `stdio` 서버를 사용자 전역 Codex 설정(`$CODEX_HOME/config.toml`)에 등록합니다 — Codex CLI가 프로젝트 범위 설정을 읽지 않기 때문입니다. OpenCode는 베타로, 프로젝트 `opencode.json`(또는 `--global` 시 사용자 설정)에 로컬 `stdio` 서버를 등록합니다. 자세한 내용은 [OpenCode 연결 문서](PROVIDER_OPENCODE.md)를 참고합니다. Claude Code는 베타로, `claude mcp add`를 통해 프로젝트 범위(local, 기본값) 또는 사용자 범위(user, `--global`)에 등록합니다. 다른 AI Agent Provider도 같은 Skill·MCP 구조로 확장할 수 있지만, Cline 연결은 아직 지원하지 않습니다. ChatGPT 웹의 원격 연결은 이 문서의 지원 범위가 아닙니다.
 
 Distribution CLI를 사용하면 Skill과 MCP 자산을 수동 복사하지 않고 설치할 수 있습니다. 현재는 npm에 publish하지 않았으므로 [CLI 설치 안내](CLI_INSTALLATION.md)의 로컬 패키징 절차를 사용합니다.
 

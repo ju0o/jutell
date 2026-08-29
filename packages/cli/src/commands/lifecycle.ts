@@ -6,6 +6,7 @@ import { installSkill, recordSkillFiles, removeAddedSkillFiles, removeManagedSki
 import { agentsFile, ensureJuTellAgentsBlock, removeJuTellAgentsBlock } from '../installer/agents.js';
 import { registerMcp, removeMcp } from '../config/managed.js';
 import { removeOpenCodeMcp, readOpenCodeRegistration, setOpenCodeEnabled } from '../installer/opencode.js';
+import { removeClaudeMcp } from '../installer/claude.js';
 import { scopeLabel } from '../output/format.js';
 import { codexDetected, nodeMajorVersion, operatingSystem } from '../process/system.js';
 import type { CliIo, CliOptions, ScopePaths } from '../types.js';
@@ -101,6 +102,10 @@ export async function disableCommand(paths: ScopePaths, options: CliOptions, io:
     if (paths.scope === 'global') await registerMcp(codexScopedPaths(paths), packageRoot(), config.mcp?.enabled === true);
     else codexSkipped = true;
     await setOpenCodeEnabled(paths, packageRoot(), false);
+    // Claude's own local/project scope is already correctly per-project
+    // (unlike Codex's forced-global registration), so removing it here has
+    // no cross-project blast radius - safe to always do, no scope gate needed.
+    await removeClaudeMcp(paths, packageRoot());
   }
   if (disableSkill) await removeManagedSkillFiles(assets().skill, paths.skillRoot, paths);
   if (disableSkill && paths.scope === 'project') await removeJuTellAgentsBlock(paths.targetRoot);
@@ -124,6 +129,9 @@ export async function uninstallCommand(paths: ScopePaths, options: CliOptions, i
   await removeManagedSkillFiles(assets().skill, paths.skillRoot, paths);
   if (paths.scope === 'project') await removeJuTellAgentsBlock(paths.targetRoot);
   await removeOpenCodeMcp(paths, packageRoot());
+  // Same reasoning as disable: Claude's scope is already per-project, so no
+  // shared-global-entry risk to guard against here.
+  await removeClaudeMcp(paths, packageRoot());
   if (removeData) {
     await fs.rm(paths.configFile, { force: true });
     await fs.rm(paths.dataRoot, { recursive: true, force: true });

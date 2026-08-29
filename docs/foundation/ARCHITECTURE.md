@@ -47,7 +47,8 @@ JuTell이 동작하는 기반이다. JuTell은 모델을 만들지 않고 기존
 
 - Codex: 지원
 - OpenCode: 베타 (설정 등록 지원)
-- Claude Code, Cline: 준비 중
+- Claude Code: 베타 (설정 등록 지원)
+- Cline: 준비 중
 
 ## 3. JuTell Core
 

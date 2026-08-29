@@ -27,6 +27,22 @@ export function opencodeConfigDir() {
   return path.join(userHome(), '.config', 'opencode');
 }
 
+/**
+ * Real Claude Code CLI reads its own profile (settings, credentials, and
+ * `.claude.json`) from `$CLAUDE_CONFIG_DIR` when set, otherwise the user's
+ * home directory directly (verified: `.claude.json` sits at
+ * `<CLAUDE_CONFIG_DIR>/.claude.json`, not inside a `.claude/` subfolder).
+ * `userHome()` is used as the fallback base (not raw `os.homedir()`) purely
+ * so JuTell's own JUTELL_HOME/BEGINNER_BRIDGE_HOME test-isolation override
+ * also isolates Claude by default; every subprocess call this CLI makes to
+ * the real `claude` binary explicitly passes CLAUDE_CONFIG_DIR set to this
+ * same value, so the two can never disagree about which file is meant.
+ */
+export function claudeHome() {
+  const override = process.env.CLAUDE_CONFIG_DIR;
+  return path.resolve(override && override.trim() ? override : userHome());
+}
+
 export function userHome() {
   const override = process.env.JUTELL_HOME ?? process.env.BEGINNER_BRIDGE_HOME;
   return path.resolve(override && override.trim() ? override : os.homedir());
@@ -43,6 +59,7 @@ export function resolveScope(scope: InstallScope, cwd = process.cwd()): ScopePat
       legacyConfigFile: path.join(home, '.beginner-bridge.json'),
       codexConfigFile: path.join(codexHome(), 'config.toml'),
       opencodeConfigFile: path.join(opencodeConfigDir(), 'opencode.json'),
+      claudeConfigFile: path.join(claudeHome(), '.claude.json'),
       dataRoot: path.join(home, '.jutell-local'),
       legacyDataRoot: path.join(home, '.beginner-bridge-local'),
     };
@@ -56,6 +73,11 @@ export function resolveScope(scope: InstallScope, cwd = process.cwd()): ScopePat
     legacyConfigFile: path.join(projectRoot, '.beginner-bridge.json'),
     codexConfigFile: path.join(projectRoot, '.codex', 'config.toml'),
     opencodeConfigFile: path.join(projectRoot, 'opencode.json'),
+    // Claude's own file location never varies by JuTell's scope choice -
+    // only *which key inside it* (top-level `mcpServers` for global/user,
+    // `projects[targetRoot].mcpServers` for project/local) does. See
+    // installer/claude.ts.
+    claudeConfigFile: path.join(claudeHome(), '.claude.json'),
     dataRoot: path.join(projectRoot, '.jutell-local'),
     legacyDataRoot: path.join(projectRoot, '.beginner-bridge-local'),
   };

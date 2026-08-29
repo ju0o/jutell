@@ -41,7 +41,7 @@ AI가 빠르게 코드를 바꾸어도 무엇이 바뀌었는지, 실제로 확�
 - `beginner-bridge` 호환 ID를 유지하는 JuTell Skill
 - 선택형 로컬 읽기 전용 MCP와 Skill fallback
 - 로컬 관리자, Beta Journal, CLI 설치·상태·진단·제거
-- 현재 지원 Provider: Codex, OpenCode(베타). Claude Code·Cline은 준비 중
+- 현재 지원 Provider: Codex, OpenCode(베타), Claude Code(베타). Cline은 준비 중
 
 ## 아직 구현되지 않은 방향
 
@@ -85,7 +85,7 @@ Skill은 기본 보고 경로입니다. `.agents/skills/beginner-bridge/SKILL.md
 
 `.jutell.json`은 사용자별 로컬 설정이며 공개 저장소에 커밋하지 않습니다. 실제 설정은 CLI 또는 Dashboard가 생성합니다. 저장소에는 안전한 예시(`examples/config/jutell.example.json`)만 포함하며, `.beginner-bridge.json`은 하위 호환용으로 `examples/config/beginner-bridge.example.json`에 예시만 남깁니다.
 
-MCP는 선택형 로컬 읽기 연결입니다. MCP가 꺼지거나 실패해도 Skill 방식은 계속 사용할 수 있습니다. MCP 서버 실행, Provider 설정 등록, 실제 도구 호출은 서로 다른 상태입니다. 현재 실제 MCP 연결은 Codex를 지원하며, OpenCode는 설정 등록을 베타로 지원합니다. Claude Code와 Cline은 확장 대상입니다.
+MCP는 선택형 로컬 읽기 연결입니다. MCP가 꺼지거나 실패해도 Skill 방식은 계속 사용할 수 있습니다. MCP 서버 실행, Provider 설정 등록, 실제 도구 호출은 서로 다른 상태입니다. 현재 실제 MCP 연결은 Codex를 지원하며, OpenCode와 Claude Code는 설정 등록을 베타로 지원합니다. Cline은 확장 대상입니다.
 
 로컬 관리자는 Profile, Feature, limits, Beta Journal, AI Agent Provider 연결 준비 상태를 현재 컴퓨터에서만 관리합니다.
 

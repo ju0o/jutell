@@ -4,9 +4,53 @@ import { ensureBridgeConfig, setMcpEnabled } from '../installer/config.js';
 import { installSkill, recordSkillFiles, removeAddedSkillFiles } from '../installer/skill.js';
 import { agentsFile, ensureJuTellAgentsBlock } from '../installer/agents.js';
 import { opencodeDetected, readOpenCodeRegistration, registerOpenCodeMcp, setOpenCodeEnabled } from '../installer/opencode.js';
-import { findProvider, supportedProviderNames, type AgentProvider } from '../installer/providers.js';
-import { codexDetected } from '../process/system.js';
+import { readClaudeRegistration, registerClaudeMcp, removeClaudeMcp } from '../installer/claude.js';
+import { findProvider, supportedProviderNames, type AgentProvider, type AgentProviderId } from '../installer/providers.js';
+import { claudeDetected, codexDetected } from '../process/system.js';
 import type { CliIo, CliOptions, FileSnapshot, ScopePaths } from '../types.js';
+
+type Registration = { registered: boolean; enabled: boolean; conflict: boolean; canonicalRegistered: boolean; legacyRegistered: boolean };
+
+type ProviderAdapter = {
+  detected(): boolean;
+  read(paths: ScopePaths, enabled: boolean): Promise<Registration>;
+  register(paths: ScopePaths, enabled: boolean): Promise<Registration>;
+  /** Turn this provider's JuTell connection off - used by `disconnect <provider>` and by `switch` for whichever provider is not the target. */
+  deactivate(paths: ScopePaths): Promise<Registration>;
+  notConnectedMessage: string;
+};
+
+function adapterFor(id: AgentProviderId): ProviderAdapter {
+  if (id === 'codex') {
+    // Codex only reads MCP servers from its global config (see
+    // codexScopedPaths), regardless of --project/--global.
+    return {
+      detected: codexDetected,
+      read: (paths, enabled) => readCodexRegistration(codexScopedPaths(paths), packageRoot(), enabled),
+      register: (paths, enabled) => registerMcp(codexScopedPaths(paths), packageRoot(), enabled),
+      deactivate: (paths) => registerMcp(codexScopedPaths(paths), packageRoot(), false),
+      notConnectedMessage: '연결된 Codex JuTell MCP가 없습니다. 먼저 jutell use codex 를 실행하세요.',
+    };
+  }
+  if (id === 'claude-code') {
+    // Claude's own scope (local/user) already follows paths.scope directly -
+    // no forced-scope helper needed, unlike Codex.
+    return {
+      detected: claudeDetected,
+      read: (paths, enabled) => readClaudeRegistration(paths, packageRoot(), enabled),
+      register: (paths, enabled) => registerClaudeMcp(paths, packageRoot(), enabled),
+      deactivate: (paths) => removeClaudeMcp(paths, packageRoot()),
+      notConnectedMessage: '연결된 Claude Code JuTell MCP가 없습니다. 먼저 jutell use claude 를 실행하세요.',
+    };
+  }
+  return {
+    detected: opencodeDetected,
+    read: (paths, enabled) => readOpenCodeRegistration(paths, packageRoot(), enabled),
+    register: (paths, enabled) => registerOpenCodeMcp(paths, packageRoot(), enabled),
+    deactivate: (paths) => setOpenCodeEnabled(paths, packageRoot(), false),
+    notConnectedMessage: '연결된 OpenCode JuTell MCP가 없습니다. 먼저 jutell use opencode 를 실행하세요.',
+  };
+}
 
 async function resolveTarget(args: string[], io: CliIo): Promise<AgentProvider | undefined> {
   const target = args[1];
@@ -20,23 +64,17 @@ async function resolveTarget(args: string[], io: CliIo): Promise<AgentProvider |
   return provider;
 }
 
-function detectProvider(provider: AgentProvider) {
-  return provider.id === 'codex' ? codexDetected() : opencodeDetected();
-}
-
 async function registrationSnapshots(paths: ScopePaths): Promise<FileSnapshot[]> {
   const opencode = await readOpenCodeRegistration(paths, packageRoot(), false);
-  const files = [paths.configFile, paths.codexConfigFile, codexScopedPaths(paths).codexConfigFile, opencode.file];
+  const files = [paths.configFile, paths.codexConfigFile, codexScopedPaths(paths).codexConfigFile, opencode.file, paths.claudeConfigFile];
   if (paths.scope === 'project') files.push(agentsFile(paths.targetRoot));
   return Promise.all(files.map((file) => snapshot(file)));
 }
 
 async function registerProviderEnabled(paths: ScopePaths, provider: AgentProvider, io: CliIo) {
-  if (provider.id === 'codex') await registerMcp(codexScopedPaths(paths), packageRoot(), true);
-  else await registerOpenCodeMcp(paths, packageRoot(), true);
-  const current = provider.id === 'codex'
-    ? await readCodexRegistration(codexScopedPaths(paths), packageRoot(), true)
-    : await readOpenCodeRegistration(paths, packageRoot(), true);
+  const adapter = adapterFor(provider.id);
+  await adapter.register(paths, true);
+  const current = await adapter.read(paths, true);
   if (current.canonicalRegistered && current.legacyRegistered) {
     io.write('\n이전 beginner_bridge 항목을 그대로 두고 새 jutell 항목을 추가했습니다.\n이전 항목은 자동으로 삭제하지 않습니다. 제거는 추후 안전한 마이그레이션에서 안내합니다.');
   }
@@ -46,9 +84,7 @@ async function registerProviderEnabled(paths: ScopePaths, provider: AgentProvide
 }
 
 async function verifyRegistration(paths: ScopePaths, provider: AgentProvider) {
-  const current = provider.id === 'codex'
-    ? await readCodexRegistration(codexScopedPaths(paths), packageRoot(), true)
-    : await readOpenCodeRegistration(paths, packageRoot(), true);
+  const current = await adapterFor(provider.id).read(paths, true);
   if (!current.canonicalRegistered || !current.enabled) throw new Error(`${provider.label} 연결 설정을 검증하지 못했습니다. jutell doctor를 실행해 주세요.`);
 }
 
@@ -67,7 +103,7 @@ async function rollback(snapshots: FileSnapshot[], changed: string[], paths: Sco
 export async function useCommand(paths: ScopePaths, options: CliOptions, io: CliIo, args: string[]) {
   const provider = await resolveTarget(args, io);
   if (!provider) return { cancelled: true };
-  const detected = detectProvider(provider);
+  const detected = adapterFor(provider.id).detected();
   const snapshots = await registrationSnapshots(paths);
   let changed: string[] = [];
   try {
@@ -90,7 +126,7 @@ export async function useCommand(paths: ScopePaths, options: CliOptions, io: Cli
 export async function connectCommand(paths: ScopePaths, options: CliOptions, io: CliIo, args: string[]) {
   const provider = await resolveTarget(args, io);
   if (!provider) return { cancelled: true };
-  const detected = detectProvider(provider);
+  const detected = adapterFor(provider.id).detected();
   const snapshots = await registrationSnapshots(paths);
   try {
     await ensureBridgeConfig(paths, undefined);
@@ -108,20 +144,11 @@ export async function connectCommand(paths: ScopePaths, options: CliOptions, io:
 export async function disconnectCommand(paths: ScopePaths, options: CliOptions, io: CliIo, args: string[]) {
   const provider = await resolveTarget(args, io);
   if (!provider) return { cancelled: true };
-  if (provider.id === 'codex') {
-    // Codex only ever reads its global config, so disconnect must target
-    // the same global file `use codex` registered against, regardless of
-    // the invocation's --project/--global scope (see codexScopedPaths).
-    const current = await readCodexRegistration(codexScopedPaths(paths), packageRoot(), false);
-    if (current.conflict) throw new Error('Codex 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.');
-    if (!current.registered) { io.write('연결된 Codex JuTell MCP가 없습니다. 먼저 jutell use codex 를 실행하세요.'); return { cancelled: false }; }
-    await registerMcp(codexScopedPaths(paths), packageRoot(), false);
-  } else {
-    const current = await readOpenCodeRegistration(paths, packageRoot(), false);
-    if (current.conflict) throw new Error('OpenCode 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.');
-    if (!current.registered) { io.write('연결된 OpenCode JuTell MCP가 없습니다. 먼저 jutell use opencode 를 실행하세요.'); return { cancelled: false }; }
-    await setOpenCodeEnabled(paths, packageRoot(), false);
-  }
+  const adapter = adapterFor(provider.id);
+  const current = await adapter.read(paths, false);
+  if (current.conflict) throw new Error(`${provider.label} 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.`);
+  if (!current.registered) { io.write(adapter.notConnectedMessage); return { cancelled: false }; }
+  await adapter.deactivate(paths);
   io.write(`${provider.label} 연결을 끊었습니다.\nJuTell MCP는 비활성화했고 설정 항목은 유지됩니다. 새 ${provider.label} 세션부터 사용되지 않습니다.`);
   return { cancelled: false };
 }
@@ -129,18 +156,16 @@ export async function disconnectCommand(paths: ScopePaths, options: CliOptions, 
 export async function switchCommand(paths: ScopePaths, options: CliOptions, io: CliIo, args: string[]) {
   const provider = await resolveTarget(args, io);
   if (!provider) return { cancelled: true };
-  const detected = detectProvider(provider);
+  const detected = adapterFor(provider.id).detected();
   const snapshots = await registrationSnapshots(paths);
   try {
-    if (provider.id !== 'codex') {
-      const codex = await readCodexRegistration(codexScopedPaths(paths), packageRoot(), false);
-      if (codex.conflict) throw new Error('Codex 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.');
-      if (codex.registered && codex.enabled) await registerMcp(codexScopedPaths(paths), packageRoot(), false);
-    }
-    if (provider.id !== 'opencode') {
-      const opencode = await readOpenCodeRegistration(paths, packageRoot(), false);
-      if (opencode.conflict) throw new Error('OpenCode 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.');
-      if (opencode.registered && opencode.enabled) await setOpenCodeEnabled(paths, packageRoot(), false);
+    for (const other of ['codex', 'opencode', 'claude-code'] as const) {
+      if (other === provider.id) continue;
+      const otherAdapter = adapterFor(other);
+      const current = await otherAdapter.read(paths, false);
+      const otherLabel = findProvider(other)?.label ?? other;
+      if (current.conflict) throw new Error(`${otherLabel} 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.`);
+      if (current.registered && current.enabled) await otherAdapter.deactivate(paths);
     }
     await ensureBridgeConfig(paths, undefined);
     await setMcpEnabled(paths, true);

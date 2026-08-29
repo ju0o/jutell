@@ -7,6 +7,11 @@ export function codexDetected() {
   return result.status === 0 && !result.error;
 }
 
+export function claudeDetected() {
+  const result = spawnSync('claude', ['--version'], { stdio: 'ignore', windowsHide: true, shell: process.platform === 'win32' || undefined });
+  return result.status === 0 && !result.error;
+}
+
 export function nodeMajorVersion() {
   const match = process.versions.node.match(/^(\d+)/);
   return match ? Number(match[1]) : 0;
