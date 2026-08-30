@@ -51,9 +51,22 @@ Profile은 다음과 같이 사용합니다.
 
 Prompt, 코드, 파일 경로, 비밀정보를 피드백에 그대로 적지 않습니다. 오류를 기록해야 한다면 민감한 내용을 제거한 짧은 요약만 사용합니다.
 
-## Distribution CLI V0.1
+## Distribution CLI
 
-일반 사용자가 Skill을 직접 복사하지 않도록 설치 CLI의 로컬 패키징을 준비했습니다. 아직 npm publish는 하지 않았으므로 현재는 저장소의 `packages/cli/`에서 `npm pack`과 격리된 설치 검증만 수행합니다.
+일반 사용자가 Skill을 직접 복사하지 않도록 `jutell@0.3.0`을 npm에 공개했습니다. 일반 설치는 npm registry에서 진행합니다.
+
+```powershell
+npm install -g jutell
+cd <프로젝트 폴더>
+jutell use codex
+```
+
+`jutell use codex`는 권장 경로이며, OpenCode 또는 Claude Code를 사용한다면 `jutell use opencode` 또는 `jutell use claude`를 사용합니다 (베타). `jutell`만 실행해도 같은 안내를 시작할 수 있습니다.
+
+<details>
+<summary>개발자·기여자용 로컬 검증 (tarball)</summary>
+
+저장소에서 직접 패키지를 검증할 때만 사용합니다. 일반 사용자는 위의 `npm install -g jutell`을 사용하세요.
 
 ```bash
 cd packages/cli
@@ -62,15 +75,9 @@ npm pack
 npm install -g ./jutell-0.3.0.tgz
 ```
 
-설치한 뒤 실제 프로젝트 폴더에서 `jutell`만 실행합니다.
+</details>
 
-```powershell
-npm install -g jutell
-cd <프로젝트 폴더>
-jutell
-```
-
-첫 실행은 `jutell` 안내에 따라 ① 사용 중인 AI Agent(Codex 또는 OpenCode) ② 보고 방식을 고르면 Skill, AGENTS.md, MCP 연결을 준비하고 관리자 화면을 엽니다. 자동화 환경에서는 안내 없이 `balanced` Profile로 연결됩니다. 이미 연결된 프로젝트에서는 필요한 상태만 확인하고, 안전하게 복구할 수 있는 항목만 묻습니다. `jutell on`과 `jutell off`로 연결을 켜고 끌 수 있으며 설정과 Beta Journal은 보존됩니다. 명령별 안전 규칙은 [CLI 설치 안내](CLI_INSTALLATION.md)를 읽습니다.
+첫 실행은 `jutell use <provider>` 또는 `jutell` 안내에 따라 ① 사용 중인 AI Agent(Codex 또는 OpenCode) ② 보고 방식을 고르면 Skill, AGENTS.md, MCP 연결을 준비하고 관리자 화면을 엽니다. 자동화 환경에서는 안내 없이 `balanced` Profile로 연결됩니다. 이미 연결된 프로젝트에서는 필요한 상태만 확인하고, 안전하게 복구할 수 있는 항목만 묻습니다. `jutell on`과 `jutell off`로 연결을 켜고 끌 수 있으며 설정과 Beta Journal은 보존됩니다. 명령별 안전 규칙은 [CLI 설치 안내](CLI_INSTALLATION.md)를 읽습니다.
 
 ## 문제가 생기면 어디를 보나요?
 

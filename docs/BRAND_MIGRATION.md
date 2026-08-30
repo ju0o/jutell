@@ -6,7 +6,7 @@
 |---|---|---|
 | Codex Beginner Bridge | JuTell by Ju0 | 대표 화면·문서에서 교체 |
 | `beginner-bridge` CLI | `jutell` | 새 기본 명령 추가, 이전 명령은 호환 별칭 |
-| `codex-beginner` 패키지 | `jutell` | `0.2.0`으로 패키지 준비. 2026-08-03 `npm view jutell`에서 기존 공개 패키지가 없음을 확인했지만 publish하지 않음 |
+| `codex-beginner` 패키지 | `jutell` | `0.2.0`으로 패키지 준비. 2026-08-03 `npm view jutell`에서 기존 공개 패키지가 없음을 확인했으며, 이후 V1.5에서 `jutell@0.3.0`으로 npm에 공개됨 (`npm install -g jutell`) |
 | `.beginner-bridge.json` | `.jutell.json` | 새 파일 우선, 기존 파일 fallback |
 | `.beginner-bridge-local/` | `.jutell-local/` | 새 폴더 우선, 기존 기록 보존 |
 | Skill ID·경로 | `beginner-bridge` 유지 | 설치와 Codex 연결 호환성 때문 |
@@ -38,4 +38,4 @@
 - 내부·역사 기록으로 유지: 기존 테스트 결과와 과거 리뷰 기록의 사실 보존
 - 추후 제거 후보: `beginner-bridge` 별칭과 legacy 설정 경로. 제거 시점은 정하지 않음
 
-GitHub 저장소 이름 변경, 실제 npm publish, 호환 별칭 제거 시점은 별도 운영자 결정입니다.
+`jutell@0.3.0`은 npm에 공개되었습니다 (`npm install -g jutell`). GitHub 저장소 이름 변경, 호환 별칭 제거 시점은 별도 운영자 결정입니다.

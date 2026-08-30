@@ -49,7 +49,18 @@ AI가 빠르게 코드를 바꾸어도 무엇이 바뀌었는지, 실제로 확�
 
 ## 빠른 설치 (5분)
 
-현재는 npm에 공개하지 않았습니다. 저장소에서 CLI 패키지를 만들고 격리된 환경으로 확인할 수 있습니다.
+```powershell
+npm install -g jutell
+cd <프로젝트 폴더>
+jutell use codex
+```
+
+`jutell use codex`는 권장 경로입니다. OpenCode 또는 Claude Code를 사용한다면 `jutell use opencode` 또는 `jutell use claude`를 사용합니다 (베타). 설치가 끝나면 프로젝트 폴더에서 안내에 따라 보고 방식을 고르면 Skill·AGENTS.md·MCP 연결과 관리자 화면이 한 번에 준비됩니다. `jutell`만 실행해도 같은 안내를 시작할 수 있습니다.
+
+<details>
+<summary>개발자·기여자용 로컬 설치 (tarball / 빌드 검증)</summary>
+
+저장소에서 직접 패키지를 검증할 때만 사용합니다. 일반 사용자는 위의 `npm install -g jutell`을 사용하세요.
 
 ```bash
 cd packages/cli
@@ -58,13 +69,7 @@ npm pack
 npm install -g ./jutell-0.3.0.tgz
 ```
 
-설치가 끝나면 프로젝트 폴더에서 `jutell` 한 번만 실행합니다. 사용 중인 AI Agent와 보고 방식을 묻는 안내를 따라 고르면 Skill·AGENTS.md·MCP 연결과 관리자 화면이 한 번에 준비됩니다. 공개 후의 목표 흐름은 다음과 같습니다.
-
-```powershell
-npm install -g jutell
-cd <프로젝트 폴더>
-jutell
-```
+</details>
 
 기억할 명령은 7개입니다.
 
@@ -119,6 +124,6 @@ JuTell은 프로젝트 코드, Prompt, AI 답변 원문, 파일 내용, 파일 �
 
 ## Ju0와의 관계
 
-Ju0는 상위 브랜드이고, JuTell은 그 아래의 제품입니다. 공식 표기는 `JuTell by Ju0`입니다. GitHub 저장소 이름 변경과 npm 공개 시점은 별도 운영자 결정으로 남겨둡니다.
+Ju0는 상위 브랜드이고, JuTell은 그 아래의 제품입니다. 공식 표기는 `JuTell by Ju0`입니다. `jutell@0.3.0`은 npm에 공개되었습니다 (`npm install -g jutell`). GitHub 저장소 이름 변경은 별도 운영자 결정으로 남겨둡니다.
 
 마이그레이션 이전의 이름과 파일 경로는 [브랜드 전환 안내](docs/BRAND_MIGRATION.md)에서만 설명합니다.

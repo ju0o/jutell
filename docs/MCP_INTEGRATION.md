@@ -22,7 +22,7 @@ MCP는 Skill의 대체재가 아닙니다. MCP 서버가 중지되거나 연결�
 
 현재 실제 연결 Provider는 Codex·OpenCode·Claude Code입니다. Codex는 로컬 `stdio` 서버를 사용자 전역 Codex 설정(`$CODEX_HOME/config.toml`)에 등록합니다 — Codex CLI가 프로젝트 범위 설정을 읽지 않기 때문입니다. OpenCode는 베타로, 프로젝트 `opencode.json`(또는 `--global` 시 사용자 설정)에 로컬 `stdio` 서버를 등록합니다. 자세한 내용은 [OpenCode 연결 문서](PROVIDER_OPENCODE.md)를 참고합니다. Claude Code는 베타로, `claude mcp add`를 통해 프로젝트 범위(local, 기본값) 또는 사용자 범위(user, `--global`)에 등록합니다. 다른 AI Agent Provider도 같은 Skill·MCP 구조로 확장할 수 있지만, Cline 연결은 아직 지원하지 않습니다. ChatGPT 웹의 원격 연결은 이 문서의 지원 범위가 아닙니다.
 
-Distribution CLI를 사용하면 Skill과 MCP 자산을 수동 복사하지 않고 설치할 수 있습니다. 현재는 npm에 publish하지 않았으므로 [CLI 설치 안내](CLI_INSTALLATION.md)의 로컬 패키징 절차를 사용합니다.
+Distribution CLI를 사용하면 Skill과 MCP 자산을 수동 복사하지 않고 설치할 수 있습니다. 일반 설치는 `npm install -g jutell`로 진행합니다 ([CLI 설치 안내](CLI_INSTALLATION.md) 참고). 로컬 패키징 절차는 개발자·기여자 검증용입니다.
 
 현재 구현의 Provider 연결 기준은 [Codex Model Context Protocol 안내](https://learn.chatgpt.com/docs/extend/mcp.md)와 [MCP 서버 설정 안내](https://developers.openai.com/plugins/concepts/mcp-server.md)를 참고합니다. 이 기준은 현재 Codex 연결에만 적용되며, 다른 Provider 지원을 의미하지 않습니다.
 

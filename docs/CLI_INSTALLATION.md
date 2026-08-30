@@ -1,17 +1,19 @@
-# JuTell CLI V0.2 설치 안내
+# JuTell CLI 설치 안내
 
 ## 현재 상태
 
-`jutell` 패키지와 `jutell` 명령을 준비했지만 아직 npm에 publish하지 않았습니다. 이번 버전은 로컬 `npm pack`과 격리된 설치 검증 단계입니다.
+`jutell@0.3.0`은 npm에 공개되었습니다. 일반 설치는 npm registry에서 진행합니다.
 
-공개 후 일반 사용자 흐름은 다음과 같습니다.
-
-```bash
+```powershell
 npm install -g jutell
-jutell
+jutell use codex
 ```
 
-현재 저장소에서 검증할 때는 다음을 사용합니다.
+`jutell use codex`는 권장 경로입니다. OpenCode 또는 Claude Code를 사용한다면 `jutell use opencode` 또는 `jutell use claude`를 사용합니다 (베타). `jutell`만 실행해도 같은 안내를 시작할 수 있습니다.
+
+### 개발자·기여자용 로컬 설치 (tarball 검증)
+
+저장소에서 직접 패키지를 검증할 때만 사용합니다. 일반 사용자는 위의 `npm install -g jutell`을 사용하세요.
 
 ```bash
 cd packages/cli
@@ -72,14 +74,16 @@ Telemetry는 비활성화되어 있고, CLI는 프로젝트 코드·Prompt·AI �
 
 ## 지원 범위와 제한
 
-- Windows: VERIFIED — Windows 11에서 `npm install -g ./jutell-*.tgz` 설치, `jutell use codex` 연결, `jutell status`/`doctor`, MCP 서버 5개 도구 응답, 로컬 관리자 빌드 실행을 검증했습니다. 공개 베타 검증 기준은 Windows입니다.
+- Windows: VERIFIED — Windows 11에서 `npm install -g jutell` (registry) 설치, `jutell use codex` 연결, `jutell status`/`doctor`, MCP 서버 5개 도구 응답, 로컬 관리자 빌드 실행을 검증했습니다. 로컬 tarball 설치(`npm install -g ./jutell-*.tgz`)도 동일하게 검증했습니다. 공개 베타 검증 기준은 Windows입니다.
 - macOS: UNVERIFIED — 경로·실행 파일 처리는 Node 기준으로 구현되어 있으나 실제 macOS 환경에서 설치·연결·MCP 호출을 검증하지 않았습니다. Node 이식성만으로 검증된 것으로 간주하지 않습니다.
 - Linux: UNVERIFIED — 동일하게 코드는 이식 가능하나 실제 Linux 환경 검증은 수행하지 않았습니다.
 
 CLI는 Codex·OpenCode·Claude Code 설치 여부를 자동으로 확인할 수 있지만, 실제 AI Agent 세션에서 MCP 도구를 호출했는지는 대신 판정하지 않습니다.
 
-업데이트 기능은 V0.1에 포함하지 않습니다. 공개 후 패키지 업데이트에는 다음 명령을 사용할 수 있습니다.
+패키지 업데이트는 npm registry에서 진행합니다.
 
-```bash
+```powershell
+npm install -g jutell@latest
+# 또는
 npm update -g jutell
 ```

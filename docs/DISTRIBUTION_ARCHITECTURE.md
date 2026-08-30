@@ -1,4 +1,4 @@
-# JuTell Distribution CLI V0.2 배포 구조
+# JuTell Distribution CLI 배포 구조
 
 ## 패키지 구성
 
@@ -61,4 +61,4 @@ Skill은 기본 보고 경로입니다. MCP는 현재 Profile, Feature, limits�
 
 ## 범위 밖
 
-V0.1에는 npm publish, 자동 업데이트, 중앙 서버, 원격 Telemetry, 계정, 결제, OS 서비스 등록, Electron과 Plugin Directory 게시가 없습니다.
+V0.1 범위에서는 npm publish를 포함하지 않았으나, V1.5에서 `jutell@0.3.0`이 npm registry에 공개되었습니다 (`npm install -g jutell`). 자동 업데이트, 중앙 서버, 원격 Telemetry, 계정, 결제, OS 서비스 등록, Electron과 Plugin Directory 게시는 현재도 범위 밖입니다.
