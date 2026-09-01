@@ -27,6 +27,7 @@ const fallbackConfig: BridgeConfig = {
   limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 },
   mcp: { enabled: false },
   usageMeasurement: { localCountersEnabled: false },
+  voice: { preset: 'default' },
 };
 
 export async function exists(file: string) {
@@ -79,6 +80,10 @@ export function normalizeConfig(value: unknown): BridgeConfig {
   const inputMcp = input.mcp && typeof input.mcp === 'object' && !Array.isArray(input.mcp) ? input.mcp as Record<string, unknown> : {};
   const inputUsageMeasurement = input.usageMeasurement && typeof input.usageMeasurement === 'object' && !Array.isArray(input.usageMeasurement) ? input.usageMeasurement as Record<string, unknown> : {};
   const inputVoice = input.voice && typeof input.voice === 'object' && !Array.isArray(input.voice) ? input.voice as Record<string, unknown> : {};
+  const voicePresets = ['default', 'plain', 'learning', 'jutell'] as const;
+  const voicePreset = typeof inputVoice.preset === 'string' && voicePresets.includes(inputVoice.preset as typeof voicePresets[number])
+    ? (inputVoice.preset as typeof voicePresets[number])
+    : 'default';
   return {
     version: 1,
     profile,
@@ -86,7 +91,7 @@ export function normalizeConfig(value: unknown): BridgeConfig {
     limits: { maxMainFiles: numberOr('maxMainFiles', 5), maxGlossaryTerms: numberOr('maxGlossaryTerms', 3), compactReportMaxSentences: numberOr('compactReportMaxSentences', 12) },
     mcp: { enabled: inputMcp.enabled === true },
     usageMeasurement: { localCountersEnabled: inputUsageMeasurement.localCountersEnabled === true },
-    ...(typeof inputVoice.preset === 'string' ? { voice: { preset: inputVoice.preset as 'default' | 'plain' | 'learning' | 'jutell' } } : {}),
+    voice: { preset: voicePreset },
   };
 }
 

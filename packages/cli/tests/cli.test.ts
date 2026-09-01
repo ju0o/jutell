@@ -676,6 +676,9 @@ describe('Distribution CLI V0.1', () => {
     const { project, env } = await fixture();
     const help = await runCli(['--help'], project, env);
     expect(help.stdout).toContain('jutell use opencode');
+    expect(help.stdout).toContain('jutell use claude');
+    expect(help.stdout).toContain('공개 설치: npm install -g jutell');
+    expect(help.stdout).not.toContain('실제 배포 전에는 로컬 패키지 검증만 지원합니다');
     expect(help.stdout).toContain('session help');
     expect(help.stdout).not.toContain('session storage set');
     expect(help.stdout).not.toContain('session storage reset');

@@ -112,8 +112,8 @@ AGENTS.md 지침이 에이전트로 하여금 읽도록 안내하는 방식입�
 
 - 공식 문서: 설정 파일은 병합되며, 프로젝트 설정은 충돌 키만 덮습니다. 비충돌 키는 모두 보존됩니다.
 - JuTell 적용 규칙: 전역 설정 파일을 수정하지 않습니다. 프로젝트 `opencode.json`(또는 기존 `.jsonc`)의
-  `mcp.beginner_bridge` 키만 추가·갱신·제거합니다.
-- 같은 이름(`beginner_bridge`)의 관리되지 않는 MCP 항목이 이미 있으면 자동 변경하지 않습니다.
+  canonical `mcp.jutell` 키만 추가·갱신·제거합니다. legacy `mcp.beginner_bridge`는 호환용으로만 남길 수 있습니다.
+- 같은 이름(`jutell` 또는 legacy `beginner_bridge`)의 관리되지 않는 MCP 항목이 이미 있으면 자동 변경하지 않습니다.
 - 변경 전에는 기존 파일을 `.previous`로 백업합니다.
 - 파일 형식을 읽지 못하면 자동 변경하지 않습니다.
 
@@ -123,11 +123,12 @@ AGENTS.md 지침이 에이전트로 하여금 읽도록 안내하는 방식입�
 
 1. MCP 항목의 `enabled` 값을 `true`/`false`로 전환
    ```jsonc
-   { "mcp": { "beginner_bridge": { "type": "local", "command": ["node", "..."], "enabled": false } } }
+   { "mcp": { "jutell": { "type": "local", "command": ["node", "..."], "enabled": false } } }
    ```
+   legacy 호환 키가 남아 있다면 `beginner_bridge`도 같은 방식으로 끌 수 있습니다.
 2. `tools` 키로 전역 끄기 (서버 이름 `*` glob)
    ```jsonc
-   { "tools": { "beginner_bridge_*": false } }
+   { "tools": { "jutell_*": false } }
    ```
 
 JuTell은 항목 자체는 유지하고 `enabled` 값만 전환하는 방식(1)을 사용해, 껐다 켜도 설정이 남도록 합니다.
@@ -137,7 +138,7 @@ JuTell은 항목 자체는 유지하고 `enabled` 값만 전환하는 방식(1)�
 
 - 감지: `opencode --version` 실행 성공 여부 (best-effort). 명령을 찾지 못하면 화면에는 `직접 확인 필요`로 표시합니다.
 - 설정 백업: 변경 전 `opencode.json` → `opencode.json.previous`
-- 관리 블록: `mcp.beginner_bridge` 항목을 마커 주석으로 감싸 식별
+- 관리 블록: canonical `mcp.jutell` 항목을 마커 주석으로 감싸 식별 (legacy `beginner_bridge`는 호환용)
 - 반복 설치: 마커가 있으면 교체만 수행해 중복을 만들지 않음
 - 제거: JuTell 관리 블록만 제거하고 다른 키는 보존
 - 활성화/비활성화: `enabled` 값만 전환

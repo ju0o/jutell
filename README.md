@@ -81,8 +81,16 @@ npm install -g ./jutell-0.3.0.tgz
 | `jutell doctor` | 문제가 있는지 점검합니다. |
 | `jutell use codex` | Codex에 연결합니다 (권장). |
 | `jutell use opencode` | OpenCode에 연결합니다 (베타). |
+| `jutell use claude` | Claude Code에 연결합니다 (베타). |
 
-`setup`, `enable`, `disable`, `uninstall`, `provider`는 고급 명령으로 계속 사용할 수 있습니다. 기존 사용자를 위해 `beginner-bridge`도 같은 기능의 호환 별칭으로 유지합니다.
+`setup`, `enable`, `disable`, `uninstall`, `provider`, `dashboard`, `upgrade`, `migrate`, `session`은 고급 명령으로 계속 사용할 수 있습니다. 전체 목록은 [CLI 설치 안내](docs/CLI_INSTALLATION.md)를 참고하세요. 기존 사용자를 위해 `beginner-bridge`도 같은 기능의 호환 별칭으로 유지합니다.
+
+## 지원 환경
+
+- Windows: VERIFIED — Windows에서 실제 검증되었습니다.
+- macOS / Linux: UNVERIFIED — 설치 가능성을 열어두고 있으나 아직 공식 검증하지 않았습니다. 사용 중 발견한 문제와 Pull Request를 환영합니다.
+
+지원하지 않는다고 단정하지 않습니다. 공식 검증 기준은 현재 Windows입니다.
 
 ## Skill, MCP, 관리자
 
@@ -98,9 +106,9 @@ MCP는 선택형 로컬 읽기 연결입니다. MCP가 꺼지거나 실패해도
 
 JuTell은 프로젝트 코드, Prompt, AI 답변 원문, 파일 내용, 파일 경로, 비밀정보와 사용자를 식별할 정보를 수집하지 않는 것을 원칙으로 합니다. Telemetry는 기본 OFF이며 이번 단계에서 실제 저장이나 외부 전송을 구현하지 않았습니다.
 
-## 개인 베타 상태
+## 현재 배포 상태
 
-현재는 개인 베타 단계입니다. 기술 검증 기록은 있지만 비개발자 평가와 공개 베타 판단은 아직 남아 있습니다.
+`jutell@0.3.0`은 npm에 공개되어 있으며 `npm install -g jutell`로 설치할 수 있습니다. 비개발자 사용성 평가와 공개 README 다듬기는 이어지는 작업입니다.
 
 ## 문서
 

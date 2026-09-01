@@ -2,9 +2,11 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
 export type Profile = 'minimal' | 'balanced' | 'learning' | 'detailed';
+export type VoicePreset = 'default' | 'plain' | 'learning' | 'jutell';
 export type FeatureId = 'changeSummary' | 'userVisibleChanges' | 'internalChanges' | 'mainFiles' | 'explainedDiff' | 'glossary' | 'validationResults' | 'riskAssessment' | 'userActions' | 'nextActionSuggestions' | 'requestClarificationGuide' | 'manualEditGuidance' | 'requestBuilder';
 export type Limits = { maxMainFiles: number; maxGlossaryTerms: number; compactReportMaxSentences: number };
-export type BridgeConfig = { version: 1; profile: Profile; features: Record<FeatureId, boolean>; limits: Limits; mcp: { enabled: boolean }; usageMeasurement: { localCountersEnabled: boolean } };
+export type BridgeConfig = { version: 1; profile: Profile; features: Record<FeatureId, boolean>; limits: Limits; mcp: { enabled: boolean }; usageMeasurement: { localCountersEnabled: boolean }; voice: { preset: VoicePreset } };
+export const VOICE_PRESETS: VoicePreset[] = ['default', 'plain', 'learning', 'jutell'];
 
 export const FEATURE_IDS: FeatureId[] = ['changeSummary', 'userVisibleChanges', 'internalChanges', 'mainFiles', 'explainedDiff', 'glossary', 'validationResults', 'riskAssessment', 'userActions', 'nextActionSuggestions', 'requestClarificationGuide', 'manualEditGuidance', 'requestBuilder'];
 export const PROFILE_FEATURES: Record<Profile, Record<FeatureId, boolean>> = {
@@ -20,6 +22,7 @@ export const DEFAULT_CONFIG: BridgeConfig = {
   limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 },
   mcp: { enabled: false },
   usageMeasurement: { localCountersEnabled: false },
+  voice: { preset: 'default' },
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -37,9 +40,15 @@ export function normalizeConfig(value: unknown): BridgeConfig {
   }
   if ('mcp' in value && (!isRecord(value.mcp) || typeof value.mcp.enabled !== 'boolean')) return structuredClone(DEFAULT_CONFIG);
   if ('usageMeasurement' in value && (!isRecord(value.usageMeasurement) || !hasOnlyKeys(value.usageMeasurement, ['localCountersEnabled']) || typeof value.usageMeasurement.localCountersEnabled !== 'boolean')) return structuredClone(DEFAULT_CONFIG);
+  if ('voice' in value && (!isRecord(value.voice) || !hasOnlyKeys(value.voice, ['preset']) || (value.voice.preset !== undefined && !VOICE_PRESETS.includes(String(value.voice.preset) as VoicePreset)))) {
+    return structuredClone(DEFAULT_CONFIG);
+  }
   const features = Object.fromEntries(
     FEATURE_IDS.map((id) => [id, typeof featuresInput[id] === 'boolean' ? (featuresInput[id] as boolean) : PROFILE_FEATURES[value.profile as Profile][id]]),
   ) as Record<FeatureId, boolean>;
+  const voicePreset = isRecord(value.voice) && typeof value.voice.preset === 'string' && VOICE_PRESETS.includes(value.voice.preset as VoicePreset)
+    ? (value.voice.preset as VoicePreset)
+    : DEFAULT_CONFIG.voice.preset;
   return {
     version: 1,
     profile: value.profile as Profile,
@@ -47,6 +56,7 @@ export function normalizeConfig(value: unknown): BridgeConfig {
     limits: { ...(value.limits as Limits) },
     mcp: isRecord(value.mcp) ? { enabled: value.mcp.enabled as boolean } : { ...DEFAULT_CONFIG.mcp },
     usageMeasurement: isRecord(value.usageMeasurement) ? { localCountersEnabled: value.usageMeasurement.localCountersEnabled as boolean } : { ...DEFAULT_CONFIG.usageMeasurement },
+    voice: { preset: voicePreset },
   };
 }
 

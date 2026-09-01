@@ -117,4 +117,73 @@ describe('explainedDiff (J01 explained diff reporting)', () => {
     expect(rules.activeReportSections).toContain('개발 용어 설명');
     expect(activeFeatures(DEFAULT_CONFIG).find((item) => item.id === 'glossary')).toMatchObject({ active: true });
   });
+
+  it('includes readable-code guidance that reuses already-known evidence only', () => {
+    const readable = beginnerReportRules(DEFAULT_CONFIG).explainedDiffRule.readableCodeRule;
+    expect(readable.when).toContain('이미 작업 과정에서 확인되었고');
+    expect(readable.when).toContain('1~2개까지');
+    expect(readable.maxSnippets).toBe(2);
+    expect(readable.reuseOnly).toMatch(/다시 읽거나/);
+    expect(readable.reuseOnly).toMatch(/git diff/);
+    expect(readable.omitWhen.join(' ')).toMatch(/근거가 없다/);
+  });
+
+  it('omits readable-code guidance together with explainedDiff when the feature is off', () => {
+    const rules = beginnerReportRules({ ...DEFAULT_CONFIG, features: { ...DEFAULT_CONFIG.features, explainedDiff: false } });
+    expect(rules.explainedDiffRule).toBeUndefined();
+  });
+});
+
+describe('voice preset runtime (V1.5.3)', () => {
+  it('defaults missing voice to default and does not silently drop a valid preset', () => {
+    const withoutVoice = normalizeConfig({ version: 1, profile: 'balanced', features: DEFAULT_CONFIG.features, limits: DEFAULT_CONFIG.limits });
+    expect(withoutVoice.voice).toEqual({ preset: 'default' });
+    const withPlain = normalizeConfig({ ...DEFAULT_CONFIG, voice: { preset: 'plain' } });
+    expect(withPlain.voice).toEqual({ preset: 'plain' });
+    expect(bridgeStatus({ config: withPlain, configExists: true, skillExists: true, agentsExists: true, skillText: undefined }).voicePreset).toBe('plain');
+  });
+
+  it('normalizes each supported preset and exposes a distinct voiceRule', () => {
+    for (const preset of ['default', 'plain', 'learning', 'jutell'] as const) {
+      const config = normalizeConfig({ ...DEFAULT_CONFIG, voice: { preset } });
+      expect(config.voice.preset).toBe(preset);
+      const rule = beginnerReportRules(config).voiceRule;
+      expect(rule.preset).toBe(preset);
+      expect(rule.guidance.length).toBeGreaterThan(10);
+    }
+    expect(beginnerReportRules({ ...DEFAULT_CONFIG, voice: { preset: 'plain' } }).voiceRule.style).toMatch(/짧/);
+    expect(beginnerReportRules({ ...DEFAULT_CONFIG, voice: { preset: 'learning' } }).voiceRule.style).toMatch(/용어/);
+    expect(beginnerReportRules({ ...DEFAULT_CONFIG, voice: { preset: 'jutell' } }).voiceRule.style).toMatch(/JuTell/);
+  });
+
+  it('keeps safety and evidence rules unchanged across voice presets', () => {
+    const base = beginnerReportRules(DEFAULT_CONFIG);
+    for (const preset of ['plain', 'learning', 'jutell'] as const) {
+      const rules = beginnerReportRules({ ...DEFAULT_CONFIG, voice: { preset } });
+      expect(rules.evidenceRule).toBe(base.evidenceRule);
+      expect(rules.statusRule).toBe(base.statusRule);
+      expect(rules.safetyRequirements).toEqual(base.safetyRequirements);
+      expect(rules.notCollected).toEqual(base.notCollected);
+    }
+  });
+
+  it('falls back to default config when voice preset is invalid', () => {
+    const invalid = normalizeConfig({ ...DEFAULT_CONFIG, voice: { preset: 'robot' } });
+    expect(invalid).toEqual(DEFAULT_CONFIG);
+  });
+});
+
+describe('lightweight handoff guidance (V1.5.3)', () => {
+  it('exposes handoffRule when requestBuilder is on', () => {
+    const rule = beginnerReportRules(DEFAULT_CONFIG).handoffRule;
+    expect(rule.title).toBe('다음 AI에게 전달하기');
+    expect(rule.sections).toEqual(expect.arrayContaining(['지금 하던 일', '방금 끝난 것', '확인된 것', '아직 확인하지 못한 것']));
+    expect(rule.evidenceRule).toMatch(/이미 아는 근거만/);
+    expect(rule.format).toMatch(/Markdown/);
+  });
+
+  it('omits handoffRule when requestBuilder is off', () => {
+    const rules = beginnerReportRules({ ...DEFAULT_CONFIG, features: { ...DEFAULT_CONFIG.features, requestBuilder: false } });
+    expect(rules.handoffRule).toBeUndefined();
+  });
 });

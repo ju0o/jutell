@@ -141,6 +141,6 @@ JuTell은 AI Agent를 대신 실행하지 않고 연결과 보고만 도와줍�
 
 이전 별칭: beginner-bridge
 
-실제 배포 전에는 로컬 패키지 검증만 지원합니다. 업데이트는 다음 명령을 사용하세요.
-  npm update -g jutell`);
+공개 설치: npm install -g jutell
+업데이트: npm update -g jutell`);
 }

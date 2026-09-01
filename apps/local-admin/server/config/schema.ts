@@ -193,5 +193,10 @@ export function changedFields(before: Config, after: Config) {
   if (before.usageMeasurement.localCountersEnabled !== after.usageMeasurement.localCountersEnabled) {
     changes.push({ field: 'usageMeasurement.localCountersEnabled', before: before.usageMeasurement.localCountersEnabled, after: after.usageMeasurement.localCountersEnabled });
   }
+  const beforeVoice = before.voice?.preset ?? 'default';
+  const afterVoice = after.voice?.preset ?? 'default';
+  if (beforeVoice !== afterVoice) {
+    changes.push({ field: 'voice.preset', before: beforeVoice, after: afterVoice });
+  }
   return changes;
 }
