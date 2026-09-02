@@ -52,6 +52,12 @@ describe('explainedDiff skill document contract (J01-TEST-002)', () => {
     expect(reference).toContain('[쉽게 보면]');
     expect(reference).toContain('[영향]');
   });
+
+  it('caps readable code at hard max 2 and does not allow 12 snippets', () => {
+    expect(reference).toContain('한 보고에서 2개를 넘지 않는다');
+    expect(reference).not.toContain('12개');
+    expect(reference).not.toContain('절대 상한은 12');
+  });
 });
 
 describe('handoff template contract (V1.5.3)', () => {

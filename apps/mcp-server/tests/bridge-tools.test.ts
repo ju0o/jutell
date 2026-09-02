@@ -123,9 +123,17 @@ describe('explainedDiff (J01 explained diff reporting)', () => {
     expect(readable.when).toContain('이미 작업 과정에서 확인되었고');
     expect(readable.when).toContain('1~2개까지');
     expect(readable.maxSnippets).toBe(2);
+    expect(readable.absoluteMaxSnippets).toBe(2);
     expect(readable.reuseOnly).toMatch(/다시 읽거나/);
     expect(readable.reuseOnly).toMatch(/git diff/);
     expect(readable.omitWhen.join(' ')).toMatch(/근거가 없다/);
+  });
+
+  it('caps readable code at hard max 2 and never allows more than 2', () => {
+    const readable = beginnerReportRules(DEFAULT_CONFIG).explainedDiffRule.readableCodeRule;
+    expect(readable.maxSnippets).toBe(2);
+    expect(readable.absoluteMaxSnippets).toBe(2);
+    expect(readable.maxSnippets).toBe(readable.absoluteMaxSnippets);
   });
 
   it('omits readable-code guidance together with explainedDiff when the feature is off', () => {

@@ -47,7 +47,7 @@ export const EXPLAINED_DIFF_SECTIONS = ['무엇을 바꿨나요?', '왜 바꿨�
 const readableCodeRule = {
   when: '중요한 코드 블록이 이미 작업 과정에서 확인되었고, 사용자 이해에 실제 도움이 될 때만 1~2개까지 보여준다.',
   maxSnippets: 2,
-  absoluteMaxSnippets: 12,
+  absoluteMaxSnippets: 2,
   form: ['[중요한 코드]', '짧은 코드 블록', '[쉽게 보면]', '[영향]'],
   reuseOnly: '이미 읽거나 비교한 코드만 사용한다. 이 섹션만을 위해 파일을 다시 읽거나 git diff를 다시 실행하지 않는다.',
   omitWhen: [
