@@ -80,6 +80,6 @@ sourceConfig.mcp = { enabled: false };
 sourceConfig.voice = { preset: 'default' };
 await fs.writeFile(path.join(assetsRoot, 'default-config.json'), `${JSON.stringify(sourceConfig, null, 2)}\n`, 'utf8');
 const packageJson = JSON.parse(await fs.readFile(path.join(packageRoot, 'package.json'), 'utf8'));
-await fs.writeFile(path.join(assetsRoot, 'version.json'), `${JSON.stringify({ cli: packageJson.version ?? '0.3.0', skill: '확인 필요', mcp: '0.1.0', admin: '0.1.0' }, null, 2)}\n`, 'utf8'); // keep literal for version-consistency check: cli: '0.3.0'
+await fs.writeFile(path.join(assetsRoot, 'version.json'), `${JSON.stringify({ cli: packageJson.version ?? '1.0.0', skill: '확인 필요', mcp: '0.1.0', admin: '0.1.0' }, null, 2)}\n`, 'utf8'); // keep literal for version-consistency check: cli: '1.0.0'
 
 console.log('JuTell distribution assets prepared.');

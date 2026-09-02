@@ -664,11 +664,11 @@ describe('Distribution CLI V0.1', () => {
     const legacyBin = path.join(binDirectory, process.platform === 'win32' ? 'beginner-bridge.cmd' : 'beginner-bridge');
     const installedEnv = { ...env, PATH: `${binDirectory}${path.delimiter}${env.PATH ?? ''}` };
     const version = await execFileAsync(jutellBin, ['--version'], { cwd: project, env: installedEnv, shell: true, windowsHide: true });
-    expect(version.stdout.trim()).toBe('0.3.0');
+    expect(version.stdout.trim()).toBe('1.0.0');
     const help = await execFileAsync(jutellBin, ['--help'], { cwd: project, env: installedEnv, shell: true, windowsHide: true });
-    expect(help.stdout).toContain('JuTell CLI 0.3.0');
+    expect(help.stdout).toContain('JuTell CLI 1.0.0');
     const legacy = await execFileAsync(legacyBin, ['--version'], { cwd: project, env: installedEnv, shell: true, windowsHide: true });
-    expect(legacy.stdout).toContain('0.3.0');
+    expect(legacy.stdout).toContain('1.0.0');
     expect(legacy.stdout).toContain('이전 명령입니다');
   }, 30000);
 

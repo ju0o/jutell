@@ -7,7 +7,7 @@ import { recordToolCall } from './tools/usage-counters.js';
 
 const server = new McpServer({
   name: 'JuTell',
-  version: '0.3.0',
+  version: '1.0.0',
 }, {
   instructions: 'JuTell by Ju0 is a local read-only report helper. Read only project configuration and approved report rules. Never access project code, Git diff, prompts, AI answers, secrets, or external networks. Skill mode remains available if this MCP server is disabled or unavailable. When both jutell and beginner_bridge servers are visible, prefer the canonical jutell server; use beginner_bridge only for compatibility. For owner-facing reports, apply the JuTell reporting guidance before composing the final answer.',
 });
