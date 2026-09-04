@@ -102,14 +102,14 @@ export function printHelp(io: CliIo) {
   io.write(`JuTell CLI 1.0.1
 
 시작할 때는 jutell만 입력하면 됩니다.
-처음 연결하면 안내에 따라 AI Agent와 보고 방식을 고르고
-연결을 준비한 뒤 관리자 화면을 엽니다.
+설치된 Coding Agent(Codex, OpenCode, Claude Code)를 찾아 연결하고,
+곧바로 평소 쓰던 화면으로 돌아갑니다. 관리자 화면은 열지 않습니다.
 
 자주 쓰는 명령
 
-  jutell                처음 시작: 설치·연결·관리자 화면을 준비합니다.
+  jutell                처음 시작: 설치된 Agent를 찾아 연결합니다.
   jutell use codex      Codex에 연결합니다 (권장).
-  jutell use opencode   OpenCode에 연결합니다.
+  jutell use opencode   OpenCode에 연결합니다 (베타).
   jutell use claude     Claude Code에 연결합니다 (베타).
   jutell status         현재 연결 상태를 확인합니다.
   jutell doctor         문제가 있는지 점검합니다.
@@ -121,7 +121,7 @@ JuTell은 AI Agent를 대신 실행하지 않고 연결과 보고만 도와줍�
 
 고급 명령 (보통 사용할 필요가 없습니다)
 
-  jutell dashboard      관리자 화면만 엽니다.
+  jutell dashboard      관리자 화면을 엽니다 (필요할 때만 직접 실행).
   jutell setup          설치를 다시 진행합니다.
   jutell enable         연결을 켭니다 (on과 같음).
   jutell disable        연결을 끕니다 (off와 같음).
@@ -131,15 +131,13 @@ JuTell은 AI Agent를 대신 실행하지 않고 연결과 보고만 도와줍�
   jutell switch         기본 Agent를 전환합니다.
   jutell uninstall      설치를 제거합니다.
   jutell upgrade        설치된 Skill/설정/MCP를 최신으로 새로고침합니다.
-  jutell migrate        레거시 beginner_bridge → jutell 로 안전하게 옮깁니다.
+  jutell migrate        레거시 beginner_bridge → jutell 로 안전하게 옮깁니다. (이전 명령 이름: beginner-bridge)
   jutell migrate --clean 레거시 정리를 수행합니다 (canonical 확인 후).
 
 하루 작업 기록
 
   jutell session        오늘 기록 상태를 봅니다.
   jutell session help   하루 기록의 하위 명령을 보여줍니다.
-
-이전 별칭: beginner-bridge
 
 공개 설치: npm install -g jutell
 업데이트: npm update -g jutell`);

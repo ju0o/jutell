@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">Codex, Claude Code, OpenCode가 모두 JuTell로 연결됩니다</title>
+  <desc id="desc">세 Coding Agent의 작업 결과가 JuTell로 모여, 무엇이 바뀌었는지·확인됐는지·아직 불확실한지·다음에 뭘 하면 되는지로 정리됩니다.</desc>
+  <rect width="1200" height="560" fill="#f6f8fa"/>
+
+  <!-- provider pills -->
+  <g font-family="Arial, sans-serif">
+    <rect x="70" y="56" width="320" height="86" rx="14" fill="#ffffff" stroke="#d0d7de" stroke-width="2"/>
+    <text x="230" y="107" text-anchor="middle" fill="#24292f" font-size="26" font-weight="700">Codex</text>
+
+    <rect x="440" y="56" width="320" height="86" rx="14" fill="#ffffff" stroke="#d0d7de" stroke-width="2"/>
+    <text x="600" y="107" text-anchor="middle" fill="#24292f" font-size="26" font-weight="700">Claude Code</text>
+
+    <rect x="810" y="56" width="320" height="86" rx="14" fill="#ffffff" stroke="#d0d7de" stroke-width="2"/>
+    <text x="970" y="107" text-anchor="middle" fill="#24292f" font-size="26" font-weight="700">OpenCode</text>
+  </g>
+
+  <!-- converging arrows -->
+  <g stroke="#57606a" stroke-width="2.5" fill="none">
+    <path d="M230 142 L600 224"/>
+    <path d="M600 142 L600 224"/>
+    <path d="M970 142 L600 224"/>
+  </g>
+  <polygon points="600,224 590,206 610,206" fill="#57606a"/>
+
+  <!-- JuTell hub -->
+  <rect x="440" y="230" width="320" height="96" rx="16" fill="#0969da"/>
+  <text x="600" y="270" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif" font-size="30" font-weight="700">JuTell</text>
+  <text x="600" y="300" text-anchor="middle" fill="#d0e7ff" font-family="Arial, sans-serif" font-size="17">이미 나온 작업 결과를 읽습니다</text>
+
+  <!-- arrow down to outcomes -->
+  <path d="M600 326 L600 366" stroke="#57606a" stroke-width="2.5"/>
+  <polygon points="600,378 588,360 612,360" fill="#57606a"/>
+
+  <!-- outcome chips -->
+  <g font-family="Arial, sans-serif">
+    <rect x="70" y="392" width="255" height="92" rx="12" fill="#dafbe1"/>
+    <text x="197" y="428" text-anchor="middle" fill="#1a7f37" font-size="19" font-weight="700">무엇이 바뀌었나</text>
+    <text x="197" y="454" text-anchor="middle" fill="#1a7f37" font-size="15">내 프로젝트에서</text>
+
+    <rect x="345" y="392" width="255" height="92" rx="12" fill="#dafbe1"/>
+    <text x="472" y="428" text-anchor="middle" fill="#1a7f37" font-size="19" font-weight="700">무엇이 확인됐나</text>
+    <text x="472" y="454" text-anchor="middle" fill="#1a7f37" font-size="15">주장이 아니라 근거로</text>
+
+    <rect x="620" y="392" width="255" height="92" rx="12" fill="#fff8c5"/>
+    <text x="747" y="428" text-anchor="middle" fill="#9a6700" font-size="19" font-weight="700">무엇이 불확실한가</text>
+    <text x="747" y="454" text-anchor="middle" fill="#9a6700" font-size="15">아직 확인 필요</text>
+
+    <rect x="895" y="392" width="235" height="92" rx="12" fill="#ddf4ff"/>
+    <text x="1012" y="428" text-anchor="middle" fill="#0969da" font-size="19" font-weight="700">다음 행동</text>
+    <text x="1012" y="454" text-anchor="middle" fill="#0969da" font-size="15">할 일 하나만 분명하게</text>
+  </g>
+
+  <text x="600" y="524" text-anchor="middle" fill="#57606a" font-family="Arial, sans-serif" font-size="17">JuTell은 Coding Agent가 이미 만든 결과를 읽을 뿐, Agent를 대신 실행하거나 대체하지 않습니다.</text>
+</svg>
