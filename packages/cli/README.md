@@ -1,6 +1,6 @@
 # jutell
 
-JuTell by Ju0의 로컬 설치·상태·진단·관리자 실행 CLI입니다. `jutell@1.0.0`은 npm에 공개되었습니다.
+JuTell by Ju0의 로컬 설치·상태·진단·관리자 실행 CLI입니다. `jutell@1.0.1`은 npm에 공개되었습니다.
 
 ```powershell
 npm install -g jutell

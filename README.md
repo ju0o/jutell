@@ -14,7 +14,7 @@ cd <project-folder>
 jutell use codex
 ```
 
-OpenCode는 `jutell use opencode`, Claude Code는 `jutell use claude`를 사용합니다. npm에 현재 공개된 버전은 **`jutell@1.0.0`**입니다.
+OpenCode는 `jutell use opencode`, Claude Code는 `jutell use claude`를 사용합니다. npm에 현재 공개된 버전은 **`jutell@1.0.1`**입니다.
 
 ## 그래서 JuTell을 쓰면 무엇이 좋아지나요?
 
@@ -111,7 +111,7 @@ jutell use codex
 <details>
 <summary>개발자·기여자용 로컬 tarball 설치</summary>
 
-일반 사용자는 위의 npm 설치를 사용하세요. 저장소에서 다음 공개 후보를 검증할 때만 사용합니다.
+일반 사용자는 위의 npm 설치를 사용하세요. 저장소에서 직접 소스를 검증할 때만 사용합니다.
 
 ```bash
 cd packages/cli
@@ -120,7 +120,7 @@ npm pack
 npm install -g ./jutell-1.0.1.tgz
 ```
 
-`1.0.1`은 이 저장소의 소스 후보 버전이며, 이 README 작성 시점에 npm registry에 공개된 최신 버전은 `jutell@1.0.0`입니다.
+`1.0.1`은 이 저장소의 현재 소스 버전이며, npm registry에 공개된 최신 버전과 같습니다 (`jutell@1.0.1`).
 </details>
 
 ## JuTell이 하는 일과 하지 않는 일

@@ -2,7 +2,7 @@
 
 ## 현재 상태
 
-`jutell@1.0.0`은 npm에 공개되었습니다. 일반 설치는 npm registry에서 진행합니다.
+`jutell@1.0.1`은 npm에 공개되었습니다. 일반 설치는 npm registry에서 진행합니다.
 
 ```powershell
 npm install -g jutell
