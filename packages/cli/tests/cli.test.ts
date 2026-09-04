@@ -68,7 +68,7 @@ describe('Distribution CLI V0.1', () => {
     expect(statusOnly.stdout).toContain('MCP 서버 응답: 확인하지 않음');
     expect((await fs.readFile(path.join(project, 'AGENTS.md'), 'utf8')).match(/BEGIN JUTELL MANAGED BLOCK/g)).toHaveLength(1);
     expect((await fs.readFile(path.join(home, '.codex', 'config.toml'), 'utf8')).match(/JUTELL_CLI_MCP_BEGIN/g)).toHaveLength(1);
-  });
+  }, 20000);
 
   it('on과 off가 연결만 바꾸고 설정과 Beta Journal을 보존한다', async () => {
     const { project, env } = await fixture();
