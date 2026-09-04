@@ -23,7 +23,7 @@
 
 ### AI Agent Provider에 적용
 
-관리자 화면을 열었다고 현재 AI Agent 세션에 설정이 자동 적용되는 것은 아닙니다. 현재 실제 연결 Provider는 Codex이며, 새 작업을 시작할 때 아래 문구를 그대로 전달합니다.
+관리자 화면을 열었다고 현재 AI Agent 세션에 설정이 자동 적용되는 것은 아닙니다. 현재 실제 연결 Provider는 Codex(정식 지원), OpenCode·Claude Code(베타)이며, 새 작업을 시작할 때 아래 문구를 그대로 전달합니다.
 
 ```text
 이 프로젝트의 AGENTS.md,

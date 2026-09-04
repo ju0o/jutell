@@ -2,7 +2,7 @@
 
 ## 1. 문서 목적
 
-이 문서는 AI Agent가 작업 결과를 비개발자에게 보고할 때 지켜야 할 핵심 실행 기준을 정의한다. 현재 실제 적용 Provider는 Codex이며, 규칙은 Provider에 종속되지 않도록 작성한다.
+이 문서는 AI Agent가 작업 결과를 비개발자에게 보고할 때 지켜야 할 핵심 실행 기준을 정의한다. 현재 실제 적용 Provider는 Codex(정식 지원), OpenCode·Claude Code(베타)이며, 규칙은 Provider에 종속되지 않도록 작성한다.
 
 제품의 목적과 버전 범위는 `docs/PRODUCT_SCOPE.md`에서 정의한다.
 

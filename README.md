@@ -19,8 +19,6 @@ jutell
 
 JuTell finds the coding agents you already have installed (Codex, Claude Code, OpenCode), asks for one approval, connects them, and hands you straight back to your normal Codex / Claude Code / OpenCode session. No wizard, no dashboard tab to close.
 
-> This describes JuTell's current behavior on GitHub `main`. The npm package published today, `jutell@1.0.1`, still uses an older one-agent setup wizard that opens a local dashboard at the end — see **[What's new](#whats-new)** below for the exact difference until the next release ships.
-
 <details>
 <summary>Build from source instead (contributors / verifying the repo directly)</summary>
 
@@ -30,10 +28,10 @@ Most people should use the npm install above. Use this only when you want to ver
 cd packages/cli
 npm install
 npm pack
-npm install -g ./jutell-1.0.1.tgz
+npm install -g ./jutell-1.1.0.tgz
 ```
 
-`1.0.1` matches this repository's current source version and today's published `jutell@1.0.1` on npm.
+`1.1.0` matches this repository's current source version — this is the exact build the next npm release will ship. See **[What's new](#whats-new)** below for its current publish state.
 </details>
 
 ## What does JuTell actually do?
@@ -183,16 +181,17 @@ Being written in Node doesn't by itself mean every platform is verified — the 
 
 ## What's new
 
-**Published on npm — `jutell@1.0.1`**
-Install with `npm install -g jutell`, then run `jutell` for an interactive wizard: pick one coding agent, pick a report style, and JuTell opens the local admin screen when setup finishes.
+**`jutell@1.1.0` — release candidate, not yet published to npm**
 
-**On GitHub `main` — not yet published**
-Bare `jutell` now auto-detects every supported agent on your machine, asks for one approval, connects all of them, and returns you straight to your terminal — no wizard, no dashboard. This is the flow described earlier in this README. If you installed from npm today, you'll see the wizard-and-dashboard flow above until this ships in the next release.
+- Bare `jutell` now finds and connects every supported coding agent on your machine in one step, with a single approval — no per-agent setup wizard for a normal first run.
+- Setup returns you straight to your terminal instead of opening the local dashboard automatically (`jutell dashboard` is still there whenever you want it).
+- This README and README.ko.md were rewritten for a global, bilingual audience.
 
 Full version history: [GitHub Releases](https://github.com/ju0o/jutell/releases).
 
 ## Docs
 
+- [Changelog](CHANGELOG.md)
 - [Get started](docs/START_HERE.md)
 - [CLI install & commands](docs/CLI_INSTALLATION.md)
 - [Product scope](docs/PRODUCT_SCOPE.md)
