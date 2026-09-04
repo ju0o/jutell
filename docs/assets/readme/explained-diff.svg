@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="470" viewBox="0 0 1200 470" role="img" aria-labelledby="title desc">
+  <title id="title">JuTell explained diff</title>
+  <desc id="desc">A small code change is paired with a human explanation of why it matters and what needs checking.</desc>
+  <rect width="1200" height="470" fill="#f6f8fa"/>
+  <text x="70" y="60" fill="#24292f" font-family="Arial, sans-serif" font-size="31" font-weight="700">Read the important change, not every line of the diff</text>
+  <rect x="70" y="100" width="510" height="284" rx="14" fill="#ffffff" stroke="#d0d7de" stroke-width="2"/>
+  <text x="104" y="144" fill="#57606a" font-family="ui-monospace, monospace" font-size="18">SearchForm.tsx</text>
+  <text x="104" y="200" fill="#cf222e" font-family="ui-monospace, monospace" font-size="23">- submitSearch(query);</text>
+  <text x="104" y="246" fill="#1a7f37" font-family="ui-monospace, monospace" font-size="23">+ if (!query.trim()) return;</text>
+  <text x="104" y="287" fill="#1a7f37" font-family="ui-monospace, monospace" font-size="23">+ submitSearch(query);</text>
+  <text x="104" y="347" fill="#57606a" font-family="Arial, sans-serif" font-size="17">Small, representative code example.</text>
+  <path d="M620 242h74" stroke="#0969da" stroke-width="5"/><path d="M686 226l26 16-26 16" fill="#0969da"/>
+  <rect x="735" y="100" width="395" height="284" rx="14" fill="#ddf4ff" stroke="#0969da" stroke-width="2"/>
+  <text x="770" y="148" fill="#0969da" font-family="Arial, sans-serif" font-size="21" font-weight="700">JUTELL EXPLANATION</text>
+  <text x="770" y="197" fill="#24292f" font-family="Arial, sans-serif" font-size="19" font-weight="700">Why it matters</text><text x="770" y="225" fill="#24292f" font-family="Arial, sans-serif" font-size="18">Stops an empty request before it starts.</text>
+  <text x="770" y="273" fill="#24292f" font-family="Arial, sans-serif" font-size="19" font-weight="700">What changes for people</text><text x="770" y="301" fill="#24292f" font-family="Arial, sans-serif" font-size="18">Blank input should not show an error screen.</text>
+  <text x="770" y="349" fill="#9a6700" font-family="Arial, sans-serif" font-size="18">Still check: actual browser behavior.</text>
+  <text x="70" y="430" fill="#57606a" font-family="Arial, sans-serif" font-size="17">The explanation separates a code-backed expectation from an interaction that still needs a real check.</text>
+</svg>
