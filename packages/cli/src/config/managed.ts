@@ -141,15 +141,41 @@ function hasMcpKey(content: string, key: string) {
   return new RegExp(`^\\s*\\[mcp_servers\\.${key}\\]\\s*$`, 'm').test(content);
 }
 
-function hasJuTellMcpEvidence(content: string, key: string) {
+function keySlice(content: string, key: string) {
   const keyPattern = new RegExp(`^\\s*\\[mcp_servers\\.${key}\\]\\s*$`, 'm');
   const match = content.match(keyPattern);
-  if (!match || match.index === undefined) return false;
-  const slice = content.slice(match.index, match.index + 1200);
+  if (!match || match.index === undefined) return undefined;
+  return content.slice(match.index, match.index + 1200);
+}
+
+function hasJuTellMcpEvidence(content: string, key: string) {
+  const slice = keySlice(content, key);
+  if (!slice) return false;
   // JuTell's server always contains `assets/mcp-server` or `apps/mcp-server` in args (see buildMcpBlock)
   // Unrelated custom entries (e.g. jira, other, even a custom `jutell` pointing to `not-mcp-server.js`) do not –
   // this prevents broadly adopting arbitrary unmarked MCP entries.
   return /(?:assets|apps)[\\/]mcp-server/i.test(slice);
+}
+
+function extractField(block: string | undefined, field: 'command' | 'args') {
+  if (!block) return undefined;
+  const match = block.match(new RegExp(`^\\s*${field}\\s*=\\s*(.+?)\\s*$`, 'm'));
+  return match?.[1];
+}
+
+// Removes a bare (unmarked) `[mcp_servers.<key>]` table — header line through its own
+// key/value lines, up to the next table header or end of file. Used when repairing a stale
+// heuristic-recognized entry that predates JUTELL_CLI_MCP markers, so a rewrite replaces it
+// instead of leaving a duplicate `[mcp_servers.<key>]` table behind.
+function withoutKeySection(content: string, key: string) {
+  const headerPattern = new RegExp(`^\\s*\\[mcp_servers\\.${key}\\]\\s*$`, 'm');
+  const match = content.match(headerPattern);
+  if (!match || match.index === undefined) return content;
+  const start = match.index;
+  const afterHeader = start + match[0].length;
+  const nextHeaderMatch = content.slice(afterHeader).match(/^\s*\[/m);
+  const end = nextHeaderMatch?.index !== undefined ? afterHeader + nextHeaderMatch.index : content.length;
+  return content.slice(0, start) + content.slice(end);
 }
 
 function tomlString(value: string) {
@@ -198,6 +224,17 @@ export async function readCodexRegistration(paths: ScopePaths, packageRoot: stri
     }
     return false;
   })();
+  const preview = buildMcpBlock(paths, packageRoot, enabled);
+  // The command/args a currently-recognized JuTell entry (managed-block or heuristic-evidence)
+  // actually has, vs. what the current installation would write today. A mismatch means the
+  // entry is stale — e.g. left over from a different machine/OS or an older JuTell install —
+  // and should be repaired even though the key is already registered and `enabled` already matches.
+  const canonicalEntryText = canonicalManaged ?? (canonicalHeuristic ? keySlice(content, CANONICAL_MCP_KEY) : undefined);
+  const canonicalUpToDate = Boolean(
+    canonicalEntryText
+    && extractField(canonicalEntryText, 'command') === extractField(preview, 'command')
+    && extractField(canonicalEntryText, 'args') === extractField(preview, 'args'),
+  );
   return {
     content,
     exists: content.length > 0,
@@ -207,16 +244,22 @@ export async function readCodexRegistration(paths: ScopePaths, packageRoot: stri
     canonicalRegistered,
     legacyRegistered,
     bothRegistered: canonicalRegistered && legacyRegistered,
-    preview: buildMcpBlock(paths, packageRoot, enabled),
+    canonicalUpToDate,
+    preview,
   };
 }
 
 export async function registerMcp(paths: ScopePaths, packageRoot: string, enabled: boolean) {
   const current = await readCodexRegistration(paths, packageRoot, enabled);
   if (current.conflict) throw new Error('Codex 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.');
-  if (current.canonicalRegistered && current.enabled === enabled) return current;
+  if (current.canonicalRegistered && current.enabled === enabled && current.canonicalUpToDate) return current;
   await backupFile(paths.codexConfigFile);
-  const withoutManaged = withoutCanonicalBlock(current.content).replace(/\n{3,}/g, '\n\n').trimEnd();
+  // withoutCanonicalBlock only removes a marker-wrapped block. A stale entry recognized by
+  // heuristic evidence alone (no markers, e.g. from an older JuTell install) would otherwise
+  // survive as a leftover bare `[mcp_servers.jutell]` table alongside the freshly-appended one.
+  // Safe to strip unconditionally here: reaching this point already ruled out (via `conflict`
+  // above) any bare `[mcp_servers.jutell]` that isn't JuTell's own.
+  const withoutManaged = withoutKeySection(withoutCanonicalBlock(current.content), CANONICAL_MCP_KEY).replace(/\n{3,}/g, '\n\n').trimEnd();
   const next = `${withoutManaged}${withoutManaged ? '\n\n' : ''}${current.preview}\n`;
   await writeTextSafely(paths.codexConfigFile, next);
   return readCodexRegistration(paths, packageRoot, enabled);

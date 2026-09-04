@@ -72,7 +72,7 @@ jutell use codex
 cd packages/cli
 npm install
 npm pack
-npm install -g ./jutell-1.0.0.tgz
+npm install -g ./jutell-1.0.1.tgz
 ```
 
 </details>

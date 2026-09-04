@@ -99,7 +99,7 @@ export function parseOptions(args: string[]): { command: string; options: CliOpt
 export function scopeLabel(scope: InstallScope) { return scope === 'global' ? '사용자 전역' : '현재 프로젝트'; }
 
 export function printHelp(io: CliIo) {
-  io.write(`JuTell CLI 1.0.0
+  io.write(`JuTell CLI 1.0.1
 
 시작할 때는 jutell만 입력하면 됩니다.
 처음 연결하면 안내에 따라 AI Agent와 보고 방식을 고르고
