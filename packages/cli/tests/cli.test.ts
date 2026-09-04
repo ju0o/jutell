@@ -1,4 +1,4 @@
-import { promises as fs } from 'node:fs';
+import { promises as fs, readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execFile, spawn } from 'node:child_process';
@@ -7,6 +7,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 const execFileAsync = promisify(execFile);
 const packageRoot = path.resolve(import.meta.dirname, '..');
+// Read live rather than hardcode - a hardcoded version here would silently pass against a
+// stale `dist/` and only break at the *next* version bump instead of this one (as happened
+// with the previous hardcoded '1.0.0' this replaces). Same pattern as version-consistency.test.ts.
+const pkgVersion = JSON.parse(readFileSync(path.join(packageRoot, 'package.json'), 'utf8')).version as string;
 const entry = path.join(packageRoot, 'dist', 'index.js');
 const temporaryRoots: string[] = [];
 
@@ -582,17 +586,25 @@ describe('Distribution CLI V0.1', () => {
     expect(afterStatus.warnings).toEqual(expect.arrayContaining([expect.stringContaining('모두 있습니다')]));
   });
 
-  it('CASE D: canonical과 legacy Codex key가 모두 있으면 경고하고 자동 정리하지 않는다', async () => {
+  it('CASE D: canonical과 legacy Codex key가 모두 있으면 경고하고 legacy를 자동 정리하지 않는다', async () => {
     const { project, home, env } = await fixture();
     const codexFile = path.join(home, '.codex', 'config.toml');
     await fs.mkdir(path.dirname(codexFile), { recursive: true });
-    const both = '# JUTELL_CLI_MCP_BEGIN\n[mcp_servers.jutell]\ncommand = "node"\nargs = ["server.js"]\nenabled = true\n# JUTELL_CLI_MCP_END\n\n[mcp_servers.beginner_bridge]\ncommand = "node"\nargs = ["legacy.js"]\nenabled = true\n';
+    const legacyBlock = '[mcp_servers.beginner_bridge]\ncommand = "node"\nargs = ["legacy.js"]\nenabled = true';
+    const both = `# JUTELL_CLI_MCP_BEGIN\n[mcp_servers.jutell]\ncommand = "node"\nargs = ["server.js"]\nenabled = true\n# JUTELL_CLI_MCP_END\n\n${legacyBlock}\n`;
     await fs.writeFile(codexFile, both, 'utf8');
     const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
     expect(status.warnings).toEqual(expect.arrayContaining([expect.stringContaining('모두 있습니다')]));
 
     await runCli(['use', 'codex'], project, env);
-    expect(await fs.readFile(codexFile, 'utf8')).toBe(both);
+    const after = await fs.readFile(codexFile, 'utf8');
+    // legacy is never auto-cleaned/removed - its content stays byte-for-byte, whatever
+    // happens to the canonical entry (whose placeholder command/args here are stale
+    // relative to this test's real process.execPath/packageRoot, so `use codex` is
+    // expected to repair them; see JUTELL-V1.0.1-CODEX-STALE-MCP-PATH-REPAIR-01).
+    expect(after).toContain(legacyBlock);
+    expect(after.match(/\[mcp_servers\.jutell\]/g)).toHaveLength(1);
+    expect(after.match(/\[mcp_servers\.beginner_bridge\]/g)).toHaveLength(1);
   });
 
   it('CASE C: legacy OpenCode registration을 감지하고 use가 보존하면서 canonical jutell을 만든다', async () => {
@@ -664,11 +676,11 @@ describe('Distribution CLI V0.1', () => {
     const legacyBin = path.join(binDirectory, process.platform === 'win32' ? 'beginner-bridge.cmd' : 'beginner-bridge');
     const installedEnv = { ...env, PATH: `${binDirectory}${path.delimiter}${env.PATH ?? ''}` };
     const version = await execFileAsync(jutellBin, ['--version'], { cwd: project, env: installedEnv, shell: true, windowsHide: true });
-    expect(version.stdout.trim()).toBe('1.0.0');
+    expect(version.stdout.trim()).toBe(pkgVersion);
     const help = await execFileAsync(jutellBin, ['--help'], { cwd: project, env: installedEnv, shell: true, windowsHide: true });
-    expect(help.stdout).toContain('JuTell CLI 1.0.0');
+    expect(help.stdout).toContain(`JuTell CLI ${pkgVersion}`);
     const legacy = await execFileAsync(legacyBin, ['--version'], { cwd: project, env: installedEnv, shell: true, windowsHide: true });
-    expect(legacy.stdout).toContain('1.0.0');
+    expect(legacy.stdout).toContain(pkgVersion);
     expect(legacy.stdout).toContain('이전 명령입니다');
   }, 30000);
 
