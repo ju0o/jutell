@@ -38,4 +38,4 @@
 - 내부·역사 기록으로 유지: 기존 테스트 결과와 과거 리뷰 기록의 사실 보존
 - 추후 제거 후보: `beginner-bridge` 별칭과 legacy 설정 경로. 제거 시점은 정하지 않음
 
-`jutell@1.0.1`은 npm에 공개되어 있습니다 (`npm install -g jutell`). GitHub 저장소 이름 변경, 호환 별칭 제거 시점은 별도 운영자 결정입니다.
+`jutell@1.1.0`은 npm에 공개되어 있습니다 (`npm install -g jutell`). GitHub 저장소 이름 변경, 호환 별칭 제거 시점은 별도 운영자 결정입니다.

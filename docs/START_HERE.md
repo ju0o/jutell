@@ -53,7 +53,7 @@ Prompt, 코드, 파일 경로, 비밀정보를 피드백에 그대로 적지 않
 
 ## Distribution CLI
 
-일반 사용자가 Skill을 직접 복사하지 않도록 npm에 CLI를 공개합니다. `jutell@1.1.0`은 릴리스 준비가 끝난 버전이며, 아직 npm에 공개되지 않았습니다 (마지막으로 공개된 버전은 `jutell@1.0.1`입니다). 일반 설치는 npm registry에서 진행합니다.
+일반 사용자가 Skill을 직접 복사하지 않도록 `jutell@1.1.0`을 npm에 공개했습니다. 일반 설치는 npm registry에서 진행합니다.
 
 ```powershell
 npm install -g jutell
