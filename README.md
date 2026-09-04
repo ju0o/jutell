@@ -31,7 +31,7 @@ npm pack
 npm install -g ./jutell-1.1.0.tgz
 ```
 
-`1.1.0` matches this repository's current source version — this is the exact build the next npm release will ship. See **[What's new](#whats-new)** below for its current publish state.
+`1.1.0` matches this repository's current source version and the current published `jutell@1.1.0` on npm.
 </details>
 
 ## What does JuTell actually do?
@@ -181,7 +181,7 @@ Being written in Node doesn't by itself mean every platform is verified — the 
 
 ## What's new
 
-**`jutell@1.1.0` — release candidate, not yet published to npm**
+**`jutell@1.1.0` — published on npm**
 
 - Bare `jutell` now finds and connects every supported coding agent on your machine in one step, with a single approval — no per-agent setup wizard for a normal first run.
 - Setup returns you straight to your terminal instead of opening the local dashboard automatically (`jutell dashboard` is still there whenever you want it).

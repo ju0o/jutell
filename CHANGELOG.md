@@ -2,7 +2,9 @@
 
 Notable user-facing changes to JuTell. See [GitHub Releases](https://github.com/ju0o/jutell/releases) for the full history and exact publish dates.
 
-## v1.1.0 (release candidate — not yet published to npm)
+## v1.1.0
+
+Published on npm.
 
 **Install once. Use your coding agent normally.**
 

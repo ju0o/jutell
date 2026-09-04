@@ -105,10 +105,23 @@ describe('README.md / README.ko.md major product truth stays aligned (Release RE
     expect(ko).toContain(`jutell@${version}`);
   });
 
-  it('both carry the published-vs-unreleased "What\'s new" distinction, not just one language', () => {
-    for (const text of [en, ko]) {
-      expect(text).toMatch(/## (What's new|최신 소식)/);
-      expect(text).toMatch(/not yet published|아직 npm에 공개되지 않음/);
+  it('both have a "What\'s new" section, and its publish-state language agrees with CHANGELOG.md', () => {
+    // JUTELL-V1.1.0-PUBLISH-AND-RELEASE-01: the release-prep cycle correctly
+    // marked 1.1.0 as "not yet published"; the publish cycle has to flip that
+    // language everywhere once it actually publishes, or main is left saying
+    // something false. Rather than pin one specific phrase (which flips
+    // between release-candidate and published states across releases), cross-
+    // check against CHANGELOG.md - whichever state it declares for the
+    // current version, both READMEs must agree, and neither may claim both
+    // states at once for the same version.
+    const changelog = read('CHANGELOG.md');
+    const changelogIsCandidate = /release candidate|not yet published/i.test(changelog);
+    for (const [label, text] of [['README.md', en], ['README.ko.md', ko]] as const) {
+      expect(text, `${label} should have a What's new section`).toMatch(/## (What's new|최신 소식)/);
+      const readmeClaimsNotYetPublished = /not yet published|아직 npm에 공개되지 않음/.test(text);
+      const readmeClaimsPublished = /published on npm|npm에 공개됨|npm에 공개되었습니다/.test(text);
+      expect(readmeClaimsNotYetPublished && readmeClaimsPublished, `${label} contradicts itself: claims both published and not-yet-published`).toBe(false);
+      expect(readmeClaimsNotYetPublished, `${label}'s publish state should match CHANGELOG.md's`).toBe(changelogIsCandidate);
     }
   });
 
