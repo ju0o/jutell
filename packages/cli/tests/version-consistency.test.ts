@@ -23,7 +23,7 @@ describe('JuTell version consistency (J01-VERSION-003)', () => {
   it('keeps generated assets and docs install instructions on the package version', () => {
     const assets = readFileSync(path.join(packageRoot, 'scripts', 'build-assets.mjs'), 'utf8');
     expect(assets).toContain(`cli: '${version}'`);
-    for (const doc of ['README.md', path.join('docs', 'CLI_INSTALLATION.md'), path.join('docs', 'START_HERE.md'), path.join('packages', 'cli', 'README.md')]) {
+    for (const doc of ['README.md', 'README.ko.md', path.join('docs', 'CLI_INSTALLATION.md'), path.join('docs', 'START_HERE.md'), path.join('packages', 'cli', 'README.md')]) {
       expect(readFileSync(path.join(repoRoot, doc), 'utf8')).toContain(`jutell-${version}.tgz`);
     }
   });

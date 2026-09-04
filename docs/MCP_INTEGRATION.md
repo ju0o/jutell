@@ -46,7 +46,7 @@ MCP V0.1은 읽기 도구만 제공합니다.
 jutell
 ```
 
-최초 실행은 `.jutell.json`, Skill, AGENTS.md JuTell 관리 블록, MCP 연결 설정을 확인하고 필요한 기본 연결을 준비한 뒤 관리자 화면을 엽니다. 설치 후에는 `jutell on`과 `jutell off`로 연결을 켜고 끌 수 있습니다. 설정과 Beta Journal은 보존됩니다.
+최초 실행은 `.jutell.json`, Skill, AGENTS.md JuTell 관리 블록, MCP 연결 설정을 확인하고 필요한 기본 연결을 준비한 뒤, 곧바로 평소 쓰던 화면으로 돌아갑니다. 관리자 화면은 자동으로 열리지 않으며, 필요할 때 `jutell dashboard`로 직접 엽니다. 설치 후에는 `jutell on`과 `jutell off`로 연결을 켜고 끌 수 있습니다. 설정과 Beta Journal은 보존됩니다.
 
 이미 연결된 프로젝트에서는 설치를 반복하지 않고 상태만 확인합니다. MCP가 꺼져 있거나 AGENTS.md 관리 블록이 없으면 복구 여부를 묻습니다.
 

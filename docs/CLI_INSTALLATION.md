@@ -6,10 +6,10 @@
 
 ```powershell
 npm install -g jutell
-jutell use codex
+jutell
 ```
 
-`jutell use codex`는 권장 경로입니다. OpenCode 또는 Claude Code를 사용한다면 `jutell use opencode` 또는 `jutell use claude`를 사용합니다 (베타). `jutell`만 실행해도 같은 안내를 시작할 수 있습니다.
+`jutell`을 실행하면 설치된 Coding Agent(Codex, OpenCode, Claude Code)를 찾아 연결을 물어보고, 승인하면 곧바로 평소 쓰던 화면으로 돌아갑니다. 특정 Agent 하나만 수동으로 연결하거나 다시 연결하고 싶을 때는 `jutell use codex` / `jutell use opencode` (베타) / `jutell use claude` (베타)를 사용합니다 — 이 명령들은 자동 연결이 실패했을 때 쓰는 수동/복구 경로입니다.
 
 ### 개발자·기여자용 로컬 설치 (tarball 검증)
 
@@ -26,7 +26,7 @@ npm install -g ./jutell-1.0.1.tgz
 
 | 명령 | 역할 |
 |---|---|
-| `jutell` | 프로젝트 연결을 확인·준비하고 관리자 화면을 엽니다. 최초에는 balanced, Skill, MCP를 기본으로 준비합니다. |
+| `jutell` | 설치된 Coding Agent를 찾아 연결하고 평소 쓰던 화면으로 돌아갑니다 (관리자 화면은 열지 않습니다). 최초에는 balanced, Skill, MCP를 기본으로 준비합니다. |
 | `jutell on` | Skill, MCP, AGENTS.md JuTell 블록을 다시 활성화합니다. |
 | `jutell off` | Skill과 MCP를 끄고 설정과 Beta Journal을 보존합니다. |
 | `jutell setup` | Skill, 기본 설정, MCP 연결 설정을 안전하게 준비합니다. |

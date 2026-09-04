@@ -25,6 +25,7 @@
 
 - [ ] 오늘 마감: `jutell session finish` — `SESSION_SUMMARY.md`를 한 번만 생성
 - [ ] 공개 저장소 안전 검사 실행: `npm run check:public` — 위반 0건인지
+- [ ] README/CLI 안내 문구를 바꿨거나 `jutell` 기본 동작(연결·관리자 화면·Provider 상태)을 바꿨다면 Release README Gate 실행: `npm test -- readme-behavior-parity` (packages/cli) — README.md·README.ko.md가 실제 동작·Provider 상태와 어긋나지 않는지 확인
 - [ ] 코드를 바꿨다면 테스트 실행:
   - `npm test` (packages/cli, apps/local-admin, apps/mcp-server 각각)
   - 빌드 확인: 각 패키지 `npm run build`

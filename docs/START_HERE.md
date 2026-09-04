@@ -77,7 +77,7 @@ npm install -g ./jutell-1.0.1.tgz
 
 </details>
 
-첫 실행은 `jutell use <provider>` 또는 `jutell` 안내에 따라 ① 사용 중인 AI Agent(Codex 또는 OpenCode) ② 보고 방식을 고르면 Skill, AGENTS.md, MCP 연결을 준비하고 관리자 화면을 엽니다. 자동화 환경에서는 안내 없이 `balanced` Profile로 연결됩니다. 이미 연결된 프로젝트에서는 필요한 상태만 확인하고, 안전하게 복구할 수 있는 항목만 묻습니다. `jutell on`과 `jutell off`로 연결을 켜고 끌 수 있으며 설정과 Beta Journal은 보존됩니다. 명령별 안전 규칙은 [CLI 설치 안내](CLI_INSTALLATION.md)를 읽습니다.
+첫 실행은 `jutell` 하나로 시작합니다. 설치된 AI Agent(Codex, OpenCode, Claude Code)를 찾아 연결을 물어보고, 승인하면 Skill, AGENTS.md, MCP 연결을 준비한 뒤 곧바로 평소 쓰던 화면으로 돌아갑니다 — 관리자 화면은 자동으로 열리지 않으며 필요할 때 `jutell dashboard`로 직접 엽니다. 자동화 환경에서는 안내 없이 `balanced` Profile로 연결됩니다. 이미 연결된 프로젝트에서는 필요한 상태만 확인하고, 안전하게 복구할 수 있는 항목만 묻습니다. Agent 하나만 수동으로 연결·재연결하고 싶을 때는 `jutell use <provider>`를 사용합니다. `jutell on`과 `jutell off`로 연결을 켜고 끌 수 있으며 설정과 Beta Journal은 보존됩니다. 명령별 안전 규칙은 [CLI 설치 안내](CLI_INSTALLATION.md)를 읽습니다.
 
 ## 문제가 생기면 어디를 보나요?
 

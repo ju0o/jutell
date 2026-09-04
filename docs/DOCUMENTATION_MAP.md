@@ -6,7 +6,7 @@
 
 | 문서 | 이 문서가 답하는 질문 |
 |---|---|
-| [README.md](../README.md) | JuTell이 무엇이고 현재 어디까지 되었나요? |
+| [README.md](../README.md) (English) / [README.ko.md](../README.ko.md) (한국어) | JuTell이 무엇이고 현재 어디까지 되었나요? |
 | [START_HERE.md](START_HERE.md) | 처음 사용할 때 어떤 순서로 보면 되나요? |
 | [FEATURE_CONFIGURATION.md](FEATURE_CONFIGURATION.md) | Profile과 보고서 Feature를 어떻게 조절하나요? |
 
