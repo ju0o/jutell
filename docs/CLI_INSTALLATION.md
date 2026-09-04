@@ -2,7 +2,7 @@
 
 ## 현재 상태
 
-`jutell@0.3.0`은 npm에 공개되었습니다. 일반 설치는 npm registry에서 진행합니다.
+`jutell@1.0.0`은 npm에 공개되었습니다. 일반 설치는 npm registry에서 진행합니다.
 
 ```powershell
 npm install -g jutell
@@ -74,9 +74,9 @@ Telemetry는 비활성화되어 있고, CLI는 프로젝트 코드·Prompt·AI �
 
 ## 지원 범위와 제한
 
-- Windows: VERIFIED — Windows 11에서 `npm install -g jutell` (registry) 설치, `jutell use codex` 연결, `jutell status`/`doctor`, MCP 서버 5개 도구 응답, 로컬 관리자 빌드 실행을 검증했습니다. 로컬 tarball 설치(`npm install -g ./jutell-*.tgz`)도 동일하게 검증했습니다. 공개 베타 검증 기준은 Windows입니다.
-- macOS: UNVERIFIED — 경로·실행 파일 처리는 Node 기준으로 구현되어 있으나 실제 macOS 환경에서 설치·연결·MCP 호출을 검증하지 않았습니다. Node 이식성만으로 검증된 것으로 간주하지 않습니다.
-- Linux: UNVERIFIED — 동일하게 코드는 이식 가능하나 실제 Linux 환경 검증은 수행하지 않았습니다.
+- Windows: VERIFIED — Windows 11에서 `npm install -g jutell` (registry) 설치, `jutell use codex` 연결, `jutell status`/`doctor`, MCP 서버 5개 도구 응답, 로컬 관리자 빌드 실행을 검증했습니다. 로컬 tarball 설치(`npm install -g ./jutell-*.tgz`)도 동일하게 검증했습니다. 전체 lifecycle 기준 공개 베타 검증 대상은 Windows입니다.
+- Linux (Ubuntu Native): 공개 패키지 최소 스모크 VERIFIED — `npm install -g jutell`로 설치한 공개 패키지 기준 최소 CLI/Provider 연결 스모크를 Ubuntu Native에서 검증했습니다. 다른 배포판, 모든 Provider, Windows와 동일한 전체 lifecycle 명령까지 검증한 것은 아닙니다.
+- macOS: AVAILABLE / UNVERIFIED — 경로·실행 파일 처리는 Node 기준으로 구현되어 있으나 실제 macOS 환경에서 설치·연결·MCP 호출을 검증하지 않았습니다. Node 이식성만으로 검증된 것으로 간주하지 않습니다.
 
 CLI는 Codex·OpenCode·Claude Code 설치 여부를 자동으로 확인할 수 있지만, 실제 AI Agent 세션에서 MCP 도구를 호출했는지는 대신 판정하지 않습니다.
 

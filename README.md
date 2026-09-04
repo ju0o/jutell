@@ -26,7 +26,7 @@ jutell use codex
 # OpenCode 또는 Claude Code라면 jutell use opencode / jutell use claude
 ```
 
-> `jutell@0.3.0` — npm에 공개되어 있습니다. `npm install -g jutell` 로 설치합니다.
+> `jutell@1.0.0` — npm에 공개되어 있습니다. `npm install -g jutell` 로 설치합니다.
 
 ---
 
@@ -233,10 +233,10 @@ npm install -g ./jutell-1.0.0.tgz
 ## 지원 환경
 
 - **Windows: VERIFIED** — Windows 11에서 `npm install -g jutell`, `jutell use codex`, `jutell status`/`doctor`, MCP 서버 도구 응답, 로컬 관리자 실행을 검증했습니다.
-- **macOS: UNVERIFIED** — Node 기준으로 구현되어 있으나 실제 macOS 환경에서 설치·연결·MCP 호출을 검증하지 않았습니다.
-- **Linux: UNVERIFIED** — 코드상 이식 가능하나 실제 Linux 환경 검증은 수행하지 않았습니다.
+- **Linux (Ubuntu Native): 공개 패키지 최소 스모크 VERIFIED** — `npm install -g jutell` 로 설치한 공개 패키지 기준 최소 CLI/Provider 연결 스모크를 Ubuntu Native에서 검증했습니다. 다른 배포판, 모든 Provider, 모든 lifecycle 명령까지 검증한 것은 아닙니다.
+- **macOS: AVAILABLE / UNVERIFIED** — Node 기준으로 구현되어 있으나 실제 macOS 환경에서 설치·연결·MCP 호출을 검증하지 않았습니다.
 
-> macOS/Linux를 지원하지 않는다고 단정하지 않습니다. 공식 검증 기준은 현재 Windows이며, 사용 중 발견한 문제와 Pull Request를 환영합니다.
+> macOS를 지원하지 않는다고 단정하지 않습니다. 전체 lifecycle 기준 공식 검증 대상은 현재 Windows이며, 사용 중 발견한 문제와 Pull Request를 환영합니다.
 
 ---
 
@@ -276,6 +276,6 @@ npm install -g ./jutell-1.0.0.tgz
 ## JuTell by Ju0
 
 Ju0는 상위 브랜드, JuTell은 그 아래 제품입니다. 공식 표기는 `JuTell by Ju0`입니다.
-`jutell@0.3.0`은 npm에 공개되어 있습니다. GitHub 저장소 이름 변경은 별도 운영 결정으로 유지됩니다.
+`jutell@1.0.0`은 npm에 공개되어 있습니다. GitHub 저장소 이름 변경은 별도 운영 결정으로 유지됩니다.
 
 이전 이름과 경로는 [브랜드 전환 안내](docs/BRAND_MIGRATION.md)에서만 설명합니다.
