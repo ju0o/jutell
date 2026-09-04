@@ -26,7 +26,7 @@
 
 ## 2. 프로젝트 한 줄 정의
 
-JuTell는 AI Agent가 작업 후 확인한 사실, 예상되는 변화, 확인하지 못한 내용을 구분하여 비개발자가 이해할 수 있는 짧고 명확한 하나의 보고서로 제공하는 오픈소스 Skill이다. 현재 실제 연결 Provider는 Codex이며, OpenCode를 베타로 지원하고 다른 Provider로 확장할 수 있는 구조를 사용한다.
+JuTell는 AI Agent가 작업 후 확인한 사실, 예상되는 변화, 확인하지 못한 내용을 구분하여 비개발자가 이해할 수 있는 짧고 명확한 하나의 보고서로 제공하는 오픈소스 Skill이다. 현재 실제 연결 Provider는 Codex(정식 지원), OpenCode·Claude Code(베타)이며, 다른 Provider로 확장할 수 있는 구조를 사용한다.
 
 ---
 
@@ -796,7 +796,7 @@ AI Agent는 사용자 승인 없이 이 문서의 제품 방향을 임의로 확
 
 ## 15. 현재 결정 상태
 
-* 대상 플랫폼: AI Agent Provider (현재 Codex, OpenCode 베타)
+* 대상 플랫폼: AI Agent Provider (현재 Codex 정식 지원, OpenCode·Claude Code 베타)
 * 대상 사용자: 비개발자 및 입문 사용자
 * 초기 제공 방식: `AGENTS.md`와 AI Agent Skill, 선택형 로컬 MCP 및 Distribution CLI
 * 초기 실행 환경: 로컬 프로젝트

@@ -1,17 +1,39 @@
 # jutell
 
-JuTell by Ju0의 로컬 설치·상태·진단·관리자 실행 CLI입니다. `jutell@1.0.1`은 npm에 공개되었습니다.
+**Your coding agent writes the code. JuTell helps you understand what happened.**
 
-```powershell
-npm install -g jutell
-jutell use codex
-jutell status
-```
-
-개발자·기여자용 로컬 설치 (일반 사용자는 위 registry 설치 사용):
+JuTell sits beside Codex, Claude Code, or OpenCode and turns their work into a plain-language report: what changed, what's actually verified, what's still unknown, and what to do next.
 
 ```bash
-npm install -g ./jutell-1.0.1.tgz
+npm install -g jutell
+jutell
 ```
 
-기존 `beginner-bridge` 명령은 같은 기능의 호환 별칭이며 실행 시 새 명령 사용을 안내합니다. CLI는 프로젝트 코드, Prompt, AI 답변, Git diff와 비밀정보를 수집하거나 외부로 전송하지 않습니다.
+`jutell` finds the coding agents you already have installed, asks for one approval, connects them, and hands you straight back to your normal session — no per-agent setup command needed for a normal first run.
+
+| Agent | Status |
+|---|---|
+| Codex | Supported |
+| Claude Code | Beta |
+| OpenCode | Beta |
+
+To connect (or reconnect) one specific agent by hand, use `jutell use codex` / `jutell use claude` / `jutell use opencode` — this is the manual/repair path, not the normal first run.
+
+**한국어 사용자라면:** 전체 문서와 한국어 안내는 [GitHub 저장소의 README.ko.md](https://github.com/ju0o/jutell/blob/main/README.ko.md)에 있습니다.
+
+Full docs, images, and the complete feature walkthrough live on [GitHub](https://github.com/ju0o/jutell#readme).
+
+<details>
+<summary>Build from source instead (contributors / verifying the repo directly)</summary>
+
+Most people should use the npm install above.
+
+```bash
+cd packages/cli
+npm install
+npm pack
+npm install -g ./jutell-1.1.0.tgz
+```
+</details>
+
+The legacy `beginner-bridge` command is a compatibility alias for the same functionality and tells you to switch to `jutell` when you run it. The CLI does not collect or transmit your project code, prompts, AI answers, Git diffs, or secrets.

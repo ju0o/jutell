@@ -8,7 +8,7 @@
 
 JuTell은 AI Agent를 대신 실행하거나 중계하는 Gateway가 아닙니다. 사용자가 이미 사용하는 Agent에 Skill, MCP, 지침, Workflow와 시각적 설정을 연결하여 작업을 이해하고 검증하고 운영하도록 돕는 비개발자용 AI Agent Harness입니다. 최상위 의사결정 기준은 [Foundation 문서](foundation/VISION.md)이며, 현재 구현과의 대조는 [FOUNDATION_RECONCILIATION.md](FOUNDATION_RECONCILIATION.md)에 있습니다.
 
-JuTell은 AI Agent 작업 뒤에 다음을 구분해 보고하도록 돕습니다. 현재 연결 Provider는 Codex이며, OpenCode를 베타로 지원하고 다른 Provider로 확장할 수 있는 구조를 사용합니다.
+JuTell은 AI Agent 작업 뒤에 다음을 구분해 보고하도록 돕습니다. 현재 연결 Provider는 Codex(정식 지원), OpenCode·Claude Code(베타)이며, 다른 Provider로 확장할 수 있는 구조를 사용합니다.
 
 - 실제로 확인한 사실
 - 코드만 보고 예상한 변화
@@ -53,15 +53,15 @@ Prompt, 코드, 파일 경로, 비밀정보를 피드백에 그대로 적지 않
 
 ## Distribution CLI
 
-일반 사용자가 Skill을 직접 복사하지 않도록 `jutell@1.0.1`을 npm에 공개했습니다. 일반 설치는 npm registry에서 진행합니다.
+일반 사용자가 Skill을 직접 복사하지 않도록 npm에 CLI를 공개합니다. `jutell@1.1.0`은 릴리스 준비가 끝난 버전이며, 아직 npm에 공개되지 않았습니다 (마지막으로 공개된 버전은 `jutell@1.0.1`입니다). 일반 설치는 npm registry에서 진행합니다.
 
 ```powershell
 npm install -g jutell
 cd <프로젝트 폴더>
-jutell use codex
+jutell
 ```
 
-`jutell use codex`는 권장 경로이며, OpenCode 또는 Claude Code를 사용한다면 `jutell use opencode` 또는 `jutell use claude`를 사용합니다 (베타). `jutell`만 실행해도 같은 안내를 시작할 수 있습니다.
+`jutell`을 실행하면 설치된 Coding Agent(Codex, OpenCode, Claude Code)를 찾아 연결을 물어보고, 승인하면 곧바로 평소 쓰던 화면으로 돌아갑니다. 특정 Agent 하나만 수동으로 연결하거나 다시 연결하고 싶을 때는 `jutell use codex` / `jutell use opencode` (베타) / `jutell use claude` (베타)를 사용합니다 — 이 명령들은 자동 연결이 실패했을 때 쓰는 수동/복구 경로입니다.
 
 <details>
 <summary>개발자·기여자용 로컬 검증 (tarball)</summary>
@@ -72,7 +72,7 @@ jutell use codex
 cd packages/cli
 npm install
 npm pack
-npm install -g ./jutell-1.0.1.tgz
+npm install -g ./jutell-1.1.0.tgz
 ```
 
 </details>

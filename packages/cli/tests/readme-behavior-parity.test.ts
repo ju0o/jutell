@@ -100,7 +100,7 @@ describe('README.md / README.ko.md major product truth stays aligned (Release RE
   const en = read('README.md');
   const ko = read('README.ko.md');
 
-  it('both name the same published npm version', () => {
+  it('both name the same current CLI version (published or release-candidate)', () => {
     expect(en).toContain(`jutell@${version}`);
     expect(ko).toContain(`jutell@${version}`);
   });
@@ -129,6 +129,69 @@ describe('README.md / README.ko.md major product truth stays aligned (Release RE
     // docs) - this only guards the two public README files themselves.
     for (const text of [en, ko]) {
       expect(text).not.toMatch(/beginner-bridge/i);
+    }
+  });
+});
+
+// JUTELL-V1.1.0-RELEASE-PREP-01: the release-candidate audit found two real
+// blind spots the checks above never covered - the README npm actually
+// displays (packages/cli/README.md, not the repo-root one), and a second,
+// earlier "npm install -g jutell / jutell use codex" block inside
+// docs/START_HERE.md that the original Release README Gate never reached
+// because it only checked the *dashboard-claim* sentence in that file, not
+// its install-flow ordering. Both are semantic-anchor checks, not sentence
+// pinning, so ordinary copy edits elsewhere in these files won't break them.
+
+describe('packages/cli/README.md - the README npm actually displays (Release README Gate #6)', () => {
+  const npmReadme = read(path.join('packages', 'cli', 'README.md'));
+
+  it('names the current CLI version', () => {
+    expect(npmReadme).toContain(`jutell-${version}.tgz`);
+  });
+
+  it('shows "npm install -g jutell" followed by bare "jutell" as the install flow', () => {
+    expect(npmReadme).toMatch(/```bash\nnpm install -g jutell\njutell\n```/);
+  });
+
+  it('does not present a provider-specific "jutell use <agent>" command outside the main install block without manual/repair framing nearby', () => {
+    // The main install block (already asserted above) is the only place a
+    // command is allowed to stand alone as "the" install step. Any mention
+    // of "jutell use codex" elsewhere in the doc must be framed, in the same
+    // sentence or the one right after/before it, as the manual/repair path -
+    // proximity, not strict word order, since "run X - this is the manual
+    // path" is just as valid prose as "for manual repair, run X".
+    const proximityWindow = 200;
+    const firstUseCommandIndex = npmReadme.indexOf('jutell use codex');
+    expect(firstUseCommandIndex, 'expected the doc to mention jutell use codex as the manual path').toBeGreaterThan(-1);
+    const nearby = npmReadme.slice(Math.max(0, firstUseCommandIndex - proximityWindow), firstUseCommandIndex + proximityWindow);
+    expect(nearby, 'expected "manual"/"repair" framing within 200 chars of the jutell use codex mention').toMatch(/manual|repair/i);
+  });
+
+  it('points Korean readers to the full Korean README', () => {
+    expect(npmReadme).toMatch(/README\.ko\.md/);
+  });
+});
+
+describe('docs/START_HERE.md normal install path cannot silently regress to a provider-specific default (Release README Gate #7)', () => {
+  const startHere = read(path.join('docs', 'START_HERE.md'));
+
+  it('shows bare `jutell` (not `jutell use codex`) as the last line of its normal install block', () => {
+    const installBlock = startHere.match(/```powershell\nnpm install -g jutell\ncd <프로젝트 폴더>\n(jutell(?: use codex)?)\n```/);
+    expect(installBlock, 'expected to find the normal install code block').toBeTruthy();
+    expect(installBlock![1]).toBe('jutell');
+  });
+
+  it('mentions `jutell use codex` only with manual/recovery framing nearby (proximity, not strict word order)', () => {
+    const proximityWindow = 200;
+    const firstUseCommandIndex = startHere.indexOf('jutell use codex');
+    expect(firstUseCommandIndex, 'expected the doc to mention jutell use codex as the manual/recovery path').toBeGreaterThan(-1);
+    const nearby = startHere.slice(Math.max(0, firstUseCommandIndex - proximityWindow), firstUseCommandIndex + proximityWindow);
+    expect(nearby, 'expected 수동/복구 framing within 200 chars of the jutell use codex mention').toMatch(/수동|복구/);
+  });
+
+  it('lists all three connectable agents, not just Codex/OpenCode', () => {
+    for (const provider of AGENT_PROVIDERS.filter((p) => p.status !== 'planned')) {
+      expect(startHere).toContain(provider.label);
     }
   });
 });

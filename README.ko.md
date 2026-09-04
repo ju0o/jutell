@@ -19,8 +19,6 @@ jutell
 
 `jutell`을 실행하면 컴퓨터에 설치된 Coding Agent(Codex, Claude Code, OpenCode)를 찾아서 연결해도 되는지 한 번만 물어봅니다. 승인하면 바로 연결하고, 별도 화면 없이 원래 쓰던 Codex / Claude Code / OpenCode로 돌아갑니다.
 
-> 이 설명은 GitHub `main`의 현재 동작 기준입니다. 오늘 npm에 공개된 `jutell@1.0.1`은 아직 이전 방식입니다 — Agent 하나를 직접 고르는 안내를 거친 뒤 마지막에 관리자 화면이 열립니다. 정확한 차이는 아래 **[최신 소식](#최신-소식)**을 봐 주세요.
-
 <details>
 <summary>저장소 소스로 직접 설치하기 (기여자용 / 소스 직접 검증)</summary>
 
@@ -30,10 +28,10 @@ jutell
 cd packages/cli
 npm install
 npm pack
-npm install -g ./jutell-1.0.1.tgz
+npm install -g ./jutell-1.1.0.tgz
 ```
 
-`1.0.1`은 이 저장소의 현재 소스 버전이며, 오늘 npm에 공개된 `jutell@1.0.1`과 같습니다.
+`1.1.0`은 이 저장소의 현재 소스 버전이며, 다음 npm 릴리스가 그대로 배포할 빌드입니다. 현재 공개 상태는 아래 **[최신 소식](#최신-소식)**을 봐 주세요.
 </details>
 
 ## JuTell이 실제로 하는 일
@@ -183,16 +181,17 @@ Node로 만들어졌다는 것만으로 모든 환경이 검증됐다고 말하�
 
 ## 최신 소식
 
-**npm에 공개된 버전 — `jutell@1.0.1`**
-`npm install -g jutell`로 설치한 뒤 `jutell`을 실행하면, Agent 하나를 직접 고르고 보고 방식을 고르는 안내를 거친 뒤 설정이 끝나면 관리자 화면이 열립니다.
+**`jutell@1.1.0` — 릴리스 준비 완료, 아직 npm에 공개되지 않음**
 
-**GitHub `main` — 아직 npm에 공개되지 않음**
-이제 `jutell`만 실행해도 컴퓨터에 설치된 Agent를 모두 찾아 한 번의 승인으로 전부 연결하고, 별도 화면 없이 터미널로 바로 돌아갑니다. 이 README 앞부분에서 설명한 흐름이 바로 이것입니다. 오늘 npm으로 설치했다면, 이 흐름이 다음 릴리스로 공개되기 전까지는 위의 안내 방식 그대로 보입니다.
+- 이제 `jutell`만 실행해도 컴퓨터에 설치된 Agent를 모두 찾아 한 번의 승인으로 전부 연결하고, 별도 화면 없이 터미널로 바로 돌아갑니다. 처음 실행할 때 Agent별 설정 마법사가 필요 없습니다.
+- 설정이 끝나면 관리자 화면이 자동으로 열리지 않고 터미널로 바로 돌아갑니다 (`jutell dashboard`로 언제든 직접 열 수 있습니다).
+- 이 README와 README.ko.md를 영어·한국어 모두를 위한 글로벌 문서로 다시 썼습니다.
 
 전체 버전 기록은 [GitHub Releases](https://github.com/ju0o/jutell/releases)에서 확인할 수 있습니다.
 
 ## 문서
 
+- [Changelog](CHANGELOG.md)
 - [시작하기](docs/START_HERE.md)
 - [CLI 설치 안내](docs/CLI_INSTALLATION.md)
 - [제품 범위](docs/PRODUCT_SCOPE.md)

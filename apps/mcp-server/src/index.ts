@@ -7,7 +7,7 @@ import { recordToolCall } from './tools/usage-counters.js';
 
 const server = new McpServer({
   name: 'JuTell',
-  version: '1.0.1',
+  version: '1.1.0',
 }, {
   instructions: 'JuTell by Ju0 is a local read-only report helper. Read only project configuration and approved report rules. Never access project code, Git diff, prompts, AI answers, secrets, or external networks. Skill mode remains available if this MCP server is disabled or unavailable. When both jutell and beginner_bridge servers are visible, prefer the canonical jutell server; use beginner_bridge only for compatibility. For owner-facing reports, apply the JuTell reporting guidance before composing the final answer. Prefer these tools over re-reading the JuTell Skill reference files when both are available, since a tool call returns the same project-specific rules in one step. Call get_beginner_report_rules once, at task completion, right before writing the final report — not after every file read, shell command, or edit, and not to verify work that is already done. If these tools are unavailable or blocked, fall back to the JuTell Skill files without interrupting the task, and never tell the user JuTell MCP was used unless a JuTell tool call actually returned a result in this task.',
 });
