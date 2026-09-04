@@ -5,18 +5,20 @@ import { execFile, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { stdin as realStdin } from 'node:process';
 import { afterEach, describe, expect, it } from 'vitest';
-import { offerAutoConnect, providerRuntimeStatuses } from '../src/commands/default.js';
-import { getStatus } from '../src/commands/status.js';
+import { defaultCommand } from '../src/commands/default.js';
 import { resolveScope } from '../src/config/paths.js';
 import type { CliChoice, CliIo, CliOptions } from '../src/types.js';
 
-// JUTELL-V1.X-AUTO-SETUP-FOUNDATION-01
+// JUTELL-V1.X-AUTO-SETUP-FOUNDATION-01 / -01B
 //
 // Bare `jutell` must auto-detect installed Coding Agent providers (reusing
 // the same detection/registration JuTell already uses for `jutell use
 // <provider>` - no second detection or registration system), offer to
 // connect them with a single confirmation, and never hang or silently
-// mutate configuration when run non-interactively.
+// mutate configuration when run non-interactively. After a successful
+// connect it must print a concise summary and return cleanly to the shell -
+// it must NOT auto-launch the local admin dashboard (01B); `jutell
+// dashboard` remains the explicit, unchanged, opt-in way to do that.
 
 const execFileAsync = promisify(execFile);
 const packageRoot = path.resolve(import.meta.dirname, '..');
@@ -52,11 +54,13 @@ async function runCli(args: string[], cwd: string, env: NodeJS.ProcessEnv) {
 }
 
 /** Runs bare `jutell` non-interactively (spawned child stdin is never a TTY) and resolves
- * once the process exits on its own - used to prove it does NOT fall through to the
- * dashboard's server (which blocks until SIGINT) when there is nothing to connect or
- * nothing was confirmed (e.g. no providers found, a conflict, or a declined/non-interactive
- * run). Do not use this for a run that actually connects something - see runAndKill. */
-async function runToExit(args: string[], cwd: string, env: NodeJS.ProcessEnv, timeoutMs = 8000) {
+ * once the process exits on its own. Since JUTELL-V1.X-AUTO-SETUP-FOUNDATION-01B this is
+ * true for every bare-`jutell` outcome, including a successful connect - the dashboard is
+ * no longer auto-launched from this entry point, so nothing should ever need killing here
+ * (a timeout firing is itself evidence of a regression back to the old blocking behavior).
+ * `jutell dashboard` (tested separately, unchanged, in cli.test.ts) still blocks - that is
+ * its own explicit, opt-in command, not exercised through this helper. */
+async function runToExit(args: string[], cwd: string, env: NodeJS.ProcessEnv, timeoutMs = 10000) {
   const child = spawn(process.execPath, [entry, ...args], { cwd, env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
   let stdout = '';
   let stderr = '';
@@ -70,47 +74,31 @@ async function runToExit(args: string[], cwd: string, env: NodeJS.ProcessEnv, ti
   return { stdout, stderr, exitCode };
 }
 
-/** Runs bare `jutell` for a run that DOES successfully connect something, and so - by
- * design, matching the pre-existing "처음 jutell 한 번으로 기본 연결과 대시보드를 준비한다"
- * behavior in cli.test.ts - falls through to dashboardCommand()'s local admin server, which
- * blocks until SIGINT. Waits for the readyMessage() marker text to appear in stdout (proof
- * the connect step itself finished), then kills the process, exactly like that existing
- * test does for the single-provider case. */
-async function runAndKill(args: string[], cwd: string, env: NodeJS.ProcessEnv, timeoutMs = 15000) {
-  const child = spawn(process.execPath, [entry, ...args], { cwd, env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
-  let stdout = '';
-  try {
-    await new Promise<void>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error(`'JuTell 준비 완료' did not appear within ${timeoutMs}ms`)), timeoutMs);
-      child.stdout.on('data', (chunk) => {
-        stdout += chunk.toString();
-        if (stdout.includes('JuTell 준비 완료')) { clearTimeout(timer); resolve(); }
-      });
-      child.once('exit', () => { clearTimeout(timer); resolve(); });
-      child.once('error', reject);
-    });
-  } finally {
-    child.kill();
-    if (child.exitCode === null) await new Promise<void>((resolve) => child.once('exit', () => resolve()));
-  }
-  return { stdout };
-}
-
 afterEach(async () => {
   for (const root of temporaryRoots.splice(0)) await fs.rm(root, { recursive: true, force: true });
 });
 
 describe('bare `jutell` - auto-detect and connect', () => {
-  it('1. detects all 3 supported providers and connects all of them (--yes)', async () => {
+  it('1. detects all 3 supported providers, connects all of them (--yes), and returns to the shell without launching the dashboard', async () => {
     const { root, project, home, env } = await fixture();
     const path3 = await restrictedPath(root, ['codex', 'opencode', 'claude']);
-    const result = await runAndKill(['--yes', '--no-open'], project, { ...env, PATH: path3 });
+    const result = await runToExit(['--yes'], project, { ...env, PATH: path3 });
+    expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('찾은 Coding Agent');
     expect(result.stdout).toContain('Codex');
     expect(result.stdout).toContain('OpenCode');
     expect(result.stdout).toContain('Claude Code');
     expect(result.stdout).toContain('JuTell을 연결하는 중');
-    expect(result.stdout).toContain('JuTell 준비 완료');
+    // The concise closing summary (JUTELL-V1.X-AUTO-SETUP-FOUNDATION-01B), not the old
+    // readyMessage()/dashboard-launch text.
+    expect(result.stdout).toContain('JuTell 준비 완료.');
+    expect(result.stdout).toContain('✓ Codex 연결됨');
+    expect(result.stdout).toContain('✓ OpenCode 연결됨');
+    expect(result.stdout).toContain('✓ Claude Code 연결됨');
+    expect(result.stdout).toContain('새 Coding Agent 세션을 열고');
+    // No dashboard: no printed URL, and no local-admin marker file was ever written.
+    expect(result.stdout).not.toMatch(/https?:\/\/127\.0\.0\.1:\d+/);
+    await expect(fs.stat(path.join(project, '.jutell-local', 'dashboard.json'))).rejects.toThrow();
     expect(await fs.readFile(path.join(home, '.codex', 'config.toml'), 'utf8')).toContain('enabled = true');
     // opencode.json is JSONC (allows comments, see the managed-block markers) - JSON.parse
     // rejects it, so check the managed block text directly instead of parsing.
@@ -121,13 +109,16 @@ describe('bare `jutell` - auto-detect and connect', () => {
     expect(claudeConfig.projects[project].mcpServers.jutell).toBeTruthy();
   }, 20000);
 
-  it('2. detects only one installed provider and connects only that one (--yes)', async () => {
+  it('2. detects only one installed provider and connects only that one (--yes), no dashboard', async () => {
     const { root, project, home, env } = await fixture();
     const path1 = await restrictedPath(root, ['codex']);
-    const result = await runAndKill(['--yes', '--no-open'], project, { ...env, PATH: path1 });
+    const result = await runToExit(['--yes'], project, { ...env, PATH: path1 });
+    expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain('Codex        찾음');
     expect(result.stdout).toContain('OpenCode     미감지');
     expect(result.stdout).toContain('Claude Code  미감지');
+    expect(result.stdout).toContain('✓ Codex 연결됨');
+    expect(result.stdout).not.toMatch(/https?:\/\/127\.0\.0\.1:\d+/);
     expect(await fs.readFile(path.join(home, '.codex', 'config.toml'), 'utf8')).toContain('enabled = true');
     await expect(fs.stat(path.join(project, 'opencode.json'))).rejects.toThrow();
     await expect(fs.stat(path.join(home, '.claude.json'))).rejects.toThrow();
@@ -170,19 +161,21 @@ describe('bare `jutell` - auto-detect and connect', () => {
       const originalPath = process.env.PATH;
       process.env.PATH = `${bin}${path.delimiter}/usr/bin${path.delimiter}/bin`;
       try {
-        // offerAutoConnect() directly, not defaultCommand() - the latter falls through to
-        // dashboardCommand() on success, which blocks until SIGINT and would hang this
-        // in-process test. offerAutoConnect() is the actual detect/confirm/connect unit;
-        // defaultCommand()'s own dashboard hand-off is exercised via subprocess elsewhere.
-        const statuses = providerRuntimeStatuses(await getStatus(paths));
-        const result = await offerAutoConnect(paths, options, io, statuses);
+        // defaultCommand() directly - safe to call in-process now (01B): a successful
+        // connect no longer falls through to dashboardCommand()'s blocking server, so this
+        // exercises the real bare-`jutell` entry point end to end, not just the inner
+        // detect/confirm/connect unit.
+        const result = await defaultCommand(paths, options, io);
         expect(result).toEqual({ cancelled: false });
       } finally {
         process.env.PATH = originalPath;
       }
       const joined = messages.join('\n');
       expect(joined).toContain('JuTell을 연결하는 중');
+      expect(joined).toContain('JuTell 준비 완료.');
       expect(joined).toContain('✓ Codex 연결됨');
+      expect(joined).not.toMatch(/https?:\/\/127\.0\.0\.1:\d+/);
+      await expect(fs.stat(path.join(project, '.jutell-local', 'dashboard.json'))).rejects.toThrow();
       expect(await fs.readFile(path.join(home, '.codex', 'config.toml'), 'utf8')).toContain('enabled = true');
     } finally {
       if (originalIsTTY) Object.defineProperty(realStdin, 'isTTY', originalIsTTY);
@@ -209,8 +202,7 @@ describe('bare `jutell` - auto-detect and connect', () => {
       const originalPath = process.env.PATH;
       process.env.PATH = `${bin}${path.delimiter}/usr/bin${path.delimiter}/bin`;
       try {
-        const statuses = providerRuntimeStatuses(await getStatus(paths));
-        const result = await offerAutoConnect(paths, options, io, statuses);
+        const result = await defaultCommand(paths, options, io);
         expect(result).toEqual({ cancelled: true });
       } finally {
         process.env.PATH = originalPath;
@@ -227,13 +219,16 @@ describe('bare `jutell` - auto-detect and connect', () => {
     const { root, project, home, env } = await fixture();
     const path3 = await restrictedPath(root, ['codex', 'opencode', 'claude']);
     const envWithPath = { ...env, PATH: path3 };
-    await runAndKill(['--yes', '--no-open'], project, envWithPath);
+    await runToExit(['--yes'], project, envWithPath);
 
     const second = await runToExit([], project, envWithPath);
     expect(second.exitCode).toBe(0);
     expect(second.stdout).toContain('연결됨');
     expect(second.stdout).not.toContain('JuTell을 연결하는 중');
     expect(second.stdout).toContain('jutell --help');
+    // No dashboard on the already-configured path either.
+    expect(second.stdout).not.toMatch(/https?:\/\/127\.0\.0\.1:\d+/);
+    await expect(fs.stat(path.join(project, '.jutell-local', 'dashboard.json'))).rejects.toThrow();
 
     expect((await fs.readFile(path.join(home, '.codex', 'config.toml'), 'utf8')).match(/\[mcp_servers\.jutell\]/g)).toHaveLength(1);
     expect((await fs.readFile(path.join(project, 'AGENTS.md'), 'utf8')).match(/BEGIN JUTELL MANAGED BLOCK/g)).toHaveLength(1);
@@ -262,7 +257,7 @@ describe('bare `jutell` - auto-detect and connect', () => {
     const unrelatedBlock = '[plugins."notion@openai-curated"]\nenabled = true\n';
     await fs.writeFile(path.join(home, '.codex', 'config.toml'), unrelatedBlock, 'utf8');
 
-    await runAndKill(['--yes', '--no-open'], project, { ...env, PATH: path1 });
+    await runToExit(['--yes'], project, { ...env, PATH: path1 });
 
     const finalContent = await fs.readFile(path.join(home, '.codex', 'config.toml'), 'utf8');
     expect(finalContent).toContain(unrelatedBlock.trim());
@@ -312,7 +307,7 @@ describe('bare `jutell` - auto-detect and connect', () => {
     const legacyBlock = '[mcp_servers.beginner_bridge]\ncommand = "node"\nargs = ["/opt/old-jutell/assets/mcp-server/index.js"]\nenabled = true';
     await fs.writeFile(path.join(home, '.codex', 'config.toml'), `${legacyBlock}\n`, 'utf8');
 
-    await runAndKill(['--yes', '--no-open'], project, { ...env, PATH: path1 });
+    await runToExit(['--yes'], project, { ...env, PATH: path1 });
 
     const finalContent = await fs.readFile(path.join(home, '.codex', 'config.toml'), 'utf8');
     expect(finalContent).toContain(legacyBlock);

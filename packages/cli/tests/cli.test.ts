@@ -39,39 +39,28 @@ afterEach(async () => {
 });
 
 describe('Distribution CLI V0.1', () => {
-  it('처음 jutell 한 번으로 기본 연결과 대시보드를 준비한다', async () => {
+  it('처음 jutell 한 번으로 기본 연결을 준비하고 대시보드 없이 셸로 돌아온다', async () => {
+    // JUTELL-V1.X-AUTO-SETUP-FOUNDATION-01B: bare `jutell` no longer auto-launches the
+    // dashboard after a successful first-run connect - it prints a concise summary and the
+    // process exits on its own, so a plain runCli() (which waits for natural completion,
+    // unlike the old spawn+wait-for-URL+kill dance this replaces) is now sufficient.
     const { project, home, env } = await fixture();
-    const child = spawn(process.execPath, [entry, '--yes', '--no-open'], { cwd: project, env, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true });
-    let output = '';
-    const url = await new Promise<string>((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('기본 jutell 대시보드 시작 시간 초과')), 10000);
-      child.stdout.on('data', (chunk) => {
-        output += chunk.toString();
-        const match = output.match(/http:\/\/127\.0\.0\.1:\d+/);
-        if (match) { clearTimeout(timer); resolve(match[0]); }
-      });
-      child.once('error', reject);
-    });
-    try {
-      expect(output).toContain('JuTell 준비 완료');
-      expect(output).toContain('✓ 설정 연결됨');
-      expect(output).toContain('✓ Skill 연결됨');
-      expect(output).toContain('✓ AI Agent 연결 준비 완료');
-      expect(url).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
-      const config = JSON.parse(await fs.readFile(path.join(project, '.jutell.json'), 'utf8'));
-      expect(config.profile).toBe('balanced');
-      expect(config.mcp.enabled).toBe(true);
-      expect(await fs.readFile(path.join(project, 'AGENTS.md'), 'utf8')).toContain('BEGIN JUTELL MANAGED BLOCK');
-      expect(await fs.stat(path.join(project, '.agents', 'skills', 'beginner-bridge', 'SKILL.md'))).toBeTruthy();
-      // Codex MCP registration always lands in the global Codex config
-      // (see codexScopedPaths), never in the project — Codex itself never
-      // reads a project-scoped .codex/config.toml.
-      expect(await fs.readFile(path.join(home, '.codex', 'config.toml'), 'utf8')).toContain('enabled = true');
-      await expect(fs.stat(path.join(project, '.codex', 'config.toml'))).rejects.toThrow();
-    } finally {
-      child.kill();
-      await new Promise<void>((resolve) => child.once('exit', () => resolve()));
-    }
+    const result = await runCli(['--yes'], project, env);
+    expect(result.stdout).toContain('JuTell 준비 완료.');
+    expect(result.stdout).toContain('✓ Codex 연결됨');
+    expect(result.stdout).toContain('새 Coding Agent 세션을 열고');
+    expect(result.stdout).not.toMatch(/https?:\/\/127\.0\.0\.1:\d+/);
+    await expect(fs.stat(path.join(project, '.jutell-local', 'dashboard.json'))).rejects.toThrow();
+    const config = JSON.parse(await fs.readFile(path.join(project, '.jutell.json'), 'utf8'));
+    expect(config.profile).toBe('balanced');
+    expect(config.mcp.enabled).toBe(true);
+    expect(await fs.readFile(path.join(project, 'AGENTS.md'), 'utf8')).toContain('BEGIN JUTELL MANAGED BLOCK');
+    expect(await fs.stat(path.join(project, '.agents', 'skills', 'beginner-bridge', 'SKILL.md'))).toBeTruthy();
+    // Codex MCP registration always lands in the global Codex config
+    // (see codexScopedPaths), never in the project — Codex itself never
+    // reads a project-scoped .codex/config.toml.
+    expect(await fs.readFile(path.join(home, '.codex', 'config.toml'), 'utf8')).toContain('enabled = true');
+    await expect(fs.stat(path.join(project, '.codex', 'config.toml'))).rejects.toThrow();
 
     const statusOnly = await runCli(['--status-only'], project, env);
       expect(statusOnly.stdout).toContain('JuTell 연결 정책: 켜짐');

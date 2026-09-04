@@ -84,6 +84,23 @@ JuTell 준비 완료.
 명령 목록: jutell --help`;
 }
 
+// Printed once, after offerAutoConnect() finishes successfully, instead of auto-launching
+// the dashboard (see JUTELL-V1.X-AUTO-SETUP-FOUNDATION-01B - the user asked to connect,
+// not to open a browser/local-server session; `jutell dashboard` remains the explicit,
+// opt-in way to do that). Lists every currently-connected provider, not just the ones
+// connected in this run, so a partial-catch-up run still shows the full accurate picture.
+function connectedSummaryMessage(statuses: ProviderRuntimeStatus[]) {
+  const connectedLines = statuses.filter((row) => row.connected).map((row) => `✓ ${row.provider.label} 연결됨`);
+  return `JuTell 준비 완료.
+
+${connectedLines.join('\n')}
+
+새 Coding Agent 세션을 열고 평소처럼 사용하세요.
+
+'jutell' — 상태/설정
+'jutell --help' — 명령어 보기`;
+}
+
 /**
  * Multi-provider auto-detect-and-connect for bare `jutell`. Reuses the exact
  * same per-provider detection (via getStatus, which already wraps
@@ -128,7 +145,6 @@ export async function offerAutoConnect(paths: ScopePaths, options: CliOptions, i
   io.write('\nJuTell을 연결하는 중...\n');
   for (const row of offerable) {
     await useCommand(paths, { ...options, yes: true }, io, ['use', row.provider.id]);
-    io.write(`✓ ${row.provider.label} 연결됨\n`);
   }
   if (conflicted.length) {
     io.write(`주의: ${conflicted.map((row) => row.provider.label).join(', ')}에 관리되지 않는 기존 MCP 설정이 있어 자동으로 연결하지 않았습니다. 'jutell use <agent>'로 직접 확인해 주세요.`);
@@ -137,7 +153,7 @@ export async function offerAutoConnect(paths: ScopePaths, options: CliOptions, i
 }
 
 export async function defaultCommand(paths: ScopePaths, options: CliOptions, io: CliIo) {
-  let status = await getStatus(paths);
+  const status = await getStatus(paths);
   const statuses = providerRuntimeStatuses(status);
   const detected = statuses.filter((row) => row.detected);
   const toConnect = detected.filter((row) => !row.connected);
@@ -150,22 +166,28 @@ export async function defaultCommand(paths: ScopePaths, options: CliOptions, io:
   if (toConnect.length > 0) {
     const result = await offerAutoConnect(paths, options, io, statuses);
     if (result.cancelled) return result;
-  } else if (needsRepair(status)) {
+    // Connected - print a concise summary and return to the shell. Does NOT
+    // auto-launch the dashboard (JUTELL-V1.X-AUTO-SETUP-FOUNDATION-01B): the
+    // user asked to connect, not to open a local browser/server session.
+    // `jutell dashboard` remains the explicit, unchanged, opt-in way to do that.
+    io.write(connectedSummaryMessage(providerRuntimeStatuses(await getStatus(paths))));
+    return { cancelled: false };
+  }
+
+  if (needsRepair(status)) {
     io.write('JuTell 연결이 일부 준비되지 않았습니다.\nSkill, AGENTS.md, AI Agent Provider 연결 준비를 안전하게 확인할 수 있습니다.');
     if (!options.yes && !(await io.ask('다시 켜고 관리자 화면을 열까요?', true))) {
       io.write('현재 설정을 그대로 두고 관리자 화면을 엽니다.');
     } else {
       await enableCommand(paths, { ...options, yes: true, oneCommand: true }, io);
     }
-  } else {
-    // Every detected provider is already connected and nothing needs repair -
-    // this is a repeat run, not onboarding. Keep it minimal: no wizard, no
-    // dashboard auto-launch, just a status line and a pointer to --help.
-    io.write(alreadyConfiguredMessage(statuses));
-    return { cancelled: false };
+    io.write(readyMessage(await getStatus(paths)));
+    return dashboardCommand(paths, options, io);
   }
 
-  status = await getStatus(paths);
-  io.write(readyMessage(status));
-  return dashboardCommand(paths, options, io);
+  // Every detected provider is already connected and nothing needs repair -
+  // this is a repeat run, not onboarding. Keep it minimal: no wizard, no
+  // dashboard auto-launch, just a status line and a pointer to --help.
+  io.write(alreadyConfiguredMessage(statuses));
+  return { cancelled: false };
 }
