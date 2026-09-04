@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="540" viewBox="0 0 1200 540" role="img" aria-labelledby="title desc">
+  <title id="title">JuTell trust states and handoff</title>
+  <desc id="desc">Four clearly distinct trust states and an agent to JuTell to next agent handoff flow.</desc>
+  <rect width="1200" height="540" fill="#f6f8fa"/>
+  <text x="70" y="61" fill="#24292f" font-family="Arial, sans-serif" font-size="31" font-weight="700">Trust is not one status</text>
+  <rect x="70" y="100" width="245" height="108" rx="13" fill="#dafbe1" stroke="#1a7f37" stroke-width="2"/><text x="95" y="140" fill="#1a7f37" font-family="Arial, sans-serif" font-size="21" font-weight="700">CONFIRMED</text><text x="95" y="171" fill="#24292f" font-family="Arial, sans-serif" font-size="17">Direct evidence exists.</text>
+  <rect x="335" y="100" width="245" height="108" rx="13" fill="#ddf4ff" stroke="#0969da" stroke-width="2"/><text x="360" y="140" fill="#0969da" font-family="Arial, sans-serif" font-size="21" font-weight="700">EXPECTED</text><text x="360" y="171" fill="#24292f" font-family="Arial, sans-serif" font-size="17">Code suggests this result.</text>
+  <rect x="600" y="100" width="245" height="108" rx="13" fill="#fff8c5" stroke="#9a6700" stroke-width="2"/><text x="625" y="140" fill="#9a6700" font-family="Arial, sans-serif" font-size="21" font-weight="700">NOT CHECKED</text><text x="625" y="171" fill="#24292f" font-family="Arial, sans-serif" font-size="17">No evidence was collected.</text>
+  <rect x="865" y="100" width="265" height="108" rx="13" fill="#ffebe9" stroke="#cf222e" stroke-width="2"/><text x="890" y="140" fill="#cf222e" font-family="Arial, sans-serif" font-size="21" font-weight="700">RISK</text><text x="890" y="171" fill="#24292f" font-family="Arial, sans-serif" font-size="17">Impact is assessed separately.</text>
+  <path d="M70 252h1060" stroke="#d0d7de" stroke-width="2"/>
+  <text x="70" y="298" fill="#24292f" font-family="Arial, sans-serif" font-size="27" font-weight="700">A handoff preserves the useful context</text>
+  <rect x="90" y="341" width="220" height="110" rx="14" fill="#ffffff" stroke="#d0d7de" stroke-width="2"/><text x="132" y="385" fill="#24292f" font-family="Arial, sans-serif" font-size="23" font-weight="700">Agent A</text><text x="120" y="417" fill="#57606a" font-family="Arial, sans-serif" font-size="17">finishes a task</text>
+  <path d="M330 396h95" stroke="#0969da" stroke-width="5"/><path d="M417 380l26 16-26 16" fill="#0969da"/>
+  <rect x="455" y="325" width="290" height="142" rx="14" fill="#ddf4ff" stroke="#0969da" stroke-width="2"/><text x="532" y="366" fill="#0969da" font-family="Arial, sans-serif" font-size="25" font-weight="700">JuTell</text><text x="485" y="402" fill="#24292f" font-family="Arial, sans-serif" font-size="17">done · evidence · unknowns</text><text x="485" y="430" fill="#24292f" font-family="Arial, sans-serif" font-size="17">risk · next action</text>
+  <path d="M765 396h95" stroke="#0969da" stroke-width="5"/><path d="M852 380l26 16-26 16" fill="#0969da"/>
+  <rect x="890" y="341" width="220" height="110" rx="14" fill="#ffffff" stroke="#d0d7de" stroke-width="2"/><text x="932" y="385" fill="#24292f" font-family="Arial, sans-serif" font-size="23" font-weight="700">Agent B</text><text x="914" y="417" fill="#57606a" font-family="Arial, sans-serif" font-size="17">starts with context</text>
+  <text x="70" y="505" fill="#57606a" font-family="Arial, sans-serif" font-size="17">A handoff is a copyable summary of what is known and what remains; it does not claim a new agent has verified it.</text>
+</svg>

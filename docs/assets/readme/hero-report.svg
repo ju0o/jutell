@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="540" viewBox="0 0 1200 540" role="img" aria-labelledby="title desc">
+  <title id="title">JuTell turns an agent result into a readable report</title>
+  <desc id="desc">A sanitized terminal-style JuTell report with change, proof, unknowns, and the next action.</desc>
+  <rect width="1200" height="540" fill="#f6f8fa"/>
+  <rect x="70" y="48" width="1060" height="444" rx="16" fill="#ffffff" stroke="#24292f" stroke-width="2"/>
+  <path d="M70 112h1060" stroke="#d0d7de" stroke-width="2"/>
+  <circle cx="104" cy="80" r="9" fill="#cf222e"/><circle cx="134" cy="80" r="9" fill="#bf8700"/><circle cx="164" cy="80" r="9" fill="#1a7f37"/>
+  <text x="200" y="87" fill="#57606a" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="19">agent task complete → JuTell report</text>
+  <text x="112" y="158" fill="#0969da" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22">JuTell report</text>
+  <text x="112" y="204" fill="#24292f" font-family="Arial, sans-serif" font-size="27" font-weight="700">What changed?</text>
+  <text x="112" y="238" fill="#57606a" font-family="Arial, sans-serif" font-size="23">Empty searches now stop before a request is sent.</text>
+  <rect x="112" y="271" width="292" height="49" rx="9" fill="#dafbe1"/><text x="134" y="303" fill="#1a7f37" font-family="Arial, sans-serif" font-size="20" font-weight="700">✓ Confirmed — file + test</text>
+  <rect x="426" y="271" width="272" height="49" rx="9" fill="#fff8c5"/><text x="448" y="303" fill="#9a6700" font-family="Arial, sans-serif" font-size="20" font-weight="700">? Not yet checked</text>
+  <text x="112" y="371" fill="#24292f" font-family="Arial, sans-serif" font-size="25" font-weight="700">Important code</text>
+  <rect x="112" y="392" width="485" height="58" rx="8" fill="#f6f8fa" stroke="#d0d7de"/>
+  <text x="135" y="429" fill="#cf222e" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22">+ if (!query.trim()) return;</text>
+  <text x="643" y="371" fill="#24292f" font-family="Arial, sans-serif" font-size="25" font-weight="700">Next action</text>
+  <text x="643" y="408" fill="#57606a" font-family="Arial, sans-serif" font-size="22">Try an empty search in the browser.</text>
+  <text x="112" y="475" fill="#57606a" font-family="Arial, sans-serif" font-size="17">Sanitized report-format example — no project, user, or session data.</text>
+</svg>

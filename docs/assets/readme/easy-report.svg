@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">A sanitized easy JuTell report</title>
+  <desc id="desc">A readable report shows a change summary, user impact, important code, evidence, unknowns, risk, and next action.</desc>
+  <rect width="1200" height="620" fill="#f6f8fa"/>
+  <rect x="130" y="42" width="940" height="536" rx="14" fill="#fff" stroke="#24292f" stroke-width="2"/>
+  <text x="175" y="94" fill="#24292f" font-family="Arial, sans-serif" font-size="29" font-weight="700">JuTell report — search validation</text>
+  <path d="M175 116h850" stroke="#d0d7de" stroke-width="2"/>
+  <text x="175" y="159" fill="#0969da" font-family="Arial, sans-serif" font-size="20" font-weight="700">WHAT CHANGED</text><text x="175" y="190" fill="#24292f" font-family="Arial, sans-serif" font-size="20">An empty search no longer sends a request.</text>
+  <text x="175" y="234" fill="#0969da" font-family="Arial, sans-serif" font-size="20" font-weight="700">USER IMPACT</text><text x="175" y="265" fill="#24292f" font-family="Arial, sans-serif" font-size="20">Avoids an unnecessary error screen for blank input.</text>
+  <text x="175" y="309" fill="#0969da" font-family="Arial, sans-serif" font-size="20" font-weight="700">IMPORTANT CODE</text><rect x="175" y="326" width="440" height="47" rx="7" fill="#f6f8fa" stroke="#d0d7de"/><text x="195" y="357" fill="#cf222e" font-family="ui-monospace, monospace" font-size="19">+ if (!query.trim()) return;</text>
+  <rect x="665" y="137" width="315" height="74" rx="10" fill="#dafbe1"/><text x="688" y="168" fill="#1a7f37" font-family="Arial, sans-serif" font-size="19" font-weight="700">CONFIRMED</text><text x="688" y="195" fill="#24292f" font-family="Arial, sans-serif" font-size="17">File and test were checked.</text>
+  <rect x="665" y="228" width="315" height="74" rx="10" fill="#fff8c5"/><text x="688" y="259" fill="#9a6700" font-family="Arial, sans-serif" font-size="19" font-weight="700">NOT YET CHECKED</text><text x="688" y="286" fill="#24292f" font-family="Arial, sans-serif" font-size="17">Browser behavior was not run.</text>
+  <rect x="665" y="319" width="315" height="74" rx="10" fill="#ffebe9"/><text x="688" y="350" fill="#cf222e" font-family="Arial, sans-serif" font-size="19" font-weight="700">RISK: LOW</text><text x="688" y="377" fill="#24292f" font-family="Arial, sans-serif" font-size="17">Limited to search submission.</text>
+  <rect x="175" y="424" width="805" height="100" rx="10" fill="#ddf4ff" stroke="#0969da"/><text x="200" y="460" fill="#0969da" font-family="Arial, sans-serif" font-size="20" font-weight="700">NEXT ACTION</text><text x="200" y="494" fill="#24292f" font-family="Arial, sans-serif" font-size="20">Try a blank search once in the browser before approving.</text>
+  <text x="175" y="552" fill="#57606a" font-family="Arial, sans-serif" font-size="16">Sanitized illustrative data, structured to match JuTell's public reporting rules.</text>
+</svg>

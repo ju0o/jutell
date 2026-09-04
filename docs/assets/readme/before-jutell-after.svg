@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="470" viewBox="0 0 1200 470" role="img" aria-labelledby="title desc">
+  <title id="title">Before, JuTell, and after</title>
+  <desc id="desc">An agent's raw technical result is transformed by JuTell into a readable report that enables a decision.</desc>
+  <rect width="1200" height="470" fill="#f6f8fa"/>
+  <text x="70" y="62" fill="#24292f" font-family="Arial, sans-serif" font-size="31" font-weight="700">From “what did it say?” to “what should I do?”</text>
+  <rect x="70" y="105" width="310" height="285" rx="14" fill="#ffffff" stroke="#d0d7de" stroke-width="2"/>
+  <text x="100" y="150" fill="#cf222e" font-family="Arial, sans-serif" font-size="21" font-weight="700">WITHOUT JUTELL</text>
+  <text x="100" y="195" fill="#24292f" font-family="ui-monospace, monospace" font-size="17">Updated auth middleware</text><text x="100" y="222" fill="#24292f" font-family="ui-monospace, monospace" font-size="17">and normalized provider</text><text x="100" y="249" fill="#24292f" font-family="ui-monospace, monospace" font-size="17">runtime resolution...</text>
+  <text x="100" y="316" fill="#57606a" font-family="Arial, sans-serif" font-size="19">What changed for me?</text><text x="100" y="346" fill="#57606a" font-family="Arial, sans-serif" font-size="19">Was it actually checked?</text>
+  <path d="M408 246h105" stroke="#0969da" stroke-width="5"/><path d="M505 230l26 16-26 16" fill="#0969da"/>
+  <rect x="545" y="105" width="210" height="285" rx="14" fill="#ddf4ff" stroke="#0969da" stroke-width="2"/>
+  <text x="585" y="160" fill="#0969da" font-family="Arial, sans-serif" font-size="27" font-weight="700">JUTELL</text>
+  <text x="575" y="208" fill="#24292f" font-family="Arial, sans-serif" font-size="19">explains</text><text x="575" y="238" fill="#24292f" font-family="Arial, sans-serif" font-size="19">separates proof</text><text x="575" y="268" fill="#24292f" font-family="Arial, sans-serif" font-size="19">names unknowns</text><text x="575" y="298" fill="#24292f" font-family="Arial, sans-serif" font-size="19">hands off context</text>
+  <path d="M783 246h105" stroke="#0969da" stroke-width="5"/><path d="M880 230l26 16-26 16" fill="#0969da"/>
+  <rect x="920" y="105" width="210" height="285" rx="14" fill="#ffffff" stroke="#1a7f37" stroke-width="2"/>
+  <text x="950" y="150" fill="#1a7f37" font-family="Arial, sans-serif" font-size="21" font-weight="700">WITH JUTELL</text>
+  <text x="950" y="199" fill="#24292f" font-family="Arial, sans-serif" font-size="18" font-weight="700">• What changed</text><text x="950" y="234" fill="#24292f" font-family="Arial, sans-serif" font-size="18" font-weight="700">• User impact</text><text x="950" y="269" fill="#24292f" font-family="Arial, sans-serif" font-size="18" font-weight="700">• What is proven</text><text x="950" y="304" fill="#24292f" font-family="Arial, sans-serif" font-size="18" font-weight="700">• What is unknown</text><text x="950" y="339" fill="#24292f" font-family="Arial, sans-serif" font-size="18" font-weight="700">• Next action</text>
+  <text x="70" y="435" fill="#57606a" font-family="Arial, sans-serif" font-size="17">JuTell is a reporting layer beside your coding agent, not a replacement agent or a graphical dashboard.</text>
+</svg>
