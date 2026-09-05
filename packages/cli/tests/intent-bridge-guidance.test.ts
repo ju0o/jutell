@@ -137,6 +137,163 @@ describe('Auto Invocation completion behavior remains intact (I)', () => {
   });
 });
 
+// JUTELL-V2.1-CLARIFICATION-QUALITY-01: guards the V2.1 clarification-quality
+// refinement on top of the V2.0 minimum loop above - triage unresolved items
+// before ever asking, allow a legitimate zero-question path, cap ASK_USER at
+// one question chosen by product impact (not by technical difficulty or list
+// order), replace the generic closing confirmation with the decision question
+// itself, and forbid re-asking the same choice in different words.
+
+describe('AGENT_CHECK is resolved before ASK_USER is considered (A)', () => {
+  it('names AGENT_CHECK as a repository/code/environment fact-finding step the Agent does before building a question', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/질문을 만들기 전에, Agent가 스스로 확인할 수 있는 사실은 먼저 확인한다/);
+  });
+
+  it('sequences AGENT_CHECK before the ASK_USER question in both the trigger list and the zero-question flow', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    const triageIndex = skill.indexOf('AGENT_CHECK — 먼저 저장소에서 확인한다');
+    const oneQuestionIndex = skill.indexOf('### 질문은 최대 하나');
+    expect(triageIndex).toBeGreaterThan(-1);
+    expect(oneQuestionIndex).toBeGreaterThan(triageIndex);
+
+    const flowIndex = skill.indexOf('### 질문 없이 진행하는 경로');
+    const checkStepIndex = skill.indexOf('Agent가 확인 가능한 사실(AGENT_CHECK)을 먼저 확인한다');
+    expect(checkStepIndex).toBeGreaterThan(flowIndex);
+  });
+});
+
+describe('Zero-question path is explicitly allowed (B)', () => {
+  it('states plainly that Intent Bridge does not always require a user question', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/Intent Bridge가 항상 사용자 질문을 요구하지는 않는다/);
+  });
+
+  it('allows proceeding without a question when only SAFE_INFERENCE / NON_BLOCKING_UNKNOWN remain, and forbids the generic closing question in that case', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/남은 것이 SAFE_INFERENCE나 NON_BLOCKING_UNKNOWN뿐이고 실제 BLOCKING_UNKNOWN이 남지 않으면/);
+    expect(skill).toMatch(/판단할 실제 사용자 결정이 남아 있지 않으므로 "이대로 진행해도 될까요\?" 같은 형식적인 확인 질문도 만들지 않는다/);
+  });
+});
+
+describe('Maximum one user question (C)', () => {
+  it('caps ASK_USER at one question and requires removing AGENT_CHECK/SAFE_INFERENCE/NON_BLOCKING_UNKNOWN items before choosing it', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/ASK_USER가 필요하면 질문은 최대 하나다/);
+    expect(skill).toMatch(/질문을 고르기 전에 다음을 모두 제외한다/);
+  });
+
+  it('picks the item with the largest divergence from what the user plausibly intended, not the most technical, hardest, or first-listed item', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/사용자가 실제로 원했을 것과 가장 크게 달라지는 항목 하나만 고른다/);
+    expect(skill).toMatch(/가장 기술적인 항목/);
+    expect(skill).toMatch(/구현이 가장 어려운 항목/);
+    expect(skill).toMatch(/목록에서 첫 번째로 나온 항목/);
+    expect(skill).toMatch(/질문의 가치가 구현 편의보다 우선한다/);
+  });
+
+  it('forbids a scoring system, confidence percentages, or a question-ranking engine', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/점수판, confidence 퍼센트, 질문 순위를 매기는 엔진을 따로 만들지 않는다/);
+  });
+});
+
+describe('The specific decision question replaces the generic closing confirmation (D)', () => {
+  it('no longer ends the fixed template with a generic "proceed as-is?" line', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    const templateStart = skill.indexOf('제가 이렇게 이해했어요.');
+    const templateEnd = skill.indexOf('```', templateStart);
+    expect(templateStart).toBeGreaterThan(-1);
+    const template = skill.slice(templateStart, templateEnd);
+    expect(template).not.toMatch(/이대로 진행해도 될까요\?/);
+  });
+
+  it('states that when a real user decision remains, the closing sentence itself is that decision question', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/그 결정을 묻는 문장 하나만 덧붙인다. 이 문장 자체가 질문이다/);
+    expect(skill).toMatch(/실제 사용자 결정이 남아 있지 않으면 이 문장을 만들지 않는다/);
+  });
+});
+
+describe('Duplicate equivalent confirmation is forbidden (E)', () => {
+  it('forbids appending a generic confirmation after, or instead of, the one decision question', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/일반적인 확인 문구를 결정 질문 대신, 또는 결정 질문에 이어 덧붙이지 않는다/);
+  });
+
+  it('forbids re-asking the same choice in different words after the one question is asked', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/질문 하나를 물은 뒤에는 같은 내용을 다른 말로 다시 확인하지 않는다/);
+    expect(skill).toMatch(/같은 선택을 다른 표현으로 두 번 묻는 형태를 만들지 않는다/);
+  });
+});
+
+describe('Technical repository facts must not be asked of the user when inspectable (F)', () => {
+  it('gives the CSS-framework and component-location questions as bad examples the Agent should check instead of asking', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toContain('어떤 CSS 프레임워크를 쓰고 계신가요?');
+    expect(skill).toContain('로그인 버튼이 있는 컴포넌트가 어디인가요?');
+    expect(skill).toMatch(/사용자는 저장소 조회 도구가 아니다/);
+  });
+
+  it('lists concrete inspectable facts the Agent checks itself before ever asking', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    for (const fact of ['현재 사용 중인 framework', '파일·컴포넌트 위치', '현재 화면 구조', '기존 스타일', '기존 입력 필드', '현재 동작', '테스트 framework', '기존 반응형 처리 방식']) {
+      expect(skill, `expected AGENT_CHECK examples to include "${fact}"`).toContain(fact);
+    }
+  });
+});
+
+describe('SAFE_INFERENCE stays labeled as inference (G)', () => {
+  it('requires SAFE_INFERENCE to be reversible, non-constraining, and still visibly labeled as inference', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/되돌릴 수 있고 결과를 크게 제한하지 않는, 위험이 낮은 추론/);
+    expect(skill).toMatch(/이때도 필요한 곳에는 추론이라는 표시를 남긴다/);
+  });
+
+  it('forbids silently promoting a safe inference to user intent', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/SAFE_INFERENCE를 조용히 사용자 의도로 승격하지 않는다/);
+  });
+});
+
+describe('NON_BLOCKING_UNKNOWN does not force a question (H)', () => {
+  it('keeps a safely-unknown item unknown instead of forcing a question, and allows surfacing it in Intent Bridge or the final report', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/작업을 안전하게 진행할 수 있으면, 억지로 질문을 만들지 않는다/);
+    expect(skill).toMatch(/필요하면 Intent Bridge의 "아직 정하지 않은 것" 항목이나 최종 보고서에 남긴다/);
+  });
+});
+
+describe('BLOCKING_UNKNOWN may require ASK_USER (I)', () => {
+  it('names guessing-could-be-materially-wrong as the condition that makes an unknown eligible for ASK_USER', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/추측이 실제로 잘못된 제품 결과로 이어질 수 있으면 BLOCKING_UNKNOWN이 되고, ASK_USER 대상이 될 수 있다/);
+  });
+
+  it('gives the behavior-change, field-removal, payment-flow, and polish-vs-redesign examples without over-generalizing them', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    for (const example of ['기존 동작이 실제로 바뀔 수 있는지', '기존 필드가 실제로 삭제될 수 있는지', '결제 흐름 요구사항이 실제로 바뀔 수 있는지', '가벼운 정리인지, 전체적인 느낌을 바꾸는 재설계인지']) {
+      expect(skill, `expected BLOCKING_UNKNOWN examples to include "${example}"`).toContain(example);
+    }
+    expect(skill).toMatch(/이 예시를 다른 상황까지 과도하게 일반화하지 않는다/);
+  });
+});
+
+describe('Risk-adjacent requests lean toward ASK_USER without a new risk system', () => {
+  it('reuses the existing risk-level-guide vocabulary for payment/auth/data-loss areas', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/`references\/risk-level-guide\.md`의 위험 어휘를 그대로 재사용한다/);
+    expect(skill).toContain('결제, 로그인과 인증·권한, 데이터베이스 구조나 데이터 손실');
+  });
+
+  it('does not force every payment/auth/data request to ask, and keeps the same two-condition rule', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/결제·인증·데이터 관련 요청이라는 이유만으로 모든 요청에 자동으로 질문하지 않는다/);
+    expect(skill).toMatch(/새로운 위험 분류 체계를 따로 만들지 않는다/);
+  });
+});
+
 describe('Intent Bridge stays short and reuses existing vocabulary, not a new parallel system', () => {
   it('points to templates/request-builder/ for optional vocabulary instead of duplicating all 8 steps inline', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
