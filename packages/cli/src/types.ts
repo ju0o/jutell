@@ -119,6 +119,8 @@ export type AssetPaths = {
   localAdminServer: string;
   defaultConfig: string;
   version: string;
+  /** JUTELL-V2.3-CODEX-DETERMINISTIC-COMPLETION-GUARD-PROTOTYPE-01: the Codex Stop-hook completion guard script. */
+  codexCompletionGuardStopHook: string;
 };
 
 export type FileSnapshot = { file: string; existed: boolean; content?: string };
