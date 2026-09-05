@@ -15,12 +15,18 @@ export function packageRoot() {
     localAdminServer: path.join(root, 'local-admin-server.js'),
     defaultConfig: path.join(root, 'default-config.json'),
     version: path.join(root, 'version.json'),
+    codexCompletionGuardStopHook: path.join(root, 'codex-hooks', 'completion-guard-stop.mjs'),
   };
 }
 
 export function codexHome() {
   const override = process.env.CODEX_HOME;
   return path.resolve(override && override.trim() ? override : path.join(userHome(), '.codex'));
+}
+
+/** JUTELL-V2.3-CODEX-DETERMINISTIC-COMPLETION-GUARD-PROTOTYPE-01: Codex's global hook registry. */
+export function codexHooksJsonPath() {
+  return path.join(codexHome(), 'hooks.json');
 }
 
 export function opencodeConfigDir() {

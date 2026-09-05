@@ -36,6 +36,16 @@ await copy(path.join(repoRoot, 'apps', 'mcp-server', 'dist'), path.join(assetsRo
 await copy(path.join(repoRoot, 'apps', 'local-admin', 'dist'), path.join(assetsRoot, 'local-admin'));
 await copy(path.join(repoRoot, 'templates', 'request-builder'), path.join(assetsRoot, 'templates', 'request-builder'));
 
+// JUTELL-V2.3-CODEX-DETERMINISTIC-COMPLETION-GUARD-PROTOTYPE-01: a plain, dependency-free
+// script (not compiled from TS) — copied verbatim like `skill`/`templates` above, not
+// bundled. Must stay executable: Codex registers hooks.json `command` directly against this
+// file's path (no separate `args`), so it needs its own shebang + exec bit to run at all.
+await copy(
+  path.join(packageRoot, 'src', 'codex-hooks', 'asset', 'completion-guard-stop.mjs'),
+  path.join(assetsRoot, 'codex-hooks', 'completion-guard-stop.mjs'),
+);
+await fs.chmod(path.join(assetsRoot, 'codex-hooks', 'completion-guard-stop.mjs'), 0o755);
+
 await build({
   entryPoints: [path.join(repoRoot, 'apps', 'local-admin', 'server', 'app.ts')],
   outfile: path.join(assetsRoot, 'local-admin-server.js'),
