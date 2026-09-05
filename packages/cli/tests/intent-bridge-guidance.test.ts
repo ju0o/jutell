@@ -14,6 +14,7 @@ import { ensureJuTellAgentsBlock } from '../src/installer/agents.js';
 const repoRoot = path.resolve(import.meta.dirname, '..', '..', '..');
 const skillFile = path.join(repoRoot, '.agents', 'skills', 'beginner-bridge', 'SKILL.md');
 const mcpIndexFile = path.join(repoRoot, 'apps', 'mcp-server', 'src', 'index.ts');
+const reportFormatFile = path.join(repoRoot, '.agents', 'skills', 'beginner-bridge', 'references', 'report-format.md');
 
 const temporaryRoots: string[] = [];
 afterEach(async () => {
@@ -310,5 +311,188 @@ describe('Intent Bridge stays short and reuses existing vocabulary, not a new pa
   it('forbids translating plain user speech into developer jargon', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
     expect(skill).toMatch(/사용자의 평소 말투를 개발자 용어로 바꿔 쓰지 않는다/);
+  });
+});
+
+// JUTELL-V2.2-MINIMUM-SCOPE-GUARDRAIL-01: guards the V2.2 scope guardrail
+// built on top of V2.0's understanding-check and V2.1's clarification-quality
+// triage above - what the Agent may change, what it must leave alone, and
+// what supporting edits are legitimate versus scope creep. Reuses existing
+// vocabulary (건드리면 안 되는 것 / 유지할 것 / 범위 밖) rather than
+// inventing a parallel system, and folds every internal category into the
+// existing epistemic model instead of adding a sixth one.
+
+describe('DO_NOT_CHANGE reuses existing vocabulary (A)', () => {
+  it('names 건드리지 말 것 as an Intent Bridge field, distinct from 유지할 것', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toContain('건드리지 말 것 (있을 때만)');
+    expect(skill).toMatch(/사용자가 말했거나 요청 자체로 명백히 손대면 안 되는 부분/);
+  });
+
+  it('reuses the exact "색상은 건드리지 마" / "기능은 건드리지 마" style examples already used elsewhere in the product', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toContain('색상은 건드리지 마');
+    expect(skill).toContain('기능은 건드리지 마');
+  });
+});
+
+describe('PRESERVE_BEHAVIOR stays distinct from file immutability (B)', () => {
+  it('defines 유지할 것 as behavior that must keep working even when its implementing files are edited', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/유지할 것 \(있을 때만\)\n\(파일은 바뀌어도 계속 그대로 동작해야 하는 것\)/);
+  });
+
+  it('explicitly refuses to equate "file touched" with "behavior changed"', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    const count = [...skill.matchAll(/"파일을 건드렸다"를? ?"동작이 바뀌었다"/g)].length;
+    expect(count).toBeGreaterThanOrEqual(1);
+  });
+
+  it('distinguishes DO_NOT_CHANGE from PRESERVE_BEHAVIOR in one explicit sentence', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/건드리지 말 것과 유지할 것은 다르다/);
+  });
+});
+
+describe('No permanent CAN_CHANGE field (C)', () => {
+  it('explicitly declines to add a separate "what may be changed" field, folding it into the existing 원하는 것 field', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/Intent Bridge의 "원하는 것"이 곧 직접 범위이며, 이를 별도의 "무엇을 바꿔도 되는지" 필드로 다시 만들지 않는다/);
+  });
+
+  it('the template itself has no 무엇을 바꿔도 되는지 / CAN_CHANGE field', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    const templateStart = skill.indexOf('제가 이렇게 이해했어요.');
+    const templateEnd = skill.indexOf('```', templateStart);
+    const template = skill.slice(templateStart, templateEnd);
+    expect(template).not.toMatch(/무엇을 바꿔도 되는지|CAN_CHANGE/);
+  });
+});
+
+describe('NECESSARY_SUPPORTING_CHANGE is explicitly allowed without asking (D, E, F)', () => {
+  it('names the four conditions: required for correctness/safety/consistency, same feature area, no new capability, no reversing a decision already made', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/직접 범위를 올바르고 안전하고 일관되게 완료하기 위해 함께 손봐야 하는 부분/);
+    expect(skill).toMatch(/같은 기능 영역 안에 머물고, 요청하지 않은 새 기능을 더하지 않고, 사용자가 이미 정한 것을 뒤집지 않는 한 필수 관련 수정은 따로 허락을 구하지 않고 진행한다/);
+  });
+
+  it('gives the field-removal example (removing a field requires updating its validation/tests/labels)', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/필드 하나를 없애면 그 필드를 참조하던 검증·테스트·안내 문구도 함께 정리한다/);
+  });
+
+  it('explicitly warns against over-constraining a supporting change into a literal one-line edit', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/"한 줄만 고친다"로 좁게 해석해 안전한 완료에 필요한 관련 수정까지 막지 않는다/);
+  });
+
+  it('clarifies that touching/inspecting a do-not-change area for a supporting change is not the same as changing its value', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/이 부분을 열어보거나 필수 관련 수정으로 훑어보는 것과, 실제로 그 값이나 동작을 바꾸는 것을 같은 것으로 보지 않는다 — 후자만 금지한다/);
+  });
+});
+
+describe('Beneficial-but-unauthorized changes never execute silently (G, H)', () => {
+  it('states plainly that a better-seeming improvement outside the direct scope is not performed without authorization', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/Agent가 보기에 더 나은 개선이라도 사용자 허락 없이는 범위를 넓히지 않는다/);
+  });
+
+  it('routes an unauthorized-but-useful improvement to the existing 범위 밖 / next-action-suggestion reporting path instead of a new suggestion engine', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/유용하면 최종 보고서에서 범위 밖 관찰이나 기존 다음 행동 제안\(최대 3개\)으로만 짧게 알리고, 건드리지 않았다는 사실 자체를 숨기지 않는다/);
+    const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
+    expect(reportFormat).toMatch(/조용히 수행하지 않는다.*다음 행동 제안\(6\.6\)이나 범위 밖 관찰로 짧게만 언급/);
+  });
+
+  it('forbids turning the current task into the discovered improvement task', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/지금 요청을 그 개선 작업으로 바꾸지 않는다/);
+  });
+});
+
+describe('A broader scope decision reuses the existing V2.1 ASK_USER rule, not a new engine (I)', () => {
+  it('gates the one allowed scope question on the same two ASK_USER conditions already defined for Intent Bridge', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/이번 요청 없이는 직접 범위를 안전하고 올바르게 완료할 수 없고, 그 답에 따라 결과가 크게 달라지거나 사용자 의도를 어길 위험이 있을 때만 위 Intent Bridge의 ASK_USER 판단 기준을 그대로 적용해 최대 한 번 묻는다/);
+  });
+
+  it('explicitly refuses a separate scope-only question system', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/범위 전용 질문 체계를 새로 만들지 않는다/);
+  });
+});
+
+describe('Inferred scope stays labeled as inference (J)', () => {
+  it('keeps the SAFE_INFERENCE non-promotion rule intact, which scope inferences fall under', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/SAFE_INFERENCE를 조용히 사용자 의도로 승격하지 않는다/);
+  });
+
+  it('shows the two new scope fields only when meaningful, same as every other optional Intent Bridge field', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/사용자가 말했거나 요청 자체로 명백할 때만 이 두 필드를 보여주고, 모든 요청에 습관적으로 채우지 않는다/);
+  });
+});
+
+describe('Precise requests gain no new ceremony from the scope guardrail (K)', () => {
+  it('keeps the precise-request bypass examples and heading order unchanged', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    for (const example of ["README에서 'teh'를 'the'로 고쳐줘", 'list.js의 remove 함수 테스트 하나 추가해줘', "버튼 텍스트를 '로그인'에서 '시작하기'로 바꿔줘"]) {
+      expect(skill).toContain(example);
+    }
+  });
+
+  it('states the direct/supporting/do-not-change/preserve/out-of-scope split applies silently even when Intent Bridge itself is not shown', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/정밀한 요청처럼 Intent Bridge를 보여줄 필요가 없을 때도 조용히 적용되는 내부 판단이다/);
+  });
+});
+
+describe('Unrelated broad refactor is explicitly forbidden (L)', () => {
+  it('names OUT_OF_SCOPE (범위 밖) as anything the current request does not require, regardless of Agent opinion', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/범위 밖: 이번 요청이 요구하지 않는 부분/);
+  });
+});
+
+describe('AGENT_DISCOVERED_CONSTRAINT folds into the existing AGENT_CHECK category, not a sixth one', () => {
+  it('documents a discovered technical constraint (e.g. element IDs the login code depends on) as an AGENT_CHECK usage note', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/AGENT_CHECK에는 필수 관련 수정 범위를 정하는 데 필요한 기술적 제약 확인도 포함된다/);
+    expect(skill).toMatch(/이런 제약은 사용자의 의도가 아니라 Agent가 직접 확인한 구현 사실이며, 새로운 분류를 따로 만들지 않고 이 AGENT_CHECK 안에서 다룬다/);
+  });
+});
+
+describe('V2.0/V2.1 guidance remains intact under the scope guardrail (M)', () => {
+  it('keeps the one-question-max and zero-question-path sections unchanged', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/ASK_USER가 필요하면 질문은 최대 하나다/);
+    expect(skill).toMatch(/Intent Bridge가 항상 사용자 질문을 요구하지는 않는다/);
+  });
+
+  it('keeps the feature gate and one-round-trip cap unchanged', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/`requestClarificationGuide`\s*Feature가 꺼져 있으면 이 절차 전체를 적용하지 않고 평소처럼 바로 진행한다/);
+    expect(skill).toMatch(/이 확인은 요청당 최대 한 번이다/);
+  });
+});
+
+describe('No new MCP tool / UI / storage / policy engine for the scope guardrail (N)', () => {
+  it('keeps the MCP tool count at exactly 5 (unchanged from V2.0/V2.1)', async () => {
+    const src = await fs.readFile(mcpIndexFile, 'utf8');
+    const toolNames = [...src.matchAll(/registerTool\('([a-z_]+)'/g)].map((m) => m[1]);
+    expect(toolNames).toEqual(['get_bridge_status', 'get_active_features', 'get_report_preferences', 'get_beginner_report_rules', 'get_safe_report_requirements']);
+  });
+
+  it('does not mention scope/guardrail concepts inside the MCP server (guidance-only, no runtime policy code)', async () => {
+    const src = await fs.readFile(mcpIndexFile, 'utf8');
+    expect(src).not.toMatch(/DO_NOT_CHANGE|CAN_CHANGE|PRESERVE_BEHAVIOR|scope guardrail/i);
+  });
+
+  it('introduces no new Feature ID - the scope guardrail rides on the existing requestClarificationGuide gate', async () => {
+    const managed = await fs.readFile(path.join(repoRoot, 'packages', 'cli', 'src', 'config', 'managed.ts'), 'utf8');
+    expect(managed).toContain("'requestClarificationGuide'");
+    expect(managed).not.toMatch(/scopeGuardrail|scopeGuidance|DO_NOT_CHANGE/);
   });
 });
