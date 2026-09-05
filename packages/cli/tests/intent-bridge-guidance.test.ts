@@ -15,6 +15,7 @@ const repoRoot = path.resolve(import.meta.dirname, '..', '..', '..');
 const skillFile = path.join(repoRoot, '.agents', 'skills', 'beginner-bridge', 'SKILL.md');
 const mcpIndexFile = path.join(repoRoot, 'apps', 'mcp-server', 'src', 'index.ts');
 const reportFormatFile = path.join(repoRoot, '.agents', 'skills', 'beginner-bridge', 'references', 'report-format.md');
+const reportSpecFile = path.join(repoRoot, 'docs', 'BEGINNER_REPORT_SPEC.md');
 
 const temporaryRoots: string[] = [];
 afterEach(async () => {
@@ -494,5 +495,230 @@ describe('No new MCP tool / UI / storage / policy engine for the scope guardrail
     const managed = await fs.readFile(path.join(repoRoot, 'packages', 'cli', 'src', 'config', 'managed.ts'), 'utf8');
     expect(managed).toContain("'requestClarificationGuide'");
     expect(managed).not.toMatch(/scopeGuardrail|scopeGuidance|DO_NOT_CHANGE/);
+  });
+});
+
+// JUTELL-V2.3-MINIMUM-COMPLETION-CONTRACT-01: guards the V2.3 completion
+// contract built on top of V2.0 (understanding-check), V2.1 (clarification
+// quality) and V2.2 (scope guardrail). Answers: before saying a request is
+// done, has the Agent actually checked that the requested outcome happened
+// and that what was supposed to stay untouched actually stayed untouched?
+// This is connective tissue only - it reuses the existing 확인 완료/추가
+// 확인 필요/일부 확인/작업 보류/범위 밖 report-status model and the existing
+// 통과/일부 통과/실패/실행하지 못함/실행하지 않음/검증 수단 없음 verification-
+// result vocabulary, and adds no parallel completion system.
+
+describe('Requested outcome must be verified before 확인 완료 (A)', () => {
+  it('names 원하는 것 as the first thing verification checks, ahead of any other evidence', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/원하는 것 — 사용자가 실제로 요청한 결과가 실제로 일어났는지/);
+    const orderIndex = skill.indexOf('확인 순서는 다음과 같다');
+    const outcomeIndex = skill.indexOf('원하는 것 — 사용자가 실제로 요청한 결과가 실제로 일어났는지');
+    const regressionIndex = skill.indexOf('위 변경과 직접 관련된 회귀 증거');
+    expect(orderIndex).toBeGreaterThan(-1);
+    expect(outcomeIndex).toBeGreaterThan(orderIndex);
+    expect(regressionIndex).toBeGreaterThan(outcomeIndex);
+  });
+
+  it('lists 이번 요청이 실제로 원하는 결과를 만들어냈는지 as a required-before-확인완료 item in the report spec', async () => {
+    const spec = await fs.readFile(reportSpecFile, 'utf8');
+    expect(spec).toContain('이번 요청이 실제로 원하는 결과(직접 범위)를 만들어냈는지');
+  });
+});
+
+describe('Explicit preserved requirement must be verified before 확인 완료 (B)', () => {
+  it('names 건드리지 말 것·유지할 것 as the second verification priority, reusing V2.2 vocabulary', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/건드리지 말 것·유지할 것 — 사용자가 말했거나 요청 자체로 명백한 보존 조건이 실제로 유지됐는지/);
+  });
+
+  it('lists explicit DO_NOT_CHANGE/PRESERVE_BEHAVIOR as important unconfirmed items in the report spec', async () => {
+    const spec = await fs.readFile(reportSpecFile, 'utf8');
+    expect(spec).toContain('사용자가 명시했거나 요청 자체로 명백한 건드리지 말 것');
+    expect(spec).toContain('사용자가 명시했거나 요청 자체로 명백한 유지할 것');
+  });
+
+  it('does not use 확인 완료 when a required item is unconfirmed, per the completion gate', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/이 중 하나라도 확인하지 못했다면 `확인 완료` 대신 `추가 확인 필요`·`일부 확인`·`작업 보류` 중 이번 요청과 실제로 맞는 상태를 쓴다/);
+  });
+});
+
+describe('User-stated completion condition becomes required evidence (C)', () => {
+  it('folds a user-stated completion condition into the same preserved-requirements check, with the test-pass and mobile-check examples', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/사용자가 이번 요청에서 완료 조건으로 직접 말한 것\(예: "테스트까지 통과하게 해줘", "모바일에서 안 깨지는 것까지 확인해줘"\)도 여기 포함한다/);
+  });
+
+  it('lists a user-stated completion condition in the report spec important-unconfirmed-item extension', async () => {
+    const spec = await fs.readFile(reportSpecFile, 'utf8');
+    expect(spec).toContain('사용자가 이번 요청에서 완료 조건으로 직접 말한 것');
+  });
+});
+
+describe('Existing status model reused - no new completion enum (D)', () => {
+  it('never introduces COMPLETE_VERIFIED / COMPLETE_WITH_UNVERIFIED / INCOMPLETE anywhere in the guidance', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
+    const spec = await fs.readFile(reportSpecFile, 'utf8');
+    for (const text of [skill, reportFormat, spec]) {
+      expect(text).not.toMatch(/COMPLETE_VERIFIED|COMPLETE_WITH_UNVERIFIED|\bINCOMPLETE\b/);
+    }
+  });
+
+  it('states the completion gate explicitly reuses the five existing report statuses and adds none', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/새로운 보고서 상태를 만들지 않고 위 다섯 가지 기존 상태만 사용한다/);
+  });
+
+  it('still lists exactly the five existing report statuses, unchanged, in the format reference and the spec', async () => {
+    const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
+    const spec = await fs.readFile(reportSpecFile, 'utf8');
+    expect(reportFormat).toMatch(/확인 완료, 추가 확인 필요, 일부 확인, 작업 보류, 범위 밖/);
+    for (const status of ['확인 완료', '추가 확인 필요', '일부 확인', '작업 보류', '범위 밖']) {
+      expect(spec, `expected the spec to still list report status "${status}"`).toContain(status);
+    }
+  });
+});
+
+describe('No new visible DONE-WHEN block (E)', () => {
+  it('adds no new DONE WHEN / COMPLETION CONTRACT / ACCEPTANCE CHECKLIST heading (a pre-existing inline mention of template vocabulary is not a new block)', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
+    const spec = await fs.readFile(reportSpecFile, 'utf8');
+    for (const text of [skill, reportFormat, spec]) {
+      expect(text).not.toMatch(/^#{1,3}\s*(DONE WHEN|COMPLETION CONTRACT|ACCEPTANCE CHECKLIST)/im);
+    }
+    // the one legitimate pre-existing mention (template vocabulary reference) still stays inline, not a heading
+    expect(skill).toMatch(/어휘\(WHY·IMPORTANT·DO NOT CHANGE·DONE WHEN 등\)/);
+  });
+
+  it('keeps the completion gate inside the internal execution procedure, not a new report section template', async () => {
+    const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
+    // the report-format templates (## headings) gain no new section for this
+    const sectionHeadings = [...reportFormat.matchAll(/^## .+$/gm)].map((m) => m[0]);
+    expect(sectionHeadings.some((h) => /완료 조건|Completion|Done/i.test(h))).toBe(false);
+  });
+});
+
+describe('Task-shaped smallest relevant verification (F, G)', () => {
+  it('gives the README-typo-is-diff-enough and phone-field-needs-tests examples', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/README 오타 하나처럼 작은 작업은 diff 확인만으로 충분하고, 전화번호 입력 필드 제거처럼 검증·테스트와 실제로 연결된 작업은 관련 테스트까지 실행한다/);
+  });
+
+  it('explicitly refuses to run unrelated verification merely because a full suite exists', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/프로젝트에 전체 테스트나 검증 수단이 있다는 이유만으로 이번 요청과 관계없는 검증까지 실행하지 않는다/);
+  });
+});
+
+describe('Directly-related tests required when they support outcome/preserved behavior (H)', () => {
+  it('requires directly-related tests regardless of whether a project-wide suite exists', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/위 1·2번과 직접 관련된 테스트는 그 테스트가 실제로 그 결과나 보존 조건을 확인해줄 때 실행한다 — 프로젝트에 전체 테스트가 있는지 여부와 관계없다/);
+  });
+});
+
+describe('Unavailable secondary verification does not automatically mean 작업 보류 (I)', () => {
+  it('ties browser/visual verification necessity to whether it was a core completion condition, not an automatic hold', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/이런 보조 확인 수단이 없다는 사실만으로 바로 `작업 보류`가 되지는 않는다 — 그 확인이 이번 요청의 완료 조건 자체였는지에 따라 달라진다/);
+  });
+
+  it('does not launch a browser for verification unless materially needed for this request', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/실제 화면 확인이 이번 요청의 결과나 완료 조건을 뒷받침하는 데 실제로 필요한 경우가 아니면 이 확인만을 위해 브라우저를 새로 켜지 않는다/);
+  });
+});
+
+describe('False verification remains forbidden (J) and unrun verification cannot be reported as passed (K)', () => {
+  it('reinforces the unconditional rule with the canonical phrase, alongside the pre-existing one', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/실행하지 못한 검증을 통과했다고 쓰지 않는다\. 확인하지 못한 것은 확인했다고 쓰지 않는다\./);
+  });
+
+  it('does not add a separate false-verification subsystem or new vocabulary for it', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).not.toMatch(/false.?verification|FALSE_VERIFICATION/i);
+  });
+});
+
+describe('One-round-trip cap remains global across the request, no second post-work questionnaire (L, M, N)', () => {
+  it('routes a completion-blocking decision found after the one question was used to 작업 보류 / 사용자 결정 필요, not a second question', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/이미 질문을 한 번 사용했다면, 같은 내용을 다른 말로 다시 묻지 않는다/);
+    expect(skill).toMatch(/보고서 상태를 `작업 보류`로 두고, 남은 결정 하나를 `사용자 결정 필요`로 짧게 설명한 뒤 사용자의 다음 답을 기다린다/);
+  });
+
+  it('frames this as reusing the existing one-question rule, not a new question engine', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/이것도 별도의 질문 엔진이 아니라 이 절의 한 번만 확인한다 규칙과 기존 보고서 상태를 그대로 적용한 것이다/);
+  });
+
+  it('keeps the original one-question-per-request cap sentence unchanged', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/이 확인은 요청당 최대 한 번이다/);
+  });
+});
+
+describe('Evidence reuse encouraged (O)', () => {
+  it('tells the Agent not to reread files or rerun verification already proven by existing evidence', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/이미 작업 중에 확보한 근거로 위 조건이 증명됐다면, 형식을 맞추려고 같은 파일을 다시 읽거나 같은 검증을 다시 실행하지 않는다/);
+  });
+});
+
+describe('Agent-inferred completion stays labeled as inference, no forced checklist (part of O/F)', () => {
+  it('labels self-derived completion checks as INFERRED, never silently promoted to USER_SAID', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/이는 추론\(INFERRED\)이며, 사용자가 말한 것\(USER_SAID\)으로 바꿔 쓰지 않는다/);
+  });
+
+  it('only surfaces the said-vs-inferred distinction when materially useful, not as a routine checklist', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/이 구분이 사용자 이해에 실제로 중요할 때만 보고서에 드러내고, 매번 체크리스트로 보여주지 않는다/);
+  });
+});
+
+describe('V2.0/V2.1/V2.2 guidance preserved under the completion contract (P)', () => {
+  it('keeps the Intent Bridge trigger rule, epistemic model, and one-question-max sections unchanged', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/요청이 짧다는 이유만으로 보여주지 않는다/);
+    expect(skill).toMatch(/ASK_USER가 필요하면 질문은 최대 하나다/);
+    expect(skill).toMatch(/`requestClarificationGuide`\s*Feature가 꺼져 있으면 이 절차 전체를 적용하지 않고 평소처럼 바로 진행한다/);
+  });
+
+  it('keeps the V2.2 scope categories (DIRECT_SCOPE/NECESSARY_SUPPORTING_CHANGE/DO_NOT_CHANGE/PRESERVE_BEHAVIOR/OUT_OF_SCOPE) intact', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/직접 범위: 사용자가 실제로 요청한 변경 대상 그 자체/);
+    expect(skill).toMatch(/필수 관련 수정: 직접 범위를 올바르고 안전하고 일관되게 완료하기 위해 함께 손봐야 하는 부분/);
+    expect(skill).toMatch(/건드리면 안 되는 부분: 사용자가 직접 말했거나/);
+    expect(skill).toMatch(/유지해야 할 동작: 구현 파일은 바뀌어도 계속 그대로 동작해야 하는 기능/);
+    expect(skill).toMatch(/범위 밖: 이번 요청이 요구하지 않는 부분/);
+  });
+
+  it('runs all pre-existing V2.0/V2.1/V2.2 tests in this same file unmodified (structural: the describe blocks above this one still exist)', async () => {
+    const src = await fs.readFile(new URL(import.meta.url), 'utf8');
+    expect(src).toContain("describe('Intent Bridge trigger rule (A, B, C)'");
+    expect(src).toContain("describe('DO_NOT_CHANGE reuses existing vocabulary (A)'");
+  });
+});
+
+describe('No new MCP tool / UI / storage / Feature flag / status enum for the completion contract (Q)', () => {
+  it('keeps the MCP tool count at exactly 5 (unchanged from V2.0/V2.1/V2.2)', async () => {
+    const src = await fs.readFile(mcpIndexFile, 'utf8');
+    const toolNames = [...src.matchAll(/registerTool\('([a-z_]+)'/g)].map((m) => m[1]);
+    expect(toolNames).toEqual(['get_bridge_status', 'get_active_features', 'get_report_preferences', 'get_beginner_report_rules', 'get_safe_report_requirements']);
+  });
+
+  it('does not mention completion-contract concepts inside the MCP server (guidance-only, no runtime policy code)', async () => {
+    const src = await fs.readFile(mcpIndexFile, 'utf8');
+    expect(src).not.toMatch(/REQUESTED_OUTCOME|PRESERVED_REQUIREMENTS|completion contract/i);
+  });
+
+  it('introduces no new Feature ID for the completion contract', async () => {
+    const managed = await fs.readFile(path.join(repoRoot, 'packages', 'cli', 'src', 'config', 'managed.ts'), 'utf8');
+    expect(managed).not.toMatch(/completionContract|REQUESTED_OUTCOME|PRESERVED_REQUIREMENTS/);
   });
 });
