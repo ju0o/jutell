@@ -738,12 +738,12 @@ describe('No new MCP tool / UI / storage / Feature flag / status enum for the co
 describe('Known completion-critical unconfirmed/failing item forbids 확인 완료 (A, B)', () => {
   it('states that a known important unconfirmed OR failing item blocks 확인 완료 when it is necessary for the request to actually succeed', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
-    expect(skill).toMatch(/중요한 미확인·실패 항목이 있고, 그 항목이 없으면 원하는 것이 실제로 성공하지 못하거나 사용자가 말한 보존·완료 조건이 실제로 성립하지 않는다면\(완료에 필수적인 경우\), 관련 테스트가 통과했더라도 `확인 완료`를 쓸 수 없다/);
+    expect(skill).toMatch(/중요한 미확인·실패가 있고, 그것이 없으면 원하는 것이 실제로 성공하지 못하거나 보존·완료 조건이 실제로 성립하지 않는다면\(완료에 필수적인 경우\), 테스트가 통과했더라도 `확인 완료`를 쓸 수 없다/);
   });
 
   it('gives the reproduced dogfood shape as its own worked example (field removal making an external service newly mandatory)', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
-    expect(skill).toMatch(/필드를 없앤 결과 실제 성공 경로가 이미 중요한 미확인 사항으로 보는 항목\(예: 외부 서비스 연결\)에 새로 의존하게 됐는데 그 연결이 확인되지 않았거나 실패한다면, 관련 테스트 통과와 별개로 `확인 완료`를 쓰지 않는다/);
+    expect(skill).toMatch(/필드 제거로 외부 서비스 연결처럼 이미 중요한 미확인 사항으로 보는 항목에 새로 의존하게 됐는데 그 연결이 확인되지 않았다면/);
   });
 });
 
@@ -755,7 +755,7 @@ describe('Passing tests cannot override a known completion-critical gap (C)', ()
 
   it('explains why: a test proves only the scope it actually covers, not a known gap outside that scope', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
-    expect(skill).toMatch(/테스트는 테스트가 실제로 다룬 범위만 증명하며, Agent가 이미 알고 있는 완료에 필수적인 미확인·실패까지 증명하지 않는다/);
+    expect(skill).toMatch(/테스트가 통과했더라도 `확인 완료`를 쓸 수 없다 — 테스트는 실제로 다룬 범위만 증명한다/);
   });
 
   it('repeats the same non-override rule in the report spec, tied to the existing important-unconfirmed-item list', async () => {
@@ -782,7 +782,7 @@ describe('External-service uncertainty must be evaluated for completion relevanc
   it('does not stop at disclosure alone - the rule requires the gap to change the completion status, not just appear somewhere in the report', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
     // the operative clause is a hard "cannot use 확인 완료", not merely "mention it"
-    expect(skill).toMatch(/관련 테스트 통과와 별개로 `확인 완료`를 쓰지 않는다/);
+    expect(skill).toMatch(/테스트가 통과했더라도 `확인 완료`를 쓸 수 없다/);
   });
 });
 
@@ -794,7 +794,7 @@ describe('False verification and premature completion stay distinct (E)', () => 
 
   it('states that a fully honest report can still be a premature completion if the status itself is unjustified', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
-    expect(skill).toMatch(/사실을 하나도 왜곡하지 않고 정직하게 보고했더라도, 완료에 필수적인 항목이 남아 있는데도 `확인 완료`를 고르면 그 상태 판단 자체가 성급한 완료다/);
+    expect(skill).toMatch(/사실을 정직하게 보고했더라도 완료에 필수적인 항목이 남아 있는데 `확인 완료`를 고르면 그 자체가 성급한 완료다/);
   });
 
   it('keeps the pre-existing false-verification sentence intact alongside the new premature-completion sentence (both present, not merged into one)', async () => {
@@ -806,12 +806,12 @@ describe('False verification and premature completion stay distinct (E)', () => 
 describe('Secondary non-critical unverified evidence does not automatically cause 작업 보류 (F)', () => {
   it('explicitly carves out non-completion-critical unverified items from the new rule', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
-    expect(skill).toMatch(/완료에 필수적이지 않은 미확인 사항까지 이 규칙으로 확대하지 않는다/);
+    expect(skill).toMatch(/완료에 필수적이지 않은 미확인까지 이 규칙으로 확대해 곧장 `작업 보류`로 만들지 않는다/);
   });
 
-  it('keeps the existing nuanced status (추가 확인 필요/일부 확인) as the outcome for a non-critical gap, not 작업 보류', async () => {
+  it('keeps the existing status-priority rules as the outcome for a non-critical gap, not 작업 보류', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
-    expect(skill).toMatch(/그런 경우는 그대로 상황에 맞는 기존 상태\(`추가 확인 필요`·`일부 확인` 등\)를 쓴다 — 완료에 필수적이지 않은 미확인만 남았다는 이유로 곧장 `작업 보류`로 만들지 않는다/);
+    expect(skill).toMatch(/곧장 `작업 보류`로 만들지 않는다 — 그런 경우는 그대로 기존 상태 우선순위를 따른다/);
   });
 
   it('keeps the pre-existing V2.3 unavailable-secondary-verification clause (Case C protection) unchanged', async () => {
@@ -831,7 +831,7 @@ describe('README/simple-task 확인 완료 remains valid with small evidence (G)
     // the new rule is phrased as a *condition* ("있고 ... 없으면") - it only
     // fires when such an item is known to exist, so a precise, evidence-
     // complete request is untouched by it.
-    expect(skill).toMatch(/중요한 미확인·실패 항목이 있고/);
+    expect(skill).toMatch(/중요한 미확인·실패가 있고/);
   });
 });
 
@@ -861,9 +861,9 @@ describe('No mock-specific engine or dependency analyzer (I)', () => {
     }
   });
 
-  it('phrases the rule in terms of "이미 알고 있는" knowledge, not test-shape detection', async () => {
+  it('phrases the rule in terms of "이미 알게 된" knowledge, not test-shape detection', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
-    expect(skill).toMatch(/Agent가 이미 알고 있는 중요한 미확인·실패 항목/);
+    expect(skill).toMatch(/Agent가 이번 작업 중 이미 알게 된 중요한 미확인·실패/);
   });
 });
 
@@ -887,5 +887,125 @@ describe('V2.0/V2.1/V2.2 guidance remains intact under the premature-completion 
     expect(toolNames).toEqual(['get_bridge_status', 'get_active_features', 'get_report_preferences', 'get_beginner_report_rules', 'get_safe_report_requirements']);
     const managed = await fs.readFile(path.join(repoRoot, 'packages', 'cli', 'src', 'config', 'managed.ts'), 'utf8');
     expect(managed).not.toMatch(/completionContract|REQUESTED_OUTCOME|PRESERVED_REQUIREMENTS|PREMATURE_COMPLETION/);
+  });
+});
+
+// JUTELL-V2.3-STATUS-SELECTION-GATE-FIX-02: the JUTELL-V2.3-PREMATURE-
+// COMPLETION-FIX-01 rule was semantically correct but proved (in
+// JUTELL-V2.3-PREMATURE-COMPLETION-RETEST-01) not to reliably survive to
+// the moment the Agent actually writes `보고서 상태` - the Agent read the
+// rule, correctly re-derived both qualifying facts in its own words, and
+// still wrote 확인 완료. This fix moves the decisive check to an explicit
+// pre-submit/status-selection gate (step 19, the existing internal-only
+// "제출 전 점검" checklist) instead of leaving it as prose encountered
+// earlier in the procedure, and shortens the earlier prose so the rule is
+// stated once, not stacked across paragraphs.
+
+describe('A pre-submit status-selection gate exists, positioned immediately before 보고서 상태 is written (A)', () => {
+  it('adds a checklist item to the existing step-19 pre-submit checklist, not a new section', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    const checklistStart = skill.indexOf('제출 전 다음을 점검한다');
+    expect(checklistStart, 'expected the existing step-19 pre-submit checklist to still exist').toBeGreaterThan(-1);
+    const nextSectionStart = skill.indexOf('## 작업 유형별 출력');
+    const checklist = skill.slice(checklistStart, nextSectionStart > -1 ? nextSectionStart : undefined);
+    expect(checklist).toMatch(/`보고서 상태`를 쓰기 바로 직전에/);
+  });
+
+  it('names the exact moment as immediately before the 보고서 상태 line, not merely "at some point"', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/`보고서 상태`를 쓰기 바로 직전에: 이번 작업 중 이미 알게 된 완료에 필수적인 미확인·실패가 남아 있는가/);
+  });
+
+  it('cross-references the gate from the earlier rule statement, so the two are connected rather than duplicated', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/이 판단은 검증 도중 한 번 스쳐 생각하는 것으로 끝나지 않는다 — 아래 제출 전 점검\(19번\)에서 보고서 상태를 쓰기 직전에 다시 한번 확인한다/);
+  });
+});
+
+describe('The gate re-evaluates known completion-critical items and vetoes 확인 완료 (B, C)', () => {
+  it('the checklist item explicitly asks whether a completion-critical gap remains, and forbids 확인 완료 when the answer is yes', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/남아 있다면, 관련 검증이 통과했더라도 `확인 완료`를 쓰지 않았는가/);
+  });
+
+  it('keeps the single canonical rule statement (not re-stated a second time at the gate) - the gate points back to it instead of repeating it', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    // exactly one occurrence of the full completion-critical clause, not stacked copies
+    const occurrences = [...skill.matchAll(/완료에 필수적인 경우\)/g)];
+    expect(occurrences).toHaveLength(1);
+  });
+});
+
+describe('Known completion-critical gap has veto power over passing test evidence, evaluated at gate time (D, E)', () => {
+  it('the gate is phrased as a re-check of what the Agent already knows, not a new verification step to run', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/이번 작업 중 이미 알게 된 완료에 필수적인 미확인·실패가 남아 있는가/);
+  });
+
+  it('the veto is unconditional on test outcome - the checklist item does not carve out an exception for a passing test', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    const gateLine = skill.match(/`보고서 상태`를 쓰기 바로 직전에:[^\n]+/)?.[0] ?? '';
+    expect(gateLine).toMatch(/관련 검증이 통과했더라도 `확인 완료`를 쓰지 않았는가/);
+  });
+});
+
+describe('Secondary non-critical unverified evidence does not trigger the gate veto (F)', () => {
+  it('the gate question is scoped to "완료에 필수적인" items only, reusing the same completion-critical qualifier as the main rule', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    const gateLine = skill.match(/`보고서 상태`를 쓰기 바로 직전에:[^\n]+/)?.[0] ?? '';
+    expect(gateLine).toMatch(/완료에 필수적인 미확인·실패/);
+  });
+
+  it('keeps the pre-existing V2.3 unavailable-secondary-verification clause (Case C protection) unchanged', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/이런 보조 확인 수단이 없다는 사실만으로 바로 `작업 보류`가 되지는 않는다/);
+  });
+});
+
+describe('Simple, fully-supported tasks still earn 확인 완료 (G)', () => {
+  it('keeps the README-typo / diff-is-enough example intact - the gate adds a question, not new verification work', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/README 오타 하나처럼 작은 작업은 diff 확인만으로 충분하고/);
+  });
+});
+
+describe('No visible checklist/DONE block added by the gate (H)', () => {
+  it('the gate lives inside the pre-existing internal "제출 전 점검" step, never shown to the user', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/19\. 제출 전 다음을 점검한다/);
+    expect(skill).not.toMatch(/^#{1,3}\s*(DONE WHEN|COMPLETION CONTRACT|ACCEPTANCE CHECKLIST)/im);
+  });
+
+  it('does not add a new report section to the report-format templates', async () => {
+    const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
+    const sectionHeadings = [...reportFormat.matchAll(/^## .+$/gm)].map((m) => m[0]);
+    expect(sectionHeadings.some((h) => /완료 조건|상태 선택|Status Selection|Gate/i.test(h))).toBe(false);
+  });
+});
+
+describe('No new status enum or mock-specific logic introduced by the gate (I, J)', () => {
+  it('introduces no new status/label token', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).not.toMatch(/PREMATURE_COMPLETION|COMPLETION_CRITICAL|STATUS_SELECTION_GATE/);
+  });
+
+  it('mentions no mocks, stubs, or dependency-classification system', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).not.toMatch(/\bmocks?\b|\bstubs?\b|모킹|스텁|dependency analyzer/i);
+  });
+});
+
+describe('V2.0/V2.1/V2.2 guidance remains intact under the status-selection gate (K)', () => {
+  it('keeps the Intent Bridge trigger rule and one-question-max unchanged', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/요청이 짧다는 이유만으로 보여주지 않는다/);
+    expect(skill).toMatch(/ASK_USER가 필요하면 질문은 최대 하나다/);
+  });
+
+  it('keeps the V2.2 scope categories and the pre-existing pre-submit checklist bullets intact', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/직접 범위: 사용자가 실제로 요청한 변경 대상 그 자체/);
+    expect(skill).toMatch(/원하는 것과 사용자가 말한 건드리지 말 것·유지할 것·완료 조건을 실제로 확인했는가/);
+    expect(skill).toMatch(/검증 결과와 보고서 상태가 일치하는가/);
   });
 });
