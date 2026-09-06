@@ -2,13 +2,17 @@
 
 **English** | [한국어](README.ko.md)
 
-**Your coding agent writes the code. JuTell helps you understand what happened.**
+**Tell your coding agent what you actually mean — and understand what it actually did.**
 
-Coding agents like Codex, Claude Code, and OpenCode leave long, technical results behind. JuTell sits beside the agent you already use and turns that result into a report a person can actually read: what changed, what's actually been checked, what's still unknown, and what to do next.
+You say what you want, normally. Before work starts, JuTell notices only the ambiguity that would actually change the result, checks everything it can determine from your project itself, and asks you at most one real decision. After work finishes, it reports what changed, what was actually verified, what's still unknown, and what needs you — in words a non-developer can act on.
 
-![Codex, Claude Code, and OpenCode all connect to JuTell, which reports what changed, what is verified, what is uncertain, and what to do next.](docs/assets/readme/agent-flow.svg)
+![You, JuTell, and your coding agent working both ways: before work JuTell clarifies what you mean, after work it explains what the agent did.](docs/assets/readme/user-journey.svg)
 
-JuTell is not an AI model, an IDE, or an agent GUI. It doesn't replace your agent or relay your work to it — it's an **explain, verify, and hand-off layer** that sits beside the agent you're already using.
+**Before work** — JuTell clarifies only decisions that materially matter, looks up project facts itself instead of asking you technical questions, and protects the scope you asked for.
+
+**After work** — JuTell explains what changed, keeps verified / expected / not-checked strictly separate, and tells you what still needs your attention.
+
+JuTell is not an AI model, an IDE, or an agent GUI. It doesn't replace your agent, relay your work to it, or guarantee your agent's answers are correct — it's a **two-way communication layer** that sits beside the agent you're already using: you → agent, then agent → you.
 
 ## Install
 
@@ -28,15 +32,25 @@ Most people should use the npm install above. Use this only when you want to ver
 cd packages/cli
 npm install
 npm pack
-npm install -g ./jutell-1.1.0.tgz
+npm install -g ./jutell-2.0.0.tgz
 ```
 
-`1.1.0` matches this repository's current source version and the current published `jutell@1.1.0` on npm.
+`2.0.0` matches this repository's current source version (`jutell@2.0.0`, release candidate — not yet published; `jutell@1.1.0` remains the latest version on npm).
 </details>
 
 ## What does JuTell actually do?
 
-After your agent finishes a task, JuTell answers the questions that actually matter to you:
+One flow, both directions:
+
+1. You ask normally — e.g. "회원가입 좀 간단하게 해줘."
+2. JuTell notices only the ambiguity that would change the result.
+3. The agent checks what it can determine itself (current screens, fields, code) instead of asking you.
+4. If a real decision remains, you get one concise question — never a technical quiz.
+5. The agent changes only what you asked for, plus the supporting work strictly needed for it.
+6. Verification is tied to what you actually asked for — not the whole test suite just because it exists.
+7. You get a short report: what changed, what's verified, what's still unknown, what needs you.
+
+### After your agent finishes, JuTell answers what matters
 
 | Question | What JuTell shows |
 |---|---|
@@ -60,6 +74,16 @@ After your agent finishes a task, JuTell answers the questions that actually mat
 | A handoff that means re-reading the whole conversation | A current-state summary you can paste into the next agent |
 
 The point: a nondeveloper can decide "is this okay to approve?" and "what do I need to check myself?" — without reading code.
+
+### The other half: before work starts
+
+| You say | What JuTell + your agent do |
+|---|---|
+| "회원가입 좀 간단하게 해줘." | Check the current signup structure first — no "which framework?" questions. |
+| The risky guess: what does "간단하게" mean? | Ask only the decision that changes the outcome (e.g. tidy up the screen vs. remove an input) — one question, then work. |
+| The quiet risk: scope creep. | Change only the authorized scope, verify against what you asked for, and report the rest honestly. |
+
+No workflow diagram to memorize — this is the same single flow as above: clarify only what matters, change only what's asked, verify only what's relevant.
 
 ## Example report
 
@@ -169,6 +193,8 @@ JuTell explains what your agent already did, from files, Git, and command output
 
 What JuTell doesn't do: provide an AI model, act as an API gateway, clone an agent GUI, handle authentication for you, replace Codex/Claude Code/OpenCode, or orchestrate other agents.
 
+What JuTell doesn't promise: it doesn't guarantee your agent understood you correctly, doesn't claim to find every dependency your request touches, doesn't certify code correctness on its own, and never replaces your judgment on whether to approve the result. It makes the request clearer and the evidence checkable — the final call stays yours.
+
 ## Platform support
 
 | Platform | Status |
@@ -181,7 +207,17 @@ Being written in Node doesn't by itself mean every platform is verified — the 
 
 ## What's new
 
-**`jutell@1.1.0` — published on npm**
+**`jutell@2.0.0` — release candidate (not yet published)**
+
+JuTell now helps *before* your agent starts, not only after it finishes:
+
+- It checks project facts itself and asks you only the decisions that actually change the outcome — at most one concise question.
+- It protects your requested scope: what you asked for, plus strictly necessary supporting work. Unrelated "improvements" are left alone (mentioned at most once, never silently done).
+- Completion is verified against what you actually asked for, with already-gathered evidence reused — no unrelated test-suite runs just because they exist.
+- The easy-to-read report you know stays: verified / expected / not-checked kept separate, plus what still needs you.
+- Install, providers, and platforms are unchanged: `npm install -g jutell` then `jutell`; Codex supported, Claude Code and OpenCode beta.
+
+**`jutell@1.1.0`** (previous release, on npm)
 
 - Bare `jutell` now finds and connects every supported coding agent on your machine in one step, with a single approval — no per-agent setup wizard for a normal first run.
 - Setup returns you straight to your terminal instead of opening the local dashboard automatically (`jutell dashboard` is still there whenever you want it).

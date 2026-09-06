@@ -1,8 +1,8 @@
 # jutell
 
-**Your coding agent writes the code. JuTell helps you understand what happened.**
+**Tell your coding agent what you actually mean — and understand what it actually did.**
 
-JuTell sits beside Codex, Claude Code, or OpenCode and turns their work into a plain-language report: what changed, what's actually verified, what's still unknown, and what to do next.
+Before work, JuTell clarifies only the decisions that would actually change the result (at most one concise question) and checks project facts itself. After work, it turns the result into a plain-language report: what changed, what's actually verified, what's still unknown, and what to do next. It never guarantees your agent's answers — it keeps both directions honest.
 
 ```bash
 npm install -g jutell
@@ -32,7 +32,7 @@ Most people should use the npm install above.
 cd packages/cli
 npm install
 npm pack
-npm install -g ./jutell-1.1.0.tgz
+npm install -g ./jutell-2.0.0.tgz
 ```
 </details>
 

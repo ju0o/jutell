@@ -2,6 +2,22 @@
 
 Notable user-facing changes to JuTell. See [GitHub Releases](https://github.com/ju0o/jutell/releases) for the full history and exact publish dates.
 
+## v2.0.0
+
+Release candidate — not yet published on npm.
+
+**JuTell now helps before your agent starts, not only after it finishes.**
+
+- It checks project facts itself and asks only high-value user decisions — at most one concise question per request.
+- It protects requested scope: what you asked for, plus strictly necessary supporting work. Unrelated improvements are left untouched.
+- Completion verification is tied to what you actually asked for, reusing already-gathered evidence instead of running unrelated checks.
+- The existing easy-to-read reports stay: verified / expected / not-checked kept separate, with concrete next actions only when something genuinely needs you.
+- Install, provider support (Codex supported; Claude Code and OpenCode beta), and platform claims are unchanged.
+
+**Compatibility:** no commands removed. Existing `.jutell.json`, `AGENTS.md`, and MCP registrations are preserved automatically — nothing to reconfigure.
+
+**What JuTell still doesn't promise:** correct interpretation isn't guaranteed, not every semantic dependency is discovered, code correctness isn't independently certified, and your approval judgment is never replaced. JuTell makes requests clearer and evidence checkable.
+
 ## v1.1.0
 
 Published on npm.
