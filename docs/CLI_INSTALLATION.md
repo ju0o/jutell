@@ -19,7 +19,7 @@ jutell
 cd packages/cli
 npm install
 npm pack
-npm install -g ./jutell-1.1.0.tgz
+npm install -g ./jutell-2.0.0.tgz
 ```
 
 ## 명령
