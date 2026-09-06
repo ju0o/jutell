@@ -723,161 +723,131 @@ describe('No new MCP tool / UI / storage / Feature flag / status enum for the co
   });
 });
 
-// JUTELL-V2.3-STRUCTURAL-COMPLETION-GUARD-01: two prior prose-only fixes
+// JUTELL-V2.3-SCOPE-REDUCTION-AND-FINALIZATION-01: two prior prose-only fixes
 // (JUTELL-V2.3-PREMATURE-COMPLETION-FIX-01, JUTELL-V2.3-STATUS-SELECTION-
-// GATE-FIX-02) were both read verbatim by the Agent in live dogfood and
-// both still produced 확인 완료 next to a known completion-critical gap
-// (JUTELL-V2.3-COMPLETION-CONTRACT-DOGFOOD-01 and its two retests). A
-// structural discovery (JUTELL-V2.3-COMPLETION-DECISION-ARCHITECTURE-
-// DISCOVERY-02) found the report *template* itself lists risk/evidence and
-// status as independent sibling bullets, and a pre-existing, older
-// definition of 확인 완료 (§11.5, "scope-relative completion") gives a
-// textually legitimate route around distant procedural prose. This fix
-// replaces prose-only enforcement with one optional report field,
-// `완료에 필수적인 미확인`, placed immediately before `보고서 상태` in the
-// report templates themselves - so the two facts sit adjacent in the
-// Agent's own output, not several steps apart in the underlying procedure.
-// No new status, no new section, no mock-specific logic, no runtime
-// validator - this is the smallest structural option, tried before a
-// heavier one.
+// GATE-FIX-02) and one structural field-based fix
+// (JUTELL-V2.3-STRUCTURAL-COMPLETION-GUARD-01, an optional
+// `완료에 필수적인 미확인` report field) were all read verbatim by the Agent
+// in live dogfood and still produced 확인 완료 next to a known
+// completion-critical gap. A separate research track then tried enforcing
+// the field mechanically via a Codex Stop hook
+// (JUTELL-V2.3-CODEX-DETERMINISTIC-COMPLETION-GUARD-PROTOTYPE-01 and its
+// revision, PR #11) and a 3-way architecture comparison of the field's
+// exact shape (JUTELL-V2.3-COMPLETION-JUDGMENT-QUALITY-DISCOVERY-01: bare
+// checkpoint, checkpoint+justification, verified/unverified split - 9/9
+// clean samples across all three still produced the same false completion).
+// The PM decision from that evidence: JuTell does not independently
+// guarantee semantic completion correctness, and no wording/field shape
+// materially improves that guarantee - so the mechanical field is removed
+// rather than iterated on again. What remains is the truthful, still-real
+// improvement: verification is ordered by what the user actually asked for
+// (원하는 것 / 건드리지 말 것 / 유지할 것 / 완료 조건) before anything else,
+// a known gap is disclosed in the existing free-text 위험과 사용자 확인
+// section rather than invented a dedicated field for, and the Agent - not
+// JuTell - is still the one making and stating the honest call. No new
+// status, no new section, no mock-specific logic, no runtime validator.
 
-describe('The optional completion-critical field exists in the report templates (A)', () => {
-  it('the simple-task report template includes 완료에 필수적인 미확인 as a bullet', async () => {
+describe('The mechanical completion-critical field has been removed, not re-added (A)', () => {
+  it('the simple-task report template no longer includes a 완료에 필수적인 미확인 / 완료 판정 bullet', async () => {
     const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
     const templateStart = reportFormat.indexOf('```md');
     const templateEnd = reportFormat.indexOf('```', templateStart + 5);
     const template = reportFormat.slice(templateStart, templateEnd);
-    expect(template).toMatch(/완료에 필수적인 미확인: <있을 때만>/);
+    expect(template).not.toMatch(/완료에 필수적인 미확인:/);
+    expect(template).not.toMatch(/완료 판정:/);
   });
 
-  it('the spec lists it as an optional item in the 6-item base report structure', async () => {
+  it('the spec no longer lists it as a report structure item', async () => {
     const spec = await fs.readFile(reportSpecFile, 'utf8');
-    expect(spec).toMatch(/\* 완료에 필수적인 미확인 \(있을 때만 — `보고서 상태` 바로 앞에 적는다\)/);
+    expect(spec).not.toMatch(/\* 완료에 필수적인 미확인/);
   });
-});
 
-describe('The field is placed immediately before 보고서 상태 (B)', () => {
-  it('in the report-format.md template, the field bullet is the line directly above the 보고서 상태 bullet', async () => {
+  it('the rejected PR #11 checkpoint concept (완료 판정) never appears in the shipped product docs', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
     const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
-    const templateStart = reportFormat.indexOf('```md');
-    const templateEnd = reportFormat.indexOf('```', templateStart + 5);
-    const template = reportFormat.slice(templateStart, templateEnd);
-    const lines = template.split('\n').map((l) => l.trim()).filter(Boolean);
-    const statusIndex = lines.findIndex((l) => l.startsWith('- 보고서 상태:'));
-    expect(statusIndex).toBeGreaterThan(0);
-    expect(lines[statusIndex - 1]).toMatch(/^- 완료에 필수적인 미확인:/);
-  });
-
-  it('in the spec §4 structure list, the field is listed directly above 보고서 상태', async () => {
     const spec = await fs.readFile(reportSpecFile, 'utf8');
-    const idx = spec.indexOf('필요한 경우 마지막에 다음 항목을 추가한다.');
-    const section = spec.slice(idx, idx + 300);
-    const lines = section.split('\n').map((l) => l.trim()).filter((l) => l.startsWith('*'));
-    const statusIndex = lines.findIndex((l) => l === '* 보고서 상태');
-    expect(statusIndex).toBeGreaterThan(0);
-    expect(lines[statusIndex - 1]).toMatch(/^\* 완료에 필수적인 미확인/);
+    for (const text of [skill, reportFormat, spec]) expect(text).not.toMatch(/완료 판정/);
   });
 });
 
-describe('The field is omitted, not shown empty, when no completion-critical gap exists (C)', () => {
-  it('states the field is only created when a completion-critical gap is known, and otherwise not created at all', async () => {
+describe('Honest status choice is still required, expressed as prose guidance, not a structural field (B)', () => {
+  it('report-format.md still says a known completion-critical gap goes in 위험과 사용자 확인 and blocks 확인 완료, without naming a dedicated field', async () => {
     const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
-    expect(reportFormat).toMatch(/완료에 필수적인 미확인이 없으면 이 항목 자체를 만들지 않는다/);
+    expect(reportFormat).toMatch(/완료에 필수적인 미확인·실패를 이미 알고 있으면, 형식을 위한 별도 항목을 만들지 않고 `위험과 사용자 확인`에 그 사실을 짧게 밝힌다/);
+    expect(reportFormat).toMatch(/그런 사실이 있으면 `보고서 상태`에 `확인 완료`를 쓰지 않는다/);
   });
 
-  it('the SKILL.md rule tells the Agent not to create the item for non-critical gaps', async () => {
+  it('SKILL.md states the same rule: a known critical gap goes into 위험과 사용자 확인, not a field, and still blocks 확인 완료', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
-    expect(skill).toMatch(/완료에 필수적이지 않은 미확인까지 이 항목을 만들어 곧장 `작업 보류`로 만들지 않는다 — 그런 경우는 이 항목을 만들지 않고 기존 상태 우선순위를 따른다/);
-  });
-});
-
-describe('The field value must describe the actual gap, not just 있음 (D)', () => {
-  it('report-format.md explicitly forbids a bare 있음 value and requires a short concrete description', async () => {
-    const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
-    expect(reportFormat).toMatch(/값은 "있음"처럼 비워두지 않고 무엇이 미확인·실패 상태인지 한 문장으로 짧게 적는다/);
-    expect(reportFormat).toMatch(/외부 신원 인증 서비스 실제 연결/);
+    expect(skill).toMatch(/관련 테스트가 통과했더라도 `확인 완료`를 쓰지 않고 `위험과 사용자 확인`에 그 사실을 짧게 밝힌다/);
   });
 
-  it('the spec worked example shows a concrete description, not a boolean', async () => {
-    const spec = await fs.readFile(reportSpecFile, 'utf8');
-    expect(spec).toMatch(/완료에 필수적인 미확인: 외부 신원 인증 서비스 실제 연결/);
-  });
-});
-
-describe('Field present forbids 확인 완료 (E)', () => {
-  it('report-format.md states the field blocks 확인 완료 on the very next line', async () => {
-    const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
-    expect(reportFormat).toMatch(/이 항목이 있으면 바로 다음 줄의 `보고서 상태`에 `확인 완료`를 쓸 수 없다/);
-  });
-
-  it('SKILL.md states the same invariant: a report with this item does not use 확인 완료', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
-    expect(skill).toMatch(/이 항목이 있는 보고서에는 `확인 완료`를 쓰지 않는다/);
-  });
-
-  it('the step-19 pre-submit checklist checks the field against the adjacent status line, not a private recollection', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
-    expect(skill).toMatch(/`완료에 필수적인 미확인` 항목을 적었다면, 바로 다음 줄의 `보고서 상태`가 `확인 완료`가 아닌가/);
-  });
-
-  it('passing a related test does not override the field once it is written', async () => {
+  it('passing a related test still does not override this judgment', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
     expect(skill).toMatch(/관련 검증이 통과했다는 사실이 이 판단을 뒤집지 않는다 — 테스트는 실제로 다룬 범위만 증명한다/);
   });
 });
 
-describe('§11.5 scope-relative definition cannot exclude a known completion-critical gap (F)', () => {
+describe('Explicit non-guarantee: JuTell does not independently certify this judgment (C)', () => {
+  it('BEGINNER_REPORT_SPEC.md states plainly that JuTell does not independently verify or guarantee the completion judgment', async () => {
+    const spec = await fs.readFile(reportSpecFile, 'utf8');
+    expect(spec).toMatch(/JuTell은 이 판단이 실제로 맞는지 독립적으로 검증하거나 보장하지 않는다/);
+  });
+
+  it('SKILL.md states the same non-guarantee next to the honest-disclosure rule', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toMatch(/JuTell은 이 판단이 실제로 맞는지 독립적으로 검증하거나 보장하지 않는다/);
+  });
+});
+
+describe('§11.5 scope-relative definition cannot exclude a known completion-critical gap (D)', () => {
   it('preserves the original, useful scope-relative meaning of 확인 완료', async () => {
     const spec = await fs.readFile(reportSpecFile, 'utf8');
     expect(spec).toMatch(/`확인 완료`는 프로젝트 전체가 완벽하게 정상 작동한다는 의미가 아니다\./);
     expect(spec).toMatch(/AI Agent가 확인한 작업 범위 안에서 필요한 검증이 완료됐다는 의미다\./);
   });
 
-  it('adds the missing precedence: a known completion-critical gap cannot be defined out of scope', async () => {
+  it('keeps the precedence: a known completion-critical gap cannot be defined out of scope, now routed to prose disclosure instead of a field', async () => {
     const spec = await fs.readFile(reportSpecFile, 'utf8');
     expect(spec).toMatch(/이 "확인한 작업 범위"를 이용해 완료에 필수적인 미확인·실패를 조용히 빼놓을 수는 없다/);
     expect(spec).toMatch(/그 항목을 단순히 확인 범위 밖으로 제외해서 `확인 완료`를 사용할 수 없다/);
-  });
-
-  it('the precedence clause ties back to the same §4 field, not a separate rule', async () => {
-    const spec = await fs.readFile(reportSpecFile, 'utf8');
-    expect(spec).toMatch(/그런 항목은 §4의 `완료에 필수적인 미확인` 항목에 적고, 이 항목이 있으면 `확인 완료`를 쓰지 않는다/);
+    expect(spec).toMatch(/그런 사실은 `위험과 사용자 확인`에 밝히고 실제로 맞는 상태를 쓴다/);
   });
 });
 
-describe('Case D shape (dogfood-reproduced) yields the completion-critical field (G)', () => {
+describe('Case D shape (dogfood-reproduced) is documented as a known, unsolved limitation, not a fake guarantee (E)', () => {
   it('names the exact reproduced example (external identity verification becoming mandatory after a field is removed)', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
     expect(skill).toMatch(/필드 제거로 외부 서비스 연결처럼 이미 중요한 미확인 사항으로 보는 항목에 새로 의존하게 됐는데 그 연결이 확인되지 않은 경우/);
   });
 
-  it('the spec §11.3 worked example shows the field populated for exactly this shape, with 일부 확인 as the resulting status (not hardcoded elsewhere)', async () => {
+  it('the spec worked example shows the disclosure in prose, with 일부 확인 as the resulting status (not hardcoded elsewhere, no field)', async () => {
     const spec = await fs.readFile(reportSpecFile, 'utf8');
-    expect(spec).toMatch(/> 완료에 필수적인 미확인: 외부 신원 인증 서비스 실제 연결\n> 보고서 상태: 일부 확인/);
+    expect(spec).toMatch(/> 위험과 사용자 확인: 외부 신원 인증 서비스 실제 연결은 확인하지 못했습니다\.\n> 보고서 상태: 일부 확인/);
   });
 });
 
-describe('Case C shape (secondary, non-critical browser gap) does not qualify for the field (H)', () => {
+describe('Case C shape (secondary, non-critical browser gap) never triggers 작업 보류 or the removed field (F)', () => {
   it('keeps the pre-existing V2.3 unavailable-secondary-verification clause unchanged - a non-critical gap never triggers 작업 보류', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
     expect(skill).toMatch(/이런 보조 확인 수단이 없다는 사실만으로 바로 `작업 보류`가 되지는 않는다/);
   });
 
-  it('the spec explicitly routes a non-critical visual-only gap to 추가 확인 필요 without creating the field', async () => {
+  it('the spec routes a non-critical visual-only gap to 추가 확인 필요 without any field ceremony', async () => {
     const spec = await fs.readFile(reportSpecFile, 'utf8');
-    expect(spec).toMatch(/문구, 색상, 일반 여백처럼 핵심 동작에 영향을 주지 않는 시각적 확인만 남은 경우에는 이 항목을 만들지 않고 `추가 확인 필요`를 사용할 수 있다/);
+    expect(spec).toMatch(/문구, 색상, 일반 여백처럼 핵심 동작에 영향을 주지 않는 시각적 확인만 남은 경우에는 `추가 확인 필요`를 사용할 수 있다/);
   });
 });
 
-describe('Case A shape (simple, fully-supported README task) does not qualify for the field (I)', () => {
+describe('Case A shape (simple, fully-supported README task) stays minimal, no forced completion block (G)', () => {
   it('keeps the task-shaped verification priority order and its README/phone-field contrast unchanged', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
     expect(skill).toMatch(/README 오타 하나처럼 작은 작업은 diff 확인만으로 충분하고, 전화번호 입력 필드 제거처럼 검증·테스트와 실제로 연결된 작업은 관련 테스트까지 실행한다/);
   });
 
-  it('the field is conditioned on a known gap existing, so a precise evidence-complete request never creates it', async () => {
+  it('a precise, evidence-complete request never triggers the honest-disclosure clause (conditioned on an actually known gap)', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
-    expect(skill).toMatch(/완료에 필수적인 미확인·실패\(그것이 없으면 원하는 것이 실제로 성공하지 못하거나 보존·완료 조건이 실제로 성립하지 않는 경우\)가 있으면/);
+    expect(skill).toMatch(/원하는 것의 실제 성공이나 보존·완료 조건의 실제 성립에 필수적인 미확인·실패가 있으면/);
   });
 });
 
@@ -898,7 +868,7 @@ describe('No new status enum (J)', () => {
 });
 
 describe('No new section / DONE-WHEN block (K)', () => {
-  it('the field is a bullet inside the existing 위험과 사용자 확인 section, not a new heading', async () => {
+  it('adds no new ## heading for completion disclosure - it stays inside the existing 위험과 사용자 확인 section', async () => {
     const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
     const sectionHeadings = [...reportFormat.matchAll(/^## .+$/gm)].map((m) => m[0]);
     expect(sectionHeadings.some((h) => /완료 조건|완료에 필수적|Status Selection|Gate/i.test(h))).toBe(false);
@@ -933,7 +903,7 @@ describe('No new MCP / UI / storage / Feature flag, and no mock-specific logic (
   });
 });
 
-describe('V2.0/V2.1/V2.2 guidance remains intact under the structural completion guard (M)', () => {
+describe('V2.0/V2.1/V2.2 guidance remains intact under the finalized completion discipline (M)', () => {
   it('keeps the Intent Bridge trigger rule, one-question-max, and feature gate unchanged', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
     expect(skill).toMatch(/요청이 짧다는 이유만으로 보여주지 않는다/);
