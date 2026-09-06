@@ -4,7 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { BLOCK_REASON } from '../src/codex-hooks/completion-guard.js';
 
-// JUTELL-V2.3-CODEX-DETERMINISTIC-COMPLETION-GUARD-PROTOTYPE-01
+// JUTELL-V2.3-HOST-ENFORCED-COMPLETION-CHECKPOINT-01
 //
 // The shipped hook asset (src/codex-hooks/asset/completion-guard-stop.mjs) intentionally
 // duplicates the TS module's logic (see its header comment for why: a prototype-scoped
@@ -13,8 +13,8 @@ import { BLOCK_REASON } from '../src/codex-hooks/completion-guard.js';
 // stdout) and asserts the same canonical outcomes as the unit tests, so the TS module and the
 // shipped asset can't silently disagree. It also locks in the self-executing convention itself
 // — this file must be directly executable with a shebang, never invoked as `command` + a
-// separate `args` array (see JUTELL-V2.3-CODEX-HOOK-TRUST-AND-BLOCK-LIVE-01: args were
-// silently dropped on Codex CLI 0.153.2, which made the intended script never run at all).
+// separate `args` array (see JUTELL-V2.3-CODEX-HOOK-TRUST-AND-BLOCK-LIVE-01: args were silently
+// dropped on this Codex CLI, which made the intended script never run at all).
 
 const SCRIPT_PATH = path.join(__dirname, '..', 'src', 'codex-hooks', 'asset', 'completion-guard-stop.mjs');
 
@@ -42,21 +42,31 @@ describe('completion-guard-stop.mjs — self-executing asset convention', () => 
     expect(stat.mode & 0o111).not.toBe(0); // some execute bit is set
   });
 
-  it('exits 0 and prints nothing for an allow case (Case A shape)', async () => {
+  it('exits 0 and prints nothing for an allow case (Case A shape, checkpoint clean)', async () => {
     const result = await runHook({
       hook_event_name: 'Stop',
-      last_assistant_message: '- 근거: README.md diff 확인\n- 보고서 상태: 확인 완료',
+      last_assistant_message: '- 근거: README.md diff 확인\n- 완료 판정: 없음\n- 보고서 상태: 확인 완료',
       stop_hook_active: false,
     });
     expect(result.exitCode).toBe(0);
     expect(result.stdout.trim()).toBe('');
   });
 
-  it('exits 0 and prints the block decision for the Case D contradiction', async () => {
+  it('exits 0 and prints the block decision when 확인 완료 is claimed without a checkpoint', async () => {
+    const result = await runHook({
+      hook_event_name: 'Stop',
+      last_assistant_message: '- 보고서 상태: 확인 완료',
+      stop_hook_active: false,
+    });
+    expect(result.exitCode).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({ decision: 'block', reason: BLOCK_REASON });
+  });
+
+  it('exits 0 and prints the block decision when the checkpoint itself discloses a gap', async () => {
     const result = await runHook({
       hook_event_name: 'Stop',
       last_assistant_message: [
-        '- 완료에 필수적인 미확인: 외부 신원 인증 서비스 실제 연결',
+        '- 완료 판정: 외부 신원 인증 서비스 실제 연결 미확인',
         '- 보고서 상태: 확인 완료',
       ].join('\n'),
       stop_hook_active: false,
@@ -65,13 +75,10 @@ describe('completion-guard-stop.mjs — self-executing asset convention', () => 
     expect(JSON.parse(result.stdout)).toEqual({ decision: 'block', reason: BLOCK_REASON });
   });
 
-  it('exits 0 and prints nothing when stop_hook_active is already true (loop safety)', async () => {
+  it('exits 0 and prints nothing when stop_hook_active is already true, even if still contradictory (proven one-block ceiling)', async () => {
     const result = await runHook({
       hook_event_name: 'Stop',
-      last_assistant_message: [
-        '- 완료에 필수적인 미확인: 외부 신원 인증 서비스 실제 연결',
-        '- 보고서 상태: 확인 완료',
-      ].join('\n'),
+      last_assistant_message: '- 보고서 상태: 확인 완료',
       stop_hook_active: true,
     });
     expect(result.exitCode).toBe(0);

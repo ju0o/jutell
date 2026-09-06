@@ -1,47 +1,77 @@
 /**
- * JUTELL-V2.3-CODEX-DETERMINISTIC-COMPLETION-GUARD-PROTOTYPE-01
+ * JUTELL-V2.3-HOST-ENFORCED-COMPLETION-CHECKPOINT-01
+ * (supersedes the field+status invariant from JUTELL-V2.3-CODEX-DETERMINISTIC-COMPLETION-GUARD-PROTOTYPE-01)
  *
- * Deterministic Codex Stop-hook completion guard (prototype).
+ * ## Why the previous invariant wasn't enough
  *
- * ## What this is, and is not
+ * The previous version blocked only when the Agent *itself* wrote a non-empty
+ * `완료에 필수적인 미확인` field alongside `보고서 상태: 확인 완료`. Five live dogfood
+ * reproductions (see `Jutell-private/dogfood/completion-guard/`) showed the same failure
+ * shape every time: the Agent correctly understood a completion-critical gap, correctly
+ * disclosed it in free prose, and simply never wrote the field — so there was nothing for a
+ * deterministic, non-semantic check to key off. That's not a wording problem to fix with a
+ * clearer instruction; it's an architecture problem. An *optional* field can always be omitted,
+ * on purpose or by accident, and a validator whose only input is "did the Agent choose to leave
+ * evidence" is not a validator over the claim, it's a validator over the Agent's memory of the
+ * instruction.
  *
- * `references/report-format.md` (and `docs/BEGINNER_REPORT_SPEC.md`) already tell the Agent,
- * as guidance: if a `완료에 필수적인 미확인` (completion-critical unconfirmed item) field is
- * present in the report, the very next `보고서 상태` line may not be `확인 완료`. Dogfooding
- * proved that guidance alone does not hold — the Agent can (and, four times running, did)
- * still write `보고서 상태: 확인 완료` right after disclosing a completion-critical gap.
+ * ## The inverted invariant
  *
- * This module is the MACHINE INVARIANT half of that rule, not a replacement for it. It does
- * not — and cannot — decide whether a completion-critical gap actually exists; that is MODEL
- * JUDGMENT (does removing a phone field really make external identity verification mandatory?
- * was that real path actually exercised?). All this module does is refuse to let the two
- * already-defined, already-agreed report fields contradict each other once the model has
- * written them both. It is pure syntax over the model's own controlled vocabulary — never a
- * classifier over free-text domain content (no "external service" / "identity" / etc. keyword
- * matching), because that would misfire on unrelated Case A/C reports that happen to mention
- * similar words without any real completion-critical gap. Precision is prioritized over recall.
+ * Old: IF the critical-gap field is present AND status is 확인 완료 → BLOCK.
+ * New: IF status is 확인 완료 AND the required completion checkpoint is NOT affirmatively
+ *      clean → BLOCK.
  *
- * ## The omission problem — addressed, not solved
+ * 확인 완료 must now earn survival by including a `완료 판정` line. Its value must be exactly
+ * the closed-vocabulary token `없음` (no completion-critical gap) — anything else (including
+ * simply not writing the field at all) is treated as "not affirmatively clean" and blocks,
+ * exactly like an explicit gap disclosure would. This flips omission from invisible-to-the-hook
+ * into a hit: there is no third option between "wrote 없음" and "didn't", so the Agent can no
+ * longer produce a 확인 완료 the hook can't see into.
  *
- * The proven dogfood failure is specifically the case where the Agent discloses the gap only
- * in free prose and never writes the `완료에 필수적인 미확인` field at all. This invariant
- * cannot catch that shape: with no field present, there is nothing for a deterministic,
- * non-semantic check to key off without falling back to a broad keyword classifier (rejected
- * above) or a second semantic pass (rejected — see project constraints: no second LLM/agent
- * inside the hook). So Prototype 01's recall is intentionally bounded to the case where the
- * Agent at least attempts the existing field but still concludes wrongly. That is a real,
- * bounded gap — see the accompanying task report for what remains unproven — not something
- * this module claims to close.
+ * `완료 판정` is deliberately closed-vocabulary (exact match on `없음`), mirroring how
+ * `보고서 상태` itself is already a closed five-value enum in this same file — not a new kind of
+ * strictness, the same one already accepted elsewhere in this report format.
+ *
+ * ## Model judgment vs machine invariant (unchanged split)
+ *
+ * The model still does 100% of the semantic work: whether a completion-critical gap actually
+ * exists, and what it is. The machine still does none of that — it never keyword-matches domain
+ * content ("external service", "payment", "identity", "browser", ...). It only checks whether a
+ * `확인 완료` claim is accompanied by the one closed-vocabulary token that means "I performed
+ * this specific judgment and it came out clean." A model that dishonestly writes `완료 판정: 없음`
+ * when it knows better is a model behaving in bad faith, which is out of scope for any
+ * syntax-level machine invariant — same limit the old design had, stated plainly rather than
+ * hidden.
+ *
+ * ## Loop safety — proven, not assumed
+ *
+ * JUTELL-V2.3-HOST-ENFORCED-COMPLETION-CHECKPOINT-01 live-verified (see the task's dogfood/live
+ * smoke record) that Codex's `stop_hook_active` is a flag, not a counter: it is `false` on the
+ * first Stop of a turn and `true` on every one after that, and it never resets or increments
+ * further — Codex itself imposes no independent cap on Stop-hook-forced continuations. A probe
+ * hook that kept returning `block` regardless of `stop_hook_active` was observed to be
+ * re-invoked 18+ times in 90 seconds with no sign of self-terminating, even after the model
+ * itself gave up and started replying "I remain blocked." That rules out any design that
+ * conditionally blocks again once `stop_hook_active` is `true` (e.g. "block again only if the
+ * checkpoint still says the gap exists") — there is no bounded way to tell attempt 2 from
+ * attempt 200 from this field alone, so *any* second block is a potential infinite loop, not a
+ * bounded one. The only proven-safe rule is the same one the previous prototype used: exactly
+ * one forced continuation per turn, full stop, regardless of what that continuation contains.
+ * This is a hard ceiling, not a tuning choice — see the task report for the reproduction.
  */
 
 export const REPORT_STATUSES = ['확인 완료', '추가 확인 필요', '일부 확인', '작업 보류', '범위 밖'] as const;
 
 export type ReportStatus = (typeof REPORT_STATUSES)[number];
 
+/** The one value of `완료 판정` that means "checkpoint performed, no completion-critical gap." */
+export const CHECKPOINT_CLEAN_VALUE = '없음';
+
 export const BLOCK_REASON =
-  '완료에 필수적인 미확인 사항이 있는데도 보고서 상태를 확인 완료로 썼습니다. ' +
-  '확인되지 않은 내용은 그대로 두고, 보고서 상태만 확인 완료가 아닌 ' +
-  '기존 상태(추가 확인 필요/일부 확인/작업 보류/범위 밖) 중 실제로 맞는 것으로 고쳐 다시 답하세요.';
+  '확인 완료로 답하려면 그 앞에 완료 판정을 먼저 밝혀야 합니다. ' +
+  '이미 확인한 내용을 근거로 완료 판정을 다시 쓰세요 — 완료에 필수적으로 확인되지 않은 것이 정말 없으면 ' +
+  '완료 판정: 없음이라고 쓰고 확인 완료를 유지하고, 있으면 그 내용을 완료 판정에 적은 뒤 보고서 상태를 ' +
+  '확인 완료가 아닌 기존 상태(추가 확인 필요/일부 확인/작업 보류/범위 밖) 중 실제로 맞는 것으로 고치세요.';
 
 export type StopHookDecision = { decision: 'block'; reason: string };
 
@@ -50,33 +80,30 @@ export type StopHookResult = StopHookDecision | Record<string, never>;
 
 const ALLOW: StopHookResult = {};
 
-// Tolerant of a leading "- "/"* " bullet and markdown "**bold**" wrapping around the label,
-// and either a half-width or full-width colon — but not of the enum values themselves, which
-// are matched verbatim so no fuzzy status ever counts as a hit.
-const UNCONFIRMED_FIELD_PATTERN = /(?:^|\n)\s*[-*]?\s*\**\s*완료에\s*필수적인\s*미확인\s*\**\s*[:：]\s*(.+)/;
+// Same bullet/bold/colon tolerance as the status pattern below — see its comment.
+const CHECKPOINT_PATTERN = /(?:^|\n)\s*[-*]?\s*\**\s*완료\s*판정\s*\**\s*[:：]\s*\**\s*(.+)/g;
 
 const STATUS_PATTERN = new RegExp(
   `(?:^|\\n)\\s*[-*]?\\s*\\**\\s*보고서\\s*상태\\s*\\**\\s*[:：]\\s*\\**\\s*(${REPORT_STATUSES.join('|')})`,
   'g',
 );
 
-/**
- * True only when the report explicitly names a non-empty completion-critical unconfirmed item
- * — i.e. the Agent itself already wrote the field. Per report-format.md the field is omitted
- * entirely (not left blank) when there is nothing to disclose, so any non-empty match here is
- * the Agent's own disclosure, not an inference this module makes.
- */
-function hasUnconfirmedCompletionGap(message: string): boolean {
-  const match = message.match(UNCONFIRMED_FIELD_PATTERN);
-  return Boolean(match && match[1] && match[1].trim().length > 0);
-}
+type Checkpoint = 'absent' | 'clean' | 'gap';
 
 /**
- * The report's operative final status. A message may repeat a summary line earlier and the
- * full field near the end; the LAST match is treated as the one that actually governs, which
- * is also the most conservative choice against false positives (an earlier draft-looking
- * mention of 확인 완료 followed by a corrected final status will not trigger a block).
+ * The checkpoint's operative value. As with status below, a message may repeat an earlier
+ * draft-looking line; the LAST match governs, which is also the conservative choice against
+ * false positives (an earlier "완료 판정: 없음" followed by a corrected, honest disclosure later
+ * in the same message will not be treated as clean).
  */
+function readCheckpoint(message: string): Checkpoint {
+  let last: string | undefined;
+  for (const match of message.matchAll(CHECKPOINT_PATTERN)) last = match[1];
+  if (last === undefined) return 'absent';
+  return last.trim() === CHECKPOINT_CLEAN_VALUE ? 'clean' : 'gap';
+}
+
+/** The report's operative final status — see readCheckpoint for why the LAST match governs. */
 function finalReportStatus(message: string): ReportStatus | undefined {
   let last: ReportStatus | undefined;
   for (const match of message.matchAll(STATUS_PATTERN)) {
@@ -95,18 +122,21 @@ export function evaluateCompletionGuard(rawInput: unknown): StopHookResult {
   if (!rawInput || typeof rawInput !== 'object' || Array.isArray(rawInput)) return ALLOW;
   const input = rawInput as Record<string, unknown>;
 
-  // Loop safety: cap enforcement at one automatic hook-forced continuation per turn. If this
-  // Stop event is itself already such a continuation, never block again regardless of content
-  // — this is a hard backstop against infinite block/continue cycling with a non-compliant or
-  // stubborn continuation, on top of the natural termination the invariant already gives (a
-  // corrected response simply stops matching it). No workflow engine, no persisted state.
+  // Loop safety: proven hard ceiling, not a heuristic — see the file header. Exactly one forced
+  // continuation per turn, unconditionally, regardless of what that continuation contains.
   if (input.stop_hook_active === true) return ALLOW;
 
   const message = input.last_assistant_message;
   if (typeof message !== 'string' || !message.trim()) return ALLOW;
 
-  if (!hasUnconfirmedCompletionGap(message)) return ALLOW;
+  // The checkpoint is only required when a 확인 완료 claim is being made — an honest non-complete
+  // status never needs it and is never delayed by it (Case C).
   if (finalReportStatus(message) !== '확인 완료') return ALLOW;
+
+  // 'absent' (omitted, the proven failure shape) and 'gap' (explicitly disclosed) are both
+  // treated the same way: 확인 완료 has not earned survival. Only an affirmatively clean
+  // checkpoint lets it through.
+  if (readCheckpoint(message) === 'clean') return ALLOW;
 
   return { decision: 'block', reason: BLOCK_REASON };
 }
