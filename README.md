@@ -35,7 +35,7 @@ npm pack
 npm install -g ./jutell-2.0.0.tgz
 ```
 
-`2.0.0` matches this repository's current source version (`jutell@2.0.0`, release candidate — not yet published; `jutell@1.1.0` remains the latest version on npm).
+`2.0.0` matches this repository's current source version and the current published `jutell@2.0.0` on npm.
 </details>
 
 ## What does JuTell actually do?
@@ -207,7 +207,7 @@ Being written in Node doesn't by itself mean every platform is verified — the 
 
 ## What's new
 
-**`jutell@2.0.0` — release candidate (not yet published)**
+**`jutell@2.0.0` — published on npm**
 
 JuTell now helps *before* your agent starts, not only after it finishes:
 
@@ -217,7 +217,7 @@ JuTell now helps *before* your agent starts, not only after it finishes:
 - The easy-to-read report you know stays: verified / expected / not-checked kept separate, plus what still needs you.
 - Install, providers, and platforms are unchanged: `npm install -g jutell` then `jutell`; Codex supported, Claude Code and OpenCode beta.
 
-**`jutell@1.1.0`** (previous release, on npm)
+**`jutell@1.1.0`** (previous release)
 
 - Bare `jutell` now finds and connects every supported coding agent on your machine in one step, with a single approval — no per-agent setup wizard for a normal first run.
 - Setup returns you straight to your terminal instead of opening the local dashboard automatically (`jutell dashboard` is still there whenever you want it).
