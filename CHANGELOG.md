@@ -4,7 +4,7 @@ Notable user-facing changes to JuTell. See [GitHub Releases](https://github.com/
 
 ## v2.0.0
 
-Release candidate — not yet published on npm.
+Published on npm.
 
 **JuTell now helps before your agent starts, not only after it finishes.**
 
