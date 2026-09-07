@@ -2,244 +2,184 @@
 
 **English** | [한국어](README.ko.md)
 
-**Tell your coding agent what you actually mean — and understand what it actually did.**
+> You started coding with AI. Now make sure you and your coding agent understand each other.
 
-You say what you want, normally. Before work starts, JuTell notices only the ambiguity that would actually change the result, checks everything it can determine from your project itself, and asks you at most one real decision. After work finishes, it reports what changed, what was actually verified, what's still unknown, and what needs you — in words a non-developer can act on.
+JuTell helps when a request is vague, and when an agent's result is hard to read. It checks project facts it can find itself, asks only the decision that truly changes the result, then gives you a short, honest explanation of the work.
 
-![You, JuTell, and your coding agent working both ways: before work JuTell clarifies what you mean, after work it explains what the agent did.](docs/assets/readme/user-journey.svg)
+You keep using your normal coding agent. JuTell does not provide Codex, Claude Code, or OpenCode; it helps you use one of them with more clarity.
 
-**Before work** — JuTell clarifies only decisions that materially matter, looks up project facts itself instead of asking you technical questions, and protects the scope you asked for.
+![A real JuTell conversation: a normal request, one useful clarification, the coding agent working, and a plain-language result.](docs/assets/readme/beginner-conversation.svg)
 
-**After work** — JuTell explains what changed, keeps verified / expected / not-checked strictly separate, and tells you what still needs your attention.
+## A 30-second example
 
-JuTell is not an AI model, an IDE, or an agent GUI. It doesn't replace your agent, relay your work to it, or guarantee your agent's answers are correct — it's a **two-way communication layer** that sits beside the agent you're already using: you → agent, then agent → you.
+**You:** “Please make signup simpler.”
 
-## Install
+**JuTell:** checks the existing signup screen and its required fields first. If “simpler” could mean two different things, it asks one plain question — for example, “Should I tidy the screen, or remove an optional field?”
+
+**You:** “Tidy the screen. Keep every field.”
+
+**Your coding agent:** makes the change.
+
+**JuTell:** tells you what changed, what was actually checked, what it could not check yet, and whether you need to do anything next.
+
+## Can I use JuTell?
+
+| What you need | Current status |
+|---|---|
+| **Codex** | Supported |
+| **Claude Code** | Beta |
+| **OpenCode** | Beta |
+| Windows | Tested |
+| Ubuntu | Limited testing |
+| macOS | Available / unverified |
+
+You need a coding agent first. JuTell connects to an agent you already installed; it is not the agent or the AI model itself.
+
+## Before installing
+
+You need:
+
+- **A coding agent:** Codex, Claude Code, or OpenCode already installed. Codex is the fully supported connection; Claude Code and OpenCode are Beta.
+- **Node.js:** JuTell is installed with `npm`, which comes with Node.js. If you do not have it, install the current Node.js release from [nodejs.org](https://nodejs.org/en/download).
+- **A terminal:** PowerShell on Windows, or Terminal on Ubuntu/macOS. It is just the place where you paste the two commands below.
+- **Internet access:** npm downloads JuTell during installation.
+
+## Install, step by step
+
+![JuTell setup in five steps: install, run jutell, an agent is detected, approve the connection, then return to your agent.](docs/assets/readme/beginner-install.svg)
+
+### Step 1 — Open PowerShell or Terminal
+
+On Windows, search for **PowerShell** and open it. On Ubuntu or macOS, open **Terminal**.
+
+### Step 2 — Install JuTell
+
+Paste this, then press Enter:
+
+```bash
+npm install -g jutell
+```
+
+### Step 3 — Run JuTell
+
+```bash
+jutell
+```
+
+Or paste the normal install path together:
 
 ```bash
 npm install -g jutell
 jutell
 ```
 
-JuTell finds the coding agents you already have installed (Codex, Claude Code, OpenCode), asks for one approval, connects them, and hands you straight back to your normal Codex / Claude Code / OpenCode session. No wizard, no dashboard tab to close.
+### Step 4 — Approve the detected agent connection
 
-<details>
-<summary>Build from source instead (contributors / verifying the repo directly)</summary>
+JuTell looks for Codex, Claude Code, and OpenCode that are already on your computer. Read the short preview and approve the connection you want. It only manages JuTell’s own setup blocks and keeps other agent settings in place.
 
-Most people should use the npm install above. Use this only when you want to verify the source in this repository directly.
+### Step 5 — Return to your normal coding agent
 
-```bash
-cd packages/cli
-npm install
-npm pack
-npm install -g ./jutell-2.0.0.tgz
-```
+Setup finishes in the terminal. There is no new dashboard you must keep open. Go back to Codex, Claude Code, or OpenCode and use it as usual.
 
-`2.0.0` matches this repository's current source version and the current published `jutell@2.0.0` on npm.
-</details>
+### Step 6 — What successful setup looks like
 
-## What does JuTell actually do?
+You should see that an agent was found and connected, without an error. Then run `jutell status` if you want a short connection summary. If it says there is a problem, run `jutell doctor` for the next step to take.
 
-One flow, both directions:
+## First things to try
 
-1. You ask normally — e.g. "회원가입 좀 간단하게 해줘."
-2. JuTell notices only the ambiguity that would change the result.
-3. The agent checks what it can determine itself (current screens, fields, code) instead of asking you.
-4. If a real decision remains, you get one concise question — never a technical quiz.
-5. The agent changes only what you asked for, plus the supporting work strictly needed for it.
-6. Verification is tied to what you actually asked for — not the whole test suite just because it exists.
-7. You get a short report: what changed, what's verified, what's still unknown, what needs you.
+Start with a request you can recognize easily:
 
-### After your agent finishes, JuTell answers what matters
+1. “Change the login button to blue.”
+2. “Please make signup simpler.”
+3. “Make the empty search box show a helpful message.”
 
-| Question | What JuTell shows |
-|---|---|
-| What changed? | A plain-language summary of the change, not a wall of diffs. |
-| What was verified? | Only checks that were actually run — never "probably works." |
-| What's still uncertain? | Named explicitly, instead of being quietly skipped. |
-| Which code actually matters, and why? | 1–2 important snippets, explained — not the whole diff. |
-| Is there risk? | A plain risk read, judged by impact, not by whether a test exists. |
-| What should I do next? | Up to 3 concrete actions, only when something is genuinely left for you. |
-| Can another agent continue this? | A copy-pasteable handoff with what's known and what isn't. |
+For the first and third, JuTell should let your agent get on with a clear request. For “make signup simpler,” it should check the project first and ask only if a real choice remains. It should not turn your request into a technical questionnaire.
 
-## Before / after
+## After your agent finishes
 
-![A raw technical agent message is transformed by JuTell into a readable report with change, impact, proof, unknowns, and next action.](docs/assets/readme/before-jutell-after.svg)
+![A short result comparison: a technical agent message becomes a JuTell result with changed, verified, not checked, and next action.](docs/assets/readme/beginner-result.svg)
 
-| What your agent gives you | What JuTell gives you |
-|---|---|
-| Technical terms and a list of actions | What actually changed |
-| One line saying "tested it" | What's confirmed, and what still isn't |
-| An entire raw diff | 1–2 important lines, explained simply |
-| A handoff that means re-reading the whole conversation | A current-state summary you can paste into the next agent |
-
-The point: a nondeveloper can decide "is this okay to approve?" and "what do I need to check myself?" — without reading code.
-
-### The other half: before work starts
-
-| You say | What JuTell + your agent do |
-|---|---|
-| "회원가입 좀 간단하게 해줘." | Check the current signup structure first — no "which framework?" questions. |
-| The risky guess: what does "간단하게" mean? | Ask only the decision that changes the outcome (e.g. tidy up the screen vs. remove an input) — one question, then work. |
-| The quiet risk: scope creep. | Change only the authorized scope, verify against what you asked for, and report the rest honestly. |
-
-No workflow diagram to memorize — this is the same single flow as above: clarify only what matters, change only what's asked, verify only what's relevant.
-
-## Example report
-
-The rules below are JuTell's real, public reporting rules. This example is sanitized — no real project, user, or session data.
-
-![A sanitized JuTell report showing what changed, user impact, a small important code sample, confirmed evidence, unchecked work, risk, and a next action.](docs/assets/readme/easy-report.svg)
+Here is the kind of short result to expect:
 
 ```text
-[What changed]
-An empty search no longer sends a request.
+Changed
+- The signup screen spacing was simplified. Every field stays.
 
-[Important code]
-  + if (!query.trim()) return;
-  - In plain terms: a search box with only spaces now stops here.
-  - Impact: fewer unnecessary requests and error screens from empty searches.
+Verified
+- The signup screen test passed.
 
-[Confirmed vs. still unknown]
-- Confirmed (evidence: file, test) — the empty-input guard and its test were checked.
-- Expected (evidence: code) — no empty search requests should occur.
-- Not yet checked — actual browser behavior hasn't been run.
-- Risk: low — affects only search submission.
+Not checked yet
+- I did not open the screen in a real browser.
 
-[Next action]
-Try one empty search in the browser to confirm.
-Report status: needs one more check
+Your next action
+- Open signup once and check the new spacing.
 ```
 
-A report's length matches the size of the work — a one-line fix doesn't get a wall of text — but failures, risks, and unverified items are never hidden to keep it short.
+JuTell does not call something “verified” unless it was actually checked. A code-based expectation and an unchecked browser result stay clearly labeled.
 
-### Read the important change, not the whole diff
+## How do I know it is working?
 
-![An explained code diff: stopping an empty search is paired with why it matters, user impact, and the browser check that remains.](docs/assets/readme/explained-diff.svg)
-
-JuTell doesn't dump the full diff back at you. It picks up to 1–2 changes that actually matter from what was already reviewed, and explains why they matter and what changes for you. Anything that can only be inferred from reading the code stays labeled as an **expectation** — it's never mixed in with something actually confirmed by running it.
-
-## Works with your existing agents
-
-| Agent | Status |
-|---|---|
-| **Codex** | Supported |
-| **Claude Code** | Beta |
-| **OpenCode** | Beta |
-
-"Beta" means the connection itself is newer and less battle-tested — the reports you get are held to the same rules regardless of which agent you connect. `jutell` (see [Install](#install) above) connects whichever of these it finds; to connect one specific agent by hand, see [Install, control & advanced](#install-control--advanced) below. Verification details live in [CLI install & commands](docs/CLI_INSTALLATION.md) and [MCP integration](docs/MCP_INTEGRATION.md) for anyone who wants them; the README keeps it to this table on purpose.
-
-Reporting rules are the default path, and MCP is an optional local connection alongside them — if MCP is off or unavailable, you still get JuTell's reports. Run `jutell doctor` any time to check what's connected.
-
-## Trust: what's confirmed, and what isn't
-
-![Four trust states — confirmed, expected, not checked, and risk — plus a handoff from Agent A through JuTell to Agent B.](docs/assets/readme/trust-and-handoff.svg)
-
-A single word like "passed" isn't enough. JuTell keeps evidence, confirmation status, risk, and what you should do as four separate things:
-
-- **Confirmed** — backed by something direct: a file, Git, a command, a browser check.
-- **Expected** — looks right from the code, but wasn't actually run.
-- **Not checked** — wasn't verified, or there was no way to verify it.
-- **Risk** — judged separately from confirmation status. Something can be fully confirmed and still be high-risk.
-
-This carries into handoffs too. A JuTell handoff passes along what's done, the evidence for it, what's still unknown, and the next action — briefly. It never lets a new agent pretend something was already verified when it wasn't.
-
-## Install, control & advanced
-
-**Everyday commands**
-
-| Command | What it does |
-|---|---|
-| `jutell` | First run: find and connect your installed agents. |
-| `jutell status` | Check current connections, Profile, and Features. |
-| `jutell doctor` | Check for setup problems. |
-| `jutell on` / `jutell off` | Turn the connection on or off. |
-
-**Manual connection, repair, and advanced**
-
-Use these if auto-connect didn't run, you want to reconnect one specific agent, or you're troubleshooting:
-
-| Command | What it does |
-|---|---|
-| `jutell use codex` / `jutell use opencode` / `jutell use claude` | Connect (or reconnect) one specific agent by hand. |
-| `jutell dashboard` | Open the local admin screen on demand. |
-| `jutell setup` / `jutell enable` / `jutell disable` | Redo setup, or turn Skill/MCP on or off individually. |
-| `jutell provider` | See detailed per-agent connection status. |
-| `jutell upgrade` | Refresh the installed Skill/config/MCP to the current version. |
-| `jutell uninstall` | Remove the install. |
-| `jutell session` | See today's local work log. |
-
-You can adjust how JuTell reports without touching any of this — see the config block below.
-
-```json
-{
-  "version": 1,
-  "profile": "balanced",
-  "voice": { "preset": "default" }
-}
+```bash
+jutell status
 ```
 
-| Setting | Choices | What it changes |
-|---|---|---|
-| Profile | `minimal` / `balanced` / `learning` / `detailed` | Report length and how much is explained |
-| Voice | `default` / `plain` / `learning` / `jutell` | Tone only — never facts, evidence, or risk |
-| Features | `explainedDiff`, `validationResults`, `riskAssessment`, etc. | Which report sections are on |
+Look for a readable summary of JuTell’s installation and your agent connection. It separates “configured” from “actually checked,” so an untested tool call is not presented as a failure.
 
-This file lives at your project's `.jutell.json`, is created by the CLI or local admin screen, and is never committed to this public repository. Full command reference: `jutell --help` or [CLI install & commands](docs/CLI_INSTALLATION.md).
+```bash
+jutell doctor
+```
 
-## Privacy
+Use this when setup looks wrong. It checks JuTell files, configuration, permissions, and whether anything would be sent outside your computer. Its normal output avoids showing full paths or secret values.
 
-JuTell explains what your agent already did, from files, Git, and command output already on your machine. It does not collect or transmit your project code, prompts, raw agent answers, diffs, or secrets. Telemetry is off by default, and storage/transmission for it isn't implemented at this stage. Full details: [Privacy principles](docs/PRIVACY_PRINCIPLES.md) and [Telemetry policy](docs/TELEMETRY_POLICY.md).
+## Something went wrong
 
-What JuTell doesn't do: provide an AI model, act as an API gateway, clone an agent GUI, handle authentication for you, replace Codex/Claude Code/OpenCode, or orchestrate other agents.
-
-What JuTell doesn't promise: it doesn't guarantee your agent understood you correctly, doesn't claim to find every dependency your request touches, doesn't certify code correctness on its own, and never replaces your judgment on whether to approve the result. It makes the request clearer and the evidence checkable — the final call stays yours.
-
-## Platform support
-
-| Platform | Status |
+| If this happens | Try this |
 |---|---|
-| **Windows** | Tested — install, connect, status/doctor, and the local admin screen all verified on Windows 11. |
-| **Linux (Ubuntu)** | Tested in our current Ubuntu setup — a smaller smoke check on the published npm package, not every command on every distro. |
-| **macOS** | Available, but not yet verified by us — it's built on Node and should work, but we haven't confirmed install/connect/MCP on real macOS. |
+| No agent was found | Install and open a supported coding agent first, then run `jutell` again. |
+| Connection failed | Run `jutell doctor`, then follow its message. |
+| You want to reconnect one agent | Run `jutell` again, or use the manual connection commands in Advanced. |
+| You want to turn JuTell off | Run `jutell off`. Your settings and local journal stay. |
+| You want to remove JuTell | Run `jutell uninstall`. It keeps local data unless you explicitly add `--remove-data`. |
 
-Being written in Node doesn't by itself mean every platform is verified — the table above is the honest state, not an assumption.
+## What JuTell does — and does not do
+
+JuTell helps make a request clear before work, and makes the result understandable after work. It keeps **what changed**, **what was verified**, **what is expected**, and **what was not checked** separate.
+
+It does not replace your coding agent, provide an AI model, guarantee agent correctness, find every dependency, automatically verify browser behavior, or make the approval decision for you.
+
+## Trust and privacy
+
+JuTell explains work using files, Git, and command output already on your computer. It does not collect or send your project code, prompts, raw agent answers, diffs, or secrets. Telemetry is off by default, and storage or transmission for it is not implemented at this stage.
+
+Read the details in [Privacy principles](docs/PRIVACY_PRINCIPLES.md). For the full scope and limitations, see [Product scope](docs/PRODUCT_SCOPE.md).
 
 ## What's new
 
-**`jutell@2.0.0` — published on npm**
+**`jutell@2.0.0` is published on npm.** It helps before work starts as well as after it finishes: project facts are checked first, only a real decision is asked, and verified / expected / not-checked remain separate.
 
-JuTell now helps *before* your agent starts, not only after it finishes:
+## Install, control & advanced
 
-- It checks project facts itself and asks you only the decisions that actually change the outcome — at most one concise question.
-- It protects your requested scope: what you asked for, plus strictly necessary supporting work. Unrelated "improvements" are left alone (mentioned at most once, never silently done).
-- Completion is verified against what you actually asked for, with already-gathered evidence reused — no unrelated test-suite runs just because they exist.
-- The easy-to-read report you know stays: verified / expected / not-checked kept separate, plus what still needs you.
-- Install, providers, and platforms are unchanged: `npm install -g jutell` then `jutell`; Codex supported, Claude Code and OpenCode beta.
+### Useful commands
 
-**`jutell@1.1.0`** (previous release)
+| Command | What it does |
+|---|---|
+| `jutell` | Finds installed supported agents and offers to connect them. |
+| `jutell status` | Shows installation, connection, profile, and feature status. |
+| `jutell doctor` | Checks setup problems. |
+| `jutell on` / `jutell off` | Turns JuTell’s connection on or off. |
+| `jutell setup` | Prepares the Skill, default config, and MCP connection again. |
+| `jutell provider` | Shows detailed agent connection status. |
+| `jutell upgrade` | Refreshes JuTell’s installed Skill/config/MCP to the current version. |
+| `jutell uninstall` | Removes JuTell’s managed setup. |
 
-- Bare `jutell` now finds and connects every supported coding agent on your machine in one step, with a single approval — no per-agent setup wizard for a normal first run.
-- Setup returns you straight to your terminal instead of opening the local dashboard automatically (`jutell dashboard` is still there whenever you want it).
-- This README and README.ko.md were rewritten for a global, bilingual audience.
+MCP is an optional local connection that lets a coding agent use JuTell more directly. You do not need to understand or configure it for the normal install path; JuTell’s reporting fallback remains available if MCP is off. See [CLI install & commands](docs/CLI_INSTALLATION.md) and [MCP integration](docs/MCP_INTEGRATION.md) when you need the technical details.
 
-Full version history: [GitHub Releases](https://github.com/ju0o/jutell/releases).
+You can tune reports with a project `.jutell.json` file created by the CLI. Available profiles are `minimal`, `balanced`, `learning`, and `detailed`; they change explanation length, never the underlying facts or risk.
 
-## Docs
+If you are verifying the repository source instead of installing from npm, `npm pack` creates `jutell-2.0.0.tgz` in `packages/cli`; ordinary users do not need this path.
 
-- [Changelog](CHANGELOG.md)
-- [Get started](docs/START_HERE.md)
-- [CLI install & commands](docs/CLI_INSTALLATION.md)
-- [Product scope](docs/PRODUCT_SCOPE.md)
-- [Feature configuration](docs/FEATURE_CONFIGURATION.md)
-- [JuTell voice/tone policy](docs/JUTELL_STYLE.md)
-- [Privacy principles](docs/PRIVACY_PRINCIPLES.md)
-- [Telemetry policy](docs/TELEMETRY_POLICY.md)
-- [MCP integration](docs/MCP_INTEGRATION.md)
-- [OpenCode connection](docs/PROVIDER_OPENCODE.md)
-
-Engineering audits, operator logs, and early planning notes are kept in the repository for transparency but aren't part of the beginner journey — see [`docs/DOCUMENTATION_MAP.md`](docs/DOCUMENTATION_MAP.md) if you're looking for them.
+For contributors: [Changelog](CHANGELOG.md) · [Documentation map](docs/DOCUMENTATION_MAP.md) · [OpenCode connection](docs/PROVIDER_OPENCODE.md) · [GitHub Releases](https://github.com/ju0o/jutell/releases)
 
 ## JuTell by Ju0
 
-Ju0 is the parent brand; JuTell is the product under it. The official form is `JuTell by Ju0`. The GitHub repository name is kept as-is as a separate operational decision.
+Ju0 is the parent brand; JuTell is its product.

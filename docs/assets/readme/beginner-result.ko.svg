@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="570" viewBox="0 0 1200 570" role="img" aria-labelledby="title desc">
+  <title id="title">기술적인 결과가 쉬운 JuTell 결과가 되는 모습</title>
+  <desc id="desc">왼쪽의 기술적인 Agent 메시지가 오른쪽에서 바뀐 것, 확인한 것, 아직 확인하지 못한 것, 다음 행동으로 정리됩니다.</desc>
+  <rect width="1200" height="570" fill="#f6f8fa"/>
+  <g font-family="Arial, 'Malgun Gothic', sans-serif"><text x="60" y="70" fill="#24292f" font-size="36" font-weight="700">기술적인 메시지를 해독하지 않아도 무슨 일이 있었는지 압니다.</text>
+    <rect x="55" y="125" width="450" height="360" rx="18" fill="#24292f"/><text x="90" y="175" fill="#d0d7de" font-size="22" font-weight="700">평소 Agent 결과</text><text x="90" y="225" fill="#f0f6fc" font-size="21">SignupForm.tsx 수정</text><text x="90" y="265" fill="#8b949e" font-size="19">화면 구조 정리 / 테스트 실행</text><text x="90" y="305" fill="#8b949e" font-size="19">스타일 조정 / 문제 없음</text><text x="90" y="385" fill="#f0f6fc" font-size="23">그래서 나에게 무슨 의미일까?</text>
+    <path d="M535 305h110" stroke="#0969da" stroke-width="7"/><polygon points="675,305 645,288 645,322" fill="#0969da"/>
+    <rect x="695" y="125" width="450" height="360" rx="18" fill="#fff" stroke="#d0d7de" stroke-width="2"/><text x="730" y="175" fill="#0969da" font-size="22" font-weight="700">JUTELL 결과</text><text x="730" y="230" fill="#1a7f37" font-size="20" font-weight="700">바뀐 것</text><text x="730" y="258" fill="#24292f" font-size="21">회원가입 화면 여백이 간단해졌습니다.</text><text x="730" y="312" fill="#1a7f37" font-size="20" font-weight="700">확인한 것</text><text x="730" y="340" fill="#24292f" font-size="21">회원가입 테스트가 통과했습니다.</text><text x="730" y="394" fill="#9a6700" font-size="20" font-weight="700">아직 확인하지 못한 것</text><text x="730" y="422" fill="#24292f" font-size="21">브라우저 화면은 열어 보지 못했습니다.</text><text x="730" y="465" fill="#0969da" font-size="20" font-weight="700">다음 행동</text><text x="840" y="465" fill="#24292f" font-size="21">회원가입을 한 번 열어 보세요.</text>
+  </g>
+</svg>
