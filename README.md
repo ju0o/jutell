@@ -60,6 +60,11 @@ Paste this, then press Enter:
 npm install -g jutell
 ```
 
+> **Permission error on Ubuntu/Linux?** If this fails with `EACCES` / `permission denied`, it's a
+> common npm global-folder ownership issue on Linux, not something specific to JuTell. Avoid
+> `sudo npm install -g jutell` — it can leave root-owned files that cause the same problem again
+> later. See [Ubuntu/Linux install permission error](docs/CLI_INSTALLATION.md) for two safe fixes.
+
 ### Step 3 — Run JuTell
 
 ```bash
@@ -140,6 +145,7 @@ Use this when setup looks wrong. It checks JuTell files, configuration, permissi
 | You want to reconnect one agent | Run `jutell` again, or use the manual connection commands in Advanced. |
 | You want to turn JuTell off | Run `jutell off`. Your settings and local journal stay. |
 | You want to remove JuTell | Run `jutell uninstall`. It keeps local data unless you explicitly add `--remove-data`. |
+| `EACCES` / permission denied installing on Ubuntu/Linux | See [Ubuntu/Linux install permission error](docs/CLI_INSTALLATION.md). Avoid `sudo npm install -g jutell`. |
 
 ## What JuTell does — and does not do
 

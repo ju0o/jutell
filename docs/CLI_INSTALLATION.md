@@ -22,6 +22,88 @@ npm pack
 npm install -g ./jutell-2.0.0.tgz
 ```
 
+## Ubuntu/Linux 설치 권한 오류(EACCES) 해결
+
+`npm install -g jutell` 실행 중 아래와 비슷한 오류가 나면 이 섹션을 확인하세요.
+
+```
+npm error code EACCES
+npm error syscall rename
+npm error path /usr/local/lib/node_modules/jutell
+npm error dest /usr/local/lib/node_modules/.jutell-XXXXXXXX
+npm error errno -13
+```
+
+오류 메시지가 `/usr/local/lib/node_modules`처럼 **root 소유의 npm 전역 설치 경로**를 가리킬 때
+흔한 원인은, 이 컴퓨터의 npm 전역 설치 폴더 자체가 `root` 소유로 되어 있기 때문입니다.
+**JuTell만의 문제가 아니라**, 같은 폴더를 쓰는 다른 전역 npm 패키지를 설치할 때도 동일하게
+나는 문제입니다. (모든 `EACCES` 오류가 반드시 이 원인이라고 단정하지는 않습니다. 경로가
+다르다면 원인도 다를 수 있습니다.)
+
+### 방법 A — 사용자 소유 Node 버전 관리자 사용 (권장)
+
+[nvm](https://github.com/nvm-sh/nvm)이나 [fnm](https://github.com/Schniz/fnm) 같은 버전
+관리자로 Node/npm을 설치하면 Node와 전역 패키지 폴더가 시스템이 아니라 내 계정 소유가 되어,
+이런 권한 문제 자체가 생기지 않습니다. 이미 다른 버전 관리자를 쓰고 있다면 그대로 사용해도
+됩니다 — 이 저장소가 특정 버전 관리자를 강제하지 않습니다. 설치 후 새 터미널을 열고 평소처럼
+`npm install -g jutell`을 실행하면 됩니다.
+
+### 방법 B — 사용자 소유 npm 전역 경로로 변경
+
+버전 관리자를 쓰고 싶지 않다면, npm 전역 설치 경로를 내 계정 소유 폴더로 바꿀 수 있습니다.
+
+```bash
+mkdir -p ~/.npm-global
+npm config set prefix ~/.npm-global
+```
+
+셸 설정 파일에 아래 줄을 추가해야 새 경로가 실제로 적용됩니다 — 추가하지 않으면 설치는 되어도
+`jutell` 명령을 찾을 수 없습니다.
+
+```bash
+# bash 사용자: ~/.bashrc, zsh 사용자: ~/.zshrc 에 추가
+export PATH="$HOME/.npm-global/bin:$PATH"
+```
+
+파일을 저장한 뒤 터미널을 새로 열거나 `source ~/.bashrc`(zsh는 `source ~/.zshrc`)를 실행하고,
+그다음 평소대로 설치합니다.
+
+```bash
+npm install -g jutell
+jutell --version
+```
+
+한 번만 임시로 다른 경로에 설치해 보고 싶다면 `--prefix`를 직접 지정할 수도 있습니다. 이
+경우에도 설치된 `jutell` 실행 파일이 PATH에 포함된 폴더(위 예시라면 `~/.npm-global/bin`)에
+있어야 명령어로 바로 실행됩니다 — PATH에 없으면 전체 경로로 실행하거나 위 PATH 설정을 먼저
+해야 합니다.
+
+```bash
+npm install -g jutell --prefix ~/.npm-global
+```
+
+### 권장하지 않는 방법 — sudo
+
+```bash
+sudo npm install -g jutell
+```
+
+당장은 설치될 수 있지만, 이렇게 만들어진 파일이 다시 root 소유가 되어 이후 다른 전역 npm
+설치에서 같은 권한 문제를 반복시킬 수 있습니다. 첫 번째 해결 방법으로 권장하지 않습니다.
+
+### 설치가 끝난 뒤 확인
+
+```bash
+jutell --version
+jutell
+```
+
+`jutell --version`이 버전 번호를 보여주면 설치된 것입니다. 그다음 `jutell`을 실행해 평소 쓰는
+Coding Agent 연결을 진행하세요. 위 방법으로도 여전히 문제가 있으면 `jutell doctor`로 다음에
+할 일을 확인할 수 있습니다. 다만 `doctor`는 JuTell 설치 이후의 로컬 설정 상태를 점검하는
+명령이며, npm 전역 설치 폴더 자체의 권한은 점검하지 않습니다 — 이 문제는 설치 명령을 실행하는
+시점에서만 나타납니다.
+
 ## 명령
 
 | 명령 | 역할 |
