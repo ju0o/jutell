@@ -60,6 +60,11 @@ Windows에서는 시작 메뉴에서 **PowerShell**을 검색해 엽니다. Ubun
 npm install -g jutell
 ```
 
+> **Ubuntu/Linux에서 권한 오류가 나나요?** `EACCES` / `permission denied` 오류가 나면, JuTell만의
+> 문제가 아니라 Linux에서 흔한 npm 전역 폴더 소유권 문제입니다. `sudo npm install -g jutell`은
+> 피하세요 — root 소유 파일이 남아 다음 설치에서 같은 문제를 반복시킬 수 있습니다. 안전한 해결
+> 방법 두 가지는 [Ubuntu/Linux 설치 권한 오류](docs/CLI_INSTALLATION.md)에서 확인하세요.
+
 ### 3단계 — JuTell 실행하기
 
 ```bash
@@ -140,6 +145,7 @@ jutell doctor
 | 한 Agent를 다시 연결하고 싶음 | `jutell`을 다시 실행하거나, 아래 고급 수동 연결 명령을 사용하세요. |
 | JuTell을 끄고 싶음 | `jutell off`를 실행하세요. 설정과 로컬 작업 기록은 남습니다. |
 | JuTell을 지우고 싶음 | `jutell uninstall`을 실행하세요. `--remove-data`를 직접 추가하지 않는 한 로컬 데이터는 남습니다. |
+| Ubuntu/Linux에서 설치 중 `EACCES`/권한 오류가 남 | [Ubuntu/Linux 설치 권한 오류](docs/CLI_INSTALLATION.md)를 확인하세요. `sudo npm install -g jutell`은 피하세요. |
 
 ## JuTell이 하는 일과 하지 않는 일
 
