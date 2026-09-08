@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
+  <title id="title">A normal request becomes an understandable result</title>
+  <desc id="desc">You ask to simplify signup. JuTell checks project facts and asks one useful question if needed. Your coding agent works, then JuTell gives a plain result.</desc>
+  <rect width="1200" height="680" fill="#f6f8fa"/>
+  <g font-family="Arial, sans-serif">
+    <text x="70" y="75" fill="#24292f" font-size="36" font-weight="700">A normal request. A clear result.</text>
+    <text x="70" y="112" fill="#57606a" font-size="23">You do not need technical words to start.</text>
+    <rect x="70" y="160" width="760" height="94" rx="18" fill="#fff" stroke="#d0d7de" stroke-width="2"/>
+    <text x="105" y="202" fill="#57606a" font-size="21" font-weight="700">YOU</text>
+    <text x="105" y="235" fill="#24292f" font-size="28">“Please make signup simpler.”</text>
+    <path d="M450 270v42" stroke="#0969da" stroke-width="5"/>
+    <polygon points="450,330 438,310 462,310" fill="#0969da"/>
+    <rect x="70" y="344" width="1060" height="116" rx="18" fill="#ddf4ff" stroke="#54aeff" stroke-width="2"/>
+    <text x="105" y="390" fill="#0969da" font-size="21" font-weight="700">JUTELL</text>
+    <text x="105" y="425" fill="#24292f" font-size="27">Checks the screen first. One choice remains:</text>
+    <text x="105" y="450" fill="#24292f" font-size="25">“Tidy the screen, or remove an optional field?”</text>
+    <path d="M600 476v38" stroke="#0969da" stroke-width="5"/>
+    <polygon points="600,532 588,512 612,512" fill="#0969da"/>
+    <rect x="70" y="548" width="510" height="84" rx="18" fill="#dafbe1" stroke="#1a7f37" stroke-width="2"/>
+    <text x="102" y="583" fill="#1a7f37" font-size="20" font-weight="700">CODING AGENT</text>
+    <text x="102" y="615" fill="#24292f" font-size="24">Makes the agreed change.</text>
+    <rect x="620" y="548" width="510" height="84" rx="18" fill="#fff8c5" stroke="#9a6700" stroke-width="2"/>
+    <text x="652" y="583" fill="#9a6700" font-size="20" font-weight="700">JUTELL RESULT</text>
+    <text x="652" y="615" fill="#24292f" font-size="24">Changed · verified · not checked · next</text>
+  </g>
+</svg>

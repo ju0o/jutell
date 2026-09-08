@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
+  <title id="title">평소 요청이 이해하기 쉬운 결과가 되는 흐름</title>
+  <desc id="desc">회원가입을 간단하게 해 달라는 요청에서 JuTell이 프로젝트 사실을 확인하고 필요한 경우 한 가지를 묻습니다. Coding Agent가 작업한 뒤 JuTell이 쉬운 결과를 보여줍니다.</desc>
+  <rect width="1200" height="680" fill="#f6f8fa"/>
+  <g font-family="Arial, 'Malgun Gothic', sans-serif">
+    <text x="70" y="75" fill="#24292f" font-size="36" font-weight="700">평소 요청. 이해하기 쉬운 결과.</text>
+    <text x="70" y="112" fill="#57606a" font-size="23">기술 용어를 알아야 시작할 수 있는 것이 아닙니다.</text>
+    <rect x="70" y="160" width="760" height="94" rx="18" fill="#fff" stroke="#d0d7de" stroke-width="2"/>
+    <text x="105" y="202" fill="#57606a" font-size="21" font-weight="700">여러분</text>
+    <text x="105" y="235" fill="#24292f" font-size="28">“회원가입 좀 간단하게 해줘.”</text>
+    <path d="M450 270v42" stroke="#0969da" stroke-width="5"/><polygon points="450,330 438,310 462,310" fill="#0969da"/>
+    <rect x="70" y="344" width="1060" height="116" rx="18" fill="#ddf4ff" stroke="#54aeff" stroke-width="2"/>
+    <text x="105" y="390" fill="#0969da" font-size="21" font-weight="700">JUTELL</text>
+    <text x="105" y="425" fill="#24292f" font-size="27">먼저 화면을 확인합니다. 한 가지 선택이 남았다면:</text>
+    <text x="105" y="450" fill="#24292f" font-size="25">“화면만 정리할까요, 선택 입력 항목을 줄일까요?”</text>
+    <path d="M600 476v38" stroke="#0969da" stroke-width="5"/><polygon points="600,532 588,512 612,512" fill="#0969da"/>
+    <rect x="70" y="548" width="510" height="84" rx="18" fill="#dafbe1" stroke="#1a7f37" stroke-width="2"/>
+    <text x="102" y="583" fill="#1a7f37" font-size="20" font-weight="700">CODING AGENT</text>
+    <text x="102" y="615" fill="#24292f" font-size="24">합의한 범위만 작업합니다.</text>
+    <rect x="620" y="548" width="510" height="84" rx="18" fill="#fff8c5" stroke="#9a6700" stroke-width="2"/>
+    <text x="652" y="583" fill="#9a6700" font-size="20" font-weight="700">JUTELL 결과</text>
+    <text x="652" y="615" fill="#24292f" font-size="24">바뀐 것 · 확인한 것 · 미확인 · 다음 행동</text>
+  </g>
+</svg>
