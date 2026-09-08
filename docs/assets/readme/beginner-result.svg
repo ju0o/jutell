@@ -1,10 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="570" viewBox="0 0 1200 570" role="img" aria-labelledby="title desc">
-  <title id="title">A technical result becomes a plain JuTell result</title>
-  <desc id="desc">A raw technical agent message on the left is replaced by changed, verified, not checked, and next action on the right.</desc>
-  <rect width="1200" height="570" fill="#f6f8fa"/>
-  <g font-family="Arial, sans-serif"><text x="60" y="70" fill="#24292f" font-size="36" font-weight="700">Know what happened without decoding a technical message.</text>
-    <rect x="55" y="125" width="450" height="360" rx="18" fill="#24292f"/><text x="90" y="175" fill="#d0d7de" font-size="22" font-weight="700">NORMAL AGENT RESULT</text><text x="90" y="225" fill="#f0f6fc" font-size="21">Updated SignupForm.tsx</text><text x="90" y="265" fill="#8b949e" font-size="19">refactor layout / ran test</text><text x="90" y="305" fill="#8b949e" font-size="19">adjusted styles / no issues</text><text x="90" y="385" fill="#f0f6fc" font-size="23">What does that mean for me?</text>
-    <path d="M535 305h110" stroke="#0969da" stroke-width="7"/><polygon points="675,305 645,288 645,322" fill="#0969da"/>
-    <rect x="695" y="125" width="450" height="360" rx="18" fill="#fff" stroke="#d0d7de" stroke-width="2"/><text x="730" y="175" fill="#0969da" font-size="22" font-weight="700">JUTELL RESULT</text><text x="730" y="230" fill="#1a7f37" font-size="20" font-weight="700">CHANGED</text><text x="730" y="258" fill="#24292f" font-size="21">Signup spacing is simpler.</text><text x="730" y="312" fill="#1a7f37" font-size="20" font-weight="700">VERIFIED</text><text x="730" y="340" fill="#24292f" font-size="21">The signup test passed.</text><text x="730" y="394" fill="#9a6700" font-size="20" font-weight="700">NOT CHECKED</text><text x="730" y="422" fill="#24292f" font-size="21">Browser view was not opened.</text><text x="730" y="465" fill="#0969da" font-size="20" font-weight="700">NEXT</text><text x="805" y="465" fill="#24292f" font-size="21">Open signup once.</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="title desc">
+  <title id="title">A real JuTell report, condensed for this page</title>
+  <desc id="desc">Condensed from an actual JuTell run: changed the login button text, kept the login logic. Confirmed by re-reading the file and running the existing tests, both passing, with low risk and one thing left for the user to check.</desc>
+  <rect width="1200" height="600" fill="#f6f8fa"/>
+  <g font-family="Arial, sans-serif">
+    <text x="60" y="60" fill="#24292f" font-size="30" font-weight="700">A real result, not a mockup</text>
+    <text x="60" y="92" fill="#57606a" font-size="18">Condensed from a real JuTell run — request: "Change the login button text to</text>
+    <text x="60" y="116" fill="#57606a" font-size="18">'Get Started'. Keep the function the same."</text>
+
+    <rect x="60" y="140" width="1080" height="430" rx="18" fill="#fff" stroke="#d0d7de" stroke-width="2"/>
+
+    <text x="96" y="184" fill="#1a7f37" font-size="21" font-weight="700">CHANGED</text>
+    <text x="96" y="212" fill="#24292f" font-size="20">Login button text only, in one file. Button id and click handler are unchanged.</text>
+
+    <rect x="96" y="234" width="1008" height="2" fill="#d0d7de"/>
+
+    <text x="96" y="270" fill="#1a7f37" font-size="21" font-weight="700">VERIFIED</text>
+    <text x="96" y="298" fill="#24292f" font-size="20">Re-read the edited file directly. Ran the existing test suite — 2/2 tests passed.</text>
+
+    <rect x="96" y="320" width="1008" height="2" fill="#d0d7de"/>
+
+    <text x="96" y="356" fill="#9a6700" font-size="21" font-weight="700">RISK — LOW</text>
+    <text x="96" y="384" fill="#24292f" font-size="20">Only the button text changed. Login handling was not touched.</text>
+
+    <rect x="96" y="406" width="1008" height="2" fill="#d0d7de"/>
+
+    <text x="96" y="442" fill="#0969da" font-size="21" font-weight="700">YOUR NEXT ACTION</text>
+    <text x="96" y="470" fill="#24292f" font-size="20">Click the button once to confirm login still works.</text>
+
+    <rect x="96" y="496" width="1008" height="50" rx="10" fill="#f6f8fa"/>
+    <text x="116" y="527" fill="#57606a" font-size="17">See the full raw report → docs/releases/2.0.0-showcase.md</text>
   </g>
 </svg>

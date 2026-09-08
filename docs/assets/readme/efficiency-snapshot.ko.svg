@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="480" viewBox="0 0 1200 480" role="img" aria-labelledby="title desc">
+  <title id="title">한 번 관찰한 실행 결과 — JuTell 있을 때와 없을 때</title>
+  <desc id="desc">같은 작은 작업, 같은 provider로 JuTell 없이 한 번, JuTell과 함께 한 번 실행해 비교함. JuTell 없이는 도구 동작 8회, 약 6만 3.7천 토큰(provider 자체 보고)에 4줄 요약. JuTell과 함께는 13회, 약 16만 400 토큰에 구조화된 보고서. 표본 1개이며 벤치마크가 아닙니다.</desc>
+  <rect width="1200" height="480" fill="#f6f8fa"/>
+  <g font-family="Arial, sans-serif">
+    <text x="60" y="56" fill="#24292f" font-size="28" font-weight="700">한 번 관찰한 결과 — 벤치마크 아님</text>
+    <text x="60" y="86" fill="#57606a" font-size="17">같은 작은 작업, 같은 provider로 JuTell 있을 때/없을 때 각각 한 번 실행. n = 1.</text>
+
+    <rect x="60" y="110" width="520" height="230" rx="16" fill="#fff" stroke="#d0d7de" stroke-width="2"/>
+    <text x="92" y="146" fill="#57606a" font-size="19" font-weight="700">JUTELL 없이</text>
+    <text x="92" y="196" fill="#24292f" font-size="34" font-weight="700">도구 동작 8회</text>
+    <text x="92" y="232" fill="#24292f" font-size="24">약 6만 3.7천 토큰</text>
+    <text x="92" y="268" fill="#57606a" font-size="18">결과: 4줄 요약.</text>
+    <text x="92" y="308" fill="#57606a" font-size="16">OpenCode 자체 보고, 표본 1개.</text>
+
+    <rect x="620" y="110" width="520" height="230" rx="16" fill="#ddf4ff" stroke="#54aeff" stroke-width="2"/>
+    <text x="652" y="146" fill="#0969da" font-size="19" font-weight="700">JUTELL과 함께</text>
+    <text x="652" y="196" fill="#24292f" font-size="34" font-weight="700">도구 동작 13회</text>
+    <text x="652" y="232" fill="#24292f" font-size="24">약 16만 400 토큰</text>
+    <text x="652" y="268" fill="#57606a" font-size="18">결과: 구조화되고 확인된 보고서.</text>
+    <text x="652" y="308" fill="#57606a" font-size="16">+JuTell 전용 읽기·호출 3회(설정, Skill, MCP).</text>
+
+    <rect x="60" y="360" width="1080" height="96" rx="14" fill="#fff8c5" stroke="#9a6700" stroke-width="2"/>
+    <text x="92" y="392" fill="#9a6700" font-size="18" font-weight="700">오버헤드는 주로 어디서 왔나</text>
+    <text x="92" y="420" fill="#24292f" font-size="18">새 Agent 실행마다 Skill 파일 전체를 한 번씩 읽는 부분이 가장 큽니다 — 줄이는 작업을 진행 중이에요.</text>
+    <text x="92" y="444" fill="#57606a" font-size="16">OpenCode 표본 1개 기준. 이번 실행에서 Codex 자체 토큰 특성은 측정하지 않았어요.</text>
+  </g>
+</svg>

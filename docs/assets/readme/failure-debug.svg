@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">Understand failure without reading logs</title>
+  <desc id="desc">Condensed from a real JuTell run where an unrelated, pre-existing test was already failing. JuTell separated the finished, verified request from that unrelated failure instead of calling the whole task failed or hiding the problem.</desc>
+  <rect width="1200" height="620" fill="#f6f8fa"/>
+  <g font-family="Arial, sans-serif">
+    <text x="60" y="60" fill="#24292f" font-size="30" font-weight="700">Understand failures, not just logs</text>
+    <text x="60" y="92" fill="#57606a" font-size="18">Condensed from a real JuTell run: request — block empty search, show result count.</text>
+
+    <rect x="60" y="118" width="1080" height="94" rx="14" fill="#ffebe9" stroke="#cf222e" stroke-width="2"/>
+    <text x="92" y="150" fill="#cf222e" font-size="19" font-weight="700">WHAT FAILED</text>
+    <text x="92" y="178" fill="#24292f" font-size="19">1 of 2 tests failed — an existing, unrelated sort-order bug, already broken</text>
+    <text x="92" y="200" fill="#24292f" font-size="19">before this request started.</text>
+
+    <path d="M600 212v22" stroke="#57606a" stroke-width="4"/><polygon points="600,246 590,230 610,230" fill="#57606a"/>
+
+    <rect x="60" y="252" width="1080" height="80" rx="14" fill="#fff8c5" stroke="#9a6700" stroke-width="2"/>
+    <text x="92" y="282" fill="#9a6700" font-size="19" font-weight="700">DOES IT BLOCK MY REQUEST?</text>
+    <text x="92" y="310" fill="#24292f" font-size="19">No. It's a different function this request never touched — flagged, not fixed.</text>
+
+    <path d="M600 332v22" stroke="#57606a" stroke-width="4"/><polygon points="600,366 590,350 610,350" fill="#57606a"/>
+
+    <rect x="60" y="372" width="1080" height="104" rx="14" fill="#dafbe1" stroke="#1a7f37" stroke-width="2"/>
+    <text x="92" y="402" fill="#1a7f37" font-size="19" font-weight="700">WHAT'S ACTUALLY VERIFIED</text>
+    <text x="92" y="430" fill="#24292f" font-size="19">Empty and whitespace-only searches are blocked, normal search still works,</text>
+    <text x="92" y="452" fill="#24292f" font-size="19">result count displays correctly — each checked by running real code, not assumed.</text>
+
+    <path d="M600 476v22" stroke="#57606a" stroke-width="4"/><polygon points="600,510 590,494 610,494" fill="#57606a"/>
+
+    <rect x="60" y="516" width="1080" height="80" rx="14" fill="#ddf4ff" stroke="#54aeff" stroke-width="2"/>
+    <text x="92" y="546" fill="#0969da" font-size="19" font-weight="700">WHAT SHOULD YOU DO?</text>
+    <text x="92" y="574" fill="#24292f" font-size="19">Nothing for this request. Open a new request only if you want the legacy sort bug fixed.</text>
+  </g>
+</svg>
