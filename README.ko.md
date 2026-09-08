@@ -2,29 +2,28 @@
 
 [English](README.md) | **한국어**
 
-[![npm version](https://img.shields.io/npm/v/jutell.svg)](https://www.npmjs.com/package/jutell)
-[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![node: >=18](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org)
+## 내가 하려는 말을 Agent에게, Agent가 한 일을 나에게.
+
+AI Agent에게 원하는 걸 말할 수 있지만, 정말 됐는지 알려고 코드나 로그까지 읽고 싶지는 않은
+분들을 위해.
+
 ![Codex: 정식 지원](https://img.shields.io/badge/Codex-정식%20지원-brightgreen)
 ![Claude Code: 베타](https://img.shields.io/badge/Claude%20Code-베타-yellow)
 ![OpenCode: 베타](https://img.shields.io/badge/OpenCode-베타-yellow)
 
-## 내가 하려는 말을 Agent에게, Agent가 한 일을 나에게.
-
-JuTell은 여러분이 이미 쓰는 Coding Agent(Codex·Claude Code·OpenCode) 옆에서 함께 일합니다.
-작업 전에는 직접 확인할 수 있는 프로젝트 사실을 먼저 확인하고, 결과를 정말 바꾸는 결정 한
-가지만 묻습니다. 작업 후에는 무엇이 바뀌었는지, 실제로 확인한 것은 무엇인지, 여러분이 직접
-확인해야 할 것은 무엇인지를 짧고 정직하게 알려줍니다.
-
-JuTell은 Codex·Claude Code·OpenCode를 제공하지 않고, AI 모델 자체도 아닙니다. 이미 설치한
-Agent를 양방향으로 더 분명하게 쓸 수 있게 돕는 도구입니다.
-
 ![내가 하려는 말을 Agent에게, Agent가 한 일을 나에게 — 작업 전에는 프로젝트 사실을 확인하고 필요할 때만 질문하고, 작업 후에는 확인된 것과 아직 확인하지 못한 것을 나눕니다.](docs/assets/readme/hero-report.ko.svg)
+
+**빠른 시작**
 
 ```bash
 npm install -g jutell
 jutell
 ```
+
+JuTell은 여러분이 이미 쓰는 Coding Agent(Codex·Claude Code·OpenCode) 옆에서, 작업 전에는
+프로젝트 사실을 확인하고 작업 후에는 확인된 것과 짐작한 것을 나눠 알려줍니다. Codex·Claude
+Code·OpenCode를 제공하지 않고 AI 모델 자체도 아닙니다 — 자세한 내용은 아래
+"JuTell이 하는 일과 하지 않는 일"에서 확인하세요.
 
 ## JuTell이 푸는 문제
 
@@ -91,7 +90,16 @@ JuTell은 "코드로는 맞아 보인다"를 "화면에서 확인됐다"로 바�
 오버헤드를 줄이는 것 — 특히 Skill 파일 전체 읽기부터 — 은 이미 끝난 일이 아니라 지금
 진행 중인 작업입니다.
 
-## JuTell을 쓸 수 있나요?
+## 써 보세요
+
+```bash
+npm install -g jutell
+jutell
+```
+
+위와 똑같은 두 명령이에요 — 여기까지 읽고 써 보고 싶으시다면, 필요한 건 이게 전부예요.
+
+## 지원하는 Agent와 플랫폼
 
 | 필요한 것 | 현재 상태 |
 |---|---|
@@ -118,6 +126,10 @@ JuTell은 "코드로는 맞아 보인다"를 "화면에서 확인됐다"로 바�
 - **인터넷 연결:** npm이 설치 중 JuTell을 내려받습니다.
 
 ## 설치 방법
+
+위 두 명령을 이미 실행해 보셨나요? 여기서는 각 단계에서 실제로 무엇이 보여야 하는지, 뭔가
+이상해 보일 때 무엇을 하면 되는지 — Ubuntu/Linux 권한 오류 해결법을 포함해서 — 자세히
+설명합니다.
 
 ![설치, jutell 실행, Agent 발견, 연결 승인, Agent로 돌아가기까지 다섯 단계의 JuTell 설치 흐름입니다.](docs/assets/readme/beginner-install.ko.svg)
 
@@ -290,3 +302,7 @@ npm이 아니라 저장소 소스를 직접 검증하는 기여자라면 `packag
 ## JuTell by Ju0
 
 Ju0는 상위 브랜드이며 JuTell은 그 제품입니다.
+
+[![npm version](https://img.shields.io/npm/v/jutell.svg)](https://www.npmjs.com/package/jutell)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![node: >=18](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org)

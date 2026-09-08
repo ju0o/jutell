@@ -2,29 +2,28 @@
 
 **English** | [한국어](README.ko.md)
 
-[![npm version](https://img.shields.io/npm/v/jutell.svg)](https://www.npmjs.com/package/jutell)
-[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![node: >=18](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org)
+## Tell your agent what you mean. Understand what it did.
+
+For people who can tell a coding agent what they want, but don't want to read code or logs just to
+know whether it actually worked.
+
 ![Codex: Supported](https://img.shields.io/badge/Codex-Supported-brightgreen)
 ![Claude Code: Beta](https://img.shields.io/badge/Claude%20Code-Beta-yellow)
 ![OpenCode: Beta](https://img.shields.io/badge/OpenCode-Beta-yellow)
 
-## Tell your agent what you mean. Understand what it did.
-
-JuTell sits beside a coding agent you already use — Codex, Claude Code, or OpenCode. Before work,
-it checks project facts it can find itself and asks only the one decision that actually changes
-the result. After work, it gives you a short, honest report: what changed, what was actually
-verified, and what you still need to check yourself.
-
-JuTell does not provide Codex, Claude Code, or OpenCode, and it is not an AI model. It helps you
-use one of them with more clarity, in both directions.
-
 ![Tell your agent what you mean. Understand what it did — before work, JuTell checks project facts and asks one question if it matters; after work, it separates verified from not-checked-yet.](docs/assets/readme/hero-report.svg)
+
+**Quick start**
 
 ```bash
 npm install -g jutell
 jutell
 ```
+
+JuTell sits beside a coding agent you already use — Codex, Claude Code, or OpenCode — checking
+project facts before work and separating verified from assumed after it. It does not provide
+Codex, Claude Code, or OpenCode, and it is not an AI model itself (more on what JuTell is and
+isn't, further down).
 
 ## The problem JuTell solves
 
@@ -89,7 +88,16 @@ a config read, a Skill-file read, and one MCP call. Full numbers and caveats:
 [release showcase](docs/releases/2.0.0-showcase.md#efficiency-snapshot). Reducing that overhead —
 starting with the full Skill-file read — is an active area of work, not something already solved.
 
-## Can I use JuTell?
+## Try it
+
+```bash
+npm install -g jutell
+jutell
+```
+
+The same two commands as above — if you've read this far and want to try it, this is all it takes.
+
+## Supported agents & platforms
 
 | What you need | Current status |
 |---|---|
@@ -116,6 +124,9 @@ You need:
 - **Internet access:** npm downloads JuTell during installation.
 
 ## Install, step by step
+
+Already ran the two commands above? Here's exactly what should happen at each step, plus what to
+do if something looks wrong — including the Ubuntu/Linux permission fix.
 
 ![JuTell setup in five steps: install, run jutell, an agent is detected, approve the connection, then return to your agent.](docs/assets/readme/beginner-install.svg)
 
@@ -287,3 +298,7 @@ For contributors: [Changelog](CHANGELOG.md) · [Documentation map](docs/DOCUMENT
 ## JuTell by Ju0
 
 Ju0 is the parent brand; JuTell is its product.
+
+[![npm version](https://img.shields.io/npm/v/jutell.svg)](https://www.npmjs.com/package/jutell)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![node: >=18](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org)
