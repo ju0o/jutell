@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">로그를 읽지 않아도 실패를 이해할 수 있어요</title>
+  <desc id="desc">실제 JuTell 실행에서 관련 없는 기존 테스트가 이미 실패 상태였던 경우를 요약함. JuTell은 요청과 관련 없는 실패를 전체 작업 실패로 부풀리거나 숨기지 않고, 완료·확인된 요청과 따로 구분해 알려줍니다.</desc>
+  <rect width="1200" height="620" fill="#f6f8fa"/>
+  <g font-family="Arial, sans-serif">
+    <text x="60" y="60" fill="#24292f" font-size="30" font-weight="700">실패를 로그가 아니라 말로 이해해요</text>
+    <text x="60" y="92" fill="#57606a" font-size="18">실제 JuTell 실행을 요약함: 요청 — 빈 검색 차단, 결과 개수 표시.</text>
+
+    <rect x="60" y="118" width="1080" height="94" rx="14" fill="#ffebe9" stroke="#cf222e" stroke-width="2"/>
+    <text x="92" y="150" fill="#cf222e" font-size="19" font-weight="700">무엇이 실패했나요</text>
+    <text x="92" y="178" fill="#24292f" font-size="19">테스트 2개 중 1개 실패 — 이번 요청과 관련 없는 기존 정렬 오류로,</text>
+    <text x="92" y="200" fill="#24292f" font-size="19">작업 시작 전부터 이미 실패한 상태였어요.</text>
+
+    <path d="M600 212v22" stroke="#57606a" stroke-width="4"/><polygon points="600,246 590,230 610,230" fill="#57606a"/>
+
+    <rect x="60" y="252" width="1080" height="80" rx="14" fill="#fff8c5" stroke="#9a6700" stroke-width="2"/>
+    <text x="92" y="282" fill="#9a6700" font-size="19" font-weight="700">이번 요청이 막혔나요</text>
+    <text x="92" y="310" fill="#24292f" font-size="19">아니요. 이번 요청이 건드리지 않은 다른 함수의 문제예요 — 알려드리고 고치진 않았어요.</text>
+
+    <path d="M600 332v22" stroke="#57606a" stroke-width="4"/><polygon points="600,366 590,350 610,350" fill="#57606a"/>
+
+    <rect x="60" y="372" width="1080" height="104" rx="14" fill="#dafbe1" stroke="#1a7f37" stroke-width="2"/>
+    <text x="92" y="402" fill="#1a7f37" font-size="19" font-weight="700">실제로 확인된 것</text>
+    <text x="92" y="430" fill="#24292f" font-size="19">빈 검색·공백만 있는 검색은 차단, 정상 검색은 그대로 동작, 결과 개수 표시도</text>
+    <text x="92" y="452" fill="#24292f" font-size="19">정상 — 짐작이 아니라 실제로 실행해서 하나씩 확인했어요.</text>
+
+    <path d="M600 476v22" stroke="#57606a" stroke-width="4"/><polygon points="600,510 590,494 610,494" fill="#57606a"/>
+
+    <rect x="60" y="516" width="1080" height="80" rx="14" fill="#ddf4ff" stroke="#54aeff" stroke-width="2"/>
+    <text x="92" y="546" fill="#0969da" font-size="19" font-weight="700">여러분이 할 일</text>
+    <text x="92" y="574" fill="#24292f" font-size="19">이번 요청은 할 일이 없어요. 기존 정렬 오류를 고치고 싶으면 새 요청을 해주세요.</text>
+  </g>
+</svg>
