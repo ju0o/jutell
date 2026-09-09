@@ -24,13 +24,24 @@ export function agentsFile(projectRoot: string) {
   return path.join(projectRoot, 'AGENTS.md');
 }
 
-export async function hasJuTellAgentsBlock(projectRoot: string) {
-  const content = await readText(agentsFile(projectRoot));
+// Claude Code does not auto-discover `AGENTS.md` the way Codex/OpenCode do - it
+// auto-loads `CLAUDE.md` instead (verified empirically: a project with only an
+// AGENTS.md canary instruction was never followed, the same canary in CLAUDE.md
+// always was). Without this, `jutell use claude` reports a healthy MCP
+// connection while the agent never learns to read SKILL.md or call jutell_*
+// tools, because the one file telling it to do that sits somewhere Claude Code
+// doesn't automatically read. Same managed block, same markers, second file -
+// see `ensureJuTellClaudeMdBlock` below, wired in from installer/claude.ts.
+export function claudeMdFile(projectRoot: string) {
+  return path.join(projectRoot, 'CLAUDE.md');
+}
+
+async function hasManagedBlock(file: string) {
+  const content = await readText(file);
   return Boolean(content && markerPattern().test(content));
 }
 
-export async function ensureJuTellAgentsBlock(projectRoot: string) {
-  const file = agentsFile(projectRoot);
+async function ensureManagedBlock(file: string) {
   const current = await readText(file) ?? '';
   const next = markerPattern().test(current)
     ? current.replace(markerPattern(), managedBlock).replace(/\n{3,}/g, '\n\n').trimEnd() + '\n'
@@ -39,11 +50,34 @@ export async function ensureJuTellAgentsBlock(projectRoot: string) {
   return { changed: next !== current };
 }
 
-export async function removeJuTellAgentsBlock(projectRoot: string) {
-  const file = agentsFile(projectRoot);
+async function removeManagedBlock(file: string) {
   const current = await readText(file);
   if (!current || !markerPattern().test(current)) return { changed: false };
   const next = current.replace(markerPattern(), '').replace(/\n{3,}/g, '\n\n').trimEnd();
   await writeTextSafely(file, next ? `${next}\n` : '');
   return { changed: true };
+}
+
+export async function hasJuTellAgentsBlock(projectRoot: string) {
+  return hasManagedBlock(agentsFile(projectRoot));
+}
+
+export async function ensureJuTellAgentsBlock(projectRoot: string) {
+  return ensureManagedBlock(agentsFile(projectRoot));
+}
+
+export async function removeJuTellAgentsBlock(projectRoot: string) {
+  return removeManagedBlock(agentsFile(projectRoot));
+}
+
+export async function hasJuTellClaudeMdBlock(projectRoot: string) {
+  return hasManagedBlock(claudeMdFile(projectRoot));
+}
+
+export async function ensureJuTellClaudeMdBlock(projectRoot: string) {
+  return ensureManagedBlock(claudeMdFile(projectRoot));
+}
+
+export async function removeJuTellClaudeMdBlock(projectRoot: string) {
+  return removeManagedBlock(claudeMdFile(projectRoot));
 }

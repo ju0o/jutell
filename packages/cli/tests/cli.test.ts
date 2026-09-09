@@ -710,6 +710,41 @@ describe('Distribution CLI V0.1', () => {
     // Same project-scope rules as Codex/OpenCode: AGENTS.md + Skill installed.
     expect(await fs.readFile(path.join(project, 'AGENTS.md'), 'utf8')).toContain('BEGIN JUTELL MANAGED BLOCK');
     expect(await fs.stat(path.join(project, '.agents', 'skills', 'beginner-bridge', 'SKILL.md'))).toBeTruthy();
+
+    // Claude Code only auto-loads CLAUDE.md, not AGENTS.md (confirmed empirically
+    // during JUTELL-V2-CLAUDE-CODE-PARITY-01: a project with only an AGENTS.md
+    // canary instruction was never followed by `claude -p`, the same canary in
+    // CLAUDE.md always was) - without this, the MCP connects but the agent never
+    // discovers it should read SKILL.md or call jutell_* tools.
+    expect(await fs.readFile(path.join(project, 'CLAUDE.md'), 'utf8')).toContain('BEGIN JUTELL MANAGED BLOCK');
+  }, 20000);
+
+  it('jutell use codex/opencode는 CLAUDE.md를 만들지 않는다 (Claude 전용 부작용이 아님)', async () => {
+    const { project, env } = await fixture();
+    await runCli(['use', 'codex'], project, env);
+    await runCli(['use', 'opencode'], project, env);
+    await expect(fs.stat(path.join(project, 'CLAUDE.md'))).rejects.toThrow();
+    // AGENTS.md still gets the shared block regardless of provider.
+    expect(await fs.readFile(path.join(project, 'AGENTS.md'), 'utf8')).toContain('BEGIN JUTELL MANAGED BLOCK');
+  }, 20000);
+
+  it('jutell use claude를 반복 실행해도 CLAUDE.md 블록이 중복되지 않는다', async () => {
+    const { project, env } = await fixture();
+    await runCli(['use', 'claude'], project, env);
+    await runCli(['use', 'claude'], project, env);
+    const claudeMd = await fs.readFile(path.join(project, 'CLAUDE.md'), 'utf8');
+    expect(claudeMd.match(/BEGIN JUTELL MANAGED BLOCK/g)).toHaveLength(1);
+  }, 20000);
+
+  it('jutell use claude는 사용자가 이미 쓴 CLAUDE.md 내용을 보존한다', async () => {
+    const { project, env } = await fixture();
+    await fs.writeFile(path.join(project, 'CLAUDE.md'), '# My project notes\n\nSome existing guidance.\n', 'utf8');
+    await runCli(['use', 'claude'], project, env);
+    const claudeMd = await fs.readFile(path.join(project, 'CLAUDE.md'), 'utf8');
+    expect(claudeMd).toContain('# My project notes');
+    expect(claudeMd).toContain('Some existing guidance.');
+    expect(claudeMd).toContain('BEGIN JUTELL MANAGED BLOCK');
+    expect(claudeMd.match(/BEGIN JUTELL MANAGED BLOCK/g)).toHaveLength(1);
   }, 20000);
 
   it('jutell use claude를 반복 실행해도 중복 없이 idempotent하다', async () => {
@@ -782,6 +817,11 @@ describe('Distribution CLI V0.1', () => {
     const after = JSON.parse(await fs.readFile(claudeJsonFile, 'utf8'));
     expect(after.projects[key].mcpServers.jutell).toBeUndefined();
     expect(after.projects[key].mcpServers['sibling-tool']).toBeTruthy();
+    // CLAUDE.md is Claude-specific, like the MCP entry itself - disconnect removes
+    // the managed block from both (same "strip the block, keep the file" convention
+    // as AGENTS.md - it doesn't unlink the file, since a user may have added their
+    // own content above/below it).
+    expect(await fs.readFile(path.join(project, 'CLAUDE.md'), 'utf8')).not.toContain('BEGIN JUTELL MANAGED BLOCK');
 
     const second = await runCli(['disconnect', 'claude'], project, env);
     expect(second.stdout).toContain('연결된 Claude Code JuTell MCP가 없습니다');
@@ -806,5 +846,8 @@ describe('Distribution CLI V0.1', () => {
     const stillClean = !(await fs.access(claudeJsonFile).then(() => true, () => false))
       || !JSON.parse(await fs.readFile(claudeJsonFile, 'utf8')).projects?.[project]?.mcpServers?.jutell;
     expect(stillClean).toBe(true);
+    // registerClaudeMcp writes CLAUDE.md before the MCP entry (see registrationSnapshots'
+    // comment) - a failure later in the same `use` must roll that back too, not just the MCP entry.
+    await expect(fs.stat(path.join(project, 'CLAUDE.md'))).rejects.toThrow();
   }, 20000);
 });
