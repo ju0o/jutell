@@ -108,3 +108,55 @@ describe('spontaneous JuTell MCP preference (with Skill fallback)', () => {
     expect(skill).toMatch(/저장소 재탐색, 테스트 재실행.*만들지 않는다/);
   });
 });
+
+// JUTELL-V2.0.1-EFFICIENCY-OPTIMIZATION-01
+describe('efficiency guidance prefers precise Skill use and MCP completion rules', () => {
+  it('AGENTS managed block keeps JuTell/.jutell.json/Intent Bridge/MCP preference/fallback/trust rules', async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-efficiency-agents-'));
+    temporaryRoots.push(tmp);
+    await ensureJuTellAgentsBlock(tmp);
+    const text = await fs.readFile(path.join(tmp, 'AGENTS.md'), 'utf8');
+    expect(text).toContain('## JuTell');
+    expect(text).toContain('`.jutell.json`');
+    expect(text).toMatch(/실제로 코드나 문서를 바꾸기 전에는.*Intent Bridge 규칙으로 판단합니다/);
+    expect(text).toMatch(/사용할 수 있고.*모호함을 줄여줄 때는.*우선/);
+    expect(text).toMatch(/사용할 수 없거나 Provider 정책으로 막혀 있으면 작업을 멈추지 않고 JuTell Skill로 계속/);
+    expect(text).toContain('확인하지 않은 결과를 사실처럼 표현하지 않습니다');
+    expect(text).toContain('비밀정보를 명령 출력이나 보고서에 포함하지 않습니다');
+  });
+
+  it('AGENTS no longer tells every task to ritual-read the full SKILL.md', async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-efficiency-no-ritual-'));
+    temporaryRoots.push(tmp);
+    await ensureJuTellAgentsBlock(tmp);
+    const text = await fs.readFile(path.join(tmp, 'AGENTS.md'), 'utf8');
+    expect(text).not.toMatch(/SKILL\.md`와 `\.jutell\.json`을 먼저 읽습니다/);
+    expect(text).toMatch(/SKILL\.md 전체를 처음부터 끝까지 의식적으로 다시 읽지 않습니다/);
+    expect(text).toMatch(/모호한 요청에는 Intent Bridge·범위 안내만 필요한 만큼 확인/);
+  });
+
+  it('completion guidance prefers get_beginner_report_rules and avoids report-format/risk rereads after MCP success', async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-efficiency-mcp-once-'));
+    temporaryRoots.push(tmp);
+    await ensureJuTellAgentsBlock(tmp);
+    const agents = await fs.readFile(path.join(tmp, 'AGENTS.md'), 'utf8');
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(agents).toContain('get_beginner_report_rules');
+    expect(agents).toMatch(/성공한 뒤에는 최종 보고만을 위해 `references\/report-format\.md`나 `references\/risk-level-guide\.md`를 다시 읽지 않습니다/);
+    expect(skill).toMatch(/get_beginner_report_rules` 결과에 따라 하나의 비개발자용 최종 보고를 작성한다/);
+    expect(skill).toMatch(/MCP를 쓸 수 없거나 막히거나 실패했을 때만 `references\/report-format\.md` 등 이 Skill의 참고 문서로 대신한다/);
+    expect(skill).toMatch(/MCP를 사용할 수 있으면 이 확인을 MCP 도구 호출 한 번으로 처리하고 참고 문서를 여러 개 다시 읽지 않는다/);
+  });
+
+  it('MCP-unavailable path still falls back to Skill references safely', async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-efficiency-fallback-'));
+    temporaryRoots.push(tmp);
+    await ensureJuTellAgentsBlock(tmp);
+    const agents = await fs.readFile(path.join(tmp, 'AGENTS.md'), 'utf8');
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(agents).toMatch(/호출이 실패해도 마찬가지로 Skill·참고 문서로 계속합니다/);
+    expect(skill).toMatch(/MCP를 사용할 수 없으면 `references\/report-format\.md` 등 이 Skill의 참고 문서로 대신한다/);
+    expect(skill).toMatch(/보고서 형식이 필요하고 JuTell MCP의 `get_beginner_report_rules`를 쓸 수 없으면 `references\/report-format\.md`를 읽는다/);
+    expect(skill).toMatch(/위험도 판단이 필요하고 JuTell MCP의 `get_beginner_report_rules`를 쓸 수 없으면 `references\/risk-level-guide\.md`를 읽는다/);
+  });
+});
