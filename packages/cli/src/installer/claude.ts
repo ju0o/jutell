@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { readText } from '../config/managed.js';
 import { claudeHome } from '../config/paths.js';
+import { ensureJuTellClaudeMdBlock, removeJuTellClaudeMdBlock } from './agents.js';
 import type { ScopePaths } from '../types.js';
 
 export const CLAUDE_MCP_KEY = 'jutell';
@@ -134,6 +135,13 @@ function runClaude(args: string[], paths: ScopePaths) {
 }
 
 export async function registerClaudeMcp(paths: ScopePaths, packageRoot: string, enabled: boolean): Promise<ClaudeRegistration> {
+  // Claude Code auto-loads `CLAUDE.md`, not `AGENTS.md` (verified empirically -
+  // see the comment on ensureJuTellClaudeMdBlock). Without a managed CLAUDE.md,
+  // the MCP server below connects fine but the agent never learns to read
+  // SKILL.md or call jutell_* tools, since AGENTS.md alone isn't guaranteed to
+  // be discovered. Ensured unconditionally (before the idempotent early-return
+  // below) so a repeat `use claude` still restores it if a user deleted it.
+  if (paths.scope === 'project') await ensureJuTellClaudeMdBlock(paths.targetRoot);
   const current = await readClaudeRegistration(paths, packageRoot, enabled);
   const config = await readClaudeConfig(paths);
   if (config === undefined) throw new Error('Claude Code 설정 파일을 읽지 못해 자동 변경하지 않았습니다.');
@@ -157,6 +165,12 @@ export async function registerClaudeMcp(paths: ScopePaths, packageRoot: string, 
 
 export async function removeClaudeMcp(paths: ScopePaths, packageRoot: string): Promise<ClaudeRegistration> {
   const current = await readClaudeRegistration(paths, packageRoot, false);
+  // CLAUDE.md is Claude-specific (no other provider reads it, same way only
+  // OpenCode reads its own opencode.json mcp block) - unlike AGENTS.md, which
+  // stays shared across providers and is only ever touched by disable/uninstall.
+  // Removed here unconditionally so disconnect/switch/uninstall - every caller
+  // of removeClaudeMcp - clean it up too, not just the MCP entry.
+  if (paths.scope === 'project') await removeJuTellClaudeMdBlock(paths.targetRoot);
   if (!current.registered) return current;
   try {
     runClaude(['mcp', 'remove', '-s', current.claudeScope, CLAUDE_MCP_KEY], paths);

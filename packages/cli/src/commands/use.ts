@@ -2,7 +2,7 @@ import { assets, codexScopedPaths, packageRoot } from '../config/paths.js';
 import { readCodexRegistration, registerMcp, snapshot, restore } from '../config/managed.js';
 import { ensureBridgeConfig, setMcpEnabled } from '../installer/config.js';
 import { installSkill, recordSkillFiles, removeAddedSkillFiles } from '../installer/skill.js';
-import { agentsFile, ensureJuTellAgentsBlock } from '../installer/agents.js';
+import { agentsFile, claudeMdFile, ensureJuTellAgentsBlock } from '../installer/agents.js';
 import { opencodeDetected, readOpenCodeRegistration, registerOpenCodeMcp, setOpenCodeEnabled } from '../installer/opencode.js';
 import { readClaudeRegistration, registerClaudeMcp, removeClaudeMcp } from '../installer/claude.js';
 import { findProvider, supportedProviderNames, type AgentProvider, type AgentProviderId } from '../installer/providers.js';
@@ -67,7 +67,11 @@ async function resolveTarget(args: string[], io: CliIo): Promise<AgentProvider |
 async function registrationSnapshots(paths: ScopePaths): Promise<FileSnapshot[]> {
   const opencode = await readOpenCodeRegistration(paths, packageRoot(), false);
   const files = [paths.configFile, paths.codexConfigFile, codexScopedPaths(paths).codexConfigFile, opencode.file, paths.claudeConfigFile];
-  if (paths.scope === 'project') files.push(agentsFile(paths.targetRoot));
+  // registerClaudeMcp writes CLAUDE.md before touching the MCP entry (see its
+  // comment) - snapshot it too so a failure partway through `use claude`
+  // rolls it back along with AGENTS.md instead of leaving it added while the
+  // MCP registration itself got rolled back.
+  if (paths.scope === 'project') files.push(agentsFile(paths.targetRoot), claudeMdFile(paths.targetRoot));
   return Promise.all(files.map((file) => snapshot(file)));
 }
 
