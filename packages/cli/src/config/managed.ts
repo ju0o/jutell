@@ -95,17 +95,32 @@ export function normalizeConfig(value: unknown): BridgeConfig {
   };
 }
 
+const LIMITS_KEYS = ['maxMainFiles', 'maxGlossaryTerms', 'compactReportMaxSentences'] as const;
+
+// normalizeConfig() silently substitutes the schema default for any limits field that
+// isn't a valid integer - correct for making the CLI keep working, but it never signals
+// that the substitution happened, so a user's own (invalid) edit is silently overridden
+// with no way to notice. Computed separately here (readBridgeConfig has the raw parsed
+// object; normalizeConfig only returns the already-normalized result) so status/doctor
+// can warn about it without changing normalizeConfig's own return shape or call sites.
+function invalidLimitsFields(parsed: Record<string, unknown>): string[] {
+  const limits = parsed.limits;
+  if (!limits || typeof limits !== 'object' || Array.isArray(limits)) return [];
+  const record = limits as Record<string, unknown>;
+  return LIMITS_KEYS.filter((key) => key in record && !(typeof record[key] === 'number' && Number.isInteger(record[key])));
+}
+
 export async function readBridgeConfig(paths: ScopePaths) {
   const preferred = await readText(paths.configFile);
   const raw = preferred ?? await readText(paths.legacyConfigFile);
   const source = preferred !== undefined ? 'new' as const : raw !== undefined ? 'legacy' as const : 'default' as const;
-  if (!raw) return { config: await defaultConfig(), exists: false, valid: true, source };
+  if (!raw) return { config: await defaultConfig(), exists: false, valid: true, source, invalidLimitsFields: [] as string[] };
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     const valid = parsed.version === 1 && typeof parsed.profile === 'string' && PROFILES.includes(parsed.profile as typeof PROFILES[number]);
-    return { config: normalizeConfig(parsed), exists: true, valid, source };
+    return { config: normalizeConfig(parsed), exists: true, valid, source, invalidLimitsFields: invalidLimitsFields(parsed) };
   } catch {
-    return { config: await defaultConfig(), exists: true, valid: false, source };
+    return { config: await defaultConfig(), exists: true, valid: false, source, invalidLimitsFields: [] as string[] };
   }
 }
 
