@@ -547,6 +547,75 @@ describe('Distribution CLI V0.1', () => {
     expect(status.configLocation).toContain('.beginner-bridge.json');
   });
 
+  it('.jutell.json의 limits 값이 숫자가 아니면 doctor/status가 정상이라 말하지 않는다', async () => {
+    // Found during JUTELL-V2-CANDIDATE-CONVERGENCE-LONG-RUN-03 (rechecked from the
+    // prior long run's backlog): normalizeConfig() silently substitutes the schema
+    // default for a non-numeric limits value with no signal anywhere, so a user's own
+    // (invalid) hand-edit was previously indistinguishable from a healthy config -
+    // doctor said "정상" for a file that doesn't actually have a valid maxMainFiles.
+    const { project, env } = await fixture();
+    await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({
+      version: 1, profile: 'balanced', limits: { maxMainFiles: 'five', maxGlossaryTerms: 3, compactReportMaxSentences: 12 }, mcp: { enabled: true },
+    }), 'utf8');
+
+    const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
+    expect(status.warnings).toEqual(expect.arrayContaining([expect.stringContaining('maxMainFiles')]));
+
+    const doctor = JSON.parse((await runCli(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string; detail: string }>;
+    const limitsCheck = doctor.find((check) => check.name === 'limits');
+    expect(limitsCheck?.status).toBe('오류');
+    expect(limitsCheck?.detail).toContain('maxMainFiles');
+  });
+
+  it('숫자로 된 정상 limits 값에는 경고나 오류를 내지 않는다 (회귀 방지)', async () => {
+    const { project, env } = await fixture();
+    await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({
+      version: 1, profile: 'balanced', limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 }, mcp: { enabled: true },
+    }), 'utf8');
+
+    const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
+    expect(status.warnings.some((w: string) => w.includes('limits'))).toBe(false);
+
+    const doctor = JSON.parse((await runCli(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string }>;
+    expect(doctor.find((check) => check.name === 'limits')?.status).toBe('정상');
+  });
+
+  it.each([
+    ['array', []],
+    ['string', 'wrong'],
+    ['null', null],
+  ])('limits 값 전체가 객체가 아니면(%s) doctor/status가 정상이라 말하지 않는다', async (_label, malformedLimits) => {
+    // Found during JUTELL-V2.0.1-INDEPENDENT-CERTIFICATION-LONG-RUN-04: the original
+    // per-field check only inspected known keys *inside* a limits object - if `limits`
+    // itself was the wrong shape entirely (an array, a string, null), normalizeConfig()
+    // silently treats it exactly like `{}` and defaults every field, but the per-field
+    // check never looked past `typeof limits !== 'object'` to report anything wrong -
+    // same silent-override problem this PR exists to fix, one level up.
+    const { project, env } = await fixture();
+    await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({
+      version: 1, profile: 'balanced', limits: malformedLimits, mcp: { enabled: true },
+    }), 'utf8');
+
+    const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
+    expect(status.warnings).toEqual(expect.arrayContaining([expect.stringContaining('maxMainFiles')]));
+
+    const doctor = JSON.parse((await runCli(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string }>;
+    expect(doctor.find((check) => check.name === 'limits')?.status).toBe('오류');
+  });
+
+  it('limits 자체가 없으면(필드 하나 빠진 것과 마찬가지로) 경고하지 않는다 (회귀 방지)', async () => {
+    const { project, env } = await fixture();
+    await fs.writeFile(path.join(project, '.jutell.json'), JSON.stringify({
+      version: 1, profile: 'balanced', mcp: { enabled: true },
+    }), 'utf8');
+
+    const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
+    expect(status.warnings.some((w: string) => w.includes('limits'))).toBe(false);
+
+    const doctor = JSON.parse((await runCli(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string }>;
+    expect(doctor.find((check) => check.name === 'limits')?.status).toBe('정상');
+  });
+
   it('CASE C: legacy Codex registration만 있으면 status/doctor가 인식하고 use가 보존하면서 canonical jutell을 만든다', async () => {
     const { project, home, env } = await fixture();
     // Codex only reads its global config, so status/doctor/use for codex

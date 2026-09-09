@@ -47,6 +47,7 @@ export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
   const anyProviderEnabled = registration.enabled || opencode.enabled || claude.enabled;
   const warnings: string[] = [];
   if (!config.valid) warnings.push('설정 파일을 읽지 못해 balanced 기본값을 사용 중입니다.');
+  if (config.invalidLimitsFields.length) warnings.push(`.jutell.json의 limits 값 중 숫자가 아닌 항목이 있어 기본값을 대신 사용했습니다: ${config.invalidLimitsFields.join(', ')}. 실제 파일 값은 바뀌지 않았으니 직접 고쳐주세요.`);
   if (registration.conflict) warnings.push('같은 이름의 관리되지 않는 Codex MCP 설정이 있어 자동 변경하지 않았습니다.');
   if (opencode.conflict) warnings.push('OpenCode 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.');
   if (registration.bothRegistered) warnings.push('Codex에 canonical jutell과 legacy beginner_bridge MCP가 모두 있습니다. 자동 정리하지 않았습니다. 이전 항목을 정리하려면 jutell migrate --clean 을 실행하세요.');
@@ -150,9 +151,14 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   checks.push({ name: 'Claude Code MCP', status: claude.registered ? '정상' : '주의', detail: claude.registered ? `${claude.claudeScope} 범위(${claude.claudeScope === 'user' ? '사용자 전역' : '현재 프로젝트'})에 등록되어 있습니다.` : 'Claude Code MCP가 등록되지 않았습니다.' });
   checks.push({ name: config.source === 'legacy' ? '.beginner-bridge.json' : '.jutell.json', status: config.valid ? '정상' : '오류', detail: config.exists ? (config.valid ? (config.source === 'legacy' ? '이전 설정 파일을 읽었습니다. 새 .jutell.json이 없으면 사용합니다.' : '설정 형식을 확인했습니다.') : '설정이 올바르지 않아 기본값을 사용합니다.') : '없으면 기본 설정을 사용합니다.' });
   const featuresValid = Object.keys(config.config.features).every((id) => FEATURE_IDS.includes(id));
-  const limitsValid = config.config.limits.maxMainFiles >= 1 && config.config.limits.maxMainFiles <= 10 && config.config.limits.maxGlossaryTerms >= 0 && config.config.limits.maxGlossaryTerms <= 10 && config.config.limits.compactReportMaxSentences >= 4 && config.config.limits.compactReportMaxSentences <= 30;
+  // Range check runs on the already-normalized (defaulted) values, so it can never itself
+  // fail - normalizeConfig() only ever produces values inside these ranges. Fold in
+  // invalidLimitsFields (computed from the raw, pre-normalization file) so a malformed
+  // value that got silently replaced with its default is still reported as unhealthy,
+  // not "정상" for a file whose actual on-disk content doesn't match what's checked.
+  const limitsValid = config.config.limits.maxMainFiles >= 1 && config.config.limits.maxMainFiles <= 10 && config.config.limits.maxGlossaryTerms >= 0 && config.config.limits.maxGlossaryTerms <= 10 && config.config.limits.compactReportMaxSentences >= 4 && config.config.limits.compactReportMaxSentences <= 30 && config.invalidLimitsFields.length === 0;
   checks.push({ name: '공식 Feature ID', status: featuresValid ? '정상' : '오류', detail: featuresValid ? '현재 공식 ID만 확인했습니다.' : '지원하지 않는 Feature ID가 있습니다.' });
-  checks.push({ name: 'limits', status: limitsValid ? '정상' : '오류', detail: limitsValid ? '허용 범위를 확인했습니다.' : '허용 범위를 벗어난 값이 있습니다.' });
+  checks.push({ name: 'limits', status: limitsValid ? '정상' : '오류', detail: config.invalidLimitsFields.length ? `숫자가 아닌 값이 있어 기본값을 대신 사용했습니다: ${config.invalidLimitsFields.join(', ')}.` : limitsValid ? '허용 범위를 확인했습니다.' : '허용 범위를 벗어난 값이 있습니다.' });
   checks.push({ name: '로컬 관리자 빌드', status: await exists(adminEntry) ? '정상' : '오류', detail: await exists(adminEntry) ? '관리자 화면 파일을 확인했습니다.' : '관리자 화면 파일이 없습니다.' });
   checks.push({ name: '포트 사용 가능 여부', status: await portAvailable() ? '정상' : '주의', detail: '127.0.0.1의 임시 포트를 확인했습니다.' });
   checks.push({ name: '쓰기 권한', status: await writeCheck(paths) ? '정상' : '오류', detail: '로컬 상태 폴더에 임시 파일을 만들고 삭제했습니다.' });
