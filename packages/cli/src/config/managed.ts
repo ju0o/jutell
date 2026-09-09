@@ -104,8 +104,14 @@ const LIMITS_KEYS = ['maxMainFiles', 'maxGlossaryTerms', 'compactReportMaxSenten
 // object; normalizeConfig only returns the already-normalized result) so status/doctor
 // can warn about it without changing normalizeConfig's own return shape or call sites.
 function invalidLimitsFields(parsed: Record<string, unknown>): string[] {
+  if (!('limits' in parsed)) return []; // never set - nothing of the user's is being overridden
   const limits = parsed.limits;
-  if (!limits || typeof limits !== 'object' || Array.isArray(limits)) return [];
+  // `limits` present but not a plain object (a string, array, number, boolean, or null)
+  // is the same silent-override problem one level up: normalizeConfig()'s own
+  // `input.limits && typeof === 'object' && !Array.isArray` guard treats any of these
+  // as if `limits` were `{}` and defaults every field - so report all three as invalid
+  // rather than picking apart a shape that was never a fields-object to begin with.
+  if (!limits || typeof limits !== 'object' || Array.isArray(limits)) return [...LIMITS_KEYS];
   const record = limits as Record<string, unknown>;
   return LIMITS_KEYS.filter((key) => key in record && !(typeof record[key] === 'number' && Number.isInteger(record[key])));
 }
