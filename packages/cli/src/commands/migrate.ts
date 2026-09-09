@@ -110,16 +110,27 @@ export async function migrateCommand(paths: ScopePaths, options: CliOptions, io:
       // ever gets cut. indexOf always anchors exactly at `[`, where slice(1) is meant to start from.
       const beginnerHeader = '[mcp_servers.beginner_bridge]';
       const headerIdx = next.indexOf(beginnerHeader);
-      if (headerIdx >= 0 && /(?:assets|apps)[\\/]mcp-server/i.test(next.slice(headerIdx, headerIdx + 1200))) {
-        // Remove that section (from header until next header/marker or end)
-        const idx = headerIdx;
-        const after = next.slice(idx);
+      if (headerIdx >= 0) {
+        // Bound the section to *this table only* (up to the next `[section]` header,
+        // the canonical marker, or EOF) before doing anything else with it. The
+        // evidence check below must only ever look inside that bound - a flat N-char
+        // lookahead from the header (the previous approach) reads past this table's
+        // own end into whatever comes next in the file, and a JuTell-managed config
+        // almost always has the real `assets/mcp-server` canonical entry sitting
+        // right after the legacy one - so that flat window would find canonical's
+        // path and treat it as evidence for the *unrelated* entry above it, deleting
+        // a genuinely unrelated user-owned `beginner_bridge` server that merely
+        // happens to sit next to JuTell's own block in the same file.
+        const after = next.slice(headerIdx);
         const nextHeader = after.slice(1).search(/^\s*\[mcp_servers\./m);
         const nextMarker = after.search(/#\s*JUTELL_CLI_MCP_BEGIN/m);
         let cut = after.length;
         if (nextHeader >= 0) cut = Math.min(cut, nextHeader + 1);
         if (nextMarker >= 0) cut = Math.min(cut, nextMarker);
-        next = next.slice(0, idx) + after.slice(cut);
+        const ownSection = after.slice(0, cut);
+        if (/(?:assets|apps)[\\/]mcp-server/i.test(ownSection)) {
+          next = next.slice(0, headerIdx) + after.slice(cut);
+        }
       }
       next = next.replace(/\n{3,}/g, '\n\n').trim();
       await writeTextSafely(file, next ? `${next}\n` : '');

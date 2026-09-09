@@ -607,6 +607,31 @@ describe('Distribution CLI V0.1', () => {
     expect(cleaned).not.toContain('beginner_bridge');
   });
 
+  it('migrate --clean은 이름만 같은, 사용자 소유의 무관한 beginner_bridge Codex 서버는 지우지 않는다', async () => {
+    // Adversarial case found during independent review of this PR
+    // (JUTELL-V2-QUALITY-LONG-RUN-02): the unmarked-legacy heuristic used to check
+    // for `assets/mcp-server` or `apps/mcp-server` in a flat 1200-char window
+    // starting at the `beginner_bridge` header - which reads *past* that table's
+    // own end into whatever comes next in the file. A JuTell-managed config almost
+    // always has the real canonical `jutell` entry (whose args do contain
+    // `assets/mcp-server`) sitting right after the legacy one, so that flat window
+    // found canonical's path and used it as "evidence" for the entry above it -
+    // deleting a genuinely unrelated, user-owned `beginner_bridge` MCP server that
+    // merely happened to share the name and sit next to JuTell's own block.
+    const { project, home, env } = await fixture();
+    const codexFile = path.join(home, '.codex', 'config.toml');
+    await fs.mkdir(path.dirname(codexFile), { recursive: true });
+    const userOwnedBlock = '[mcp_servers.beginner_bridge]\ncommand = "python3"\nargs = ["/home/user/my-own-tools/beginner_bridge/server.py"]\nenabled = true';
+    const content = `${userOwnedBlock}\n\n# JUTELL_CLI_MCP_BEGIN\n[mcp_servers.jutell]\ncommand = "node"\nargs = ["/real/assets/mcp-server/index.js"]\nenabled = true\n# JUTELL_CLI_MCP_END\n`;
+    await fs.writeFile(codexFile, content, 'utf8');
+
+    await runCli(['migrate', '--clean'], project, env);
+
+    const after = await fs.readFile(codexFile, 'utf8');
+    expect(after).toContain(userOwnedBlock);
+    expect(after).toContain('[mcp_servers.jutell]');
+  });
+
   it('CASE C: legacy OpenCode registration을 감지하고 use가 보존하면서 canonical jutell을 만든다', async () => {
     const { project, env } = await fixture();
     const opencodeFile = path.join(project, 'opencode.json');
