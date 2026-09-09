@@ -579,13 +579,18 @@ describe('Distribution CLI V0.1', () => {
     const { project, home, env } = await fixture();
     const codexFile = path.join(home, '.codex', 'config.toml');
     await fs.mkdir(path.dirname(codexFile), { recursive: true });
-    const legacyBlock = '[mcp_servers.beginner_bridge]\ncommand = "node"\nargs = ["legacy.js"]\nenabled = true';
+    // args path must look like a real JuTell mcp-server (assets/mcp-server) so the
+    // Codex clean-up heuristic in migrate.ts recognizes this as JuTell's own legacy
+    // entry rather than an unrelated user-owned `beginner_bridge` server.
+    const legacyBlock = '[mcp_servers.beginner_bridge]\ncommand = "node"\nargs = ["/old/assets/mcp-server/index.js"]\nenabled = true';
     const both = `# JUTELL_CLI_MCP_BEGIN\n[mcp_servers.jutell]\ncommand = "node"\nargs = ["server.js"]\nenabled = true\n# JUTELL_CLI_MCP_END\n\n${legacyBlock}\n`;
     await fs.writeFile(codexFile, both, 'utf8');
     const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
     expect(status.warnings).toEqual(expect.arrayContaining([expect.stringContaining('모두 있습니다')]));
+    expect(status.warnings).toEqual(expect.arrayContaining([expect.stringContaining('jutell migrate --clean')]));
 
-    await runCli(['use', 'codex'], project, env);
+    const used = await runCli(['use', 'codex'], project, env);
+    expect(used.stdout).toContain('jutell migrate --clean');
     const after = await fs.readFile(codexFile, 'utf8');
     // legacy is never auto-cleaned/removed - its content stays byte-for-byte, whatever
     // happens to the canonical entry (whose placeholder command/args here are stale
@@ -594,6 +599,37 @@ describe('Distribution CLI V0.1', () => {
     expect(after).toContain(legacyBlock);
     expect(after.match(/\[mcp_servers\.jutell\]/g)).toHaveLength(1);
     expect(after.match(/\[mcp_servers\.beginner_bridge\]/g)).toHaveLength(1);
+
+    // The warning points at a real command — prove it actually clears the state it describes.
+    await runCli(['migrate', '--clean'], project, env);
+    const cleaned = await fs.readFile(codexFile, 'utf8');
+    expect(cleaned).toContain('[mcp_servers.jutell]');
+    expect(cleaned).not.toContain('beginner_bridge');
+  });
+
+  it('migrate --clean은 이름만 같은, 사용자 소유의 무관한 beginner_bridge Codex 서버는 지우지 않는다', async () => {
+    // Adversarial case found during independent review of this PR
+    // (JUTELL-V2-QUALITY-LONG-RUN-02): the unmarked-legacy heuristic used to check
+    // for `assets/mcp-server` or `apps/mcp-server` in a flat 1200-char window
+    // starting at the `beginner_bridge` header - which reads *past* that table's
+    // own end into whatever comes next in the file. A JuTell-managed config almost
+    // always has the real canonical `jutell` entry (whose args do contain
+    // `assets/mcp-server`) sitting right after the legacy one, so that flat window
+    // found canonical's path and used it as "evidence" for the entry above it -
+    // deleting a genuinely unrelated, user-owned `beginner_bridge` MCP server that
+    // merely happened to share the name and sit next to JuTell's own block.
+    const { project, home, env } = await fixture();
+    const codexFile = path.join(home, '.codex', 'config.toml');
+    await fs.mkdir(path.dirname(codexFile), { recursive: true });
+    const userOwnedBlock = '[mcp_servers.beginner_bridge]\ncommand = "python3"\nargs = ["/home/user/my-own-tools/beginner_bridge/server.py"]\nenabled = true';
+    const content = `${userOwnedBlock}\n\n# JUTELL_CLI_MCP_BEGIN\n[mcp_servers.jutell]\ncommand = "node"\nargs = ["/real/assets/mcp-server/index.js"]\nenabled = true\n# JUTELL_CLI_MCP_END\n`;
+    await fs.writeFile(codexFile, content, 'utf8');
+
+    await runCli(['migrate', '--clean'], project, env);
+
+    const after = await fs.readFile(codexFile, 'utf8');
+    expect(after).toContain(userOwnedBlock);
+    expect(after).toContain('[mcp_servers.jutell]');
   });
 
   it('CASE C: legacy OpenCode registration을 감지하고 use가 보존하면서 canonical jutell을 만든다', async () => {
@@ -621,10 +657,16 @@ describe('Distribution CLI V0.1', () => {
     const both = '{\n  "mcp": {\n    "beginner_bridge": { "type": "local", "command": ["node", "legacy.js"], "enabled": true },\n    // BEGIN JUTELL MANAGED BLOCK\n    "jutell": { "type": "local", "command": ["node", "server.js"], "enabled": true, "cwd": "." },\n    // END JUTELL MANAGED BLOCK\n  }\n}\n';
     await fs.writeFile(opencodeFile, both, 'utf8');
     const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
-    expect(status.warnings).toEqual(expect.arrayContaining([expect.stringContaining('OpenCode에 canonical jutell')]));
+    expect(status.warnings).toEqual(expect.arrayContaining([expect.stringContaining('jutell migrate --clean')]));
 
     await runCli(['use', 'opencode'], project, env);
     expect(await fs.readFile(opencodeFile, 'utf8')).toBe(both);
+
+    // The warning above points at a real command — prove it actually clears the state it describes.
+    await runCli(['migrate', '--clean'], project, env);
+    const cleaned = await fs.readFile(opencodeFile, 'utf8');
+    expect(cleaned).toContain('"jutell"');
+    expect(cleaned).not.toContain('beginner_bridge');
   });
 
   it('명시적 uninstall --global은 managed legacy Codex block을 제거하고 다른 설정은 보존한다', async () => {

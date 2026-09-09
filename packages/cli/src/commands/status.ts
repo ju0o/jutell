@@ -49,8 +49,8 @@ export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
   if (!config.valid) warnings.push('설정 파일을 읽지 못해 balanced 기본값을 사용 중입니다.');
   if (registration.conflict) warnings.push('같은 이름의 관리되지 않는 Codex MCP 설정이 있어 자동 변경하지 않았습니다.');
   if (opencode.conflict) warnings.push('OpenCode 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.');
-  if (registration.bothRegistered) warnings.push('Codex에 canonical jutell과 legacy beginner_bridge MCP가 모두 있습니다. 자동 정리하지 않았습니다. 이전 항목 제거는 추후 안전한 마이그레이션에서 안내합니다.');
-  if (opencode.bothRegistered) warnings.push('OpenCode에 canonical jutell과 legacy beginner_bridge MCP가 모두 있습니다. 자동 정리하지 않았습니다. 이전 항목 제거는 추후 안전한 마이그레이션에서 안내합니다.');
+  if (registration.bothRegistered) warnings.push('Codex에 canonical jutell과 legacy beginner_bridge MCP가 모두 있습니다. 자동 정리하지 않았습니다. 이전 항목을 정리하려면 jutell migrate --clean 을 실행하세요.');
+  if (opencode.bothRegistered) warnings.push('OpenCode에 canonical jutell과 legacy beginner_bridge MCP가 모두 있습니다. 자동 정리하지 않았습니다. 이전 항목을 정리하려면 jutell migrate --clean 을 실행하세요.');
   if (registration.legacyRegistered && !registration.canonicalRegistered) warnings.push('Codex에 이전 beginner_bridge 항목만 있습니다. jutell use codex 를 실행하면 보존하면서 새 jutell 항목을 추가합니다.');
   if (opencode.legacyRegistered && !opencode.canonicalRegistered) warnings.push('OpenCode에 이전 beginner_bridge 항목만 있습니다. jutell use opencode 를 실행하면 보존하면서 새 jutell 항목을 추가합니다.');
   if (config.config.mcp?.enabled && !anyProviderRegistered) warnings.push('MCP 연결 정책은 켜져 있지만 Codex·OpenCode·Claude Code 어느 Provider에도 JuTell MCP가 등록되지 않았습니다. jutell use <agent> 를 실행해 주세요.');

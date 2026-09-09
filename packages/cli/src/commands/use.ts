@@ -76,7 +76,7 @@ async function registerProviderEnabled(paths: ScopePaths, provider: AgentProvide
   await adapter.register(paths, true);
   const current = await adapter.read(paths, true);
   if (current.canonicalRegistered && current.legacyRegistered) {
-    io.write('\n이전 beginner_bridge 항목을 그대로 두고 새 jutell 항목을 추가했습니다.\n이전 항목은 자동으로 삭제하지 않습니다. 제거는 추후 안전한 마이그레이션에서 안내합니다.');
+    io.write('\n이전 beginner_bridge 항목을 그대로 두고 새 jutell 항목을 추가했습니다.\n이전 항목은 자동으로 삭제하지 않습니다. 정리하려면 jutell migrate --clean 을 실행하세요.');
   }
   if (provider.id === 'codex') {
     io.write('\nCodex는 MCP 서버 목록을 사용자 전역 설정에서만 읽습니다.\nJuTell 프로젝트 규칙(AGENTS.md, Skill, 설정)은 이 프로젝트에 그대로 두고,\nCodex MCP 연결만 사용자 전역 설정(Codex 홈)에 등록했습니다.');
