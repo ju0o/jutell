@@ -101,10 +101,18 @@ export async function migrateCommand(paths: ScopePaths, options: CliOptions, io:
       const legacyPattern = /# BEGINNER_BRIDGE_CLI_MCP_BEGIN[\s\S]*?# BEGINNER_BRIDGE_CLI_MCP_END\n?/m;
       const legacyPattern2 = /# BEGINNER_BRIDGE_MCP_BEGIN[\s\S]*?# BEGINNER_BRIDGE_MCP_END\n?/m;
       let next = text.replace(legacyPattern, '').replace(legacyPattern2, '');
-      // Also remove unmarked legacy with heuristic: if beginner_bridge still present but not in managed block, check evidence
-      if (/^\s*\[mcp_servers\.beginner_bridge\]/m.test(next) && /(?:assets|apps)[\\/]mcp-server/i.test(next.slice(next.search(/^\s*\[mcp_servers\.beginner_bridge\]/m), next.search(/^\s*\[mcp_servers\.beginner_bridge\]/m)+1200))) {
+      // Also remove unmarked legacy with heuristic: if beginner_bridge still present but not in managed block, check evidence.
+      // Use indexOf (not a `\s*`-prefixed regex .search()) to find the header: `^\s*\[...\]` lets
+      // `\s*` swallow a preceding blank line, so .search() can return an index *before* the literal
+      // `[` - e.g. when `use codex` leaves a blank-line separator above this block (its normal
+      // output shape). `after.slice(1)` below then only strips 1 of those whitespace chars, lands
+      // back inside the same header, and "the next header" it finds is this one again, so nothing
+      // ever gets cut. indexOf always anchors exactly at `[`, where slice(1) is meant to start from.
+      const beginnerHeader = '[mcp_servers.beginner_bridge]';
+      const headerIdx = next.indexOf(beginnerHeader);
+      if (headerIdx >= 0 && /(?:assets|apps)[\\/]mcp-server/i.test(next.slice(headerIdx, headerIdx + 1200))) {
         // Remove that section (from header until next header/marker or end)
-        const idx = next.search(/^\s*\[mcp_servers\.beginner_bridge\]/m);
+        const idx = headerIdx;
         const after = next.slice(idx);
         const nextHeader = after.slice(1).search(/^\s*\[mcp_servers\./m);
         const nextMarker = after.search(/#\s*JUTELL_CLI_MCP_BEGIN/m);
