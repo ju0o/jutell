@@ -295,6 +295,16 @@ For contributors: [Changelog](CHANGELOG.md) · [Documentation map](docs/DOCUMENT
 [OpenCode connection](docs/PROVIDER_OPENCODE.md) ·
 [GitHub Releases](https://github.com/ju0o/jutell/releases)
 
+## Support JuTell
+
+JuTell is free and MIT-licensed, and it stays that way.
+
+If it saved you time, you can buy me a coffee. It funds the next provider and the next fix.
+
+[![Support on Ko-fi](https://img.shields.io/badge/Ko--fi-support-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/ju0o___)
+
+Not supporting changes nothing — every feature stays available to everyone.
+
 ## JuTell by Ju0
 
 Ju0 is the parent brand; JuTell is its product.

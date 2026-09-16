@@ -299,6 +299,16 @@ npm이 아니라 저장소 소스를 직접 검증하는 기여자라면 `packag
 [OpenCode 연결](docs/PROVIDER_OPENCODE.md) ·
 [GitHub Releases](https://github.com/ju0o/jutell/releases)
 
+## JuTell 후원하기
+
+JuTell은 무료이고 MIT 라이선스이며, 앞으로도 그렇습니다.
+
+시간을 아끼셨다면 커피 한 잔 사주실 수 있습니다. 다음 provider와 다음 수정에 쓰입니다.
+
+[![Ko-fi로 후원하기](https://img.shields.io/badge/Ko--fi-%ED%9B%84%EC%9B%90%ED%95%98%EA%B8%B0-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/ju0o___)
+
+후원하지 않아도 달라지는 건 없습니다. 모든 기능은 누구에게나 그대로 열려 있습니다.
+
 ## JuTell by Ju0
 
 Ju0는 상위 브랜드이며 JuTell은 그 제품입니다.
