@@ -19,6 +19,17 @@ know whether it actually worked.
 npm install -g jutell
 jutell
 ```
+```
+
+**Don't want to install anything?** JuTell's normal job is a one-time connection - it hands you
+back to your own agent and gets out of the way - so you can just run it without installing:
+
+```bash
+npx jutell@latest
+```
+
+Same flow, nothing left on your machine, and it sidesteps npm's global-folder permission errors
+entirely. Node.js is still required either way.
 
 JuTell sits beside a coding agent you already use — Codex, Claude Code, or OpenCode — checking
 project facts before work and separating verified from assumed after it. It does not provide

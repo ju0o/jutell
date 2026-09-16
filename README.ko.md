@@ -20,6 +20,17 @@ npm install -g jutell
 jutell
 ```
 
+**설치는 하기 싫다면.** JuTell이 하는 일은 대부분 한 번의 연결이고, 끝나면 원래 쓰던 Agent로
+돌려보내고 빠집니다. 그래서 설치 없이 바로 실행해도 됩니다:
+
+```bash
+npx jutell@latest
+```
+
+동선은 같고, 기계에 남는 것도 없고, npm 전역 폴더 권한 오류를 통째로 피해 갑니다.
+Node.js는 어느 쪽이든 필요합니다.
+
+
 JuTell은 여러분이 이미 쓰는 Coding Agent(Codex·Claude Code·OpenCode) 옆에서, 작업 전에는
 프로젝트 사실을 확인하고 작업 후에는 확인된 것과 짐작한 것을 나눠 알려줍니다. Codex·Claude
 Code·OpenCode를 제공하지 않고 AI 모델 자체도 아닙니다 — 자세한 내용은 아래

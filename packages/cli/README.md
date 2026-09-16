@@ -16,6 +16,17 @@ know whether it actually worked.
 npm install -g jutell
 jutell
 ```
+```
+
+**Don't want to install anything?** JuTell's normal job is a one-time connection - it hands you
+back to your own agent and gets out of the way - so you can just run it without installing:
+
+```bash
+npx jutell@latest
+```
+
+Same flow, nothing left on your machine, and it sidesteps npm's global-folder permission errors
+entirely. Node.js is still required either way.
 
 That's the whole setup. `jutell` finds the coding agents already installed on your machine, asks
 for one approval, connects them, and hands you straight back to your normal session.
@@ -161,7 +172,9 @@ by default and its storage/transmission is not implemented at this stage.
 
 If `npm install -g jutell` fails with `EACCES` / permission denied, that's a common npm global
 folder ownership issue, not something specific to JuTell. **Avoid `sudo npm install -g jutell`** —
-it leaves root-owned files that cause the same problem again. Two safe fixes:
+it leaves root-owned files that cause the same problem again.
+
+The fastest way past it is to skip the global install: `npx jutell@latest`. Two permanent fixes:
 [Ubuntu/Linux install permission error](https://github.com/ju0o/jutell/blob/main/docs/CLI_INSTALLATION.md).
 
 ## 한국어
