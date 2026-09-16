@@ -1,0 +1,76 @@
+name: Publish to npm
+
+# Trusted Publishing (OIDC). No npm token is stored anywhere.
+# npm now refuses to publish with any token `npm login` can create, so this
+# workflow is the only supported publish path for this package.
+#
+# One-time setup on npmjs.com:
+#   Package settings -> Trusted Publisher -> GitHub Actions
+#     Organization or user: ju0o
+#     Repository:           jutell
+#     Workflow filename:    publish.yml
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build and pack only - do not publish"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write # required for OIDC trusted publishing
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      # Trusted publishing needs npm >= 11.5.1; Node 22 still ships npm 10.x.
+      - name: Upgrade npm
+        run: |
+          npm install -g npm@11
+          npm --version
+
+      # Not an npm workspace - each package installs on its own.
+      - name: Install root
+        run: npm ci
+      - name: Install apps/mcp-server
+        working-directory: apps/mcp-server
+        run: npm ci
+      - name: Install apps/local-admin
+        working-directory: apps/local-admin
+        run: npm ci
+      - name: Install packages/cli
+        working-directory: packages/cli
+        run: npm ci
+
+      # Release gate: blocks a publish whose version literals or README have
+      # drifted apart. Deliberately not the full suite - cli.test.ts and
+      # default-command.test.ts have pre-existing environment-dependent
+      # failures and would block every release without catching anything real.
+      - name: Release gates (version + README consistency)
+        working-directory: packages/cli
+        run: npx vitest run tests/version-consistency.test.ts tests/readme-behavior-parity.test.ts
+
+      - name: Build
+        working-directory: packages/cli
+        run: npm run build
+
+      - name: Pack (dry run)
+        if: inputs.dry_run
+        working-directory: packages/cli
+        run: npm pack --dry-run
+
+      - name: Publish
+        if: ${{ !inputs.dry_run }}
+        working-directory: packages/cli
+        run: npm publish
