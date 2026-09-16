@@ -11,6 +11,7 @@ import { useCommand, connectCommand, disconnectCommand, switchCommand } from './
 import { sessionCommand } from './commands/session/index.js';
 import { upgradeCommand } from './commands/upgrade.js';
 import { migrateCommand } from './commands/migrate.js';
+import { maybeShowFundingNotice } from './output/funding.js';
 import type { CliIo } from './types.js';
 
 function safeError(message: string, verbose: boolean) {
@@ -21,6 +22,8 @@ function safeError(message: string, verbose: boolean) {
 
 export async function run(argv: string[] = process.argv.slice(2), io: CliIo = createIo(), legacyAlias = false) {
   if (legacyAlias) io.write('`beginner-bridge`는 이전 명령입니다. 앞으로는 `jutell` 사용을 권장합니다.');
+  const fundingSuppressed = argv.includes('--no-funding');
+  if (fundingSuppressed) argv = argv.filter((a) => a !== '--no-funding');
   if (argv.includes('--version')) { io.write((await readVersionInfo()).cli); return 0; }
   try {
     const { command, options, defaultInvocation, extraArgs } = parseOptions(argv);
@@ -46,6 +49,7 @@ export async function run(argv: string[] = process.argv.slice(2), io: CliIo = cr
     else if (command === 'migrate') await migrateCommand(paths, options, io);
     else if (command === 'session') await sessionCommand(paths, options, io, extraArgs);
     else throw new Error(`알 수 없는 명령입니다: ${command}`);
+    maybeShowFundingNotice(paths, io, fundingSuppressed);
     return 0;
   } catch (error) {
     const message = error instanceof Error ? error.message : '작업을 처리하지 못했습니다.';
