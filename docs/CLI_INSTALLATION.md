@@ -40,6 +40,20 @@ npm error errno -13
 나는 문제입니다. (모든 `EACCES` 오류가 반드시 이 원인이라고 단정하지는 않습니다. 경로가
 다르다면 원인도 다를 수 있습니다.)
 
+### 방법 0 — 전역 설치를 건너뛰기 (가장 빠름)
+
+전역 설치에서 나는 오류이므로, 전역 설치를 안 하면 이 문제 자체가 생기지 않습니다.
+
+```bash
+npx jutell@latest
+```
+
+JuTell이 하는 일은 대부분 **한 번의 연결**이고, 끝나면 원래 쓰던 Agent로 돌려보내고 빠집니다.
+그래서 상주 설치가 꼭 필요하지는 않습니다. 동선은 `jutell`을 직접 실행하는 것과 같습니다.
+`jutell status`, `jutell doctor`도 각각 `npx jutell@latest status`처럼 쓸 수 있습니다.
+
+매번 `npx`를 치는 게 번거롭다면 아래 방법으로 전역 설치 권한을 정리하세요.
+
 ### 방법 A — 사용자 소유 Node 버전 관리자 사용 (권장)
 
 [nvm](https://github.com/nvm-sh/nvm)이나 [fnm](https://github.com/Schniz/fnm) 같은 버전
