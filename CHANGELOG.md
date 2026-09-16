@@ -2,6 +2,20 @@
 
 Notable user-facing changes to JuTell. See [GitHub Releases](https://github.com/ju0o/jutell/releases) for the full history and exact publish dates.
 
+## v2.0.1
+
+Published on npm.
+
+**A maintenance release that ships fixes already on `main` — and the real README to npm.**
+
+- `jutell use claude` now also writes `CLAUDE.md`, so Claude Code actually discovers JuTell. Before this, the connection was registered but Claude Code never picked up the rules.
+- `jutell migrate --clean` actually removes the legacy Codex entry; `status` and `use` now point at the canonical one.
+- `doctor` and `status` warn when `.jutell.json` limit values were silently defaulted instead of read.
+- The npm package page now shows the full README (what JuTell does, real command output, supported agents) instead of a short stub.
+- Ko-fi support link added to the package metadata.
+
+**Compatibility:** no commands removed, no configuration changes required.
+
 ## v2.0.0
 
 Published on npm.

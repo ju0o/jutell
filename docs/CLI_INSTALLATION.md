@@ -2,7 +2,7 @@
 
 ## 현재 상태
 
-`jutell@2.0.0`은 npm에 공개되었습니다. 일반 설치는 npm registry에서 진행합니다.
+`jutell@2.0.1`은 npm에 공개되었습니다. 일반 설치는 npm registry에서 진행합니다.
 
 ```powershell
 npm install -g jutell
@@ -19,7 +19,7 @@ jutell
 cd packages/cli
 npm install
 npm pack
-npm install -g ./jutell-2.0.0.tgz
+npm install -g ./jutell-2.0.1.tgz
 ```
 
 ## Ubuntu/Linux 설치 권한 오류(EACCES) 해결

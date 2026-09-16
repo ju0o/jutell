@@ -256,7 +256,7 @@ limitations, see [Product scope](docs/PRODUCT_SCOPE.md).
 
 ## What's new
 
-**`jutell@2.0.0`** is published on npm. It helps before work starts as well as after it finishes:
+**`jutell@2.0.1`** is published on npm. It helps before work starts as well as after it finishes:
 project facts are checked first, only a real decision is asked, and verified / expected /
 not-checked remain separate.
 
@@ -289,7 +289,7 @@ You can tune reports with a project `.jutell.json` file created by the CLI. Avai
 underlying facts or risk.
 
 If you are verifying the repository source instead of installing from npm, `npm pack` creates
-`jutell-2.0.0.tgz` in `packages/cli`; ordinary users do not need this path.
+`jutell-2.0.1.tgz` in `packages/cli`; ordinary users do not need this path.
 
 For contributors: [Changelog](CHANGELOG.md) · [Documentation map](docs/DOCUMENTATION_MAP.md) ·
 [OpenCode connection](docs/PROVIDER_OPENCODE.md) ·
