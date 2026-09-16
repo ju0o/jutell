@@ -1,7 +1,7 @@
 {
   "name": "jutell",
-  "version": "2.0.0",
-  "description": "JuTell by Ju0 — non-developer harness for AI coding agents (Skill, MCP, local dashboard)",
+  "version": "2.0.1",
+  "description": "Understand what your AI coding agent actually did - a clarify-before / verify-after layer for Codex, Claude Code and OpenCode",
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -18,13 +18,24 @@
   "keywords": [
     "jutell",
     "ai",
+    "ai-agent",
+    "coding-agent",
     "agent",
     "harness",
-    "mcp",
-    "skill",
     "codex",
+    "claude-code",
+    "claude",
     "opencode",
-    "claude-code"
+    "mcp",
+    "mcp-server",
+    "skill",
+    "cli",
+    "developer-tools",
+    "ai-tools",
+    "llm",
+    "code-review",
+    "vibe-coding",
+    "korean"
   ],
   "author": "Ju0",
   "engines": {
