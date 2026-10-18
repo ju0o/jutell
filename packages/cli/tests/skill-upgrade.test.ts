@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import { installSkill, recordSkillFiles } from '../src/installer/skill.js';
 import { resolveScope } from '../src/config/paths.js';
 
@@ -93,7 +93,7 @@ describe('upgrading over an old (32 KB) SKILL.md', () => {
     expect(await fs.readFile(path.join(skillDir, 'SKILL.md'), 'utf8')).toBe(current);
     const backups = await backupsOf(project);
     expect(backups).toHaveLength(1);
-    expect(result.stdout).toContain(`예전 안내 파일을 보관하고 새 버전으로 바꿨어요. 보관한 파일: SKILL.md. 보관한 곳: ${path.relative(project, backups[0].dir)}`);
+    expect(result.stdout).toContain(`예전 안내 파일을 보관하고 새 버전으로 바꿨어요(직접 고친 내용이 있었다면 그것도 보관한 파일에 그대로 있어요). 보관한 파일: SKILL.md. 보관한 곳: ${path.relative(project, backups[0].dir)}`);
     expect(result.stdout).not.toContain('직접 고친 내용이 있어서');
   });
 
@@ -189,15 +189,29 @@ describe('upgrading over an old (32 KB) SKILL.md', () => {
     });
   });
 
-  it('a second user-modified upgrade in the same minute gets a -2 suffix, not a clash', async () => {
-    const { project, run, skillDir, current } = await installed();
-    await fs.writeFile(path.join(skillDir, 'SKILL.md'), `${current}\n첫 메모\n`);
-    run(['--yes']);
-    await fs.writeFile(path.join(skillDir, 'SKILL.md'), `${current}\n둘째 메모\n`);
-    run(['--yes']);
-    const names = (await backupsOf(project)).map((backup) => path.basename(backup.dir)).sort();
-    expect(names).toHaveLength(2);
-    if (names[0].slice(0, 20) === names[1].slice(0, 20)) expect(names[1]).toBe(`${names[0]}-2`);
+  it('a second user-modified upgrade in the same minute gets a -2 suffix, not a clash (clock frozen)', async () => {
+    const { project } = await tempProject();
+    const paths = resolveScope('project', project);
+    const source = path.join(project, 'src-skill');
+    await fs.mkdir(source, { recursive: true });
+    await fs.writeFile(path.join(source, 'SKILL.md'), 'new');
+    await fs.mkdir(paths.skillRoot, { recursive: true });
+    const target = path.join(paths.skillRoot, 'SKILL.md');
+    await fs.writeFile(target, 'new');
+    await recordSkillFiles(paths, ['SKILL.md']);
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date(2026, 9, 18, 22, 30, 59));
+      await fs.writeFile(target, 'new\n첫 메모\n');
+      expect(await installSkill(source, paths.skillRoot, paths)).toMatchObject({ backedUp: ['SKILL.md'] });
+      await fs.writeFile(target, 'new\n둘째 메모\n');
+      expect(await installSkill(source, paths.skillRoot, paths)).toMatchObject({ backedUp: ['SKILL.md'] });
+    } finally {
+      vi.useRealTimers();
+    }
+    const backups = (await backupsOf(project)).sort((a, b) => a.dir.localeCompare(b.dir));
+    expect(backups.map((backup) => path.basename(backup.dir))).toEqual(['skill-2026-10-18-2230', 'skill-2026-10-18-2230-2']);
+    expect(backups.map((backup) => backup.skill)).toEqual(['new\n첫 메모\n', 'new\n둘째 메모\n']);
   });
 
   it('doctor names the differing files and the fix command', async () => {

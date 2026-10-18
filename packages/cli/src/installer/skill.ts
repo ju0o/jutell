@@ -147,8 +147,10 @@ export function skillRefreshMessage(result: { replaced?: string[]; backedUp?: st
   const shown = paths.scope === 'project' ? path.relative(paths.targetRoot, result.backupDir) : result.backupDir;
   const files = result.backedUp ?? [];
   const legacy = new Set(result.backedUpLegacy ?? []);
-  const lead = files.length > 0 && files.every((file) => legacy.has(file)) ? '예전 안내 파일을 보관하고' : '직접 고친 내용이 있어서 예전 것을 보관하고';
-  return `${lead} 새 버전으로 바꿨어요. 보관한 파일: ${files.join(', ')}. 보관한 곳: ${shown}`;
+  const lead = files.length > 0 && files.every((file) => legacy.has(file))
+    ? '예전 안내 파일을 보관하고 새 버전으로 바꿨어요(직접 고친 내용이 있었다면 그것도 보관한 파일에 그대로 있어요).'
+    : '직접 고친 내용이 있어서 예전 것을 보관하고 새 버전으로 바꿨어요.';
+  return `${lead} 보관한 파일: ${files.join(', ')}. 보관한 곳: ${shown}`;
 }
 
 /** One plain line for skill files left alone, or undefined. */
