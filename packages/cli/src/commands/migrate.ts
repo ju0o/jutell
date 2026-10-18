@@ -40,7 +40,8 @@ export async function migrateCommand(paths: ScopePaths, options: CliOptions, io:
 
     // Codex legacy → canonical
     if (hasLegacyCodex) {
-      await registerMcp(codexScopedPaths(paths), packageRoot(), true);
+      const registration = await registerMcp(codexScopedPaths(paths), packageRoot(), true);
+      if (registration.restoredHint) lines.push("이전에 직접 넣은 jutell 설정이 config.toml에 주석으로 남아 있어요. 다시 쓰려면 '# jutell 제거로 주석 처리됨' 아래 줄 맨 앞의 '# '을 지우세요.");
       lines.push('- Codex: 이전 beginner_bridge 항목을 보존하고 새 jutell 항목을 추가했습니다. (이전 항목 자동 삭제 안 함)');
     } else if (hasBothCodex) {
       lines.push('- Codex: canonical jutell과 legacy beginner_bridge가 모두 있어 그대로 두었습니다.');

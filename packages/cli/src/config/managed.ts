@@ -114,7 +114,10 @@ export async function writeTextSafely(file: string, content: string) {
 }
 
 export async function backupFile(file: string) {
-  if (await exists(file)) await fs.copyFile(file, `${file}.previous`);
+  if (!(await exists(file))) return undefined;
+  const backupPath = `${file}.previous`;
+  await fs.copyFile(file, backupPath);
+  return backupPath;
 }
 
 async function defaultConfig(): Promise<BridgeConfig> {
@@ -334,26 +337,6 @@ function hasCanonicalApprovalConfig(block: string | undefined, userOverrides: re
 // key/value lines, up to the next table header or end of file. Used when repairing a stale
 // heuristic-recognized entry that predates JUTELL_CLI_MCP markers, so a rewrite replaces it
 // instead of leaving a duplicate `[mcp_servers.<key>]` table behind.
-function withoutKeySection(content: string, key: string) {
-  const keyPath = `mcp_servers.${key}`;
-  const headers = [...content.matchAll(/^[ \t]*(\[\[[^\r\n]*?\]\]|\[[^\r\n]*?\])[ \t]*(?:#.*)?\r?$/gm)];
-  if (headers.length === 0) return content;
-  let result = '';
-  let cursor = 0;
-  headers.forEach((header, index) => {
-    const start = header.index!;
-    const end = headers[index + 1]?.index ?? content.length;
-    const tableHeader = header[1];
-    const tablePath = tableHeader?.startsWith('[[') ? undefined : tableHeader?.slice(1, -1).trim();
-    result += content.slice(cursor, start);
-    if (tablePath !== keyPath && !tablePath?.startsWith(`${keyPath}.`)) {
-      result += content.slice(start, end);
-    }
-    cursor = end;
-  });
-  return result + content.slice(cursor);
-}
-
 function withoutManagedMcpTables(content: string, key: string, preservedToolTables: readonly string[] = []) {
   const keyPath = `mcp_servers.${key}`;
   const ownedTablePaths = new Set([
@@ -473,8 +456,9 @@ function assertValidConfigToml(content: string) {
 export async function registerMcp(paths: ScopePaths, packageRoot: string, enabled: boolean) {
   const current = await readCodexRegistration(paths, packageRoot, enabled);
   if (current.conflict) throw new Error('Codex 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.');
+  const restoredHint = current.content.includes('# jutell 제거로 주석 처리됨');
   const hasEmbeddedUserTables = hasNonJuTellTablesInCanonicalBlock(current.content);
-  if (current.canonicalRegistered && current.enabled === enabled && current.canonicalUpToDate && !hasEmbeddedUserTables) return current;
+  if (current.canonicalRegistered && current.enabled === enabled && current.canonicalUpToDate && !hasEmbeddedUserTables) return { ...current, restoredHint };
   // withoutCanonicalBlock removes the marker-wrapped block and moves its user tables
   // outside the block. A stale entry recognized by heuristic evidence alone (no markers,
   // e.g. from an older JuTell install) would otherwise survive as a leftover bare
@@ -488,21 +472,51 @@ export async function registerMcp(paths: ScopePaths, packageRoot: string, enable
   assertValidConfigToml(next);
   await backupFile(paths.codexConfigFile);
   await writeTextSafely(paths.codexConfigFile, next);
-  return readCodexRegistration(paths, packageRoot, enabled);
+  return { ...(await readCodexRegistration(paths, packageRoot, enabled)), restoredHint };
 }
 
 export async function removeMcp(paths: ScopePaths, packageRoot: string) {
   const current = await readCodexRegistration(paths, packageRoot, false);
   if (current.conflict) throw new Error('관리되지 않는 같은 이름의 MCP 항목은 자동으로 제거하지 않습니다.');
-  if (!current.registered) return current;
+  if (!current.registered) return { ...current, commentedTables: [], backupPath: undefined };
   const removed = withoutManagedBlocks(current.content);
   const normalized = removed.content.replace(/\n{3,}/g, '\n\n').trim();
   const next = restorePreservedTables(normalized, removed.preservedTables);
-  const finalText = next ? (next.endsWith('\n') ? next : `${next}\n`) : '';
+  let finalText = next ? (next.endsWith('\n') ? next : `${next}\n`) : '';
+  const commentedTables: string[] = [];
+  const tableHeaders = [...finalText.matchAll(/^[ \t]*(\[\[[^\r\n]*?\]\]|\[[^\r\n]*?\])[ \t]*(?:#.*)?\r?$/gm)];
+  const rootTableRemains = tableHeaders.some((header) => {
+    const tableHeader = header[1];
+    return tableHeader && !tableHeader.startsWith('[[') && tableHeader.slice(1, -1).trim() === 'mcp_servers.jutell';
+  });
+  if (!rootTableRemains) {
+    let commentedText = '';
+    let cursor = 0;
+    tableHeaders.forEach((header, index) => {
+      const start = header.index!;
+      const end = tableHeaders[index + 1]?.index ?? finalText.length;
+      const tableHeader = header[1];
+      const tablePath = tableHeader && !tableHeader.startsWith('[[') ? tableHeader.slice(1, -1).trim() : undefined;
+      commentedText += finalText.slice(cursor, start);
+      if (tablePath?.startsWith('mcp_servers.jutell.')) {
+        commentedTables.push(tablePath);
+        const tableText = finalText.slice(start, end);
+        commentedText += '# jutell 제거로 주석 처리됨\n';
+        commentedText += tableText.split(/(?<=\n)/).map((line) => {
+          if (line === '\n' || line === '\r\n') return `# ${line}`;
+          return line.replace(/^(?!# )/, '# ');
+        }).join('');
+      } else {
+        commentedText += finalText.slice(start, end);
+      }
+      cursor = end;
+    });
+    finalText = commentedText + finalText.slice(cursor);
+  }
   assertValidConfigToml(finalText);
-  await backupFile(paths.codexConfigFile);
+  const backupPath = await backupFile(paths.codexConfigFile);
   await writeTextSafely(paths.codexConfigFile, finalText);
-  return readCodexRegistration(paths, packageRoot, false);
+  return { ...(await readCodexRegistration(paths, packageRoot, false)), commentedTables, backupPath };
 }
 
 export async function readVersionInfo() {

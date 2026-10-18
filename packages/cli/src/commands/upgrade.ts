@@ -43,6 +43,7 @@ export async function upgradeCommand(paths: ScopePaths, options: CliOptions, io:
     let opencodeRefreshed = false;
     let claudeRefreshed = false;
 
+    let codexRestoredHint = false;
     // Codex: if any JuTell registration (canonical or legacy heuristic) exists, ensure canonical block is fresh
     if (codexReg.registered || codexReg.legacyRegistered || codexReg.canonicalRegistered) {
       // Force refresh by rewriting canonical block with current packageRoot/command
@@ -56,11 +57,13 @@ export async function upgradeCommand(paths: ScopePaths, options: CliOptions, io:
       const expected = packageRoot();
       const needsRefresh = !currentContent.includes(expected) && (before.canonicalRegistered || before.legacyRegistered);
       if (needsRefresh || before.canonicalRegistered) {
-        await registerMcp(codexPaths, packageRoot(), mcpEnabled);
+        const registration = await registerMcp(codexPaths, packageRoot(), mcpEnabled);
+        if (registration.restoredHint) codexRestoredHint = true;
         codexRefreshed = true;
       } else if (before.legacyRegistered && !before.canonicalRegistered) {
         // legacy-only -> create canonical (READ LEGACY, WRITE CANONICAL, keep legacy)
-        await registerMcp(codexPaths, packageRoot(), mcpEnabled);
+        const registration = await registerMcp(codexPaths, packageRoot(), mcpEnabled);
+        if (registration.restoredHint) codexRestoredHint = true;
         codexRefreshed = true;
       }
     }
@@ -81,6 +84,7 @@ export async function upgradeCommand(paths: ScopePaths, options: CliOptions, io:
 
     // 5. Report — what changed / preserved / legacy / next
     const parts: string[] = ['JuTell 업그레이드가 끝났습니다.'];
+    if (codexRestoredHint) parts.push("이전에 직접 넣은 jutell 설정이 config.toml에 주석으로 남아 있어요. 다시 쓰려면 '# jutell 제거로 주석 처리됨' 아래 줄 맨 앞의 '# '을 지우세요.");
     if (migratedConfig) parts.push('- 설정: 이전 .beginner-bridge.json을 읽어 .jutell.json을 만들었습니다. 이전 파일은 보존했습니다.');
     else if (configCreated) parts.push('- 설정: 새 .jutell.json을 만들었습니다.');
     else parts.push('- 설정: 기존 .jutell.json을 유지했습니다.');

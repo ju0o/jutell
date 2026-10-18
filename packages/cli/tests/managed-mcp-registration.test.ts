@@ -477,9 +477,45 @@ describe('registerMcp - canonical Codex MCP registration currency (managed block
     const beforeMtime = (await fs.stat(paths.codexConfigFile)).mtimeMs;
     const secondResult = await removeMcp(paths, FAKE_PACKAGE_ROOT);
 
-    expect(secondResult).toEqual(firstResult);
+    expect(secondResult.commentedTables).toEqual(firstResult.commentedTables);
+    expect(secondResult.backupPath).toBeUndefined();
     expect(await fs.readFile(paths.codexConfigFile)).toEqual(beforeBytes);
     expect((await fs.stat(paths.codexConfigFile)).mtimeMs).toBe(beforeMtime);
+  });
+});
+
+describe('removeMcp - orphaned user JuTell subtables', () => {
+  it('comments outside subtables after removing the managed root and reports the backup', async () => {
+    const dir = await mkdtemp();
+    const paths = await scopePaths(dir);
+    const outsideTables = [
+      '[mcp_servers.jutell.env]',
+      'FOO = "bar"',
+      '',
+      '[mcp_servers.jutell.tools.get_bridge_status]',
+      'approval_mode = "prompt"',
+    ].join('\n');
+    await writeConfig(dir, `${buildMcpBlock(paths, FAKE_PACKAGE_ROOT, true)}\n${outsideTables}\n`);
+
+    const result = await removeMcp(paths, FAKE_PACKAGE_ROOT);
+    const finalContent = await readConfig(dir);
+    const parsed = parse(finalContent);
+
+    expect(() => parse(finalContent)).not.toThrow();
+    expect(parsed.mcp_servers?.jutell).toBeUndefined();
+    expect(finalContent).toContain('# jutell 제거로 주석 처리됨');
+    expect(finalContent).toContain('# FOO = "bar"');
+    expect(result.commentedTables).toEqual([
+      'mcp_servers.jutell.env',
+      'mcp_servers.jutell.tools.get_bridge_status',
+    ]);
+    expect(result.backupPath).toMatch(/\.previous$/);
+    await fs.access(result.backupPath!);
+
+    const registration = await registerMcp(paths, FAKE_PACKAGE_ROOT, true);
+    expect(registration.restoredHint).toBe(true);
+    const registeredContent = await readConfig(dir);
+    expect(() => parse(registeredContent)).not.toThrow();
   });
 });
 
