@@ -58,6 +58,22 @@ async function replaceFile(file: string, content: Buffer) {
   try { await fs.rename(temp, file); } catch (error) { await fs.rm(temp, { force: true }); throw error; }
 }
 
+/** backups/skill-2026-10-18-2137 (local time), then -2, -3 … only when that name is taken. */
+async function makeBackupDir(backupsRoot: string) {
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, '0');
+  const base = `skill-${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
+  for (let attempt = 1; ; attempt += 1) {
+    const dir = path.join(backupsRoot, attempt === 1 ? base : `${base}-${attempt}`);
+    try {
+      await fs.mkdir(dir);
+      return dir;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'EEXIST' || attempt > 999) throw error;
+    }
+  }
+}
+
 // A differing skill file is replaced only when JuTell installed it:
 // - unmodified (content hash equals the hash JuTell recorded in cli-install.json, or a file an earlier
 //   JuTell shipped, e.g. 2.0.x installs without a manifest): replaced directly, nothing to keep;
@@ -98,7 +114,7 @@ export async function installSkill(source: string, destination: string, paths?: 
         if (!(await fs.lstat(paths.dataRoot)).isDirectory()) { conflicts.push(relative); continue; }
         await fs.mkdir(backupsRoot).catch((error: NodeJS.ErrnoException) => { if (error.code !== 'EEXIST') throw error; });
         if (!(await fs.lstat(backupsRoot)).isDirectory()) { conflicts.push(relative); continue; }
-        backupDir = await fs.mkdtemp(path.join(backupsRoot, `skill-${new Date().toISOString().replace(/[:.]/g, '-')}-`));
+        backupDir = await makeBackupDir(backupsRoot);
       }
       const backupFile = path.join(backupDir, relative);
       await fs.mkdir(path.dirname(backupFile), { recursive: true });
@@ -126,7 +142,7 @@ export function skillRefreshMessage(result: { replaced?: string[]; backupDir?: s
   if (!result.replaced?.length) return undefined;
   if (!result.backupDir) return '안내 파일을 새 버전으로 바꿨어요.';
   const shown = paths.scope === 'project' ? path.relative(paths.targetRoot, result.backupDir) : result.backupDir;
-  return `안내 파일을 새 버전으로 바꿨어요. 예전 것은 ${shown}에 보관했어요.`;
+  return `직접 고친 내용이 있어서 예전 것을 보관하고 새 버전으로 바꿨어요. 보관한 곳: ${shown}`;
 }
 
 /** One plain line for skill files left alone, or undefined. */

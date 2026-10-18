@@ -51,7 +51,7 @@ describe('upgrading over an old (32 KB) SKILL.md', () => {
     await expect(fs.stat(path.join(skillDir, 'references', 'intent-bridge.md'))).resolves.toBeTruthy();
     // Unmodified shipped content: nothing of the user's to keep, so no backup.
     expect(result.stdout).toContain('안내 파일을 새 버전으로 바꿨어요.');
-    expect(result.stdout).not.toContain('보관했어요');
+    expect(result.stdout).not.toContain('보관한 곳');
     expect(await backupsOf(project)).toHaveLength(0);
     // Nothing old stays where agents read the Skill.
     expect((await fs.readdir(skillDir)).filter((name) => name !== 'SKILL.md' && name !== 'references')).toEqual([]);
@@ -75,7 +75,8 @@ describe('upgrading over an old (32 KB) SKILL.md', () => {
     expect(backups).toHaveLength(1);
     expect(backups[0].skill).toContain('내가 덧붙인 메모');
     expect(path.relative(skillDir, backups[0].dir).startsWith('..')).toBe(true);
-    expect(result.stdout).toContain(`안내 파일을 새 버전으로 바꿨어요. 예전 것은 ${path.relative(project, backups[0].dir)}에 보관했어요.`);
+    expect(result.stdout).toContain(`직접 고친 내용이 있어서 예전 것을 보관하고 새 버전으로 바꿨어요. 보관한 곳: ${path.relative(project, backups[0].dir)}`);
+    expect(path.basename(backups[0].dir)).toMatch(/^skill-\d{4}-\d{2}-\d{2}-\d{4}(-\d+)?$/);
     expect(await fs.readFile(path.join(project, '.jutell-local', '.gitignore'), 'utf8')).toBe('*\n');
   });
 
@@ -169,6 +170,17 @@ describe('upgrading over an old (32 KB) SKILL.md', () => {
       expect((await fs.lstat(`${file}.previous`)).isSymbolicLink()).toBe(false);
       expect(await fs.readFile(`${file}.previous`, 'utf8')).toBe('config');
     });
+  });
+
+  it('a second user-modified upgrade in the same minute gets a -2 suffix, not a clash', async () => {
+    const { project, run, skillDir, current } = await installed();
+    await fs.writeFile(path.join(skillDir, 'SKILL.md'), `${current}\n첫 메모\n`);
+    run(['--yes']);
+    await fs.writeFile(path.join(skillDir, 'SKILL.md'), `${current}\n둘째 메모\n`);
+    run(['--yes']);
+    const names = (await backupsOf(project)).map((backup) => path.basename(backup.dir)).sort();
+    expect(names).toHaveLength(2);
+    if (names[0].slice(0, 20) === names[1].slice(0, 20)) expect(names[1]).toBe(`${names[0]}-2`);
   });
 
   it('doctor names the differing files and the fix command', async () => {

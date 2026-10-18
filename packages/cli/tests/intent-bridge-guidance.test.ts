@@ -114,8 +114,8 @@ describe('Intent Bridge feature gate (G)', () => {
     temporaryRoots.push(tmp);
     await ensureJuTellAgentsBlock(tmp);
     const text = await fs.readFile(path.join(tmp, 'AGENTS.md'), 'utf8');
-    expect(text).toMatch(/실제로 코드나 문서를 바꾸기 전에는.*Intent Bridge 규칙으로 판단합니다/);
-    expect(text).toMatch(/requestClarificationGuide.*꺼져 있으면 평소처럼 바로 진행합니다/);
+    expect(text).toMatch(/코드나 문서를 바꾸기 전에 결과를 크게 바꿀 불확실함이 있는지 SKILL.md의 Intent Bridge 규칙으로 판단하고/);
+    expect(text).toMatch(/requestClarificationGuide.*꺼져 있으면 바로 진행합니다/);
   });
 });
 

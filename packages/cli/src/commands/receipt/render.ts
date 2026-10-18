@@ -280,7 +280,9 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
   const askedMore = typeof askedMoreSource === 'number' && Number.isInteger(askedMoreSource) && askedMoreSource > 0 ? askedMoreSource : 0;
   const files = receipt.files ?? [];
   const filesUnknownReason = receipt.filesUnknownReason;
-  const nextGroups = [receipt.next.continue, receipt.next.nice, receipt.next.stop];
+  // A placeholder like '없음' is not a recommendation: with nothing real, say it's fine to stop here.
+  const isPlaceholder = (item: string) => /^[\s\-–—:]*(없음|없습니다|없어요|추천 없음|추천할 것 없음|해당 없음|none|n\/a)?[\s.。!]*$/i.test(item);
+  const nextGroups = [receipt.next.continue, receipt.next.nice, receipt.next.stop].map((group) => group.filter((item) => !isPlaceholder(item)));
   const lines = [
     '==============================',
     '  JuTell 작업 영수증',

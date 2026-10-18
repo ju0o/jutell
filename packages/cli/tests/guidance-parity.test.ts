@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ensureJuTellAgentsBlock } from '../src/installer/agents.js';
+import { ensureJuTellAgentsBlock, ensureJuTellClaudeMdBlock } from '../src/installer/agents.js';
 
 const repoRoot = path.resolve(import.meta.dirname, '..', '..', '..');
 const skillFile = path.join(repoRoot, '.agents', 'skills', 'beginner-bridge', 'SKILL.md');
@@ -185,5 +185,50 @@ describe('slim SKILL.md (skill-slim)', () => {
     for (const heading of ['## 적용 전 읽기', '## 적용하지 않을 상황', '## 설정 해석 절차', '## MCP 서버 선택', '## 실행 절차', '## 작업 유형별 출력', '## 코드 또는 Diff 설명']) expect(procedure).toContain(heading);
     for (let rule = 1; rule <= 19; rule += 1) expect(procedure).toMatch(new RegExp(`^${rule}\\. `, 'm'));
     for (const heading of ['## Intent Bridge', '### 언제 보여주나', '#### ASK_USER 판단 기준', '### 질문은 최대 하나', '### 형식', '### 위험이 있는 요청', '### 한 번만 확인한다']) expect(intent).toContain(heading);
+  });
+});
+
+describe('exact tool names, so agents do not search their tool list', () => {
+  async function blocks(receiptReport?: boolean) {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-tool-names-'));
+    temporaryRoots.push(tmp);
+    if (receiptReport === false) await fs.writeFile(path.join(tmp, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', features: { receiptReport: false } }));
+    await ensureJuTellAgentsBlock(tmp);
+    await ensureJuTellClaudeMdBlock(tmp);
+    return { agents: await fs.readFile(path.join(tmp, 'AGENTS.md'), 'utf8'), claude: await fs.readFile(path.join(tmp, 'CLAUDE.md'), 'utf8') };
+  }
+
+  it('AGENTS.md (Codex, also read by OpenCode) names the Codex tools, labelled as Codex', async () => {
+    const { agents } = await blocks();
+    expect(agents).toContain('도구 목록(ALL_TOOLS)을 검색하지 말고 바로 호출합니다. Codex: 파일 편집 `apply_patch`, 보고 규칙 `mcp__jutell__get_beginner_report_rules`.');
+    expect(agents).toContain('`jutell receipt`는 도구가 아닌 셸 명령(`exec_command`)입니다.');
+    expect(agents).not.toContain('`Edit`');
+  });
+
+  it('CLAUDE.md names Claude Code tools and never the Codex-only ones', async () => {
+    const { claude } = await blocks();
+    expect(claude).toContain('파일 편집 `Edit`/`Write`, 보고 규칙 `mcp__jutell__get_beginner_report_rules`.');
+    expect(claude).toContain('`jutell receipt`는 도구가 아닌 셸 명령(`Bash`)입니다.');
+    expect(claude).not.toContain('apply_patch');
+    expect(claude).not.toContain('exec_command');
+  });
+
+  it('with receiptReport off, the tool names stay but the receipt command is not mentioned', async () => {
+    const { agents, claude } = await blocks(false);
+    for (const text of [agents, claude]) {
+      expect(text).toContain('mcp__jutell__get_beginner_report_rules');
+      expect(text).not.toContain('jutell receipt');
+    }
+  });
+
+  it('SKILL.md (shared by every agent) labels the Codex names and says reading a file is not checking the screen', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toContain('도구 목록을 검색하지 말고 바로 호출한다(Codex: `mcp__jutell__get_beginner_report_rules`, 파일 편집 `apply_patch`). `jutell receipt`는 도구가 아닌 셸 명령이다.');
+    expect(skill).toContain('파일을 읽은 것은 화면 확인이 아니다. 화면은 unchecked에 쓴다.');
+  });
+
+  it('AGENTS.md says reading a file is not checking the screen', async () => {
+    const { agents } = await blocks();
+    expect(agents).toContain('파일을 읽은 것은 화면 확인이 아닙니다. 화면은 unchecked에 씁니다.');
   });
 });
