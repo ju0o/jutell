@@ -12,11 +12,21 @@
 For people who can tell a coding agent what they want, but don't want to read code or logs just to
 know whether it actually worked.
 
+First, go to your project folder:
+
+```bash
+cd /path/to/your-project
+```
+
 ```bash
 npm install -g jutell
 jutell
 ```
-```
+
+JuTell creates or updates `AGENTS.md`, `.agents/`, `.jutell.json`, and `.jutell-local/` in that
+folder. When you connect Codex, it also adds connection settings to `~/.codex/config.toml`.
+
+For non-interactive or automated runs, use `jutell --yes` to skip the `(Y/n)` prompt.
 
 **Don't want to install anything?** JuTell's normal job is a one-time connection - it hands you
 back to your own agent and gets out of the way - so you can just run it without installing:
@@ -25,8 +35,8 @@ back to your own agent and gets out of the way - so you can just run it without 
 npx jutell@latest
 ```
 
-Same flow, nothing left on your machine, and it sidesteps npm's global-folder permission errors
-entirely. Node.js is still required either way.
+No install files are left, but the connection settings and project files remain; it also sidesteps
+npm's global-folder permission errors entirely. Node.js is still required either way.
 
 That's the whole setup. `jutell` finds the coding agents already installed on your machine, asks
 for one approval, connects them, and hands you straight back to your normal session.

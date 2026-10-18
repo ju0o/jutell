@@ -15,10 +15,21 @@ AI Agent에게 원하는 걸 말할 수 있지만, 정말 됐는지 알려고 �
 
 **빠른 시작**
 
+먼저 JuTell을 사용할 프로젝트 폴더로 이동합니다:
+
+```bash
+cd /path/to/your-project
+```
+
 ```bash
 npm install -g jutell
 jutell
 ```
+
+JuTell은 해당 폴더에 `AGENTS.md`, `.agents/`, `.jutell.json`, `.jutell-local/`을 만들거나
+업데이트합니다. Codex를 연결하면 `~/.codex/config.toml`에도 연결 설정을 추가합니다.
+
+대화형 입력이 없는 자동 실행에서는 `jutell --yes`를 사용하면 `(Y/n)` 확인을 건너뜁니다.
 
 **설치는 하기 싫다면.** JuTell이 하는 일은 대부분 한 번의 연결이고, 끝나면 원래 쓰던 Agent로
 돌려보내고 빠집니다. 그래서 설치 없이 바로 실행해도 됩니다:
@@ -27,7 +38,8 @@ jutell
 npx jutell@latest
 ```
 
-동선은 같고, 기계에 남는 것도 없고, npm 전역 폴더 권한 오류를 통째로 피해 갑니다.
+설치 파일은 안 남지만 연결 설정과 프로젝트 파일은 남습니다. npm 전역 폴더 권한 오류도
+피할 수 있습니다.
 Node.js는 어느 쪽이든 필요합니다.
 
 
