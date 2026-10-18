@@ -10,7 +10,9 @@
     "glossary": true,
     "validationResults": true,
     "riskAssessment": true,
-    "userActions": true
+    "userActions": true,
+    "nextActionSuggestions": true,
+    "receiptReport": true
   },
   "limits": {
     "maxMainFiles": 5,

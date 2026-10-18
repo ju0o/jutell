@@ -10,6 +10,7 @@ export type FeatureId =
   | 'riskAssessment'
   | 'userActions'
   | 'nextActionSuggestions'
+  | 'receiptReport'
   | 'requestClarificationGuide'
   | 'manualEditGuidance'
   | 'requestBuilder';

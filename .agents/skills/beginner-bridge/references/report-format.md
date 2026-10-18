@@ -132,6 +132,8 @@
 
 ## 6.6 다음 행동 제안
 
+`receiptReport`가 켜져 있으면 다음 행동 제안은 영수증의 `[다음 추천]`(합쳐서 **최대 3개**)으로 대신한다. 입력은 파일 쓰기 도구로 `.jutell-local/receipt.json`(asked·done·checked·unchecked·next·summary)을 쓰고 인자 없이 `jutell receipt`를 실행하는 것이 기본이다. 셸 문자열로 넘기지 않는다. checked에는 실제로 실행하거나 읽은 것만 쓰고, 상태말과 명령어 대신 쉬운 말로 쓴다. 바뀐 파일은 JuTell이 직접 센다. 영수증이 꺼져 있으면 아래 형식을 쓴다.
+
 `nextActionSuggestions`가 활성일 때 보고서 마지막에 한 문장 제안을 **최대 3개**만 추가한다. 다음 경우에만 추가한다.
 
 * 사용자가 직접 확인해야 할 항목이 남은 경우

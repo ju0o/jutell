@@ -1,5 +1,5 @@
 import { parse } from 'smol-toml';
-import { promises as fs } from 'node:fs';
+import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
 import { assets } from './paths.js';
 import type { BridgeConfig, FileSnapshot, ScopePaths } from '../types.js';
@@ -65,13 +65,21 @@ function userApprovalOverrideTools(content: string) {
   });
 }
 
-export const FEATURE_IDS = ['changeSummary', 'userVisibleChanges', 'internalChanges', 'mainFiles', 'explainedDiff', 'glossary', 'validationResults', 'riskAssessment', 'userActions', 'nextActionSuggestions', 'requestClarificationGuide', 'manualEditGuidance', 'requestBuilder'];
+function userApprovalOverrideModes(content: string): Array<{ tool: string; mode: string }> {
+  const outsideManagedBlocks = managedBlocks(content).reduce((outside, block) => outside.replace(block, ''), content);
+  return READ_ONLY_MCP_TOOLS.flatMap((tool) => {
+    const mode = readTomlString(outsideManagedBlocks, `mcp_servers.${CANONICAL_MCP_KEY}.tools.${tool}`, 'approval_mode');
+    return mode !== undefined && mode !== 'approve' ? [{ tool, mode: String(mode) }] : [];
+  });
+}
+
+export const FEATURE_IDS = ['changeSummary', 'userVisibleChanges', 'internalChanges', 'mainFiles', 'explainedDiff', 'glossary', 'validationResults', 'riskAssessment', 'userActions', 'nextActionSuggestions', 'receiptReport', 'requestClarificationGuide', 'manualEditGuidance', 'requestBuilder'];
 export const PROFILES = ['minimal', 'balanced', 'learning', 'detailed'] as const;
 export const PROFILE_FEATURES: Record<(typeof PROFILES)[number], Record<string, boolean>> = {
-  minimal: { changeSummary: true, userVisibleChanges: true, internalChanges: false, mainFiles: false, explainedDiff: false, glossary: false, validationResults: true, riskAssessment: false, userActions: true, nextActionSuggestions: false, requestClarificationGuide: false, manualEditGuidance: false, requestBuilder: true },
-  balanced: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, explainedDiff: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true },
-  learning: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, explainedDiff: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true },
-  detailed: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, explainedDiff: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true },
+  minimal: { changeSummary: true, userVisibleChanges: true, internalChanges: false, mainFiles: false, explainedDiff: false, glossary: false, validationResults: true, riskAssessment: false, userActions: true, nextActionSuggestions: false, receiptReport: true, requestClarificationGuide: false, manualEditGuidance: false, requestBuilder: true },
+  balanced: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, explainedDiff: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, receiptReport: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true },
+  learning: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, explainedDiff: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, receiptReport: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true },
+  detailed: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, explainedDiff: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, receiptReport: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true },
 };
 
 const fallbackConfig: BridgeConfig = {
@@ -109,14 +117,49 @@ export async function restore(snapshotValue: FileSnapshot) {
 export async function writeTextSafely(file: string, content: string) {
   await fs.mkdir(path.dirname(file), { recursive: true });
   const temporary = `${file}.beginner-bridge-tmp-${process.pid}`;
-  await fs.writeFile(temporary, content, 'utf8');
+  // Keep the existing file's permissions (e.g. 600 on config.toml with secrets in env); rename would reset them.
+  const existingMode = await fs.stat(file).then((stat) => stat.mode & 0o777, () => undefined);
+  await fs.writeFile(temporary, content, { encoding: 'utf8', ...(existingMode !== undefined ? { mode: existingMode } : {}) });
+  if (existingMode !== undefined) await fs.chmod(temporary, existingMode);
   try { await fs.rename(temporary, file); } catch (error) { await fs.rm(temporary, { force: true }); throw error; }
+}
+
+// Creates `.jutell-local` with its own `.gitignore` (`*`) so nothing inside (receipt.json, reports)
+// ever shows up in git status. Never follows a symlinked `.jutell-local`.
+export async function ensureDataRoot(paths: ScopePaths) {
+  await fs.mkdir(paths.dataRoot, { recursive: true });
+  const stats = await fs.lstat(paths.dataRoot);
+  if (stats.isSymbolicLink() || !stats.isDirectory()) return;
+  const flags = fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_WRONLY | (fsConstants.O_NOFOLLOW ?? 0);
+  try {
+    const handle = await fs.open(path.join(paths.dataRoot, '.gitignore'), flags, 0o666);
+    try { await handle.writeFile('*\n', 'utf8'); } finally { await handle.close(); }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+  }
 }
 
 export async function backupFile(file: string) {
   if (!(await exists(file))) return undefined;
+  const content = await fs.readFile(file);
+  const noFollow = fsConstants.O_NOFOLLOW ?? 0;
+  const writeNew = async (target: string) => {
+    const handle = await fs.open(target, fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_WRONLY | noFollow, 0o600);
+    try { await handle.writeFile(content); } finally { await handle.close(); }
+  };
+  // First-ever backup: kept forever so the user's original survives any number of writes.
+  // O_EXCL|O_NOFOLLOW: never writes through a link planted at that name.
+  try {
+    await writeNew(`${file}.jutell-original`);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+  }
+  // Immediately previous version: written to a temp file and renamed over, so a link at
+  // `.previous` is replaced, never followed.
   const backupPath = `${file}.previous`;
-  await fs.copyFile(file, backupPath);
+  const temp = `${backupPath}.jutell-${process.pid}-${Date.now()}`;
+  await writeNew(temp);
+  try { await fs.rename(temp, backupPath); } catch (error) { await fs.rm(temp, { force: true }); throw error; }
   return backupPath;
 }
 
@@ -390,7 +433,9 @@ export async function readCodexRegistration(paths: ScopePaths, packageRoot: stri
   const approvalState = codexApprovalState(content);
   const userOverrides = userApprovalOverrideTools(content);
   const registered = Boolean(canonicalManaged || legacyManaged || canonicalHeuristic || legacyHeuristic);
-  const conflict = !registered && (canonicalRegistered || legacyRegistered);
+  // Only an unmanaged `jutell` table blocks JuTell. A user-owned `beginner_bridge` with no JuTell
+  // evidence is simply someone else's server: leave it alone and don't stop `jutell use codex`.
+  const conflict = canonicalRegistered && !canonicalJuTellRegistered;
   const enabledFlag = (() => {
     if (canonicalManaged) return /^\s*enabled\s*=\s*true\s*$/m.test(canonicalManaged);
     if (canonicalHeuristic) {
@@ -437,6 +482,7 @@ export async function readCodexRegistration(paths: ScopePaths, packageRoot: stri
     legacyRegistered,
     approvalConflict: canonicalJuTellRegistered && approvalState.approvalConflict,
     userApprovalOverride: userOverrides.length > 0,
+    userApprovalOverrides: userApprovalOverrideModes(content),
     approvalPolicyNever: approvalState.approvalPolicyNever,
     bothRegistered: canonicalRegistered && legacyRegistered,
     canonicalUpToDate,
@@ -474,7 +520,7 @@ export async function registerMcp(paths: ScopePaths, packageRoot: string, enable
   return { ...(await readCodexRegistration(paths, packageRoot, enabled)), restoredHint };
 }
 
-export function commentOutOrphanTables(text: string, prefix: string): { text: string; commentedTables: string[] } {
+export function commentOutOrphanTables(text: string, prefix: string, marker = '# jutell 제거로 주석 처리됨'): { text: string; commentedTables: string[] } {
   let finalText = text;
   const commentedTables: string[] = [];
   const tableHeaders = [...finalText.matchAll(/^[ \t]*(\[\[[^\r\n]*?\]\]|\[[^\r\n]*?\])[ \t]*(?:#.*)?\r?$/gm)];
@@ -494,7 +540,7 @@ export function commentOutOrphanTables(text: string, prefix: string): { text: st
       if (tablePath?.startsWith(`${prefix}.`)) {
         commentedTables.push(tablePath);
         const tableText = finalText.slice(start, end);
-        commentedText += '# jutell 제거로 주석 처리됨\n';
+        commentedText += `${marker}\n`;
         commentedText += tableText.split(/(?<=\n)/).map((line) => {
           if (line === '\n' || line === '\r\n') return `# ${line}`;
           return line.replace(/^(?!# )/, '# ');

@@ -74,6 +74,7 @@ export async function migrateCommand(paths: ScopePaths, options: CliOptions, io:
 
   // --clean : remove legacy only after safe verification
   const errors: string[] = [];
+  const cleaned: string[] = [];
   if (hasLegacyConfig) {
     // Verify canonical exists and is valid before deleting legacy
     const canonicalExists = await readText(paths.configFile);
@@ -81,6 +82,7 @@ export async function migrateCommand(paths: ScopePaths, options: CliOptions, io:
     else {
       try {
         await fs.rm(paths.legacyConfigFile, { force: true });
+        cleaned.push('.beginner-bridge.json 제거');
         // also legacy local dir if empty? keep for safety, only remove file per spec (not auto delete all data)
       } catch (e) {
         errors.push(`레거시 설정 삭제 실패: ${e instanceof Error ? e.message : String(e)}`);
@@ -89,6 +91,7 @@ export async function migrateCommand(paths: ScopePaths, options: CliOptions, io:
   }
 
   let codexCleanCommentedTables: string[] = [];
+  let brokenOriginal = false;
   let codexCleanBackupPath: string | undefined;
   // Codex legacy clean: only if canonical exists
   if (hasBothCodex || hasLegacyCodex) {
@@ -134,19 +137,28 @@ export async function migrateCommand(paths: ScopePaths, options: CliOptions, io:
       }
       next = next.replace(/\n{3,}/g, '\n\n').trim();
       const { commentOutOrphanTables, assertValidConfigToml, backupFile } = await import('../config/managed.js');
-      const orphanCleanup = commentOutOrphanTables(next, 'mcp_servers.beginner_bridge');
+      const orphanCleanup = commentOutOrphanTables(next, 'mcp_servers.beginner_bridge', '# jutell 정리로 주석 처리됨');
       next = orphanCleanup.text;
       let configValid = true;
-      try {
-        assertValidConfigToml(next);
-      } catch (error) {
+      let originalValid = true;
+      try { assertValidConfigToml(text); } catch { originalValid = false; }
+      if (!originalValid) {
         configValid = false;
-        errors.push(error instanceof Error ? error.message : 'Codex 설정 검증에 실패하여 legacy 정리를 건너뛰었습니다.');
+        brokenOriginal = true;
+        errors.push('Codex 설정(config.toml)이 원래부터 올바른 TOML이 아니라서 건드리지 않았어요. 파일을 직접 고친 뒤 다시 실행하세요.');
+      } else {
+        try {
+          assertValidConfigToml(next);
+        } catch (error) {
+          configValid = false;
+          errors.push(error instanceof Error ? error.message : 'Codex 설정 검증에 실패하여 legacy 정리를 건너뛰었습니다.');
+        }
       }
       const cleanedText = next ? `${next}\n` : '';
       if (configValid && cleanedText !== text) {
         codexCleanBackupPath = await backupFile(file);
         await writeTextSafely(file, cleanedText);
+        cleaned.push('Codex의 beginner_bridge 항목 정리');
       }
       if (configValid) codexCleanCommentedTables = orphanCleanup.commentedTables;
     }
@@ -173,6 +185,7 @@ export async function migrateCommand(paths: ScopePaths, options: CliOptions, io:
           delete parsed.mcp.beginner_bridge;
           // Keep jutell, remove managed marker will be regenerated on next write? For clean, just remove legacy key and write plain json
           await writeTextSafely(file, `${JSON.stringify(parsed, null, 2)}\n`);
+          cleaned.push('OpenCode의 beginner_bridge 항목 제거');
         }
       } catch {
         errors.push('OpenCode 설정 파싱 실패로 legacy 정리를 건너뛰었습니다.');
@@ -182,18 +195,19 @@ export async function migrateCommand(paths: ScopePaths, options: CliOptions, io:
 
   if (errors.length) {
     io.write(['정리 중 일부를 건너뛰었습니다:', ...errors.map(e => `- ${e}`), '남은 레거시는 jutell doctor 로 확인하세요.'].join('\n'));
+  } else if (cleaned.length === 0) {
+    io.write('정리할 레거시가 없었어요. 바꾼 것은 없습니다.');
   } else {
     io.write([
       '레거시 정리가 끝났습니다.',
-      '- .beginner-bridge.json (있었다면) 제거',
-      '- Codex/OpenCode의 beginner_bridge 항목 제거',
+      ...cleaned.map((item) => `- ${item}`),
       ...(codexCleanCommentedTables.length > 0 ? [`- 남은 beginner_bridge 하위 항목 ${codexCleanCommentedTables.length}개를 주석 처리했습니다`] : []),
-      ...(codexCleanBackupPath ? [`- 백업: ${codexCleanBackupPath}`] : []),
+      ...(codexCleanBackupPath ? [`- 바로 전 백업: ${codexCleanBackupPath}`, `- 처음 원본: ${codexScopedPaths(paths).codexConfigFile}.jutell-original`] : []),
       '관련 없는 설정은 보존했습니다.',
       'jutell status / jutell doctor 로 확인하세요.',
     ].join('\n'));
   }
-  return { cancelled: false };
+  return { cancelled: false, failed: brokenOriginal };
 }
 import { removeManagedBlocksPreserving } from '../config/managed.js';
 

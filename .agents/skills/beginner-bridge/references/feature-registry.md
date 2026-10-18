@@ -14,6 +14,7 @@
 | `riskAssessment` | 켬 | 일반 위험도 설명 | 높은 위험·판정 불가·비밀정보 위험 | 없음 |
 | `userActions` | 켬 | 일반 확인·추가 테스트 안내 | 안전·데이터 손실 관련 행동 | 없음 |
 | `nextActionSuggestions` | 켬 | 일반 다음 행동 제안 | 안전·데이터 손실 관련 행동 | 없음 |
+| `receiptReport` | 켬 | `jutell receipt` 영수증 생성·저장 | 없음 | 없음 |
 | `requestClarificationGuide` | 켬 | 모호한 요청에 대한 일반 확인 | 데이터 손실·보안 관련 확인 | 없음 |
 | `manualEditGuidance` | 켬 | 일반 직접 수정 안내 | 데이터 손실·보안 관련 수정 안내 | 없음 |
 | `requestBuilder` | 켬 | 템플릿 제공 안내 | 없음 | 없음 |

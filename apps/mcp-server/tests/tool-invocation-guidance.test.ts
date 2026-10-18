@@ -39,7 +39,7 @@ describe('MCP server instructions state a clear invocation trigger', () => {
 
 describe('individual tool descriptions distinguish primary vs. diagnostic-only use', () => {
   it('positions get_beginner_report_rules as the one call to make before writing a report', () => {
-    expect(src).toMatch(/get_beginner_report_rules'[\s\S]{0,20}description:\s*'The primary report-writing tool/);
+    expect(src).toMatch(/get_beginner_report_rules'[\s\S]{0,20}description:\s*'Call exactly once before every final report \(required even if the JuTell Skill was read\)\. The primary report-writing tool/);
     expect(src).toMatch(/Call this once, right before writing the final owner-facing report/);
     expect(src).toMatch(/it replaces reading report-format\.md, risk-level-guide\.md/);
     expect(src).toMatch(/do not call it more than once per task just to double-check/);

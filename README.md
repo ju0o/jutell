@@ -29,6 +29,12 @@ jutell
 JuTell creates or updates `AGENTS.md`, `.agents/`, `.jutell.json`, and `.jutell-local/` in that
 folder. When you connect Codex, it also adds connection settings to `~/.codex/config.toml`.
 
+Run `jutell receipt` to print a one-page work receipt and save it at
+`<project>/.jutell-local/reports/YYYY-MM-DD-HHmmss.md` (`-2`, `-3`, etc. handle name collisions).
+JuTell creates `.jutell-local/.gitignore` containing `*`; this keeps receipts out of Git without changing your `.gitignore`.
+Input comes from `.jutell-local/receipt.json` (deleted after reading), `--file <path>`, or `--file -` (stdin).
+Set `"features": { "receiptReport": false }` in `.jutell.json` to turn off receipt reports.
+
 For non-interactive or automated runs, use `jutell --yes` to skip the `(Y/n)` prompt.
 
 **Don't want to install anything?** JuTell's normal job is a one-time connection - it hands you

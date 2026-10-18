@@ -15,11 +15,29 @@ JuTell은 사용자의 컴퓨터 안(로컬)에만 파일을 만듭니다.
 | 파일·폴더 | 역할 | 자동 전송 | Git 자동 포함 |
 |---|---|---|---|
 | `.jutell.json` | JuTell 설정 파일. CLI나 관리자 화면(Dashboard)에서 저장할 때 만들어짐 | 안 함 | 안 됨 |
-| `.jutell-local/` | 로컬 데이터 폴더. 아래 Session 기록, 설정 기록, 사용량 카운터, Style Lab 설정이 들어감 | 안 함 | 안 됨 |
+| `.jutell-local/` | 로컬 데이터 폴더. 아래 Session 기록, 설정 기록, 사용량 카운터, Style Lab 설정, 작업 영수증이 들어감 | 안 함 | 안 됨 |
 | `.jutell-operator.local.json` | (운영자 전용) Session 저장 위치를 직접 지정할 때만 만들어짐. 일반 사용자는 필요 없음 | 안 함 | 안 됨 |
 | `artifacts/` | 외부 검토용 Review Bundle을 만들 때만 생성됨 (자동 생성 아님) | 안 함 | 안 됨 |
 
 > `.beginner-bridge.json`, `.beginner-bridge-local/`은 예전 이름을 쓰시던 분을 위한 호환 경로입니다. 역할은 위와 같습니다.
+
+### 작업 영수증
+
+`jutell receipt`는 한 페이지 작업 영수증을 출력하고 다음 위치에 저장합니다.
+
+```text
+<project>/.jutell-local/reports/YYYY-MM-DD-HHmmss.md
+```
+
+같은 파일명이 이미 있으면 파일명에 `-2`, `-3`처럼 번호를 붙입니다. JuTell은 영수증이 Git에 들어가지 않도록 `.jutell-local/.gitignore`에 `*`를 기록하며, 사용자의 `.gitignore`는 바꾸지 않습니다.
+
+기본 입력은 `.jutell-local/receipt.json`이며, 읽은 뒤 삭제합니다. 다른 파일을 입력하려면 `--file <path>`를 사용하고, 표준 입력은 `--file -`로 전달합니다.
+
+영수증 생성을 끄려면 `.jutell.json`에 다음 설정을 둡니다.
+
+```json
+"features": { "receiptReport": false }
+```
 
 ## 2. Session 저장 기본 위치
 

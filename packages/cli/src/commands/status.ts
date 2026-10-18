@@ -1,3 +1,4 @@
+import { execFile } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
@@ -6,6 +7,7 @@ import { claudeDetected, codexDetected, nodeMajorVersion, operatingSystem } from
 import { exists, parseSkillVersion, readBridgeConfig, readCodexRegistration, readText, readVersionInfo, FEATURE_IDS } from '../config/managed.js';
 import { setupCommand } from './lifecycle.js';
 import { hasJuTellAgentsBlock } from '../installer/agents.js';
+import { differingSkillFiles } from '../installer/skill.js';
 import { opencodeDetected, readOpenCodeRegistration } from '../installer/opencode.js';
 import { readClaudeRegistration } from '../installer/claude.js';
 import { probeMcpServer } from '../process/mcpProbe.js';
@@ -15,16 +17,29 @@ async function processAlive(pid: number) {
   try { process.kill(pid, 0); return true; } catch { return false; }
 }
 
+const CODEX_APPROVAL_MODES = ['approve', 'prompt', 'auto', 'writes'] as const;
+type UserApprovalOverride = { tool: string; mode: string };
 const USER_APPROVAL_NOTE = '이 도구는 직접 정한 대로 매번 승인을 물어요. 자동 실행(codex exec)에서는 이 도구가 멈출 수 있어요. 바꾸려면 config.toml의 해당 줄을 지우세요.';
 
 // The approval conflict comes only from the user's own non-approve tool settings outside
 // the managed block (JuTell's block itself is current): a deliberate choice, not an error.
-function isUserOnlyApprovalOverride(registration: { userApprovalOverride?: boolean; canonicalUpToDate?: boolean }) {
+function isUserOnlyApprovalOverride(registration: { userApprovalOverride?: boolean; userApprovalOverrides?: UserApprovalOverride[]; canonicalUpToDate?: boolean }) {
   return Boolean(registration.userApprovalOverride && registration.canonicalUpToDate);
 }
 
-function codexApprovalWarning(approvalPolicyNever: boolean, userOnlyOverride = false) {
-  const warning = userOnlyOverride ? USER_APPROVAL_NOTE : '자동 실행에서는 jutell 도구가 막힙니다. `jutell use codex`로 고칠 수 있어요';
+function codexApprovalWarning(approvalPolicyNever: boolean, userOnlyOverride = false, userApprovalOverrides: UserApprovalOverride[] = []) {
+  const invalidOverride = userOnlyOverride
+    ? userApprovalOverrides.find(({ mode }) => !CODEX_APPROVAL_MODES.includes(mode as (typeof CODEX_APPROVAL_MODES)[number]))
+    : undefined;
+  const promptOverride = userOnlyOverride && userApprovalOverrides.some(({ mode }) => mode === 'prompt');
+  const selectedOverride = userApprovalOverrides[0];
+  const warning = !userOnlyOverride
+    ? '자동 실행에서는 jutell 도구가 막힙니다. `jutell use codex`로 고칠 수 있어요'
+    : invalidOverride
+      ? `config.toml의 ${invalidOverride.tool} approval_mode 값("${invalidOverride.mode}")을 Codex가 읽지 못해요. 그 줄을 고치거나 지우세요.`
+      : promptOverride
+        ? USER_APPROVAL_NOTE
+        : `이 도구는 직접 정한 승인 방식("${selectedOverride?.mode ?? 'prompt'}")을 따라요. 자동 실행(codex exec)에서는 멈출 수 있어요. 바꾸려면 config.toml의 해당 줄을 지우세요.`;
   return approvalPolicyNever ? `${warning} 대화형 Codex에서도 jutell 도구 호출이 차단됩니다.` : warning;
 }
 
@@ -62,7 +77,7 @@ export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
   if (!config.valid) warnings.push('설정 파일을 읽지 못해 balanced 기본값을 사용 중입니다.');
   if (config.invalidLimitsFields.length) warnings.push(`.jutell.json의 limits 값 중 숫자가 아닌 항목이 있어 기본값을 대신 사용했습니다: ${config.invalidLimitsFields.join(', ')}. 실제 파일 값은 바뀌지 않았으니 직접 고쳐주세요.`);
   if (registration.conflict) warnings.push('같은 이름의 관리되지 않는 Codex MCP 설정이 있어 자동 변경하지 않았습니다.');
-  if (registration.approvalConflict) warnings.push(codexApprovalWarning(registration.approvalPolicyNever, isUserOnlyApprovalOverride(registration)));
+  if (registration.approvalConflict) warnings.push(codexApprovalWarning(registration.approvalPolicyNever, isUserOnlyApprovalOverride(registration), registration.userApprovalOverrides));
   if (opencode.conflict) warnings.push('OpenCode 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.');
   if (registration.bothRegistered) warnings.push('Codex에 canonical jutell과 legacy beginner_bridge MCP가 모두 있습니다. 자동 정리하지 않았습니다. 이전 항목을 정리하려면 jutell migrate --clean 을 실행하세요.');
   if (opencode.bothRegistered) warnings.push('OpenCode에 canonical jutell과 legacy beginner_bridge MCP가 모두 있습니다. 자동 정리하지 않았습니다. 이전 항목을 정리하려면 jutell migrate --clean 을 실행하세요.');
@@ -135,6 +150,30 @@ async function writeCheck(paths: ScopePaths) {
   try { await fs.mkdir(directory, { recursive: true }); await fs.writeFile(file, 'ok', 'utf8'); await fs.rm(file, { force: true }); return true; } catch { await fs.rm(file, { force: true }); return false; }
 }
 
+// Codex runs commands through the user's login shell, so jutell must be on that shell's PATH.
+// When it isn't, give one line that really works: the npm global bin folder, computed from `npm prefix -g`.
+// Only a receipt needs `jutell` from Codex's shell: with receiptReport off a miss is just 주의 (B7).
+export async function loginShellJutellCheck(receiptReport = true, env: NodeJS.ProcessEnv = process.env): Promise<CheckResult> {
+  const name = 'Codex에서 jutell 명령 찾기';
+  const loginShell = env.SHELL && path.isAbsolute(env.SHELL) ? env.SHELL : 'bash';
+  const run = (file: string, args: string[]) => new Promise<string | undefined>((resolve) => {
+    execFile(file, args, { timeout: 5000, env }, (error, stdout) => resolve(error ? undefined : stdout.trim()));
+  });
+  if (await run(loginShell, ['-lc', 'command -v jutell'])) {
+    return { name, status: '정상', detail: 'Codex가 명령을 실행하는 셸에서 jutell을 찾았습니다.' };
+  }
+  const prefix = await run('npm', ['prefix', '-g']);
+  const profile = path.basename(loginShell) === 'zsh' ? '~/.zprofile' : '~/.profile';
+  const fix = prefix
+    ? `${profile} 파일 맨 아래에 이 한 줄을 넣고 터미널과 Codex를 다시 여세요: export PATH="${path.join(prefix, 'bin')}:$PATH"`
+    : `jutell이 들어 있는 폴더를 ${profile}의 PATH에 넣고 터미널과 Codex를 다시 여세요.`;
+  return {
+    name,
+    status: receiptReport ? '오류' : '주의',
+    detail: `Codex가 명령을 실행하는 셸에서 jutell을 찾지 못했어요. ${receiptReport ? '이대로면 작업 영수증이 저장되지 않아요. ' : ''}${fix}`,
+  };
+}
+
 export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]> {
   const config = await readBridgeConfig(paths);
   const codexPaths = codexScopedPaths(paths);
@@ -162,16 +201,20 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   const skillVersion = parseSkillVersion(skillText);
   const sourceSkillText = await readText(path.join(assets().skill, 'SKILL.md'));
   const sourceVersion = parseSkillVersion(sourceSkillText);
-  const skillMatch = Boolean(skillText && sourceSkillText && skillText === sourceSkillText);
-  checks.push({ name: 'Skill 버전', status: skillMatch ? '정상' : skillVersion ? '주의' : '직접 확인 필요', detail: skillMatch ? `스킬 버전 ${sourceVersion ?? '(버전 기록 없음)'} (설치 사본 일치).` : skillVersion ? `설치 사본 버전 ${skillVersion}이 원본과 다릅니다. jutell use <agent> 로 재설치하세요.` : '설치된 Skill에 버전 기록이 없습니다.' });
+  const differing = skillText === undefined ? [] : await differingSkillFiles(assets().skill, paths.skillRoot);
+  const skillMatch = Boolean(skillText && sourceSkillText && differing.length === 0);
+  const differingList = `${differing.slice(0, 5).join(', ')}${differing.length > 5 ? ` 외 ${differing.length - 5}개` : ''}`;
+  checks.push({ name: 'Skill 버전', status: skillMatch ? '정상' : skillVersion ? '주의' : '직접 확인 필요', detail: skillMatch ? `스킬 버전 ${sourceVersion ?? '(버전 기록 없음)'} (설치 사본 일치).` : skillVersion ? `설치된 안내 파일이 이 버전과 달라요: ${differingList}. 프로젝트 폴더에서 \`jutell\`을 실행하면 새 버전으로 바꿔요(예전 것은 .jutell-local/backups에 보관).` : '설치된 Skill에 버전 기록이 없습니다.' });
   checks.push({ name: '현재 Agent 세션 적용', status: '직접 확인 필요', detail: '실제로 Skill과 규칙을 읽었는지 여부는 해당 Agent 세션에서 직접 확인해야 합니다.' });
   checks.push({ name: 'MCP 빌드 파일', status: await exists(mcpEntry) ? '정상' : '오류', detail: await exists(mcpEntry) ? '패키지에 포함되어 있습니다.' : 'MCP 빌드 파일이 없습니다.' });
   checks.push({ name: 'Codex MCP', status: registration.conflict ? '오류' : registration.registered ? '정상' : '주의', detail: registration.conflict ? '관리되지 않는 동일 이름 설정이 있습니다.' : registration.registered ? `JuTell 관리 블록을 확인했습니다. 새 세션 자동 시작: ${registration.enabled ? '켜짐' : '꺼짐'}.` : '등록되지 않았습니다.' });
-  const approvalCheckStatus = !registration.canonicalJuTellRegistered ? '직접 확인 필요' : registration.approvalConflict ? (isUserOnlyApprovalOverride(registration) ? '주의' : '오류') : '정상';
+  const userOnlyApprovalOverride = isUserOnlyApprovalOverride(registration);
+  const hasInvalidUserApprovalOverride = userOnlyApprovalOverride && registration.userApprovalOverrides?.some(({ mode }) => !CODEX_APPROVAL_MODES.includes(mode as (typeof CODEX_APPROVAL_MODES)[number]));
+  const approvalCheckStatus = !registration.canonicalJuTellRegistered ? '직접 확인 필요' : registration.approvalConflict ? (hasInvalidUserApprovalOverride ? '오류' : userOnlyApprovalOverride ? '주의' : '오류') : '정상';
   const approvalCheckDetail = !registration.canonicalJuTellRegistered
     ? 'Codex jutell 등록이 없어 승인 설정을 확인할 수 없습니다.'
     : registration.approvalConflict
-      ? codexApprovalWarning(registration.approvalPolicyNever, isUserOnlyApprovalOverride(registration))
+      ? codexApprovalWarning(registration.approvalPolicyNever, userOnlyApprovalOverride, registration.userApprovalOverrides)
       : registration.approvalPolicyNever
         ? '자동 실행에서는 모든 jutell 도구가 승인됩니다. 대화형 Codex에서도 jutell 도구 호출이 차단됩니다.'
         : '자동 실행에서 모든 jutell 도구가 승인됩니다.';
@@ -192,7 +235,8 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   checks.push({ name: '포트 사용 가능 여부', status: await portAvailable() ? '정상' : '주의', detail: '127.0.0.1의 임시 포트를 확인했습니다.' });
   checks.push({ name: '쓰기 권한', status: await writeCheck(paths) ? '정상' : '오류', detail: '로컬 상태 폴더에 임시 파일을 만들고 삭제했습니다.' });
   const backupExists = await exists(`${codexPaths.codexConfigFile}.previous`);
-  checks.push({ name: '설정 백업 상태', status: !await exists(codexPaths.codexConfigFile) || backupExists ? '정상' : '주의', detail: !await exists(codexPaths.codexConfigFile) ? '아직 Provider 설정을 변경하지 않았습니다.' : backupExists ? '이전 설정 백업을 확인했습니다.' : '기존 Provider 설정 백업이 없습니다.' });
+  if (process.platform !== 'win32') checks.push(await loginShellJutellCheck(config.config.features.receiptReport !== false));
+  checks.push({ name: '설정 백업 상태', status: !await exists(codexPaths.codexConfigFile) || backupExists ? '정상' : '주의', detail: !await exists(codexPaths.codexConfigFile) ? '아직 Provider 설정을 변경하지 않았습니다.' : backupExists ? '이전 설정 백업을 확인했습니다. JuTell이 처음 바꾸기 전 원본은 config.toml.jutell-original에 그대로 남아 있습니다.' : '기존 Provider 설정 백업이 없습니다.' });
   const externalCode = /(?:https?:\/\/(?!127\.0\.0\.1)|https?\.request|net\.connect)/i.test(mcpText);
   checks.push({ name: '외부 전송 코드', status: externalCode ? '오류' : '정상', detail: externalCode ? 'MCP 빌드에서 외부 네트워크 관련 코드를 찾았습니다.' : 'MCP 빌드에 외부 전송 패턴이 없습니다.' });
   const hasRegisteredMcp = registration.registered || opencode.registered || claude.registered;

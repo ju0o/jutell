@@ -29,6 +29,12 @@ jutell
 JuTell은 해당 폴더에 `AGENTS.md`, `.agents/`, `.jutell.json`, `.jutell-local/`을 만들거나
 업데이트합니다. Codex를 연결하면 `~/.codex/config.toml`에도 연결 설정을 추가합니다.
 
+`jutell receipt`는 한 페이지 작업 영수증을 출력합니다.
+`<project>/.jutell-local/reports/YYYY-MM-DD-HHmmss.md`에 저장하며, 파일명이 겹치면 `-2`, `-3` 등을 붙입니다.
+JuTell은 `*`가 든 `.jutell-local/.gitignore`를 만들어 영수증을 Git에서 제외하며, 사용자의 `.gitignore`는 바꾸지 않습니다.
+입력은 `.jutell-local/receipt.json`(읽은 뒤 삭제), `--file <path>` 또는 `--file -`(표준 입력)입니다.
+끄려면 `.jutell.json`에서 `"features": { "receiptReport": false }`로 설정합니다.
+
 대화형 입력이 없는 자동 실행에서는 `jutell --yes`를 사용하면 `(Y/n)` 확인을 건너뜁니다.
 
 **설치는 하기 싫다면.** JuTell이 하는 일은 대부분 한 번의 연결이고, 끝나면 원래 쓰던 Agent로

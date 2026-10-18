@@ -58,6 +58,7 @@ describe('CLI explainedDiff profile semantics (J01-CLI-001)', () => {
       riskAssessment: false,
       userActions: true,
       nextActionSuggestions: false,
+      receiptReport: true,
       requestClarificationGuide: false,
       manualEditGuidance: false,
       requestBuilder: true,
@@ -68,6 +69,28 @@ describe('CLI explainedDiff profile semantics (J01-CLI-001)', () => {
     for (const profile of ['minimal', 'balanced', 'learning', 'detailed'] as const) {
       expect(Object.keys(PROFILE_FEATURES[profile]).sort()).toEqual([...FEATURE_IDS].sort());
     }
+  });
+
+  it('defaults receiptReport on in every Profile and preserves an explicit off setting', () => {
+    for (const profile of ['minimal', 'balanced', 'learning', 'detailed'] as const) {
+      expect(PROFILE_FEATURES[profile].receiptReport).toBe(true);
+      const normalized = normalizeConfig({
+        version: 1,
+        profile,
+        features: {},
+        limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 },
+      });
+      expect(normalized.features.receiptReport).toBe(true);
+    }
+
+    const explicitOff = normalizeConfig({
+      version: 1,
+      profile: 'minimal',
+      features: { receiptReport: false },
+      limits: { maxMainFiles: 3, maxGlossaryTerms: 1, compactReportMaxSentences: 8 },
+    });
+    expect(explicitOff.profile).toBe('minimal');
+    expect(explicitOff.features.receiptReport).toBe(false);
   });
 
   it('normalizes a completely empty feature object with Profile defaults', () => {

@@ -3,7 +3,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { assets } from '../config/paths.js';
-import { exists } from '../config/managed.js';
+import { ensureDataRoot, exists } from '../config/managed.js';
 import { openBrowser } from '../process/system.js';
 import type { CliIo, CliOptions, ScopePaths } from '../types.js';
 
@@ -50,7 +50,7 @@ export async function dashboardCommand(paths: ScopePaths, options: CliOptions, i
   await new Promise<void>((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', () => { server.off('error', reject); resolve(); }); });
   const address = server.address();
   const port = typeof address === 'object' && address ? address.port : 0;
-  await fs.mkdir(paths.dataRoot, { recursive: true });
+  await ensureDataRoot(paths);
   await fs.writeFile(marker, `${JSON.stringify({ pid: process.pid, port })}\n`, 'utf8');
   const url = `http://127.0.0.1:${port}`;
   io.write(`JuTell 로컬 관리자를 실행했습니다.\n${url}\n종료하려면 이 터미널에서 Ctrl+C를 누르세요.`);

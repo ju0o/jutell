@@ -31,7 +31,7 @@ describe('JuTell MCP read-only data', () => {
   });
 
   it('returns every feature and current report preferences', () => {
-    expect(activeFeatures(DEFAULT_CONFIG)).toHaveLength(13);
+    expect(activeFeatures(DEFAULT_CONFIG)).toHaveLength(14);
     expect(activeFeatures(DEFAULT_CONFIG).find((item) => item.id === 'glossary')).toMatchObject({ name: '개발 용어 설명', active: true });
     expect(activeFeatures(DEFAULT_CONFIG).find((item) => item.id === 'explainedDiff')).toMatchObject({ name: '설명형 변경 요약', active: true });
     expect(activeFeatures(DEFAULT_CONFIG).find((item) => item.id === 'requestBuilder')).toMatchObject({ name: '요청 만들기', active: true });
@@ -49,6 +49,20 @@ describe('JuTell MCP read-only data', () => {
     expect(normalized.limits).toEqual(oldConfig.limits);
   });
 
+  it('accepts receiptReport without resetting the selected profile and defaults it on', () => {
+    for (const profile of ['minimal', 'balanced', 'learning', 'detailed'] as const) {
+      const normalized = normalizeConfig({
+        version: 1,
+        profile,
+        features: profile === 'minimal' ? { receiptReport: false } : {},
+        limits: DEFAULT_CONFIG.limits,
+      });
+
+      expect(normalized.profile).toBe(profile);
+      expect(normalized.features.receiptReport).toBe(profile === 'minimal' ? false : true);
+    }
+  });
+
   it('returns only active rules and mandatory safety requirements, and exposes the diff rule', () => {
     const config = { ...DEFAULT_CONFIG, features: { ...DEFAULT_CONFIG.features, glossary: false, internalChanges: false } };
     const rules = beginnerReportRules(config);
@@ -58,6 +72,25 @@ describe('JuTell MCP read-only data', () => {
     expect(rules.notCollected).toContain('Prompt');
     expect(rules.notCollected).toContain('비밀정보');
     expect(rules.diffRule).toMatch(/코드 또는 Diff/);
+  });
+
+  it('keeps enabled receiptReport out of report rules without changing their serialized length', () => {
+    const { receiptReport: _receiptReport, ...legacyFeatures } = DEFAULT_CONFIG.features;
+    const { receiptReport: _disabledReceiptReport, ...previousRules } = beginnerReportRules({ ...DEFAULT_CONFIG, features: legacyFeatures });
+    const currentRules = beginnerReportRules(DEFAULT_CONFIG);
+
+    expect(currentRules.activeReportSections).not.toContain('작업 영수증');
+    expect(JSON.stringify(currentRules).length).toBe(JSON.stringify(previousRules).length);
+  });
+
+  it('adds only receiptReport=false to report rules when the feature is off', () => {
+    const enabledRules = beginnerReportRules(DEFAULT_CONFIG);
+    const disabledRules = beginnerReportRules({
+      ...DEFAULT_CONFIG,
+      features: { ...DEFAULT_CONFIG.features, receiptReport: false },
+    });
+
+    expect(disabledRules).toEqual({ ...enabledRules, receiptReport: false });
   });
 });
 

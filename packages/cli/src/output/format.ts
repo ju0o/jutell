@@ -2,11 +2,18 @@ import readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import type { CliIo, CliOptions, InstallScope, Profile } from '../types.js';
 
+export class NeedsConfirmationError extends Error {
+  constructor() {
+    super('확인 없이는 진행하지 않았어요. --yes를 붙이세요');
+  }
+}
+
 export function createIo(): CliIo {
   return {
     write: (message) => console.log(message),
     error: (message) => console.error(message),
     ask: async (message, defaultYes = false) => {
+      if (input.isTTY !== true) throw new NeedsConfirmationError();
       const rl = readline.createInterface({ input, output });
       try {
         const answer = await rl.question(`${message} ${defaultYes ? '(Y/n)' : '(y/N)'} `);
@@ -138,6 +145,12 @@ JuTell은 AI Agent를 대신 실행하지 않고 연결과 보고만 도와줍�
 
   jutell session        오늘 기록 상태를 봅니다.
   jutell session help   하루 기록의 하위 명령을 보여줍니다.
+
+작업 영수증
+
+  jutell receipt        receipt.json을 저장하고 작업 영수증을 출력합니다.
+  jutell receipt --file <경로>  지정한 파일에서 입력을 읽습니다. -는 표준 입력입니다.
+  jutell receipt --help  receipt.json 형식을 보여 줍니다.
 
 공개 설치: npm install -g jutell
 업데이트: npm update -g jutell`);

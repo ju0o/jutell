@@ -39,7 +39,7 @@ server.registerTool('get_report_preferences', { ...noInput, description: 'Diagno
   return { content: [{ type: 'text', text: JSON.stringify(reportPreferences(context.config)) }] };
 }));
 
-server.registerTool('get_beginner_report_rules', { ...noInput, description: 'The primary report-writing tool: returns this project\'s active report rules (which sections to include, length/voice limits, the evidence/status/diff rules, safety requirements) in one call. Call this once, right before writing the final owner-facing report for a completed task — it replaces reading report-format.md, risk-level-guide.md, and related Skill reference files by hand. Do not call it for non-report answers (plain questions, explanations, plans), and do not call it more than once per task just to double-check.' }, async () => counted('get_beginner_report_rules', async () => {
+server.registerTool('get_beginner_report_rules', { ...noInput, description: 'Call exactly once before every final report (required even if the JuTell Skill was read). The primary report-writing tool: returns this project\'s active report rules (which sections to include, length/voice limits, the evidence/status/diff rules, safety requirements) in one call. Call this once, right before writing the final owner-facing report for a completed task — it replaces reading report-format.md, risk-level-guide.md, and related Skill reference files by hand. Do not call it for non-report answers (plain questions, explanations, plans), and do not call it more than once per task just to double-check.' }, async () => counted('get_beginner_report_rules', async () => {
   const context = await readBridgeContext();
   return { content: [{ type: 'text', text: JSON.stringify(beginnerReportRules(context.config)) }] };
 }));

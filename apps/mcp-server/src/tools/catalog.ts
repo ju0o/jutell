@@ -11,6 +11,7 @@ export const FEATURE_CATALOG: Record<FeatureId, { label: string; omitted: string
   riskAssessment: { label: '위험도 안내', description: '변경이 기존 기능에 미칠 수 있는 영향의 크기를 설명합니다.', omitted: '일반 위험도 설명', forced: '높은 위험·판정 불가' },
   userActions: { label: '사용자 확인 안내', description: '사용자가 직접 확인하거나 결정할 일을 알려줍니다.', omitted: '일반 확인 안내', forced: '안전·데이터 손실 관련 행동' },
   nextActionSuggestions: { label: '다음 행동 제안', description: '보고서 끝에 다음 행동 제안을 최대 3개 추가합니다.', omitted: '일반 다음 행동 제안', forced: '안전·데이터 손실 관련 행동' },
+  receiptReport: { label: '작업 영수증', description: 'CLI로 고정 형식의 작업 영수증을 만들고 로컬에 저장합니다.', omitted: '작업 영수증 생성 안내', forced: '없음' },
   requestClarificationGuide: { label: '요청 명확화 질문', description: '요청이 모호할 때 결과가 크게 달라지는 항목을 작업 전에 확인합니다.', omitted: '모호한 요청에 대한 일반 확인', forced: '데이터 손실·보안 관련 확인' },
   manualEditGuidance: { label: '직접 수정 안내', description: '사용자가 직접 파일을 고칠 때 위치와 주의점을 안내합니다.', omitted: '일반 직접 수정 안내', forced: '데이터 손실·보안 관련 수정 안내' },
   requestBuilder: { label: '요청 만들기', description: '요청 템플릿 제공 안내를 포함합니다.', omitted: '템플릿 제공 안내', forced: '없음' },

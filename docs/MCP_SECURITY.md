@@ -32,7 +32,7 @@ MCP 입력으로 임의 경로를 받지 않습니다. 서버는 프로젝트 �
 관리자 화면이 연결 설정을 만들 때 다음 순서를 따릅니다.
 
 1. 프로젝트의 `.codex/config.toml`을 읽습니다.
-2. 기존 파일이 있으면 `.codex/config.toml.previous`로 백업합니다.
+2. 기존 파일이 있으면 `.codex/config.toml.previous`로 백업합니다(쓸 때마다 바로 전 버전으로 바뀝니다). JuTell이 처음 바꿀 때만 `.codex/config.toml.jutell-original`도 만들고, 이 파일은 다시 덮어쓰지 않습니다. 두 백업 파일(`.previous`, `.jutell-original`)은 `jutell uninstall` 뒤에도 지우지 않고 남깁니다. config.toml의 `env` 등에 넣은 비밀값이 그대로 들어 있을 수 있으니, 필요 없으면 직접 지우세요.
 3. JuTell 관리 블록만 추가하거나 갱신합니다.
 4. 다른 MCP 서버 설정은 유지합니다.
 5. 같은 이름의 관리되지 않는 항목이 있으면 자동 변경하지 않습니다.
