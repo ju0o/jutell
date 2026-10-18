@@ -122,7 +122,7 @@ export async function useCommand(paths: ScopePaths, options: CliOptions, io: Cli
   let changed: string[] = [];
   try {
     await ensureBridgeConfig(paths, options.profile);
-    const skillResult = await installSkill(assets().skill, paths.skillRoot);
+    const skillResult = await installSkill(assets().skill, paths.skillRoot, paths);
     changed = skillResult.changed;
     if (paths.scope === 'project') await ensureJuTellAgentsBlock(paths.targetRoot);
     await setMcpEnabled(paths, true);

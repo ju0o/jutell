@@ -311,8 +311,10 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
       (check) => check.result === '확인함'
         ? ` ✔ 직접 확인한 것: ${check.what}${check.how ? ` (${check.how})` : ''}`
         : ` ✖ 확인 못 한 것: ${check.what}${check.reason ? ` (${check.reason})` : ''}`,
-      ' 없음',
+      ' ✔ 직접 확인한 것: 없음',
     ),
+    // '확인 못 한 것' is never left out: with nothing unchecked it says so explicitly.
+    ...(receipt.checks.some((check) => check.result !== '확인함') ? [] : [' ✖ 확인 못 한 것: 없음']),
     '------------------------------',
     RECEIPT_SECTIONS[4],
     ...(nextGroups.every((group) => group.length === 0)

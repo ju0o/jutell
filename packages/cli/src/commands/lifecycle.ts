@@ -28,7 +28,7 @@ export async function setupCommand(paths: ScopePaths, options: CliOptions, io: C
   const agentsSnapshot = paths.scope === 'project' ? await snapshot(agentsFile(paths.targetRoot)) : undefined;
   let skillResult: { conflicts: string[]; changed: string[] } = { conflicts: [], changed: [] };
   try {
-    skillResult = options.mcpOnly ? { conflicts: [], changed: [] } : await installSkill(assets().skill, paths.skillRoot);
+    skillResult = options.mcpOnly ? { conflicts: [], changed: [] } : await installSkill(assets().skill, paths.skillRoot, paths);
     const ensured = await ensureBridgeConfig(paths, options.profile);
     if (paths.scope === 'project' && !options.mcpOnly) await ensureJuTellAgentsBlock(paths.targetRoot);
     if (!options.skillOnly) {
@@ -62,7 +62,7 @@ export async function enableCommand(paths: ScopePaths, options: CliOptions, io: 
   const agentsSnapshot = paths.scope === 'project' ? await snapshot(agentsFile(paths.targetRoot)) : undefined;
   let skillResult: { conflicts: string[]; changed: string[] } = { conflicts: [], changed: [] };
   try {
-    skillResult = options.mcpOnly ? { conflicts: [], changed: [] } : await installSkill(assets().skill, paths.skillRoot);
+    skillResult = options.mcpOnly ? { conflicts: [], changed: [] } : await installSkill(assets().skill, paths.skillRoot, paths);
     const config = await ensureBridgeConfig(paths, undefined);
     if (paths.scope === 'project' && !options.mcpOnly) await ensureJuTellAgentsBlock(paths.targetRoot);
     if (!options.skillOnly) {

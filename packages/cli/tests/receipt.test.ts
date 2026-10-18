@@ -156,6 +156,17 @@ describe('receipt renderer', () => {
     }, timestamp)).toThrow('최대 3개');
   });
 
+  it('never omits 확인 못 한 것: says 없음 when nothing is unchecked or nothing was checked at all', () => {
+    const onlyChecked = renderReceipt(normalizeReceipt({ done: ['테스트 실행'], checked: ['테스트 통과'], unchecked: [] }), timestamp);
+    expect(onlyChecked).toContain(' ✔ 직접 확인한 것: 테스트 통과');
+    expect(onlyChecked).toContain(' ✖ 확인 못 한 것: 없음');
+    const nothing = renderReceipt({ done: [], checks: [], next: { continue: [], nice: [], stop: [] } }, timestamp);
+    expect(nothing).toContain(' ✔ 직접 확인한 것: 없음');
+    expect(nothing).toContain(' ✖ 확인 못 한 것: 없음');
+    const withUnchecked = renderReceipt(normalizeReceipt({ checked: ['a'], unchecked: ['모바일 화면 (브라우저 없음)'] }), timestamp);
+    expect(withUnchecked).not.toContain('확인 못 한 것: 없음');
+  });
+
   it('does not print the save line for an absolute saved path', () => {
     expect(renderReceipt({ done: [], checks: [], next: { continue: [], nice: [], stop: [] } }, timestamp, '/tmp/report.md'))
       .not.toContain('저장됨:');

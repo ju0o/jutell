@@ -13,6 +13,13 @@ import { ensureJuTellAgentsBlock } from '../src/installer/agents.js';
 
 const repoRoot = path.resolve(import.meta.dirname, '..', '..', '..');
 const skillFile = path.join(repoRoot, '.agents', 'skills', 'beginner-bridge', 'SKILL.md');
+// SKILL.md keeps only the always-needed rules; the rest moved verbatim into references/ (skill-slim).
+// Rule-text pins read SKILL.md together with those reference files, so no rule can silently disappear.
+const skillReferenceFiles = ['procedure.md', 'intent-bridge.md'].map((name) => path.join(path.dirname(skillFile), 'references', name));
+async function readSkillWithReferences() {
+  return (await Promise.all([skillFile, ...skillReferenceFiles].map((file) => fs.readFile(file, 'utf8')))).join('\n');
+}
+
 const mcpIndexFile = path.join(repoRoot, 'apps', 'mcp-server', 'src', 'index.ts');
 const reportFormatFile = path.join(repoRoot, '.agents', 'skills', 'beginner-bridge', 'references', 'report-format.md');
 const reportSpecFile = path.join(repoRoot, 'docs', 'BEGINNER_REPORT_SPEC.md');
@@ -24,7 +31,7 @@ afterEach(async () => {
 
 describe('Intent Bridge trigger rule (A, B, C)', () => {
   it('names the given materially-ambiguous examples as cases that should show Intent Bridge', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     for (const example of ['로그인 화면 좀 더 깔끔하게 해줘', '이 버튼 좀 더 좋게 바꿔줘', '회원가입 좀 간단하게 만들어줘']) {
       expect(skill, `expected the trigger-example list to include "${example}"`).toContain(example);
     }
@@ -36,7 +43,7 @@ describe('Intent Bridge trigger rule (A, B, C)', () => {
   });
 
   it('names the given precise examples as cases that should proceed normally, even though they are short', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     const skipIndex = skill.indexOf('보여주지 않는 예');
     expect(skipIndex).toBeGreaterThan(-1);
     const afterSkipHeading = skill.slice(skipIndex);
@@ -46,14 +53,14 @@ describe('Intent Bridge trigger rule (A, B, C)', () => {
   });
 
   it('explicitly rules out request length as the trigger condition', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/요청이 짧다는 이유만으로 보여주지 않는다/);
     expect(skill).toMatch(/짧아도 이미 명확함/);
   });
 });
 
 describe('Intent Bridge epistemic model (D, E)', () => {
-  const skill = fs.readFile(skillFile, 'utf8');
+  const skill = readSkillWithReferences();
 
   it('requires inferred information to be visibly labeled and never presented as user-said', async () => {
     const text = await skill;
@@ -82,13 +89,13 @@ describe('Intent Bridge epistemic model (D, E)', () => {
 
 describe('Intent Bridge one-round-trip cap (F)', () => {
   it('caps the check at one per request and forbids repeating it', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/이 확인은 요청당 최대 한 번이다/);
     expect(skill).toMatch(/JuTell이 Intent Bridge를 다시 반복하지 않는다/);
   });
 
   it('hands remaining ambiguity back to normal Agent judgment instead of a JuTell-run questionnaire engine', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/평소 Agent의 판단과 질문 방식을 따른다/);
     expect(skill).toMatch(/여러 번 되묻는 질문 엔진을 만들지 않는다/);
   });
@@ -96,7 +103,7 @@ describe('Intent Bridge one-round-trip cap (F)', () => {
 
 describe('Intent Bridge feature gate (G)', () => {
   it('is fully inactive when requestClarificationGuide is off', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     // Both the dedicated section and the execution-procedure step must gate on the feature.
     expect(skill).toMatch(/`requestClarificationGuide`\s*Feature가 꺼져 있으면 이 절차 전체를 적용하지 않고 평소처럼 바로 진행한다/);
     expect(skill).toMatch(/`requestClarificationGuide`가 켜져 있고 그런 불확실함이 있으면/);
@@ -127,7 +134,7 @@ describe('No new MCP tool required for Intent Bridge (H)', () => {
 
 describe('Auto Invocation completion behavior remains intact (I)', () => {
   it('keeps the existing get_beginner_report_rules completion-boundary trigger unchanged', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toContain('소유자 대상 구현·보고 작업이면 최종 답변을 작성하기 전에 JuTell 보고 규칙');
     expect(skill).toMatch(/최종 보고를 쓰기 직전 한 번만 한다/);
   });
@@ -148,12 +155,12 @@ describe('Auto Invocation completion behavior remains intact (I)', () => {
 
 describe('AGENT_CHECK is resolved before ASK_USER is considered (A)', () => {
   it('names AGENT_CHECK as a repository/code/environment fact-finding step the Agent does before building a question', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/질문을 만들기 전에, Agent가 스스로 확인할 수 있는 사실은 먼저 확인한다/);
   });
 
   it('sequences AGENT_CHECK before the ASK_USER question in both the trigger list and the zero-question flow', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     const triageIndex = skill.indexOf('AGENT_CHECK — 먼저 저장소에서 확인한다');
     const oneQuestionIndex = skill.indexOf('### 질문은 최대 하나');
     expect(triageIndex).toBeGreaterThan(-1);
@@ -167,12 +174,12 @@ describe('AGENT_CHECK is resolved before ASK_USER is considered (A)', () => {
 
 describe('Zero-question path is explicitly allowed (B)', () => {
   it('states plainly that Intent Bridge does not always require a user question', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/Intent Bridge가 항상 사용자 질문을 요구하지는 않는다/);
   });
 
   it('allows proceeding without a question when only SAFE_INFERENCE / NON_BLOCKING_UNKNOWN remain, and forbids the generic closing question in that case', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/남은 것이 SAFE_INFERENCE나 NON_BLOCKING_UNKNOWN뿐이고 실제 BLOCKING_UNKNOWN이 남지 않으면/);
     expect(skill).toMatch(/판단할 실제 사용자 결정이 남아 있지 않으므로 "이대로 진행해도 될까요\?" 같은 형식적인 확인 질문도 만들지 않는다/);
   });
@@ -180,13 +187,13 @@ describe('Zero-question path is explicitly allowed (B)', () => {
 
 describe('Maximum one user question (C)', () => {
   it('caps ASK_USER at one question and requires removing AGENT_CHECK/SAFE_INFERENCE/NON_BLOCKING_UNKNOWN items before choosing it', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/ASK_USER가 필요하면 질문은 최대 하나다/);
     expect(skill).toMatch(/질문을 고르기 전에 다음을 모두 제외한다/);
   });
 
   it('picks the item with the largest divergence from what the user plausibly intended, not the most technical, hardest, or first-listed item', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/사용자가 실제로 원했을 것과 가장 크게 달라지는 항목 하나만 고른다/);
     expect(skill).toMatch(/가장 기술적인 항목/);
     expect(skill).toMatch(/구현이 가장 어려운 항목/);
@@ -195,14 +202,14 @@ describe('Maximum one user question (C)', () => {
   });
 
   it('forbids a scoring system, confidence percentages, or a question-ranking engine', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/점수판, confidence 퍼센트, 질문 순위를 매기는 엔진을 따로 만들지 않는다/);
   });
 });
 
 describe('The specific decision question replaces the generic closing confirmation (D)', () => {
   it('no longer ends the fixed template with a generic "proceed as-is?" line', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     const templateStart = skill.indexOf('제가 이렇게 이해했어요.');
     const templateEnd = skill.indexOf('```', templateStart);
     expect(templateStart).toBeGreaterThan(-1);
@@ -211,7 +218,7 @@ describe('The specific decision question replaces the generic closing confirmati
   });
 
   it('states that when a real user decision remains, the closing sentence itself is that decision question', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/그 결정을 묻는 문장 하나만 덧붙인다. 이 문장 자체가 질문이다/);
     expect(skill).toMatch(/실제 사용자 결정이 남아 있지 않으면 이 문장을 만들지 않는다/);
   });
@@ -219,12 +226,12 @@ describe('The specific decision question replaces the generic closing confirmati
 
 describe('Duplicate equivalent confirmation is forbidden (E)', () => {
   it('forbids appending a generic confirmation after, or instead of, the one decision question', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/일반적인 확인 문구를 결정 질문 대신, 또는 결정 질문에 이어 덧붙이지 않는다/);
   });
 
   it('forbids re-asking the same choice in different words after the one question is asked', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/질문 하나를 물은 뒤에는 같은 내용을 다른 말로 다시 확인하지 않는다/);
     expect(skill).toMatch(/같은 선택을 다른 표현으로 두 번 묻는 형태를 만들지 않는다/);
   });
@@ -232,14 +239,14 @@ describe('Duplicate equivalent confirmation is forbidden (E)', () => {
 
 describe('Technical repository facts must not be asked of the user when inspectable (F)', () => {
   it('gives the CSS-framework and component-location questions as bad examples the Agent should check instead of asking', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toContain('어떤 CSS 프레임워크를 쓰고 계신가요?');
     expect(skill).toContain('로그인 버튼이 있는 컴포넌트가 어디인가요?');
     expect(skill).toMatch(/사용자는 저장소 조회 도구가 아니다/);
   });
 
   it('lists concrete inspectable facts the Agent checks itself before ever asking', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     for (const fact of ['현재 사용 중인 framework', '파일·컴포넌트 위치', '현재 화면 구조', '기존 스타일', '기존 입력 필드', '현재 동작', '테스트 framework', '기존 반응형 처리 방식']) {
       expect(skill, `expected AGENT_CHECK examples to include "${fact}"`).toContain(fact);
     }
@@ -248,20 +255,20 @@ describe('Technical repository facts must not be asked of the user when inspecta
 
 describe('SAFE_INFERENCE stays labeled as inference (G)', () => {
   it('requires SAFE_INFERENCE to be reversible, non-constraining, and still visibly labeled as inference', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/되돌릴 수 있고 결과를 크게 제한하지 않는, 위험이 낮은 추론/);
     expect(skill).toMatch(/이때도 필요한 곳에는 추론이라는 표시를 남긴다/);
   });
 
   it('forbids silently promoting a safe inference to user intent', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/SAFE_INFERENCE를 조용히 사용자 의도로 승격하지 않는다/);
   });
 });
 
 describe('NON_BLOCKING_UNKNOWN does not force a question (H)', () => {
   it('keeps a safely-unknown item unknown instead of forcing a question, and allows surfacing it in Intent Bridge or the final report', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/작업을 안전하게 진행할 수 있으면, 억지로 질문을 만들지 않는다/);
     expect(skill).toMatch(/필요하면 Intent Bridge의 "아직 정하지 않은 것" 항목이나 최종 보고서에 남긴다/);
   });
@@ -269,12 +276,12 @@ describe('NON_BLOCKING_UNKNOWN does not force a question (H)', () => {
 
 describe('BLOCKING_UNKNOWN may require ASK_USER (I)', () => {
   it('names guessing-could-be-materially-wrong as the condition that makes an unknown eligible for ASK_USER', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/추측이 실제로 잘못된 제품 결과로 이어질 수 있으면 BLOCKING_UNKNOWN이 되고, ASK_USER 대상이 될 수 있다/);
   });
 
   it('gives the behavior-change, field-removal, payment-flow, and polish-vs-redesign examples without over-generalizing them', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     for (const example of ['기존 동작이 실제로 바뀔 수 있는지', '기존 필드가 실제로 삭제될 수 있는지', '결제 흐름 요구사항이 실제로 바뀔 수 있는지', '가벼운 정리인지, 전체적인 느낌을 바꾸는 재설계인지']) {
       expect(skill, `expected BLOCKING_UNKNOWN examples to include "${example}"`).toContain(example);
     }
@@ -284,13 +291,13 @@ describe('BLOCKING_UNKNOWN may require ASK_USER (I)', () => {
 
 describe('Risk-adjacent requests lean toward ASK_USER without a new risk system', () => {
   it('reuses the existing risk-level-guide vocabulary for payment/auth/data-loss areas', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/`references\/risk-level-guide\.md`의 위험 어휘를 그대로 재사용한다/);
     expect(skill).toContain('결제, 로그인과 인증·권한, 데이터베이스 구조나 데이터 손실');
   });
 
   it('does not force every payment/auth/data request to ask, and keeps the same two-condition rule', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/결제·인증·데이터 관련 요청이라는 이유만으로 모든 요청에 자동으로 질문하지 않는다/);
     expect(skill).toMatch(/새로운 위험 분류 체계를 따로 만들지 않는다/);
   });
@@ -298,19 +305,19 @@ describe('Risk-adjacent requests lean toward ASK_USER without a new risk system'
 
 describe('Intent Bridge stays short and reuses existing vocabulary, not a new parallel system', () => {
   it('points to templates/request-builder/ for optional vocabulary instead of duplicating all 8 steps inline', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/templates\/request-builder\/.*참고해도 되지만/);
     expect(skill).toMatch(/8단계 템플릿 전체를 대화에 그대로 옮기지 않는다/);
   });
 
   it('requires empty fields to be omitted, not shown blank', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/값이 있는 항목만 보여주고, 빈 항목은 만들지 않는다/);
     expect(skill).toMatch(/모든 필드를 강제로 채우지 않는다/);
   });
 
   it('forbids translating plain user speech into developer jargon', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/사용자의 평소 말투를 개발자 용어로 바꿔 쓰지 않는다/);
   });
 });
@@ -325,13 +332,13 @@ describe('Intent Bridge stays short and reuses existing vocabulary, not a new pa
 
 describe('DO_NOT_CHANGE reuses existing vocabulary (A)', () => {
   it('names 건드리지 말 것 as an Intent Bridge field, distinct from 유지할 것', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toContain('건드리지 말 것 (있을 때만)');
     expect(skill).toMatch(/사용자가 말했거나 요청 자체로 명백히 손대면 안 되는 부분/);
   });
 
   it('reuses the exact "색상은 건드리지 마" / "기능은 건드리지 마" style examples already used elsewhere in the product', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toContain('색상은 건드리지 마');
     expect(skill).toContain('기능은 건드리지 마');
   });
@@ -339,30 +346,30 @@ describe('DO_NOT_CHANGE reuses existing vocabulary (A)', () => {
 
 describe('PRESERVE_BEHAVIOR stays distinct from file immutability (B)', () => {
   it('defines 유지할 것 as behavior that must keep working even when its implementing files are edited', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/유지할 것 \(있을 때만\)\n\(파일은 바뀌어도 계속 그대로 동작해야 하는 것\)/);
   });
 
   it('explicitly refuses to equate "file touched" with "behavior changed"', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     const count = [...skill.matchAll(/"파일을 건드렸다"를? ?"동작이 바뀌었다"/g)].length;
     expect(count).toBeGreaterThanOrEqual(1);
   });
 
   it('distinguishes DO_NOT_CHANGE from PRESERVE_BEHAVIOR in one explicit sentence', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/건드리지 말 것과 유지할 것은 다르다/);
   });
 });
 
 describe('No permanent CAN_CHANGE field (C)', () => {
   it('explicitly declines to add a separate "what may be changed" field, folding it into the existing 원하는 것 field', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/Intent Bridge의 "원하는 것"이 곧 직접 범위이며, 이를 별도의 "무엇을 바꿔도 되는지" 필드로 다시 만들지 않는다/);
   });
 
   it('the template itself has no 무엇을 바꿔도 되는지 / CAN_CHANGE field', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     const templateStart = skill.indexOf('제가 이렇게 이해했어요.');
     const templateEnd = skill.indexOf('```', templateStart);
     const template = skill.slice(templateStart, templateEnd);
@@ -372,94 +379,94 @@ describe('No permanent CAN_CHANGE field (C)', () => {
 
 describe('NECESSARY_SUPPORTING_CHANGE is explicitly allowed without asking (D, E, F)', () => {
   it('names the four conditions: required for correctness/safety/consistency, same feature area, no new capability, no reversing a decision already made', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/직접 범위를 올바르고 안전하고 일관되게 완료하기 위해 함께 손봐야 하는 부분/);
     expect(skill).toMatch(/같은 기능 영역 안에 머물고, 요청하지 않은 새 기능을 더하지 않고, 사용자가 이미 정한 것을 뒤집지 않는 한 필수 관련 수정은 따로 허락을 구하지 않고 진행한다/);
   });
 
   it('gives the field-removal example (removing a field requires updating its validation/tests/labels)', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/필드 하나를 없애면 그 필드를 참조하던 검증·테스트·안내 문구도 함께 정리한다/);
   });
 
   it('explicitly warns against over-constraining a supporting change into a literal one-line edit', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/"한 줄만 고친다"로 좁게 해석해 안전한 완료에 필요한 관련 수정까지 막지 않는다/);
   });
 
   it('clarifies that touching/inspecting a do-not-change area for a supporting change is not the same as changing its value', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/이 부분을 열어보거나 필수 관련 수정으로 훑어보는 것과, 실제로 그 값이나 동작을 바꾸는 것을 같은 것으로 보지 않는다 — 후자만 금지한다/);
   });
 });
 
 describe('Beneficial-but-unauthorized changes never execute silently (G, H)', () => {
   it('states plainly that a better-seeming improvement outside the direct scope is not performed without authorization', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/Agent가 보기에 더 나은 개선이라도 사용자 허락 없이는 범위를 넓히지 않는다/);
   });
 
   it('routes an unauthorized-but-useful improvement to the existing 범위 밖 / next-action-suggestion reporting path instead of a new suggestion engine', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/유용하면 최종 보고서에서 범위 밖 관찰이나 기존 다음 행동 제안\(최대 3개\)으로만 짧게 알리고, 건드리지 않았다는 사실 자체를 숨기지 않는다/);
     const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
     expect(reportFormat).toMatch(/조용히 수행하지 않는다.*다음 행동 제안\(6\.6\)이나 범위 밖 관찰로 짧게만 언급/);
   });
 
   it('forbids turning the current task into the discovered improvement task', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/지금 요청을 그 개선 작업으로 바꾸지 않는다/);
   });
 });
 
 describe('A broader scope decision reuses the existing V2.1 ASK_USER rule, not a new engine (I)', () => {
   it('gates the one allowed scope question on the same two ASK_USER conditions already defined for Intent Bridge', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/이번 요청 없이는 직접 범위를 안전하고 올바르게 완료할 수 없고, 그 답에 따라 결과가 크게 달라지거나 사용자 의도를 어길 위험이 있을 때만 위 Intent Bridge의 ASK_USER 판단 기준을 그대로 적용해 최대 한 번 묻는다/);
   });
 
   it('explicitly refuses a separate scope-only question system', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/범위 전용 질문 체계를 새로 만들지 않는다/);
   });
 });
 
 describe('Inferred scope stays labeled as inference (J)', () => {
   it('keeps the SAFE_INFERENCE non-promotion rule intact, which scope inferences fall under', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/SAFE_INFERENCE를 조용히 사용자 의도로 승격하지 않는다/);
   });
 
   it('shows the two new scope fields only when meaningful, same as every other optional Intent Bridge field', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/사용자가 말했거나 요청 자체로 명백할 때만 이 두 필드를 보여주고, 모든 요청에 습관적으로 채우지 않는다/);
   });
 });
 
 describe('Precise requests gain no new ceremony from the scope guardrail (K)', () => {
   it('keeps the precise-request bypass examples and heading order unchanged', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     for (const example of ["README에서 'teh'를 'the'로 고쳐줘", 'list.js의 remove 함수 테스트 하나 추가해줘', "버튼 텍스트를 '로그인'에서 '시작하기'로 바꿔줘"]) {
       expect(skill).toContain(example);
     }
   });
 
   it('states the direct/supporting/do-not-change/preserve/out-of-scope split applies silently even when Intent Bridge itself is not shown', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/정밀한 요청처럼 Intent Bridge를 보여줄 필요가 없을 때도 조용히 적용되는 내부 판단이다/);
   });
 });
 
 describe('Unrelated broad refactor is explicitly forbidden (L)', () => {
   it('names OUT_OF_SCOPE (범위 밖) as anything the current request does not require, regardless of Agent opinion', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/범위 밖: 이번 요청이 요구하지 않는 부분/);
   });
 });
 
 describe('AGENT_DISCOVERED_CONSTRAINT folds into the existing AGENT_CHECK category, not a sixth one', () => {
   it('documents a discovered technical constraint (e.g. element IDs the login code depends on) as an AGENT_CHECK usage note', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/AGENT_CHECK에는 필수 관련 수정 범위를 정하는 데 필요한 기술적 제약 확인도 포함된다/);
     expect(skill).toMatch(/이런 제약은 사용자의 의도가 아니라 Agent가 직접 확인한 구현 사실이며, 새로운 분류를 따로 만들지 않고 이 AGENT_CHECK 안에서 다룬다/);
   });
@@ -467,13 +474,13 @@ describe('AGENT_DISCOVERED_CONSTRAINT folds into the existing AGENT_CHECK catego
 
 describe('V2.0/V2.1 guidance remains intact under the scope guardrail (M)', () => {
   it('keeps the one-question-max and zero-question-path sections unchanged', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/ASK_USER가 필요하면 질문은 최대 하나다/);
     expect(skill).toMatch(/Intent Bridge가 항상 사용자 질문을 요구하지는 않는다/);
   });
 
   it('keeps the feature gate and one-round-trip cap unchanged', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/`requestClarificationGuide`\s*Feature가 꺼져 있으면 이 절차 전체를 적용하지 않고 평소처럼 바로 진행한다/);
     expect(skill).toMatch(/이 확인은 요청당 최대 한 번이다/);
   });
@@ -510,7 +517,7 @@ describe('No new MCP tool / UI / storage / policy engine for the scope guardrail
 
 describe('Requested outcome must be verified before 확인 완료 (A)', () => {
   it('names 원하는 것 as the first thing verification checks, ahead of any other evidence', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/원하는 것 — 사용자가 실제로 요청한 결과가 실제로 일어났는지/);
     const orderIndex = skill.indexOf('확인 순서는 다음과 같다');
     const outcomeIndex = skill.indexOf('원하는 것 — 사용자가 실제로 요청한 결과가 실제로 일어났는지');
@@ -528,7 +535,7 @@ describe('Requested outcome must be verified before 확인 완료 (A)', () => {
 
 describe('Explicit preserved requirement must be verified before 확인 완료 (B)', () => {
   it('names 건드리지 말 것·유지할 것 as the second verification priority, reusing V2.2 vocabulary', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/건드리지 말 것·유지할 것 — 사용자가 말했거나 요청 자체로 명백한 보존 조건이 실제로 유지됐는지/);
   });
 
@@ -539,14 +546,14 @@ describe('Explicit preserved requirement must be verified before 확인 완료 (
   });
 
   it('does not use 확인 완료 when a required item is unconfirmed, per the completion gate', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/이 중 하나라도 확인하지 못했다면 `확인 완료` 대신 `추가 확인 필요`·`일부 확인`·`작업 보류` 중 이번 요청과 실제로 맞는 상태를 쓴다/);
   });
 });
 
 describe('User-stated completion condition becomes required evidence (C)', () => {
   it('folds a user-stated completion condition into the same preserved-requirements check, with the test-pass and mobile-check examples', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/사용자가 이번 요청에서 완료 조건으로 직접 말한 것\(예: "테스트까지 통과하게 해줘", "모바일에서 안 깨지는 것까지 확인해줘"\)도 여기 포함한다/);
   });
 
@@ -558,7 +565,7 @@ describe('User-stated completion condition becomes required evidence (C)', () =>
 
 describe('Existing status model reused - no new completion enum (D)', () => {
   it('never introduces COMPLETE_VERIFIED / COMPLETE_WITH_UNVERIFIED / INCOMPLETE anywhere in the guidance', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
     const spec = await fs.readFile(reportSpecFile, 'utf8');
     for (const text of [skill, reportFormat, spec]) {
@@ -567,7 +574,7 @@ describe('Existing status model reused - no new completion enum (D)', () => {
   });
 
   it('states the completion gate explicitly reuses the five existing report statuses and adds none', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/새로운 보고서 상태를 만들지 않고 위 다섯 가지 기존 상태만 사용한다/);
   });
 
@@ -583,7 +590,7 @@ describe('Existing status model reused - no new completion enum (D)', () => {
 
 describe('No new visible DONE-WHEN block (E)', () => {
   it('adds no new DONE WHEN / COMPLETION CONTRACT / ACCEPTANCE CHECKLIST heading (a pre-existing inline mention of template vocabulary is not a new block)', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
     const spec = await fs.readFile(reportSpecFile, 'utf8');
     for (const text of [skill, reportFormat, spec]) {
@@ -603,94 +610,94 @@ describe('No new visible DONE-WHEN block (E)', () => {
 
 describe('Task-shaped smallest relevant verification (F, G)', () => {
   it('gives the README-typo-is-diff-enough and phone-field-needs-tests examples', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/README 오타 하나처럼 작은 작업은 diff 확인만으로 충분하고, 전화번호 입력 필드 제거처럼 검증·테스트와 실제로 연결된 작업은 관련 테스트까지 실행한다/);
   });
 
   it('explicitly refuses to run unrelated verification merely because a full suite exists', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/프로젝트에 전체 테스트나 검증 수단이 있다는 이유만으로 이번 요청과 관계없는 검증까지 실행하지 않는다/);
   });
 });
 
 describe('Directly-related tests required when they support outcome/preserved behavior (H)', () => {
   it('requires directly-related tests regardless of whether a project-wide suite exists', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/위 1·2번과 직접 관련된 테스트는 그 테스트가 실제로 그 결과나 보존 조건을 확인해줄 때 실행한다 — 프로젝트에 전체 테스트가 있는지 여부와 관계없다/);
   });
 });
 
 describe('Unavailable secondary verification does not automatically mean 작업 보류 (I)', () => {
   it('ties browser/visual verification necessity to whether it was a core completion condition, not an automatic hold', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/이런 보조 확인 수단이 없다는 사실만으로 바로 `작업 보류`가 되지는 않는다 — 그 확인이 이번 요청의 완료 조건 자체였는지에 따라 달라진다/);
   });
 
   it('does not launch a browser for verification unless materially needed for this request', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/실제 화면 확인이 이번 요청의 결과나 완료 조건을 뒷받침하는 데 실제로 필요한 경우가 아니면 이 확인만을 위해 브라우저를 새로 켜지 않는다/);
   });
 });
 
 describe('False verification remains forbidden (J) and unrun verification cannot be reported as passed (K)', () => {
   it('reinforces the unconditional rule with the canonical phrase, alongside the pre-existing one', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/실행하지 못한 검증을 통과했다고 쓰지 않는다\. 확인하지 못한 것은 확인했다고 쓰지 않는다\./);
   });
 
   it('does not add a separate false-verification subsystem or new vocabulary for it', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).not.toMatch(/false.?verification|FALSE_VERIFICATION/i);
   });
 });
 
 describe('One-round-trip cap remains global across the request, no second post-work questionnaire (L, M, N)', () => {
   it('routes a completion-blocking decision found after the one question was used to 작업 보류 / 사용자 결정 필요, not a second question', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/이미 질문을 한 번 사용했다면, 같은 내용을 다른 말로 다시 묻지 않는다/);
     expect(skill).toMatch(/보고서 상태를 `작업 보류`로 두고, 남은 결정 하나를 `사용자 결정 필요`로 짧게 설명한 뒤 사용자의 다음 답을 기다린다/);
   });
 
   it('frames this as reusing the existing one-question rule, not a new question engine', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/이것도 별도의 질문 엔진이 아니라 이 절의 한 번만 확인한다 규칙과 기존 보고서 상태를 그대로 적용한 것이다/);
   });
 
   it('keeps the original one-question-per-request cap sentence unchanged', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/이 확인은 요청당 최대 한 번이다/);
   });
 });
 
 describe('Evidence reuse encouraged (O)', () => {
   it('tells the Agent not to reread files or rerun verification already proven by existing evidence', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/이미 작업 중에 확보한 근거로 위 조건이 증명됐다면, 형식을 맞추려고 같은 파일을 다시 읽거나 같은 검증을 다시 실행하지 않는다/);
   });
 });
 
 describe('Agent-inferred completion stays labeled as inference, no forced checklist (part of O/F)', () => {
   it('labels self-derived completion checks as INFERRED, never silently promoted to USER_SAID', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/이는 추론\(INFERRED\)이며, 사용자가 말한 것\(USER_SAID\)으로 바꿔 쓰지 않는다/);
   });
 
   it('only surfaces the said-vs-inferred distinction when materially useful, not as a routine checklist', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/이 구분이 사용자 이해에 실제로 중요할 때만 보고서에 드러내고, 매번 체크리스트로 보여주지 않는다/);
   });
 });
 
 describe('V2.0/V2.1/V2.2 guidance preserved under the completion contract (P)', () => {
   it('keeps the Intent Bridge trigger rule, epistemic model, and one-question-max sections unchanged', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/요청이 짧다는 이유만으로 보여주지 않는다/);
     expect(skill).toMatch(/ASK_USER가 필요하면 질문은 최대 하나다/);
     expect(skill).toMatch(/`requestClarificationGuide`\s*Feature가 꺼져 있으면 이 절차 전체를 적용하지 않고 평소처럼 바로 진행한다/);
   });
 
   it('keeps the V2.2 scope categories (DIRECT_SCOPE/NECESSARY_SUPPORTING_CHANGE/DO_NOT_CHANGE/PRESERVE_BEHAVIOR/OUT_OF_SCOPE) intact', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/직접 범위: 사용자가 실제로 요청한 변경 대상 그 자체/);
     expect(skill).toMatch(/필수 관련 수정: 직접 범위를 올바르고 안전하고 일관되게 완료하기 위해 함께 손봐야 하는 부분/);
     expect(skill).toMatch(/건드리면 안 되는 부분: 사용자가 직접 말했거나/);
@@ -763,7 +770,7 @@ describe('The mechanical completion-critical field has been removed, not re-adde
   });
 
   it('the rejected PR #11 checkpoint concept (완료 판정) never appears in the shipped product docs', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
     const spec = await fs.readFile(reportSpecFile, 'utf8');
     for (const text of [skill, reportFormat, spec]) expect(text).not.toMatch(/완료 판정/);
@@ -779,12 +786,12 @@ describe('Honest status choice is still required, expressed as prose guidance, n
   });
 
   it('SKILL.md states the same rule: a known critical gap goes into 위험과 사용자 확인, not a field, and still blocks 확인 완료', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/관련 테스트가 통과했더라도 `확인 완료`를 쓰지 않고 `위험과 사용자 확인`에 그 사실을 짧게 밝힌다/);
   });
 
   it('passing a related test still does not override this judgment', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/관련 검증이 통과했다는 사실이 이 판단을 뒤집지 않는다 — 테스트는 실제로 다룬 범위만 증명한다/);
   });
 });
@@ -796,7 +803,7 @@ describe('Explicit non-guarantee: JuTell does not independently certify this jud
   });
 
   it('SKILL.md states the same non-guarantee next to the honest-disclosure rule', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/JuTell은 이 판단이 실제로 맞는지 독립적으로 검증하거나 보장하지 않는다/);
   });
 });
@@ -818,7 +825,7 @@ describe('§11.5 scope-relative definition cannot exclude a known completion-cri
 
 describe('Case D shape (dogfood-reproduced) is documented as a known, unsolved limitation, not a fake guarantee (E)', () => {
   it('names the exact reproduced example (external identity verification becoming mandatory after a field is removed)', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/필드 제거로 외부 서비스 연결처럼 이미 중요한 미확인 사항으로 보는 항목에 새로 의존하게 됐는데 그 연결이 확인되지 않은 경우/);
   });
 
@@ -830,7 +837,7 @@ describe('Case D shape (dogfood-reproduced) is documented as a known, unsolved l
 
 describe('Case C shape (secondary, non-critical browser gap) never triggers 작업 보류 or the removed field (F)', () => {
   it('keeps the pre-existing V2.3 unavailable-secondary-verification clause unchanged - a non-critical gap never triggers 작업 보류', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/이런 보조 확인 수단이 없다는 사실만으로 바로 `작업 보류`가 되지는 않는다/);
   });
 
@@ -842,19 +849,19 @@ describe('Case C shape (secondary, non-critical browser gap) never triggers 작�
 
 describe('Case A shape (simple, fully-supported README task) stays minimal, no forced completion block (G)', () => {
   it('keeps the task-shaped verification priority order and its README/phone-field contrast unchanged', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/README 오타 하나처럼 작은 작업은 diff 확인만으로 충분하고, 전화번호 입력 필드 제거처럼 검증·테스트와 실제로 연결된 작업은 관련 테스트까지 실행한다/);
   });
 
   it('a precise, evidence-complete request never triggers the honest-disclosure clause (conditioned on an actually known gap)', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/원하는 것의 실제 성공이나 보존·완료 조건의 실제 성립에 필수적인 미확인·실패가 있으면/);
   });
 });
 
 describe('No new status enum (J)', () => {
   it('never introduces PREMATURE_COMPLETION, COMPLETION_CRITICAL, or any other new status/label token', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
     const spec = await fs.readFile(reportSpecFile, 'utf8');
     for (const text of [skill, reportFormat, spec]) {
@@ -876,7 +883,7 @@ describe('No new section / DONE-WHEN block (K)', () => {
   });
 
   it('adds no visible DONE WHEN / COMPLETION CONTRACT / ACCEPTANCE CHECKLIST heading anywhere', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
     const spec = await fs.readFile(reportSpecFile, 'utf8');
     for (const text of [skill, reportFormat, spec]) {
@@ -895,7 +902,7 @@ describe('No new MCP / UI / storage / Feature flag, and no mock-specific logic (
   });
 
   it('mentions no mocks, stubs, or a dependency-classification system - the field is general, not mock-detection', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
     const spec = await fs.readFile(reportSpecFile, 'utf8');
     for (const text of [skill, reportFormat, spec]) {
@@ -906,14 +913,14 @@ describe('No new MCP / UI / storage / Feature flag, and no mock-specific logic (
 
 describe('V2.0/V2.1/V2.2 guidance remains intact under the finalized completion discipline (M)', () => {
   it('keeps the Intent Bridge trigger rule, one-question-max, and feature gate unchanged', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/요청이 짧다는 이유만으로 보여주지 않는다/);
     expect(skill).toMatch(/ASK_USER가 필요하면 질문은 최대 하나다/);
     expect(skill).toMatch(/`requestClarificationGuide`\s*Feature가 꺼져 있으면 이 절차 전체를 적용하지 않고 평소처럼 바로 진행한다/);
   });
 
   it('keeps the V2.2 scope categories and the pre-existing pre-submit checklist bullets intact', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     expect(skill).toMatch(/직접 범위: 사용자가 실제로 요청한 변경 대상 그 자체/);
     expect(skill).toMatch(/건드리면 안 되는 부분: 사용자가 직접 말했거나/);
     expect(skill).toMatch(/원하는 것과 사용자가 말한 건드리지 말 것·유지할 것·완료 조건을 실제로 확인했는가/);
@@ -936,7 +943,7 @@ describe('Existing report-format parity remains valid (N)', () => {
 
 describe('Report status guidance uses direct check descriptions', () => {
   it('uses checked and unchecked fields in the template and removes the status line from the skill', async () => {
-    const skill = await fs.readFile(skillFile, 'utf8');
+    const skill = await readSkillWithReferences();
     const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
     expect(reportFormat).toContain('- 직접 확인한 것:');
     expect(reportFormat).toContain('- 확인 못 한 것:');

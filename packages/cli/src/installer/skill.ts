@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { ensureDataRoot, exists, readText, writeTextSafely } from '../config/managed.js';
+import { backupFile, ensureDataRoot, exists, readText, writeTextSafely } from '../config/managed.js';
 import type { ScopePaths } from '../types.js';
 
 async function filesUnder(root: string, current = root): Promise<string[]> {
@@ -15,23 +15,33 @@ async function filesUnder(root: string, current = root): Promise<string[]> {
   return files;
 }
 
-export async function installSkill(source: string, destination: string) {
+// Files JuTell installed earlier (listed in the install manifest) are refreshed on upgrade, after a
+// backup (.jutell-original once, .previous every time). Any other differing file is kept as a conflict.
+export async function installSkill(source: string, destination: string, paths?: ScopePaths) {
   const conflicts: string[] = [];
   const changed: string[] = [];
+  const replaced: string[] = [];
+  const managed = new Set(paths ? (await readManifest(paths)).skillFiles : []);
   for (const relative of await filesUnder(source)) {
     const sourceFile = path.join(source, relative);
     const targetFile = path.join(destination, relative);
     const sourceContent = await fs.readFile(sourceFile);
     let targetContent: Buffer | undefined;
     try { targetContent = await fs.readFile(targetFile); } catch { /* new file */ }
-    if (targetContent && !targetContent.equals(sourceContent)) { conflicts.push(relative); continue; }
+    if (targetContent && !targetContent.equals(sourceContent)) {
+      if (!managed.has(relative)) { conflicts.push(relative); continue; }
+      await backupFile(targetFile);
+      await fs.copyFile(sourceFile, targetFile);
+      replaced.push(relative);
+      continue;
+    }
     if (!targetContent) {
       await fs.mkdir(path.dirname(targetFile), { recursive: true });
       await fs.copyFile(sourceFile, targetFile);
       changed.push(relative);
     }
   }
-  return { conflicts, changed };
+  return { conflicts, changed, replaced };
 }
 
 function manifestFile(paths: ScopePaths) {

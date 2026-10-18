@@ -26,7 +26,7 @@ export async function upgradeCommand(paths: ScopePaths, options: CliOptions, io:
     const migratedConfig = beforeConfig.source === 'legacy' && ensured.config;
 
     // 2. Skill — refresh to current assets
-    const skillResult = await installSkill(assets().skill, paths.skillRoot);
+    const skillResult = await installSkill(assets().skill, paths.skillRoot, paths);
     changedSkill = skillResult.changed;
 
     // 3. AGENTS block — refresh
