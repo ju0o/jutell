@@ -176,6 +176,12 @@ export async function defaultCommand(paths: ScopePaths, options: CliOptions, io:
 
   if (needsRepair(status)) {
     io.write('JuTell 연결이 일부 준비되지 않았습니다.\nSkill, AGENTS.md, AI Agent Provider 연결 준비를 안전하게 확인할 수 있습니다.');
+    if (options.yes || stdin.isTTY !== true || process.stdout.isTTY !== true) {
+      await enableCommand(paths, { ...options, yes: true, oneCommand: true }, io);
+      io.write(readyMessage(await getStatus(paths)));
+      io.write('관리자 화면은 `jutell dashboard`로 열 수 있어요.');
+      return { cancelled: false };
+    }
     if (!options.yes && !(await io.ask('다시 켜고 관리자 화면을 열까요?', true))) {
       io.write('현재 설정을 그대로 두고 관리자 화면을 엽니다.');
     } else {
