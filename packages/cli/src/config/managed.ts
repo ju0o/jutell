@@ -11,6 +11,13 @@ const LEGACY_BEGIN_MARKER = '# BEGINNER_BRIDGE_MCP_BEGIN';
 const LEGACY_END_MARKER = '# BEGINNER_BRIDGE_MCP_END';
 const CANONICAL_MCP_KEY = 'jutell';
 const LEGACY_MCP_KEY = 'beginner_bridge';
+const READ_ONLY_MCP_TOOLS = [
+  'get_bridge_status',
+  'get_active_features',
+  'get_report_preferences',
+  'get_beginner_report_rules',
+  'get_safe_report_requirements',
+] as const;
 export const FEATURE_IDS = ['changeSummary', 'userVisibleChanges', 'internalChanges', 'mainFiles', 'explainedDiff', 'glossary', 'validationResults', 'riskAssessment', 'userActions', 'nextActionSuggestions', 'requestClarificationGuide', 'manualEditGuidance', 'requestBuilder'];
 export const PROFILES = ['minimal', 'balanced', 'learning', 'detailed'] as const;
 export const PROFILE_FEATURES: Record<(typeof PROFILES)[number], Record<string, boolean>> = {
@@ -228,6 +235,35 @@ function extractField(block: string | undefined, field: 'command' | 'args') {
   return match?.[1];
 }
 
+function hasCanonicalApprovalConfig(block: string | undefined) {
+  if (!block) return false;
+  const tables = [...block.matchAll(/^[ \t]*\[([^\[\]\r\n]+)\][ \t]*(?:#.*)?\r?$/gm)];
+  const canonicalHeaders = tables
+    .map((table) => table[1])
+    .filter((header): header is string => header === `mcp_servers.${CANONICAL_MCP_KEY}` || header.startsWith(`mcp_servers.${CANONICAL_MCP_KEY}.`));
+  const expectedHeaders = [
+    `mcp_servers.${CANONICAL_MCP_KEY}`,
+    ...READ_ONLY_MCP_TOOLS.map((tool) => `mcp_servers.${CANONICAL_MCP_KEY}.tools.${tool}`),
+  ];
+  if (JSON.stringify(canonicalHeaders) !== JSON.stringify(expectedHeaders)) return false;
+
+  const tableBody = (header: RegExpMatchArray) => {
+    const nextTable = tables.find((table) => table.index! > header.index!);
+    return block.slice(header.index! + header[0].length, nextTable?.index ?? block.length);
+  };
+  const hasSingleField = (body: string, field: string, value: string) => {
+    const matches = [...body.matchAll(new RegExp(`^[ \\t]*${field}\\s*=\\s*(.+?)[ \\t]*$`, 'gm'))];
+    return matches.length === 1 && matches[0]?.[1] === value;
+  };
+
+  const serverTable = tables.find((table) => table[1] === `mcp_servers.${CANONICAL_MCP_KEY}`);
+  if (!serverTable || !hasSingleField(tableBody(serverTable), 'default_tools_approval_mode', '"prompt"')) return false;
+  return READ_ONLY_MCP_TOOLS.every((tool) => {
+    const toolTable = tables.find((table) => table[1] === `mcp_servers.${CANONICAL_MCP_KEY}.tools.${tool}`);
+    return Boolean(toolTable && hasSingleField(tableBody(toolTable), 'approval_mode', '"approve"'));
+  });
+}
+
 // Removes a bare (unmarked) `[mcp_servers.<key>]` table — header line through its own
 // key/value lines, up to the next table header or end of file. Used when repairing a stale
 // heuristic-recognized entry that predates JUTELL_CLI_MCP markers, so a rewrite replaces it
@@ -251,7 +287,11 @@ export function buildMcpBlock(scope: ScopePaths, packageRoot: string, enabled: b
   const serverEntry = path.join(packageRoot, 'assets', 'mcp-server', 'index.js');
   const lines = [BEGIN_MARKER, `[mcp_servers.${CANONICAL_MCP_KEY}]`, `command = ${tomlString(process.execPath)}`, `args = [${tomlString(serverEntry)}]`];
   if (scope.scope === 'project') lines.push('cwd = "."');
-  lines.push(`enabled = ${enabled ? 'true' : 'false'}`, 'required = false', 'default_tools_approval_mode = "prompt"', END_MARKER);
+  lines.push(`enabled = ${enabled ? 'true' : 'false'}`, 'required = false', 'default_tools_approval_mode = "prompt"');
+  for (const tool of READ_ONLY_MCP_TOOLS) {
+    lines.push('', `[mcp_servers.${CANONICAL_MCP_KEY}.tools.${tool}]`, 'approval_mode = "approve"');
+  }
+  lines.push(END_MARKER);
   return lines.join('\n');
 }
 
@@ -298,7 +338,8 @@ export async function readCodexRegistration(paths: ScopePaths, packageRoot: stri
   const canonicalUpToDate = Boolean(
     canonicalEntryText
     && extractField(canonicalEntryText, 'command') === extractField(preview, 'command')
-    && extractField(canonicalEntryText, 'args') === extractField(preview, 'args'),
+    && extractField(canonicalEntryText, 'args') === extractField(preview, 'args')
+    && hasCanonicalApprovalConfig(canonicalEntryText),
   );
   return {
     content,

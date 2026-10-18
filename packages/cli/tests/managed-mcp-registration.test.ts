@@ -42,6 +42,13 @@ async function scopePaths(dir: string): Promise<ScopePaths> {
 }
 
 const FAKE_PACKAGE_ROOT = '/opt/fake-jutell-package';
+const READ_ONLY_MCP_TOOLS = [
+  'get_bridge_status',
+  'get_active_features',
+  'get_report_preferences',
+  'get_beginner_report_rules',
+  'get_safe_report_requirements',
+];
 const USER_PROJECT_TABLE = '[projects."X"]\ntrust_level = "trusted"\n';
 const OTHER_MCP_TABLE = '[mcp_servers.other]\ncommand = "/usr/bin/other-mcp"\nargs = ["--keep"]\nenabled = true\n';
 
@@ -76,6 +83,17 @@ function expectCanonicalBlockContainsOnlyJuTell(content: string) {
   expect(block).not.toContain('[mcp_servers.other]');
 }
 
+function expectReadOnlyToolApprovals(content: string) {
+  const block = content.match(/# JUTELL_CLI_MCP_BEGIN[\s\S]*?# JUTELL_CLI_MCP_END/)?.[0] ?? '';
+  const tables = [...block.matchAll(/^\[mcp_servers\.jutell(?:\.tools\.([^\]]+))?\]$/gm)];
+  expect(tables.map((table) => table[1] ?? 'server')).toEqual(['server', ...READ_ONLY_MCP_TOOLS]);
+  expect(block.match(/^default_tools_approval_mode = "prompt"$/gm)).toHaveLength(1);
+  expect(block.match(/^approval_mode = "approve"$/gm)).toHaveLength(5);
+  for (const tool of READ_ONLY_MCP_TOOLS) {
+    expect(block).toContain(`[mcp_servers.jutell.tools.${tool}]\napproval_mode = "approve"`);
+  }
+}
+
 async function backupExists(dir: string) {
   try {
     await fs.access(path.join(dir, 'config.toml.previous'));
@@ -101,7 +119,46 @@ describe('registerMcp - canonical Codex MCP registration currency (managed block
     expect(result.canonicalUpToDate).toBe(true);
     expect(await backupExists(dir)).toBe(false); // no backup => no rewrite happened
     expect(await readConfig(dir)).toBe(`${correctBlock}\n`); // byte-for-byte unchanged
+    expectReadOnlyToolApprovals(await readConfig(dir));
     expect(countCanonicalHeaders(await readConfig(dir))).toBe(1);
+  });
+
+  it('registers per-tool approval for exactly the five read-only JuTell tools', async () => {
+    const dir = await mkdtemp();
+    const paths = await scopePaths(dir);
+
+    const result = await registerMcp(paths, FAKE_PACKAGE_ROOT, true);
+
+    expect(result.canonicalUpToDate).toBe(true);
+    expectReadOnlyToolApprovals(await readConfig(dir));
+  });
+
+  it('rewrites the old managed block to add tool approvals and preserves embedded user tables', async () => {
+    const dir = await mkdtemp();
+    const paths = await scopePaths(dir);
+    const oldBlock = [
+      '# JUTELL_CLI_MCP_BEGIN',
+      '[mcp_servers.jutell]',
+      `command = ${JSON.stringify(process.execPath)}`,
+      `args = [${JSON.stringify(path.join(FAKE_PACKAGE_ROOT, 'assets', 'mcp-server', 'index.js'))}]`,
+      'enabled = true',
+      'required = false',
+      'default_tools_approval_mode = "prompt"',
+      USER_PROJECT_TABLE.trimEnd(),
+      OTHER_MCP_TABLE.trimEnd(),
+      '# JUTELL_CLI_MCP_END',
+    ].join('\n');
+    await writeConfig(dir, `${oldBlock}\n`);
+
+    const before = await readCodexRegistration(paths, FAKE_PACKAGE_ROOT, true);
+    expect(before.canonicalUpToDate).toBe(false);
+
+    const result = await registerMcp(paths, FAKE_PACKAGE_ROOT, true);
+
+    const finalContent = await expectUserTablesPreserved(dir);
+    expect(result.canonicalUpToDate).toBe(true);
+    expectReadOnlyToolApprovals(finalContent);
+    expectCanonicalBlockContainsOnlyJuTell(finalContent);
   });
 
   it('CASE 2/3: repairs a stale Windows-path managed registration on the current machine', async () => {
