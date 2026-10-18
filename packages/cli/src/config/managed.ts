@@ -405,7 +405,9 @@ export async function readCodexRegistration(paths: ScopePaths, packageRoot: stri
   const approvalState = codexApprovalState(content);
   const userOverrides = userApprovalOverrideTools(content);
   const registered = Boolean(canonicalManaged || legacyManaged || canonicalHeuristic || legacyHeuristic);
-  const conflict = !registered && (canonicalRegistered || legacyRegistered);
+  // Only an unmanaged `jutell` table blocks JuTell. A user-owned `beginner_bridge` with no JuTell
+  // evidence is simply someone else's server: leave it alone and don't stop `jutell use codex`.
+  const conflict = canonicalRegistered && !canonicalJuTellRegistered;
   const enabledFlag = (() => {
     if (canonicalManaged) return /^\s*enabled\s*=\s*true\s*$/m.test(canonicalManaged);
     if (canonicalHeuristic) {
