@@ -18,6 +18,44 @@ const READ_ONLY_MCP_TOOLS = [
   'get_beginner_report_rules',
   'get_safe_report_requirements',
 ] as const;
+
+function tomlStringValue(value: string) {
+  if (value.startsWith('"')) {
+    try { return JSON.parse(value) as string; } catch { return undefined; }
+  }
+  return value.startsWith("'") && value.endsWith("'") ? value.slice(1, -1) : undefined;
+}
+
+function readTomlString(content: string, table: string, field: string) {
+  let currentTable = '';
+  for (const line of content.split(/\r?\n/)) {
+    const tableHeader = line.match(/^[ \t]*\[([^\[\]]+)\][ \t]*(?:#.*)?$/);
+    if (tableHeader) {
+      currentTable = tableHeader[1]!.trim();
+      continue;
+    }
+    if (currentTable !== table) continue;
+    const key = line.match(/^[ \t]*([A-Za-z0-9_-]+)[ \t]*=/);
+    if (key?.[1] !== field) continue;
+    const value = line.slice(line.indexOf('=') + 1).trim();
+    const stringValue = value.match(/^("(?:\\.|[^"\\])*"|'[^']*')[ \t]*(?:#.*)?$/)?.[1];
+    return stringValue ? tomlStringValue(stringValue) ?? null : null;
+  }
+  return undefined;
+}
+
+function codexApprovalState(content: string) {
+  const defaultMode = readTomlString(content, `mcp_servers.${CANONICAL_MCP_KEY}`, 'default_tools_approval_mode');
+  const effectiveModes = READ_ONLY_MCP_TOOLS.map((tool) => {
+    const perToolMode = readTomlString(content, `mcp_servers.${CANONICAL_MCP_KEY}.tools.${tool}`, 'approval_mode');
+    return perToolMode === undefined ? defaultMode : perToolMode;
+  });
+  return {
+    approvalConflict: effectiveModes.some((mode) => mode !== 'approve'),
+    approvalPolicyNever: readTomlString(content, '', 'approval_policy') === 'never',
+  };
+}
+
 export const FEATURE_IDS = ['changeSummary', 'userVisibleChanges', 'internalChanges', 'mainFiles', 'explainedDiff', 'glossary', 'validationResults', 'riskAssessment', 'userActions', 'nextActionSuggestions', 'requestClarificationGuide', 'manualEditGuidance', 'requestBuilder'];
 export const PROFILES = ['minimal', 'balanced', 'learning', 'detailed'] as const;
 export const PROFILE_FEATURES: Record<(typeof PROFILES)[number], Record<string, boolean>> = {
@@ -304,6 +342,8 @@ export async function readCodexRegistration(paths: ScopePaths, packageRoot: stri
   const legacyRegistered = hasMcpKey(content, LEGACY_MCP_KEY);
   const canonicalHeuristic = !canonicalManaged && canonicalRegistered && hasJuTellMcpEvidence(content, CANONICAL_MCP_KEY);
   const legacyHeuristic = !legacyManaged && legacyRegistered && hasJuTellMcpEvidence(content, LEGACY_MCP_KEY);
+  const canonicalJuTellRegistered = Boolean(canonicalManaged || canonicalHeuristic);
+  const approvalState = codexApprovalState(content);
   const registered = Boolean(canonicalManaged || legacyManaged || canonicalHeuristic || legacyHeuristic);
   const conflict = !registered && (canonicalRegistered || legacyRegistered);
   const enabledFlag = (() => {
@@ -348,7 +388,10 @@ export async function readCodexRegistration(paths: ScopePaths, packageRoot: stri
     conflict,
     enabled: enabledFlag,
     canonicalRegistered,
+    canonicalJuTellRegistered,
     legacyRegistered,
+    approvalConflict: canonicalJuTellRegistered && approvalState.approvalConflict,
+    approvalPolicyNever: approvalState.approvalPolicyNever,
     bothRegistered: canonicalRegistered && legacyRegistered,
     canonicalUpToDate,
     preview,
