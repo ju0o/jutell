@@ -9,6 +9,8 @@ import { receiptCommand } from '../src/commands/receipt/index.js';
 import { NEXT_GROUPS, RECEIPT_SECTIONS, normalizeReceipt, renderReceipt } from '../src/commands/receipt/render.js';
 import { resolveScope } from '../src/config/paths.js';
 import { run } from '../src/cli.js';
+import { ensureBridgeConfig } from '../src/installer/config.js';
+import { ensureDataRoot } from '../src/config/managed.js';
 import type { CliIo, ScopePaths } from '../src/types.js';
 
 const execFileAsync = promisify(execFile);
@@ -194,6 +196,16 @@ describe('receipt command', () => {
 
   afterEach(async () => {
     if (temporaryRoot) await fs.rm(temporaryRoot, { recursive: true, force: true });
+  });
+
+  it('creates .jutell-local/.gitignore at setup, before any receipt.json is written, and never overwrites it', async () => {
+    await setup();
+    await ensureBridgeConfig(paths, undefined);
+    expect(await fs.readFile(path.join(paths.dataRoot, '.gitignore'), 'utf8')).toBe('*\n');
+    await expect(fs.access(path.join(paths.dataRoot, 'receipt.json'))).rejects.toMatchObject({ code: 'ENOENT' });
+    await fs.writeFile(path.join(paths.dataRoot, '.gitignore'), 'mine\n');
+    await ensureDataRoot(paths);
+    expect(await fs.readFile(path.join(paths.dataRoot, '.gitignore'), 'utf8')).toBe('mine\n');
   });
 
   it('shows the receipt input example for --help without creating reports', async () => {

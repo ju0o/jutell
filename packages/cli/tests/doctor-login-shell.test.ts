@@ -7,6 +7,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 
 const cliEntry = fileURLToPath(new URL('../dist/index.js', import.meta.url));
 const roots: string[] = [];
+let lastStatus: number | null = null;
 afterAll(async () => { await Promise.all(roots.map((root) => rm(root, { recursive: true, force: true }))); });
 
 async function runDoctor(withJutellOnLoginPath: boolean, shell?: string) {
@@ -15,7 +16,11 @@ async function runDoctor(withJutellOnLoginPath: boolean, shell?: string) {
   const home = path.join(root, 'home');
   const project = path.join(root, 'project');
   const bin = path.join(root, 'bin');
-  await Promise.all([home, project, bin].map((dir) => mkdir(dir, { recursive: true })));
+  const npmBin = path.join(root, 'npm-bin');
+  await Promise.all([home, project, bin, npmBin].map((dir) => mkdir(dir, { recursive: true })));
+  // A fake npm whose global prefix is known, so the PATH line doctor prints can be checked exactly.
+  await writeFile(path.join(npmBin, 'npm'), `#!/bin/sh\necho ${path.join(root, 'npm-global')}\n`, 'utf8');
+  await chmod(path.join(npmBin, 'npm'), 0o755);
   if (withJutellOnLoginPath) {
     await writeFile(path.join(bin, 'jutell'), '#!/bin/sh\nexit 0\n', 'utf8');
     await chmod(path.join(bin, 'jutell'), 0o755);
@@ -23,18 +28,31 @@ async function runDoctor(withJutellOnLoginPath: boolean, shell?: string) {
   }
   const result = spawnSync(process.execPath, [cliEntry, 'doctor'], {
     cwd: project,
-    env: { HOME: home, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: home, PATH: '/usr/bin:/bin', NO_COLOR: '1', ...(shell ? { SHELL: shell } : {}) },
+    env: { HOME: home, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: home, PATH: `${npmBin}:/usr/bin:/bin`, NO_COLOR: '1', ...(shell ? { SHELL: shell } : {}) },
     encoding: 'utf8',
     timeout: 20000,
   });
+  lastStatus = result.status;
   return `${result.stdout}\n${result.stderr}`;
 }
 
+async function runDoctorFull(shell?: string) {
+  return { root: roots.at(-1), output: await runDoctor(false, shell) };
+}
+
 describe.skipIf(process.platform === 'win32')('doctor checks jutell on the login shell PATH Codex uses', () => {
-  it('warns in plain words with the fix when bash -lc cannot find jutell', async () => {
-    const output = await runDoctor(false);
+  it('fails with one real PATH line (npm prefix -g + /bin) when bash -lc cannot find jutell', async () => {
+    const { output } = await runDoctorFull();
+    const root = roots.at(-1)!;
     expect(output).toContain('Codex가 명령을 실행하는 셸에서 jutell을 찾지 못했어요');
-    expect(output).toContain('~/.profile 의 PATH');
+    expect(output).toContain(`~/.profile 파일 맨 아래에 이 한 줄을 넣고 터미널과 Codex를 다시 여세요: export PATH="${path.join(root, 'npm-global', 'bin')}:$PATH"`);
+    expect(output).not.toContain('npm install -g');
+    expect(lastStatus).toBe(1);
+  });
+
+  it('points zsh users at ~/.zprofile', async () => {
+    const { output } = await runDoctorFull('/nonexistent/zsh');
+    expect(output).toContain('~/.zprofile 파일 맨 아래에 이 한 줄을 넣고');
   });
 
   it('reports 정상 when the login shell finds jutell', async () => {

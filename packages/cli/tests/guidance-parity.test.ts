@@ -40,9 +40,11 @@ describe('M2.6 Codex Experience Parity guidance', () => {
     expect(text).toContain('인자 없이 `jutell receipt`');
     expect(text).not.toMatch(/echo '|\| jutell receipt|--file -|npx/);
     expect(text).toContain('"summary"');
-    expect(text).toContain('"확인 못 한 것: 영수증 저장 못 함, jutell doctor 실행"');
+    expect(text).toContain('영수증을 저장하지 못했어요. 터미널에서 jutell doctor를 실행하면 해결 방법을 알려 줘요.');
     expect(text.indexOf('get_beginner_report_rules`를 호출하고, 그다음에 영수증')).toBeGreaterThan(0);
-    expect(text).toContain('영수증 아래에는 확인 내용을 다시 쓰지 않습니다');
+    expect(text).toContain('영수증이 최종 답입니다. 영수증 아래에는 아무것도 쓰지 않고');
+    expect(text).toContain('반드시 파일 편집 도구로 씁니다');
+    expect(text).toContain("'브라우저 탭 제목', '페이지 맨 위 큰 제목'");
   });
 
   it('AGENTS block drops the receipt lines when receiptReport is off', async () => {

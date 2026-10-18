@@ -149,6 +149,29 @@ async function writeCheck(paths: ScopePaths) {
   try { await fs.mkdir(directory, { recursive: true }); await fs.writeFile(file, 'ok', 'utf8'); await fs.rm(file, { force: true }); return true; } catch { await fs.rm(file, { force: true }); return false; }
 }
 
+// Codex runs commands through the user's login shell, so jutell must be on that shell's PATH.
+// When it isn't, give one line that really works: the npm global bin folder, computed from `npm prefix -g`.
+export async function loginShellJutellCheck(env: NodeJS.ProcessEnv = process.env): Promise<CheckResult> {
+  const name = 'Codex에서 jutell 명령 찾기';
+  const loginShell = env.SHELL && path.isAbsolute(env.SHELL) ? env.SHELL : 'bash';
+  const run = (file: string, args: string[]) => new Promise<string | undefined>((resolve) => {
+    execFile(file, args, { timeout: 5000, env }, (error, stdout) => resolve(error ? undefined : stdout.trim()));
+  });
+  if (await run(loginShell, ['-lc', 'command -v jutell'])) {
+    return { name, status: '정상', detail: 'Codex가 명령을 실행하는 셸에서 jutell을 찾았습니다.' };
+  }
+  const prefix = await run('npm', ['prefix', '-g']);
+  const profile = path.basename(loginShell) === 'zsh' ? '~/.zprofile' : '~/.profile';
+  const fix = prefix
+    ? `${profile} 파일 맨 아래에 이 한 줄을 넣고 터미널과 Codex를 다시 여세요: export PATH="${path.join(prefix, 'bin')}:$PATH"`
+    : `jutell이 들어 있는 폴더를 ${profile}의 PATH에 넣고 터미널과 Codex를 다시 여세요.`;
+  return {
+    name,
+    status: '오류',
+    detail: `Codex가 명령을 실행하는 셸에서 jutell을 찾지 못했어요. 이대로면 작업 영수증이 저장되지 않아요. ${fix}`,
+  };
+}
+
 export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]> {
   const config = await readBridgeConfig(paths);
   const codexPaths = codexScopedPaths(paths);
@@ -208,20 +231,7 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   checks.push({ name: '포트 사용 가능 여부', status: await portAvailable() ? '정상' : '주의', detail: '127.0.0.1의 임시 포트를 확인했습니다.' });
   checks.push({ name: '쓰기 권한', status: await writeCheck(paths) ? '정상' : '오류', detail: '로컬 상태 폴더에 임시 파일을 만들고 삭제했습니다.' });
   const backupExists = await exists(`${codexPaths.codexConfigFile}.previous`);
-  if (process.platform !== 'win32') {
-    const onLoginPath = await new Promise<boolean>((resolve) => {
-      // Use the user's own login shell (Codex runs commands through it); fall back to bash.
-      const loginShell = process.env.SHELL && path.isAbsolute(process.env.SHELL) ? process.env.SHELL : 'bash';
-      execFile(loginShell, ['-lc', 'command -v jutell'], { timeout: 5000 }, (error, stdout) => resolve(!error && stdout.trim().length > 0));
-    });
-    checks.push({
-      name: 'Codex에서 jutell 명령 찾기',
-      status: onLoginPath ? '정상' : '주의',
-      detail: onLoginPath
-        ? 'Codex가 명령을 실행하는 셸에서 jutell을 찾았습니다.'
-        : 'Codex가 명령을 실행하는 셸에서 jutell을 찾지 못했어요. 이대로면 작업 영수증이 저장되지 않을 수 있어요. 고치려면 npm install -g jutell 로 설치하거나, jutell이 있는 폴더를 ~/.profile 의 PATH에 넣으세요.',
-    });
-  }
+  if (process.platform !== 'win32') checks.push(await loginShellJutellCheck());
   checks.push({ name: '설정 백업 상태', status: !await exists(codexPaths.codexConfigFile) || backupExists ? '정상' : '주의', detail: !await exists(codexPaths.codexConfigFile) ? '아직 Provider 설정을 변경하지 않았습니다.' : backupExists ? '이전 설정 백업을 확인했습니다. JuTell이 처음 바꾸기 전 원본은 config.toml.jutell-original에 그대로 남아 있습니다.' : '기존 Provider 설정 백업이 없습니다.' });
   const externalCode = /(?:https?:\/\/(?!127\.0\.0\.1)|https?\.request|net\.connect)/i.test(mcpText);
   checks.push({ name: '외부 전송 코드', status: externalCode ? '오류' : '정상', detail: externalCode ? 'MCP 빌드에서 외부 네트워크 관련 코드를 찾았습니다.' : 'MCP 빌드에 외부 전송 패턴이 없습니다.' });

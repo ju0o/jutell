@@ -1,6 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { exists, readText, writeTextSafely } from '../config/managed.js';
+import { ensureDataRoot, exists, readText, writeTextSafely } from '../config/managed.js';
 import type { ScopePaths } from '../types.js';
 
 async function filesUnder(root: string, current = root): Promise<string[]> {
@@ -50,7 +50,7 @@ async function readManifest(paths: ScopePaths) {
 export async function recordSkillFiles(paths: ScopePaths, relativeFiles: string[]) {
   if (relativeFiles.length === 0) return;
   const current = await readManifest(paths);
-  await fs.mkdir(paths.dataRoot, { recursive: true });
+  await ensureDataRoot(paths);
   await writeTextSafely(manifestFile(paths), `${JSON.stringify({ skillFiles: [...new Set([...current.skillFiles, ...relativeFiles])] }, null, 2)}\n`);
 }
 

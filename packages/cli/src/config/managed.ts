@@ -124,6 +124,21 @@ export async function writeTextSafely(file: string, content: string) {
   try { await fs.rename(temporary, file); } catch (error) { await fs.rm(temporary, { force: true }); throw error; }
 }
 
+// Creates `.jutell-local` with its own `.gitignore` (`*`) so nothing inside (receipt.json, reports)
+// ever shows up in git status. Never follows a symlinked `.jutell-local`.
+export async function ensureDataRoot(paths: ScopePaths) {
+  await fs.mkdir(paths.dataRoot, { recursive: true });
+  const stats = await fs.lstat(paths.dataRoot);
+  if (stats.isSymbolicLink() || !stats.isDirectory()) return;
+  const flags = fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_WRONLY | (fsConstants.O_NOFOLLOW ?? 0);
+  try {
+    const handle = await fs.open(path.join(paths.dataRoot, '.gitignore'), flags, 0o666);
+    try { await handle.writeFile('*\n', 'utf8'); } finally { await handle.close(); }
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+  }
+}
+
 export async function backupFile(file: string) {
   if (!(await exists(file))) return undefined;
   // First-ever backup: kept forever so the user's original survives any number of writes.

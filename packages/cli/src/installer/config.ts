@@ -1,5 +1,5 @@
 import { promises as fs } from 'node:fs';
-import { backupFile, readBridgeConfig, writeBridgeConfig, writeTextSafely } from '../config/managed.js';
+import { backupFile, ensureDataRoot, readBridgeConfig, writeBridgeConfig, writeTextSafely } from '../config/managed.js';
 import type { BridgeConfig, ScopePaths, Profile } from '../types.js';
 
 async function readObject(paths: ScopePaths): Promise<Record<string, unknown> | undefined> {
@@ -11,6 +11,7 @@ async function readObject(paths: ScopePaths): Promise<Record<string, unknown> | 
 }
 
 export async function ensureBridgeConfig(paths: ScopePaths, profile: Profile | undefined) {
+  if (paths.scope === 'project') await ensureDataRoot(paths);
   const loaded = await readBridgeConfig(paths);
   const current = await readObject(paths);
   if (!current || !loaded.valid) {
