@@ -72,9 +72,15 @@ async function readLimitedFile(file: string, noFollow = false): Promise<LimitedI
   }
   const flags = fsConstants.O_RDONLY | (fsConstants.O_NONBLOCK ?? 0) | (noFollow ? (fsConstants.O_NOFOLLOW ?? 0) : 0);
   const handle = await fs.open(file, flags);
-  if (!(await handle.stat()).isFile()) {
+  const opened = await handle.stat();
+  if (!opened.isFile()) {
     await handle.close();
     throw new UnsafeReceiptInput('receipt.json이 일반 파일이 아니라서 읽지도 지우지도 않았어요');
+  }
+  // A hard link would let receipt.json expose (and the cleanup unlink) another file's contents.
+  if (noFollow && opened.nlink > 1) {
+    await handle.close();
+    throw new UnsafeReceiptInput('receipt.json이 다른 파일과 연결되어 있어서 읽지도 지우지도 않았어요');
   }
   const buffer = Buffer.alloc(MAX_READ_BYTES);
   let total = 0;

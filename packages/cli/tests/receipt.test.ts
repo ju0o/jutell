@@ -543,6 +543,20 @@ describe('receipt command', () => {
     expect((await fs.lstat(fifo)).isFIFO()).toBe(true);
   }, 10000);
 
+  it.skipIf(process.platform === 'win32')('refuses a hard-linked receipt.json (nlink > 1): not read, not deleted', async () => {
+    await setup();
+    await fs.mkdir(paths.dataRoot, { recursive: true });
+    const outside = path.join(temporaryRoot, 'outside.json');
+    await fs.writeFile(outside, JSON.stringify({ done: ['SECRET-OUTSIDE'] }));
+    const linked = path.join(paths.dataRoot, 'receipt.json');
+    await fs.link(outside, linked);
+
+    expect(await runInProject(['receipt'])).toBe(0);
+    expect(output[0]).toContain('receipt.json 확인 못 함 (receipt.json이 다른 파일과 연결되어 있어서');
+    expect(output[0]).not.toContain('SECRET-OUTSIDE');
+    expect((await fs.stat(linked)).nlink).toBe(2);
+  });
+
   it.skipIf(process.platform === 'win32')('does not read receipt.json through a .jutell-local symlink (B5)', async () => {
     await setup();
     const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-receipt-outside-'));
