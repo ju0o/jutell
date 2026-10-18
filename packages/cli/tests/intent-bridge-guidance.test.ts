@@ -774,7 +774,8 @@ describe('Honest status choice is still required, expressed as prose guidance, n
   it('report-format.md still says a known completion-critical gap goes in 위험과 사용자 확인 and blocks 확인 완료, without naming a dedicated field', async () => {
     const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
     expect(reportFormat).toMatch(/완료에 필수적인 미확인·실패를 이미 알고 있으면, 형식을 위한 별도 항목을 만들지 않고 `위험과 사용자 확인`에 그 사실을 짧게 밝힌다/);
-    expect(reportFormat).toMatch(/그런 사실이 있으면 `보고서 상태`에 `확인 완료`를 쓰지 않는다/);
+    expect(reportFormat).toMatch(/그런 사실이 있으면 그 내용을 `확인 못 한 것`에 쓰고 `확인 완료`라고 쓰지 않는다/);
+    expect(reportFormat).not.toMatch(/`보고서 상태`에 `확인 완료`/);
   });
 
   it('SKILL.md states the same rule: a known critical gap goes into 위험과 사용자 확인, not a field, and still blocks 확인 완료', async () => {

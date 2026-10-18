@@ -115,7 +115,7 @@ export function beginnerReportRules(config: BridgeConfig) {
     limits: config.limits,
     voiceRule: voiceRule(config),
     evidenceRule: '실제로 확인한 사실, 코드만 보고 예상한 내용, 확인하지 못한 내용을 구분합니다.',
-    statusRule: '"보고서 상태:" 줄을 쓰지 않고 "직접 확인한 것 / 확인 못 한 것"을 쉬운 말로 씁니다. 실제로 실행하거나 읽은 확인이 없으면 "확인 완료"라고 쓰지 않습니다. 명령어(예: git diff --check)를 그대로 쓰지 않고 무엇을 확인했는지 쉬운 말로 씁니다(예: "바뀐 파일에 불필요한 공백이 없는지 확인"). "JuTell MCP 보고 규칙을 적용했습니다" 같은 내부 진행 문장은 쓰지 않습니다.',
+    statusRule: '"보고서 상태:" 줄을 쓰지 않고 "직접 확인한 것 / 확인 못 한 것"을 씁니다. 일부만 확인했으면 나머지는 확인 못 한 것에 씁니다. 실제로 실행하거나 읽은 확인이 없으면 "확인 완료"라고 쓰지 않습니다. git diff --check 같은 명령어는 그대로 쓰지 않고 무엇을 확인했는지 쉬운 말로 씁니다. "JuTell 보고 규칙을 적용했습니다" 같은 내부 진행 문장은 쓰지 않습니다.',
     diffRule: '코드 또는 Diff를 사용자에게 보여줄 경우, 바로 뒤에 무엇을 수정했고 사용자에게 어떤 영향이 있는지 기능 단위로 설명합니다.',
     ...(config.features.explainedDiff ? { explainedDiffRule } : {}),
     ...(config.features.requestBuilder ? { handoffRule } : {}),
