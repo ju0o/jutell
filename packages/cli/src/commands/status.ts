@@ -210,7 +210,9 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   const backupExists = await exists(`${codexPaths.codexConfigFile}.previous`);
   if (process.platform !== 'win32') {
     const onLoginPath = await new Promise<boolean>((resolve) => {
-      execFile('bash', ['-lc', 'command -v jutell'], { timeout: 5000 }, (error, stdout) => resolve(!error && stdout.trim().length > 0));
+      // Use the user's own login shell (Codex runs commands through it); fall back to bash.
+      const loginShell = process.env.SHELL && path.isAbsolute(process.env.SHELL) ? process.env.SHELL : 'bash';
+      execFile(loginShell, ['-lc', 'command -v jutell'], { timeout: 5000 }, (error, stdout) => resolve(!error && stdout.trim().length > 0));
     });
     checks.push({
       name: 'Codex에서 jutell 명령 찾기',
