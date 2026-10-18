@@ -30,6 +30,15 @@ async function runCli(args: string[], cwd: string, env: NodeJS.ProcessEnv) {
   return execFileAsync(process.execPath, [entry, ...args], { cwd, env, windowsHide: true, maxBuffer: 1024 * 1024 });
 }
 
+// `jutell doctor` exits 1 whenever it reports any 오류; tests that inspect the JSON accept that.
+async function runDoctor(args: string[], cwd: string, env: NodeJS.ProcessEnv) {
+  try { return await runCli(args, cwd, env); } catch (error) {
+    const failed = error as { code?: number; stdout?: string; stderr?: string };
+    if (failed.code === 1 && typeof failed.stdout === 'string') return { stdout: failed.stdout, stderr: failed.stderr ?? '' };
+    throw error;
+  }
+}
+
 async function runNpm(args: string[], cwd: string) {
   return execFileAsync(npmCommand, args, { cwd, shell: true, windowsHide: true, maxBuffer: 4 * 1024 * 1024 });
 }
@@ -126,7 +135,7 @@ describe('Distribution CLI V0.1', () => {
     expect(status.mcpRegistered).toBe(true);
     expect(status.mcpEnabled).toBe(false);
     expect(status.profile).toBe('learning');
-    const doctor = JSON.parse((await runCli(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string }>;
+    const doctor = JSON.parse((await runDoctor(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string }>;
     expect(doctor.find((check) => check.name === 'Skill 파일')?.status).toBe('정상');
     expect(doctor.find((check) => check.name === 'MCP 빌드 파일')?.status).toBe('정상');
     expect(doctor.find((check) => check.name === 'OpenCode MCP')?.status).toBe('주의');
@@ -539,7 +548,7 @@ describe('Distribution CLI V0.1', () => {
   it('C4-002: doctor가 실제로 읽은 설정 source를 표시한다', async () => {
     const { project, env } = await fixture();
     await fs.writeFile(path.join(project, '.beginner-bridge.json'), JSON.stringify({ version: 1, profile: 'learning', mcp: { enabled: false } }), 'utf8');
-    const doctor = JSON.parse((await runCli(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string; detail: string }>;
+    const doctor = JSON.parse((await runDoctor(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string; detail: string }>;
     const configCheck = doctor.find((check) => check.name === '.beginner-bridge.json');
     expect(configCheck).toBeTruthy();
     expect(configCheck?.detail).toContain('이전 설정 파일을 읽었습니다');
@@ -561,7 +570,7 @@ describe('Distribution CLI V0.1', () => {
     const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
     expect(status.warnings).toEqual(expect.arrayContaining([expect.stringContaining('maxMainFiles')]));
 
-    const doctor = JSON.parse((await runCli(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string; detail: string }>;
+    const doctor = JSON.parse((await runDoctor(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string; detail: string }>;
     const limitsCheck = doctor.find((check) => check.name === 'limits');
     expect(limitsCheck?.status).toBe('오류');
     expect(limitsCheck?.detail).toContain('maxMainFiles');
@@ -576,7 +585,7 @@ describe('Distribution CLI V0.1', () => {
     const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
     expect(status.warnings.some((w: string) => w.includes('limits'))).toBe(false);
 
-    const doctor = JSON.parse((await runCli(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string }>;
+    const doctor = JSON.parse((await runDoctor(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string }>;
     expect(doctor.find((check) => check.name === 'limits')?.status).toBe('정상');
   });
 
@@ -599,7 +608,7 @@ describe('Distribution CLI V0.1', () => {
     const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
     expect(status.warnings).toEqual(expect.arrayContaining([expect.stringContaining('maxMainFiles')]));
 
-    const doctor = JSON.parse((await runCli(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string }>;
+    const doctor = JSON.parse((await runDoctor(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string }>;
     expect(doctor.find((check) => check.name === 'limits')?.status).toBe('오류');
   });
 
@@ -612,7 +621,7 @@ describe('Distribution CLI V0.1', () => {
     const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
     expect(status.warnings.some((w: string) => w.includes('limits'))).toBe(false);
 
-    const doctor = JSON.parse((await runCli(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string }>;
+    const doctor = JSON.parse((await runDoctor(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string }>;
     expect(doctor.find((check) => check.name === 'limits')?.status).toBe('정상');
   });
 
@@ -630,7 +639,7 @@ describe('Distribution CLI V0.1', () => {
     const status = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
     expect(status.codexPreparation).toBe('registered');
     expect(status.warnings).toEqual(expect.arrayContaining([expect.stringContaining('이전 beginner_bridge 항목만 있습니다')]));
-    const doctor = JSON.parse((await runCli(['doctor', '--json'], project, env)).stdout);
+    const doctor = JSON.parse((await runDoctor(['doctor', '--json'], project, env)).stdout);
     expect(doctor.find((check: { name: string }) => check.name === 'Codex MCP')?.status).toBe('정상');
 
     const used = await runCli(['use', 'codex'], project, env);
@@ -906,7 +915,7 @@ describe('Distribution CLI V0.1', () => {
     const after = JSON.parse((await runCli(['status', '--json'], project, env)).stdout);
     expect(after.claudePreparation).toBe('enabled');
     expect(after.claude.registered).toBe(true);
-    const doctor = JSON.parse((await runCli(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string; detail: string }>;
+    const doctor = JSON.parse((await runDoctor(['doctor', '--json'], project, env)).stdout) as Array<{ name: string; status: string; detail: string }>;
     const check = doctor.find((c) => c.name === 'Claude Code MCP');
     expect(check?.status).toBe('정상');
     expect(check?.detail).toContain('local');
