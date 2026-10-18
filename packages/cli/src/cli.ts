@@ -57,7 +57,10 @@ export async function run(argv: string[] = process.argv.slice(2), io: CliIo = cr
     else if (command === 'disconnect') await disconnectCommand(paths, options, io, [command, ...extraArgs]);
     else if (command === 'switch') await switchCommand(paths, options, io, [command, ...extraArgs]);
     else if (command === 'upgrade') await upgradeCommand(paths, options, io);
-    else if (command === 'migrate') await migrateCommand(paths, options, io);
+    else if (command === 'migrate') {
+      const result = await migrateCommand(paths, options, io);
+      if ((result as { failed?: boolean } | undefined)?.failed) exitCode = 1;
+    }
     else if (command === 'session') await sessionCommand(paths, options, io, extraArgs);
     else throw new Error(`알 수 없는 명령입니다: ${command}`);
     maybeShowFundingNotice(paths, io, fundingSuppressed);

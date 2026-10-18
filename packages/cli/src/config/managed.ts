@@ -490,7 +490,7 @@ export async function registerMcp(paths: ScopePaths, packageRoot: string, enable
   return { ...(await readCodexRegistration(paths, packageRoot, enabled)), restoredHint };
 }
 
-export function commentOutOrphanTables(text: string, prefix: string): { text: string; commentedTables: string[] } {
+export function commentOutOrphanTables(text: string, prefix: string, marker = '# jutell 제거로 주석 처리됨'): { text: string; commentedTables: string[] } {
   let finalText = text;
   const commentedTables: string[] = [];
   const tableHeaders = [...finalText.matchAll(/^[ \t]*(\[\[[^\r\n]*?\]\]|\[[^\r\n]*?\])[ \t]*(?:#.*)?\r?$/gm)];
@@ -510,7 +510,7 @@ export function commentOutOrphanTables(text: string, prefix: string): { text: st
       if (tablePath?.startsWith(`${prefix}.`)) {
         commentedTables.push(tablePath);
         const tableText = finalText.slice(start, end);
-        commentedText += '# jutell 제거로 주석 처리됨\n';
+        commentedText += `${marker}\n`;
         commentedText += tableText.split(/(?<=\n)/).map((line) => {
           if (line === '\n' || line === '\r\n') return `# ${line}`;
           return line.replace(/^(?!# )/, '# ');
