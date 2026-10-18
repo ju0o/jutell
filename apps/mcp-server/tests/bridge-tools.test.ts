@@ -114,6 +114,13 @@ describe('explainedDiff (J01 explained diff reporting)', () => {
     expect(rules.statusRule).toContain('확인 완료');
   });
 
+  it('tells reports to describe checks plainly and omit internal progress', () => {
+    const rules = beginnerReportRules(DEFAULT_CONFIG);
+    expect(rules.statusRule).toContain('그대로 쓰지 않고');
+    expect(rules.statusRule).toContain('쉬운 말로');
+    expect(rules.statusRule).toContain('내부 진행 문장은 쓰지 않습니다');
+  });
+
   it('keeps explainedDiff off in the minimal profile by default', () => {
     const normalized = normalizeConfig({ version: 1, profile: 'minimal', limits: { maxMainFiles: 3, maxGlossaryTerms: 1, compactReportMaxSentences: 8 } });
     expect(normalized.features.explainedDiff).toBe(false);
