@@ -215,6 +215,22 @@ describe('receipt command', () => {
     expect(await fs.readdir(path.join(paths.dataRoot, 'reports'))).toHaveLength(1);
   });
 
+  it('keeps quotes and shell metacharacters as plain text when read from receipt.json (no shell involved)', async () => {
+    await setup();
+    const marker = path.join(paths.targetRoot, 'pwned');
+    await fs.mkdir(paths.dataRoot, { recursive: true });
+    await fs.writeFile(path.join(paths.dataRoot, 'receipt.json'), JSON.stringify({
+      done: ["버튼 이름을 'Save'에서 '저장'으로 바꿈", "don't break", `a'; touch ${marker}; echo '`],
+      checked: ['파일을 읽음'],
+    }), 'utf8');
+
+    expect(await runInProject(['receipt'])).toBe(0);
+    expect(output[0]).toContain("버튼 이름을 'Save'에서 '저장'으로 바꿈");
+    expect(output[0]).toContain("don't break");
+    await expect(fs.access(marker)).rejects.toMatchObject({ code: 'ENOENT' });
+    expect(await fs.readdir(path.join(paths.dataRoot, 'reports'))).toHaveLength(1);
+  });
+
   it('reads and removes the default input, saves the report, and creates only the local ignore file', async () => {
     await setup();
     const defaultInput = path.join(paths.dataRoot, 'receipt.json');
@@ -396,5 +412,126 @@ describe('receipt command', () => {
     await expect(receiptCommand(paths, ['--file'], io))
       .rejects.toThrow('사용법: jutell receipt');
     await expect(fs.access(paths.dataRoot)).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('lists git filenames as data, including spaces, options, phrases, and rename markers', async () => {
+    await setup();
+    await execFileAsync('git', ['init', '-q'], { cwd: paths.targetRoot });
+    const names = [
+      'my git notes.md',
+      'src/npm run.txt',
+      '-r',
+      'a --force b.txt',
+      'back`tick.txt',
+      '확인 완료.md',
+      'a -> b.txt',
+      '한글 공백 파일.txt',
+    ];
+    for (const name of names) {
+      const file = path.join(paths.targetRoot, name);
+      await fs.mkdir(path.dirname(file), { recursive: true });
+      await fs.writeFile(file, 'file\n', 'utf8');
+    }
+    const stdin = new PassThrough();
+    stdin.end(JSON.stringify({ done: ['한 일'], checked: ['확인'], next: [] }));
+
+    expect(await receiptCommand(paths, ['--file', '-'], io, stdin)).toBe(0);
+    for (const name of names) expect(output[0]).toContain(name);
+    const reports = await fs.readdir(path.join(paths.dataRoot, 'reports'));
+    expect(reports).toHaveLength(1);
+    const saved = await fs.readFile(path.join(paths.dataRoot, 'reports', reports[0]), 'utf8');
+    for (const name of names) expect(saved).toContain(name);
+  });
+
+  it('refuses a reports symlink without writing into its target', async () => {
+    await setup();
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-receipt-outside-'));
+    try {
+      await fs.mkdir(paths.dataRoot, { recursive: true });
+      await fs.symlink(outside, path.join(paths.dataRoot, 'reports'), 'dir');
+      const stdin = new PassThrough();
+      stdin.end(JSON.stringify({ done: ['한 일'], checked: ['확인'], next: [] }));
+
+      await expect(receiptCommand(paths, ['--file', '-'], io, stdin))
+        .rejects.toThrow('.jutell-local 또는 reports가 링크라서 영수증을 저장하지 않았어요.');
+      expect(await fs.readdir(outside)).toEqual([]);
+    } finally {
+      await fs.rm(outside, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses a .jutell-local symlink without writing into its target', async () => {
+    await setup();
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-receipt-outside-'));
+    try {
+      await fs.symlink(outside, paths.dataRoot, 'dir');
+      const stdin = new PassThrough();
+      stdin.end(JSON.stringify({ done: ['한 일'], checked: ['확인'], next: [] }));
+
+      await expect(receiptCommand(paths, ['--file', '-'], io, stdin))
+        .rejects.toThrow('.jutell-local 또는 reports가 링크라서 영수증을 저장하지 않았어요.');
+      expect(await fs.readdir(outside)).toEqual([]);
+    } finally {
+      await fs.rm(outside, { recursive: true, force: true });
+    }
+  });
+
+  it('shows an unavailable changed-file list outside a git repository', async () => {
+    await setup();
+    const stdin = new PassThrough();
+    stdin.end(JSON.stringify({ done: ['한 일'], checked: ['확인'], next: [] }));
+
+    expect(await receiptCommand(paths, ['--file', '-'], io, stdin)).toBe(0);
+    const start = output[0].indexOf('[바뀐 파일]');
+    const end = output[0].indexOf('[확인]', start);
+    const section = output[0].slice(start, end);
+    expect(section).toContain('확인 못 함');
+    expect(section).not.toContain(' 없음');
+    expect(await fs.readdir(path.join(paths.dataRoot, 'reports'))).toHaveLength(1);
+  });
+
+  it('saves a receipt for stdin larger than 64 KiB and records the truncation', async () => {
+    await setup();
+    const stdin = new PassThrough();
+    stdin.end('x'.repeat(64 * 1024 + 100));
+
+    expect(await receiptCommand(paths, ['--file', '-'], io, stdin)).toBe(0);
+    expect(output[0]).toContain('입력이 너무 길어 앞부분만 읽었어요');
+    expect(await fs.readdir(path.join(paths.dataRoot, 'reports'))).toHaveLength(1);
+  });
+
+  it('strips ESC and NUL from receipt text before printing and saving', async () => {
+    await setup();
+    const stdin = new PassThrough();
+    stdin.end(JSON.stringify({ done: ['안전\u001b숨김\u0000문장'], checked: ['확인'], next: [] }));
+
+    expect(await receiptCommand(paths, ['--file', '-'], io, stdin)).toBe(0);
+    expect(output[0]).not.toContain('\u001b');
+    expect(output[0]).not.toContain('\u0000');
+    const reports = await fs.readdir(path.join(paths.dataRoot, 'reports'));
+    const saved = await fs.readFile(path.join(paths.dataRoot, 'reports', reports[0]), 'utf8');
+    expect(saved).not.toContain('\u001b');
+    expect(saved).not.toContain('\u0000');
+    expect(output[0]).toContain('안전숨김문장');
+  });
+
+  it('does not update the git index while listing changed files', async () => {
+    await setup();
+    await execFileAsync('git', ['init', '-q'], { cwd: paths.targetRoot });
+    await execFileAsync('git', ['config', 'user.name', 'JuTell Test'], { cwd: paths.targetRoot });
+    await execFileAsync('git', ['config', 'user.email', 'jutell-test@example.invalid'], { cwd: paths.targetRoot });
+    const tracked = path.join(paths.targetRoot, 'tracked.txt');
+    await fs.writeFile(tracked, 'tracked\n', 'utf8');
+    await execFileAsync('git', ['add', 'tracked.txt'], { cwd: paths.targetRoot });
+    await execFileAsync('git', ['commit', '-m', 'initial'], { cwd: paths.targetRoot });
+    const indexFile = path.join(paths.targetRoot, '.git', 'index');
+    const before = await fs.readFile(indexFile);
+    const later = new Date(Date.now() + 10_000);
+    await fs.utimes(tracked, later, later);
+    const stdin = new PassThrough();
+    stdin.end(JSON.stringify({ done: ['한 일'], checked: ['확인'], next: [] }));
+
+    expect(await receiptCommand(paths, ['--file', '-'], io, stdin)).toBe(0);
+    expect(await fs.readFile(indexFile)).toEqual(before);
   });
 });

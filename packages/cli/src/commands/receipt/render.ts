@@ -6,6 +6,7 @@ export type ReceiptInput = {
   asked?: string[];
   done: string[];
   files?: string[];
+  filesUnknownReason?: string;
   checks: ReceiptCheck[];
   next: {
     continue: string[];
@@ -26,6 +27,11 @@ export const SUMMARY_PREFIX = '한 줄 요약: ';
 const forbiddenStatusPhrases = ['확인 완료', '일부 확인', '추가 확인 필요'];
 const rawCommandPattern = /`|(?:^|[^A-Za-z0-9_])(?:git|npm|npx|node|pnpm|yarn|rg|grep|cat|sed|ls|cd|python|pytest|vitest|tsc|make|curl)\s+\S+|(?:^|\s)--[A-Za-z][A-Za-z0-9-]*(?=\s|=|$)|(?:^|\s)-[A-Za-z](?:[A-Za-z0-9-]*)(?=\s|$)/;
 const normalizedReceipts = new WeakSet<object>();
+const controlCharacters = /[\u0000-\u001f\u007f-\u009f]/g;
+
+function limitText(value: string): string {
+  return value.length > 300 ? `${value.slice(0, 299)}…` : value;
+}
 
 function fail(message: string): never {
   throw new Error(message);
@@ -50,19 +56,20 @@ function maskAbsolutePaths(value: string): string {
 }
 
 function readText(value: unknown, label: string): string {
-  if (typeof value !== 'string' || value.trim().length === 0) {
+  if (typeof value !== 'string') {
     return fail(`${label}은(는) 비어 있지 않은 글자여야 해요.`);
   }
-  if (/[\r\n]/.test(value)) {
-    return fail(`${label}은(는) 한 줄로 입력해 주세요.`);
+  const cleaned = value.replace(controlCharacters, '');
+  if (cleaned.trim().length === 0) {
+    return fail(`${label}은(는) 비어 있지 않은 글자여야 해요.`);
   }
-  if (forbiddenStatusPhrases.some((phrase) => value.includes(phrase))) {
+  if (forbiddenStatusPhrases.some((phrase) => cleaned.includes(phrase))) {
     return fail('상태 문구는 영수증 내용에 넣을 수 없어요.');
   }
-  if (rawCommandPattern.test(value)) {
+  if (rawCommandPattern.test(cleaned)) {
     return fail(`명령어를 그대로 쓰지 말고, 무엇을 확인했는지 쉬운 말로 써 주세요: ${label}`);
   }
-  return maskAbsolutePaths(value.trim());
+  return limitText(maskAbsolutePaths(cleaned.trim()));
 }
 
 function readTextArray(value: unknown, label: string, max: number): string[] {
@@ -75,9 +82,12 @@ function validateReceipt(value: unknown, allowEmptyDetails = false): ReceiptInpu
   if (!isRecord(value)) return fail('영수증 입력은 JSON 객체여야 해요.');
   if (Object.hasOwn(value, 'status')) return fail('status 항목은 영수증 입력에 넣을 수 없어요.');
 
-  const asked = value.asked === undefined ? [] : readTextArray(value.asked, '요청한 것', Number.POSITIVE_INFINITY);
+  const asked = value.asked === undefined ? [] : readTextArray(value.asked, '요청한 것', 5);
   const done = readTextArray(value.done, '이번에 한 작업', 5);
-  const files = value.files === undefined ? [] : readTextArray(value.files, '바뀐 파일', Number.POSITIVE_INFINITY);
+  const files = value.files === undefined ? [] : readFileNames(value.files);
+  const filesUnknownReason = typeof value.filesUnknownReason === 'string'
+    ? cleanReceiptText(value.filesUnknownReason)
+    : undefined;
   if (!Array.isArray(value.checks)) return fail('확인 항목은 목록이어야 해요.');
   if (value.checks.length > 4) return fail('확인 항목은 최대 4개까지 적을 수 있어요.');
 
@@ -106,7 +116,18 @@ function validateReceipt(value: unknown, allowEmptyDetails = false): ReceiptInpu
   const nextCount = next.continue.length + next.nice.length + next.stop.length;
   if (nextCount > 3) return fail('다음 추천은 세 묶음을 합쳐 최대 3개까지 적을 수 있어요.');
 
-  return { asked, done, files, checks, next };
+  return { asked, done, files, ...(filesUnknownReason ? { filesUnknownReason } : {}), checks, next };
+}
+
+function cleanFileName(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const text = limitText(maskAbsolutePaths(value.replace(controlCharacters, '')));
+  return text.length > 0 ? text : undefined;
+}
+
+function readFileNames(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map(cleanFileName).filter((item): item is string => item !== undefined);
 }
 
 function addProblem(problems: string[] | undefined, message: string): void {
@@ -120,7 +141,7 @@ function addProblem(problems: string[] | undefined, message: string): void {
 
 function cleanReceiptText(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
-  let text = value.replace(/[\r\n]+/g, ' ').trim();
+  let text = value.replace(controlCharacters, '').trim();
   for (const phrase of forbiddenStatusPhrases) text = text.split(phrase).join('');
   text = text.trim();
   if (!text) return undefined;
@@ -130,7 +151,7 @@ function cleanReceiptText(value: unknown): string | undefined {
     ? '명령어 줄은 쉬운 말로 바꾸지 못해 뺐어요'
     : withoutBackticks;
   text = maskAbsolutePaths(text).trim();
-  return text || undefined;
+  return text ? limitText(text) : undefined;
 }
 
 function normalizeTextArray(
@@ -168,9 +189,9 @@ export function normalizeReceipt(value: unknown, problems?: string[]): ReceiptIn
 
     const hasNewFields = ['asked', 'checked', 'unchecked'].some((field) => Object.hasOwn(input, field));
     const newShape = hasNewFields || Array.isArray(input.next);
-    const asked = normalizeTextArray(input.asked, '요청한 것', issues);
+    const asked = normalizeTextArray(input.asked, '요청한 것', issues, 5);
     const done = normalizeTextArray(input.done, '이번에 한 작업', issues, 5);
-    const files = normalizeTextArray(input.files, '바뀐 파일', issues);
+    const files = readFileNames(input.files);
     const sourceChecks: ReceiptCheck[] = [];
     const next = { continue: [] as string[], nice: [] as string[], stop: [] as string[] };
 
@@ -248,10 +269,11 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
   const receipt = validateReceipt(input, typeof input === 'object' && input !== null && normalizedReceipts.has(input));
   const time = readText(timestamp, '시간');
   const summarySource = typeof input === 'object' && input !== null ? (input as { summary?: unknown }).summary : undefined;
-  const summary = cleanReceiptText(summarySource)
-    ?? (receipt.done.length > 0 ? `${receipt.done[0]}${receipt.done.length > 1 ? ` 외 ${receipt.done.length - 1}건` : ''}` : DEFAULT_SUMMARY);
+  const summary = limitText(cleanReceiptText(summarySource)
+    ?? (receipt.done.length > 0 ? `${receipt.done[0]}${receipt.done.length > 1 ? ` 외 ${receipt.done.length - 1}건` : ''}` : DEFAULT_SUMMARY));
   const asked = receipt.asked ?? [];
   const files = receipt.files ?? [];
+  const filesUnknownReason = receipt.filesUnknownReason;
   const nextGroups = [receipt.next.continue, receipt.next.nice, receipt.next.stop];
   const lines = [
     '==============================',
@@ -262,7 +284,11 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
     RECEIPT_SECTIONS[1],
     ...renderList(receipt.done, (item, index) => ` ${index + 1}. ${item}`, ' 없음'),
     '',
-    ...(files.length > 0 ? [
+    ...(filesUnknownReason ? [
+      RECEIPT_SECTIONS[2],
+      ` 확인 못 함 (${filesUnknownReason})`,
+      '',
+    ] : files.length > 0 ? [
       RECEIPT_SECTIONS[2],
       ...files.slice(0, 8).map((item, index) => ` ${index + 1}. ${item}`),
       ...(files.length > 8 ? [` 외 ${files.length - 8}개`] : []),

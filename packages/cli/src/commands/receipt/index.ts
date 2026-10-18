@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { promises as fs } from 'node:fs';
+import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
 import { readBridgeConfig } from '../../config/managed.js';
@@ -13,6 +13,11 @@ const RECEIPT_INPUT_EXAMPLE = `표준 입력으로 전달하는 방식을 권장
 {"asked":["요청한 것"],"done":["한 일"],"checked":["직접 확인한 것"],"unchecked":["확인 못 한 것 (이유)"],"next":["다음 추천"]}`;
 
 type ReceiptSource = { kind: 'default' } | { kind: 'file'; file: string };
+type LimitedInput = { text: string; tooLong: boolean };
+type ChangedFiles = { files: string[]; unknownReason?: string };
+const MAX_INPUT_BYTES = 64 * 1024;
+const MAX_READ_BYTES = MAX_INPUT_BYTES + 1;
+const UNSAFE_REPORT_PATH = '.jutell-local 또는 reports가 링크라서 영수증을 저장하지 않았어요.';
 
 function parseArgs(args: string[]): ReceiptSource {
   if (args.length === 0) return { kind: 'default' };
@@ -22,20 +27,53 @@ function parseArgs(args: string[]): ReceiptSource {
   throw new Error('사용법: jutell receipt [--file <경로>|--file -]');
 }
 
-async function readStdin(input: Readable): Promise<string> {
+async function readStdin(input: Readable): Promise<LimitedInput> {
   const chunks: Buffer[] = [];
+  let total = 0;
+  let tooLong = false;
   for await (const chunk of input) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    const remaining = MAX_READ_BYTES - total;
+    if (remaining <= 0) {
+      tooLong = true;
+      break;
+    }
+    const part = bytes.subarray(0, remaining);
+    chunks.push(part);
+    total += part.length;
+    if (bytes.length > part.length || total > MAX_INPUT_BYTES) {
+      tooLong = true;
+      break;
+    }
   }
-  return Buffer.concat(chunks).toString('utf8');
+  return { text: Buffer.concat(chunks).subarray(0, MAX_INPUT_BYTES).toString('utf8'), tooLong };
 }
 
-async function readReceipt(source: ReceiptSource, paths: ScopePaths, input: Readable): Promise<string> {
+async function readLimitedFile(file: string): Promise<LimitedInput> {
+  const handle = await fs.open(file, 'r');
+  const buffer = Buffer.alloc(MAX_READ_BYTES);
+  let total = 0;
+  try {
+    while (total < MAX_READ_BYTES) {
+      const { bytesRead } = await handle.read(buffer, total, MAX_READ_BYTES - total, total);
+      if (bytesRead === 0) break;
+      total += bytesRead;
+    }
+  } finally {
+    await handle.close();
+  }
+  return {
+    text: buffer.subarray(0, Math.min(total, MAX_INPUT_BYTES)).toString('utf8'),
+    tooLong: total > MAX_INPUT_BYTES,
+  };
+}
+
+async function readReceipt(source: ReceiptSource, paths: ScopePaths, input: Readable): Promise<LimitedInput> {
   if (source.kind === 'file' && source.file === '-') return readStdin(input);
   const file = source.kind === 'default'
     ? path.join(paths.dataRoot, 'receipt.json')
     : path.resolve(source.file);
-  const contents = await fs.readFile(file, 'utf8');
+  const contents = await readLimitedFile(file);
   if (source.kind === 'default') {
     try {
       await fs.unlink(file);
@@ -58,10 +96,18 @@ function receiptTimestamp(now: Date): { display: string; filename: string } {
 
 async function ensureLocalGitignore(dataRoot: string): Promise<void> {
   const file = path.join(dataRoot, '.gitignore');
+  const flags = fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_WRONLY | (fsConstants.O_NOFOLLOW ?? 0);
+  let handle;
   try {
-    await fs.writeFile(file, '*\n', { encoding: 'utf8', flag: 'wx' });
+    handle = await fs.open(file, flags, 0o666);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+    return;
+  }
+  try {
+    await handle.writeFile('*\n', 'utf8');
+  } finally {
+    await handle.close();
   }
 }
 
@@ -69,32 +115,101 @@ function relativePath(root: string, file: string): string {
   return path.relative(root, file).split(path.sep).join('/');
 }
 
-function pathsFromStatus(stdout: string): string[] {
+function pathsFromStatus(stdout: string, projectPrefix: string): string[] {
   const files: string[] = [];
-  for (const rawLine of stdout.split('\n')) {
-    const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
-    if (line.length < 4) continue;
-    const statusPath = line.slice(3);
-    const renameAt = statusPath.lastIndexOf(' -> ');
-    const file = (renameAt >= 0 ? statusPath.slice(renameAt + 4) : statusPath).replace(/^\.\//, '');
+  const fields = stdout.split('\0');
+  for (let index = 0; index < fields.length; index += 1) {
+    const field = fields[index];
+    if (field.length < 4 || field[2] !== ' ') continue;
+    const status = field.slice(0, 2);
+    const repoPath = field.slice(3).replace(/^\.\//, '');
+    if (status.includes('R') || status.includes('C')) index += 1;
+    if (projectPrefix && !repoPath.startsWith(projectPrefix)) continue;
+    const file = (projectPrefix ? repoPath.slice(projectPrefix.length) : repoPath).replace(/^\.\//, '');
+    if (!file) continue;
     // JuTell's own setup files are not the user's work; an untracked AGENTS.md/CLAUDE.md was created by JuTell.
     if (file === '.jutell-local' || file.startsWith('.jutell-local/') || file === '.jutell.json') continue;
     if (file.startsWith('.agents/skills/beginner-bridge/') || file.startsWith('.claude/skills/beginner-bridge/')) continue;
-    if (line.startsWith('??') && (file === 'AGENTS.md' || file === 'CLAUDE.md')) continue;
+    if (status === '??' && (file === 'AGENTS.md' || file === 'CLAUDE.md')) continue;
     files.push(file);
   }
   return files;
 }
 
-async function readChangedFiles(cwd: string): Promise<string[]> {
-  return new Promise((resolve) => {
-    execFile(
-      'git',
-      ['-c', 'core.quotepath=false', 'status', '--porcelain', '--untracked-files=all'],
-      { cwd },
-      (error, stdout) => resolve(error ? [] : pathsFromStatus(stdout)),
-    );
+function runGit(cwd: string, args: string[]): Promise<string> {
+  return new Promise((resolve, reject) => {
+    execFile('git', args, {
+      cwd,
+      timeout: 5000,
+      maxBuffer: 16 * 1024 * 1024,
+      env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' },
+    }, (error, stdout) => {
+      if (error) reject(error);
+      else resolve(stdout);
+    });
   });
+}
+
+function gitFailureReason(error: unknown): string {
+  const failure = error as NodeJS.ErrnoException & { killed?: boolean };
+  if (failure.code === 'ENOENT') return 'Git을 실행하지 못했어요';
+  if (failure.code === 'ETIMEDOUT' || failure.killed) return 'Git 확인 시간이 초과됐어요';
+  if (failure.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') return '변경 목록이 너무 커요';
+  if (typeof failure.code === 'number') return 'Git 저장소를 확인하지 못했어요';
+  return 'Git 변경 목록을 읽지 못했어요';
+}
+
+async function ensureSafeDirectory(directory: string): Promise<void> {
+  let stats;
+  try {
+    stats = await fs.lstat(directory);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    try {
+      await fs.mkdir(directory);
+    } catch (mkdirError) {
+      if ((mkdirError as NodeJS.ErrnoException).code !== 'EEXIST') throw mkdirError;
+    }
+    stats = await fs.lstat(directory);
+  }
+  if (stats.isSymbolicLink() || !stats.isDirectory()) throw new Error(UNSAFE_REPORT_PATH);
+}
+
+async function prepareSafeReportsDirectory(paths: ScopePaths): Promise<string> {
+  const reportsDir = path.join(paths.dataRoot, 'reports');
+  const targetRoot = await fs.realpath(paths.targetRoot);
+  const lexicalDataRoot = path.relative(path.resolve(paths.targetRoot), path.resolve(paths.dataRoot));
+  if (path.resolve(paths.dataRoot) !== path.join(path.resolve(paths.targetRoot), '.jutell-local')
+    || !lexicalDataRoot || lexicalDataRoot.startsWith('..') || path.isAbsolute(lexicalDataRoot)) {
+    throw new Error(UNSAFE_REPORT_PATH);
+  }
+
+  await ensureSafeDirectory(paths.dataRoot);
+  await ensureSafeDirectory(reportsDir);
+  let reportsRealPath: string;
+  try {
+    reportsRealPath = await fs.realpath(reportsDir);
+  } catch {
+    throw new Error(UNSAFE_REPORT_PATH);
+  }
+  const relativeReports = path.relative(targetRoot, reportsRealPath);
+  if (!relativeReports || relativeReports.startsWith('..') || path.isAbsolute(relativeReports)) {
+    throw new Error(UNSAFE_REPORT_PATH);
+  }
+  return reportsDir;
+}
+
+async function readChangedFiles(cwd: string): Promise<ChangedFiles> {
+  try {
+    const prefixOutput = await runGit(cwd, ['--no-optional-locks', 'rev-parse', '--show-prefix']);
+    const projectPrefix = prefixOutput.replace(/\r?\n$/, '').replaceAll('\\', '/');
+    const status = await runGit(cwd, [
+      '--no-optional-locks', 'status', '--porcelain=v1', '-z', '--untracked-files=all', '--', '.',
+    ]);
+    return { files: pathsFromStatus(status, projectPrefix) };
+  } catch (error) {
+    return { files: [], unknownReason: gitFailureReason(error) };
+  }
 }
 
 async function saveReceipt(
@@ -103,19 +218,18 @@ async function saveReceipt(
   timestamp: string,
   filename: string,
 ): Promise<string> {
-  await fs.mkdir(paths.dataRoot, { recursive: true });
+  const reportsDir = await prepareSafeReportsDirectory(paths);
   await ensureLocalGitignore(paths.dataRoot);
-  const reportsDir = path.join(paths.dataRoot, 'reports');
-  await fs.mkdir(reportsDir, { recursive: true });
 
   const extension = '.md';
   let suffix = 1;
+  const flags = fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_WRONLY | (fsConstants.O_NOFOLLOW ?? 0);
   while (true) {
     const name = `${filename}${suffix === 1 ? '' : `-${suffix}`}${extension}`;
     const file = path.join(reportsDir, name);
     let handle;
     try {
-      handle = await fs.open(file, 'wx');
+      handle = await fs.open(file, flags, 0o666);
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
         suffix += 1;
@@ -158,8 +272,11 @@ export async function receiptCommand(
   const source = parseArgs(args);
   const problems: string[] = [];
   let raw = '';
+  let inputTooLong = false;
   try {
-    raw = await readReceipt(source, paths, input);
+    const contents = await readReceipt(source, paths, input);
+    raw = contents.text;
+    inputTooLong = contents.tooLong;
   } catch {
     problems.push('입력을 읽지 못했습니다.');
   }
@@ -175,7 +292,15 @@ export async function receiptCommand(
   }
 
   const receipt = normalizeReceipt(parsed, problems);
-  receipt.files = await readChangedFiles(paths.targetRoot);
+  if (inputTooLong) {
+    receipt.checks = [
+      ...receipt.checks.slice(0, 3),
+      { what: '입력이 너무 길어 앞부분만 읽었어요', result: '안 해봄', reason: '' },
+    ];
+  }
+  const changedFiles = await readChangedFiles(paths.targetRoot);
+  receipt.files = changedFiles.files;
+  receipt.filesUnknownReason = changedFiles.unknownReason;
   const time = receiptTimestamp(now);
   const output = await saveReceipt(paths, receipt, time.display, time.filename);
   io.write(output);
