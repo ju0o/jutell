@@ -6,7 +6,7 @@ import { promises as fs } from 'node:fs';
 import { promisify } from 'node:util';
 import { afterEach, describe, expect, it } from 'vitest';
 import { receiptCommand } from '../src/commands/receipt/index.js';
-import { NEXT_GROUPS, RECEIPT_SECTIONS, normalizeReceipt, renderReceipt } from '../src/commands/receipt/render.js';
+import { NEXT_GROUPS, NOTHING_NEXT_LINE, RECEIPT_SECTIONS, normalizeReceipt, renderReceipt } from '../src/commands/receipt/render.js';
 import { resolveScope } from '../src/config/paths.js';
 import { run } from '../src/cli.js';
 import { ensureBridgeConfig } from '../src/installer/config.js';
@@ -154,6 +154,33 @@ describe('receipt renderer', () => {
       ...sample,
       next: { continue: ['1'], nice: ['2'], stop: ['3', '4'] },
     }, timestamp)).toThrow('최대 3개');
+  });
+
+  it('never omits 확인 못 한 것: says 없음 when nothing is unchecked or nothing was checked at all', () => {
+    const onlyChecked = renderReceipt(normalizeReceipt({ done: ['테스트 실행'], checked: ['테스트 통과'], unchecked: [] }), timestamp);
+    expect(onlyChecked).toContain(' ✔ 직접 확인한 것: 테스트 통과');
+    expect(onlyChecked).toContain(' ✖ 확인 못 한 것: 없음');
+    const nothing = renderReceipt({ done: [], checks: [], next: { continue: [], nice: [], stop: [] } }, timestamp);
+    expect(nothing).toContain(' ✔ 직접 확인한 것: 없음');
+    expect(nothing).toContain(' ✖ 확인 못 한 것: 없음');
+    const withUnchecked = renderReceipt(normalizeReceipt({ checked: ['a'], unchecked: ['모바일 화면 (브라우저 없음)'] }), timestamp);
+    expect(withUnchecked).not.toContain('확인 못 한 것: 없음');
+  });
+
+  it("renders '여기서 멈춰도 됩니다' instead of a '○ 추천 – 없음' placeholder", () => {
+    const placeholder = renderReceipt(normalizeReceipt({ done: ['제목 변경'], next: ['없음'] }), timestamp);
+    expect(placeholder).toContain(NOTHING_NEXT_LINE);
+    expect(placeholder).not.toContain(NEXT_GROUPS[1]);
+    expect(placeholder).not.toMatch(/-\s*없음/);
+    const mixed = renderReceipt(normalizeReceipt({ done: ['제목 변경'], next: ['- 없음', '모바일 화면 확인'] }), timestamp);
+    expect(mixed).toContain('   - 모바일 화면 확인');
+    expect(mixed).not.toContain('   - - 없음');
+    // Placeholders are dropped before the 3-item cut.
+    const late = renderReceipt(normalizeReceipt({ done: ['x'], next: ['없음', '없음', '없음', 'real'] }), timestamp);
+    expect(late).toContain('   - real');
+    expect(late).not.toContain(NOTHING_NEXT_LINE);
+    const lateOld = renderReceipt(normalizeReceipt({ done: ['x'], next: { continue: ['없음', '', '- 없음', 'real'], nice: [], stop: [] } }), timestamp);
+    expect(lateOld).toContain('   - real');
   });
 
   it('does not print the save line for an absolute saved path', () => {

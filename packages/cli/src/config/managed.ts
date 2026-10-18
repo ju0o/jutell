@@ -141,15 +141,25 @@ export async function ensureDataRoot(paths: ScopePaths) {
 
 export async function backupFile(file: string) {
   if (!(await exists(file))) return undefined;
+  const content = await fs.readFile(file);
+  const noFollow = fsConstants.O_NOFOLLOW ?? 0;
+  const writeNew = async (target: string) => {
+    const handle = await fs.open(target, fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_WRONLY | noFollow, 0o600);
+    try { await handle.writeFile(content); } finally { await handle.close(); }
+  };
   // First-ever backup: kept forever so the user's original survives any number of writes.
+  // O_EXCL|O_NOFOLLOW: never writes through a link planted at that name.
   try {
-    await fs.copyFile(file, `${file}.jutell-original`, fsConstants.COPYFILE_EXCL);
+    await writeNew(`${file}.jutell-original`);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
   }
-  // Immediately previous version: overwritten on every write.
+  // Immediately previous version: written to a temp file and renamed over, so a link at
+  // `.previous` is replaced, never followed.
   const backupPath = `${file}.previous`;
-  await fs.copyFile(file, backupPath);
+  const temp = `${backupPath}.jutell-${process.pid}-${Date.now()}`;
+  await writeNew(temp);
+  try { await fs.rename(temp, backupPath); } catch (error) { await fs.rm(temp, { force: true }); throw error; }
   return backupPath;
 }
 

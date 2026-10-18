@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import { assets, codexScopedPaths, packageRoot, safeLocation } from '../config/paths.js';
 import { readBridgeConfig, readCodexRegistration, snapshot, restore } from '../config/managed.js';
 import { ensureBridgeConfig, setMcpDisabled, setMcpEnabled } from '../installer/config.js';
-import { installSkill, recordSkillFiles, removeAddedSkillFiles, removeManagedSkillFiles } from '../installer/skill.js';
+import { installSkill, recordSkillFiles, removeAddedSkillFiles, removeManagedSkillFiles, skillConflictMessage, skillRefreshMessage } from '../installer/skill.js';
 import { agentsFile, ensureJuTellAgentsBlock, removeJuTellAgentsBlock } from '../installer/agents.js';
 import { registerMcp, removeMcp } from '../config/managed.js';
 import { removeOpenCodeMcp, readOpenCodeRegistration, setOpenCodeEnabled } from '../installer/opencode.js';
@@ -20,15 +20,15 @@ export async function setupCommand(paths: ScopePaths, options: CliOptions, io: C
   const currentConfig = await readBridgeConfig(paths);
   const plannedProfile = options.profile ?? currentConfig.config.profile;
   const migrationNote = currentConfig.source === 'legacy' ? '\n기존 설정을 읽었습니다. 승인하면 .jutell.json을 만들고 기존 파일은 보존합니다.\n' : '';
-  if (!options.oneCommand) io.write(`JuTell 설치 미리보기\n${migrationNote}\n\n운영체제: ${operatingSystem()}\nNode: ${process.versions.node} (${nodeMajorVersion() >= 18 ? '지원 범위' : '낮은 버전'})\nAI Agent Provider 감지: ${codexDetected() ? '현재 지원 Provider 확인' : '직접 확인 필요'}\n설치 범위: ${scopeLabel(paths.scope)}\nProfile: ${plannedProfile}\nSkill: ${options.mcpOnly ? '변경하지 않음' : '설치 또는 기존 파일 유지'}\nMCP: ${options.skillOnly ? '변경하지 않음' : '기존 설정을 보존하고 관리 블록 등록'}\n기본 자동 시작: OFF\n`);
+  if (!options.oneCommand) io.write(`JuTell 설치 미리보기\n${migrationNote}\n\n운영체제: ${operatingSystem()}\nNode: ${process.versions.node} (${nodeMajorVersion() >= 18 ? '지원 범위' : '낮은 버전'})\nAI Agent Provider 감지: ${codexDetected() ? '현재 지원 Provider 확인' : '직접 확인 필요'}\n설치 범위: ${scopeLabel(paths.scope)}\nProfile: ${plannedProfile}\nSkill: ${options.mcpOnly ? '변경하지 않음' : '설치 (JuTell이 설치한 예전 안내 파일은 새 버전으로 바꾸고, 직접 고친 것은 .jutell-local/backups에 보관. 직접 만든 파일과 링크는 그대로 둠)'}\nMCP: ${options.skillOnly ? '변경하지 않음' : '기존 설정을 보존하고 관리 블록 등록'}\n기본 자동 시작: OFF\n`);
   if (!options.yes && !(await io.ask('위 변경을 진행할까요?'))) return { cancelled: true };
 
   const configSnapshot = await snapshot(paths.configFile);
   const codexSnapshot = await snapshot(codexScopedPaths(paths).codexConfigFile);
   const agentsSnapshot = paths.scope === 'project' ? await snapshot(agentsFile(paths.targetRoot)) : undefined;
-  let skillResult: { conflicts: string[]; changed: string[] } = { conflicts: [], changed: [] };
+  let skillResult: Awaited<ReturnType<typeof installSkill>> = { conflicts: [], changed: [], replaced: [], backedUp: [], backedUpLegacy: [], backupDir: undefined };
   try {
-    skillResult = options.mcpOnly ? { conflicts: [], changed: [] } : await installSkill(assets().skill, paths.skillRoot);
+    skillResult = options.mcpOnly ? skillResult : await installSkill(assets().skill, paths.skillRoot, paths);
     const ensured = await ensureBridgeConfig(paths, options.profile);
     if (paths.scope === 'project' && !options.mcpOnly) await ensureJuTellAgentsBlock(paths.targetRoot);
     if (!options.skillOnly) {
@@ -40,10 +40,13 @@ export async function setupCommand(paths: ScopePaths, options: CliOptions, io: C
       const installationRegistration = await registerMcp(codexScopedPaths(paths), packageRoot(), options.activateMcp || ensured.config.mcp?.enabled === true);
       if (installationRegistration.restoredHint) io.write("이전에 직접 넣은 jutell 설정이 config.toml에 주석으로 남아 있어요. 다시 쓰려면 '# jutell 제거로 주석 처리됨' 아래 줄 맨 앞의 '# '을 지우세요.");
     }
-    await recordSkillFiles(paths, skillResult.changed);
+    await recordSkillFiles(paths, [...skillResult.changed, ...skillResult.replaced]);
     if (!options.oneCommand) {
-      io.write(`설치가 완료되었습니다.\n\n설치 범위: ${scopeLabel(paths.scope)}\nProfile: ${ensured.config.profile}\nSkill: ${skillResult.conflicts.length ? '충돌 파일을 보존함' : '설치됨'}\nMCP: ${options.skillOnly ? '변경하지 않음' : `등록됨 (${options.activateMcp ? '활성화' : '기본 활성화: 꺼짐'})`}\n설정: ${safeLocation(paths.scope, 'config')}${options.skillOnly ? '' : `\nCodex MCP: ${safeLocation(paths.scope, 'codex')} (Codex는 전역 설정만 읽습니다)`}\n\n다음 실행: jutell`);
-      if (skillResult.conflicts.length) io.write(`\n주의: 기존 파일을 덮어쓰지 않았습니다: ${skillResult.conflicts.join(', ')}`);
+      io.write(`설치가 완료되었습니다.\n\n설치 범위: ${scopeLabel(paths.scope)}\nProfile: ${ensured.config.profile}\nSkill: ${skillResult.replaced.length ? '새 버전으로 바꿈' : skillResult.conflicts.length ? '직접 만든 파일은 그대로 둠' : '설치됨'}\nMCP: ${options.skillOnly ? '변경하지 않음' : `등록됨 (${options.activateMcp ? '활성화' : '기본 활성화: 꺼짐'})`}\n설정: ${safeLocation(paths.scope, 'config')}${options.skillOnly ? '' : `\nCodex MCP: ${safeLocation(paths.scope, 'codex')} (Codex는 전역 설정만 읽습니다)`}\n\n다음 실행: jutell`);
+      const refreshed = skillRefreshMessage(skillResult, paths);
+      if (refreshed) io.write(`\n${refreshed}`);
+      const kept = skillConflictMessage(skillResult);
+      if (kept) io.write(`\n주의: ${kept}`);
     }
     return { cancelled: false, skillResult };
   } catch (error) {
@@ -60,9 +63,9 @@ export async function enableCommand(paths: ScopePaths, options: CliOptions, io: 
   const configSnapshot = await snapshot(paths.configFile);
   const codexSnapshot = await snapshot(codexScopedPaths(paths).codexConfigFile);
   const agentsSnapshot = paths.scope === 'project' ? await snapshot(agentsFile(paths.targetRoot)) : undefined;
-  let skillResult: { conflicts: string[]; changed: string[] } = { conflicts: [], changed: [] };
+  let skillResult: Awaited<ReturnType<typeof installSkill>> = { conflicts: [], changed: [], replaced: [], backedUp: [], backedUpLegacy: [], backupDir: undefined };
   try {
-    skillResult = options.mcpOnly ? { conflicts: [], changed: [] } : await installSkill(assets().skill, paths.skillRoot);
+    skillResult = options.mcpOnly ? skillResult : await installSkill(assets().skill, paths.skillRoot, paths);
     const config = await ensureBridgeConfig(paths, undefined);
     if (paths.scope === 'project' && !options.mcpOnly) await ensureJuTellAgentsBlock(paths.targetRoot);
     if (!options.skillOnly) {
@@ -73,11 +76,14 @@ export async function enableCommand(paths: ScopePaths, options: CliOptions, io: 
       const opencode = await readOpenCodeRegistration(paths, packageRoot(), enabled.mcp?.enabled === true);
       if (opencode.registered) await setOpenCodeEnabled(paths, packageRoot(), true);
     }
-    await recordSkillFiles(paths, skillResult.changed);
+    await recordSkillFiles(paths, [...skillResult.changed, ...skillResult.replaced]);
     if (!options.oneCommand) {
       io.write(`활성화했습니다. Skill: ${options.mcpOnly ? '변경하지 않음' : '사용 가능'}, MCP: ${options.skillOnly ? '변경하지 않음' : '활성화됨'}.`);
       if (!options.skillOnly) io.write('새 AI Agent 세션 또는 재시작이 필요할 수 있습니다.');
-      if (skillResult.conflicts.length) io.write(`주의: 기존 Skill 파일은 덮어쓰지 않았습니다: ${skillResult.conflicts.join(', ')}`);
+      const refreshed = skillRefreshMessage(skillResult, paths);
+      if (refreshed) io.write(refreshed);
+      const kept = skillConflictMessage(skillResult);
+      if (kept) io.write(`주의: ${kept}`);
     }
     return { cancelled: false, config };
   } catch (error) {
