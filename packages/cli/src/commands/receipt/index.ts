@@ -5,6 +5,10 @@ import { readBridgeConfig } from '../../config/managed.js';
 import type { CliIo, ScopePaths } from '../../types.js';
 import { renderReceipt } from './render.js';
 
+const RECEIPT_INPUT_EXAMPLE = `.jutell-local/receipt.json 형식:
+{"done":["바꾼 일 한 줄"],"checks":[{"what":"확인한 것","result":"확인함","how":"실제로 읽거나 실행한 것(쉬운 말)"},{"what":"못 한 것","result":"안 해봄","reason":"이유"}],"next":{"continue":[],"nice":[],"stop":["여기서 멈춰도 됨"]}}
+(done 최대 5, checks 최대 4, next 합쳐 최대 3, 명령어 대신 쉬운 말, status 칸 금지)`;
+
 type ReceiptSource = { kind: 'default' } | { kind: 'file'; file: string };
 
 function parseArgs(args: string[]): ReceiptSource {
@@ -13,6 +17,11 @@ function parseArgs(args: string[]): ReceiptSource {
     return { kind: 'file', file: args[1] };
   }
   throw new Error('사용법: jutell receipt [--file <경로>|--file -]');
+}
+
+function withReceiptInputExample(error: unknown): Error {
+  const message = error instanceof Error ? error.message : String(error);
+  return new Error(`${message}\n${RECEIPT_INPUT_EXAMPLE}`);
 }
 
 async function readStdin(input: Readable): Promise<string> {
@@ -109,6 +118,11 @@ export async function receiptCommand(
   input: Readable = process.stdin,
   now = new Date(),
 ): Promise<number> {
+  if (args.length === 1 && (args[0] === '--help' || args[0] === '-h')) {
+    io.write(RECEIPT_INPUT_EXAMPLE);
+    return 0;
+  }
+
   const { config } = await readBridgeConfig(paths);
   if (!config.features.receiptReport) {
     io.write('영수증이 꺼져 있어요');
@@ -116,16 +130,28 @@ export async function receiptCommand(
   }
 
   const source = parseArgs(args);
-  const raw = await readReceipt(source, paths, input);
+  let raw: string;
+  try {
+    raw = await readReceipt(source, paths, input);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw withReceiptInputExample(error);
+    }
+    throw error;
+  }
   let receipt: unknown;
   try {
     receipt = JSON.parse(raw);
   } catch {
-    throw new Error('영수증 입력을 JSON으로 읽지 못했습니다.');
+    throw withReceiptInputExample(new Error('영수증 입력을 JSON으로 읽지 못했습니다.'));
   }
 
   const time = receiptTimestamp(now);
-  renderReceipt(receipt, time.display);
+  try {
+    renderReceipt(receipt, time.display);
+  } catch (error) {
+    throw withReceiptInputExample(error);
+  }
   const output = await saveReceipt(paths, receipt, time.display, time.filename);
   io.write(output);
   return 0;

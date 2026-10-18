@@ -181,6 +181,30 @@ describe('receipt command', () => {
     if (temporaryRoot) await fs.rm(temporaryRoot, { recursive: true, force: true });
   });
 
+  it('shows the receipt input example for --help without creating reports', async () => {
+    await setup();
+
+    expect(await runInProject(['receipt', '--help'])).toBe(0);
+    expect(output).toHaveLength(1);
+    expect(output[0]).toContain('.jutell-local/receipt.json 형식:');
+    expect(output[0]).toContain('"result":"확인함"');
+    await expect(fs.access(path.join(paths.dataRoot, 'reports'))).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('appends the receipt input example when receipt.json is missing', async () => {
+    await setup();
+    let status = 0;
+    try {
+      await receiptCommand(paths, [], io);
+    } catch (error) {
+      status = 1;
+      errors.push(`오류: ${(error as Error).message}`);
+    }
+
+    expect(status).toBe(1);
+    expect(errors.join('\n')).toContain('"result":"확인함"');
+  });
+
   it('reads and removes the default input, saves the report, and creates only the local ignore file', async () => {
     await setup();
     const defaultInput = path.join(paths.dataRoot, 'receipt.json');
@@ -260,7 +284,8 @@ describe('receipt command', () => {
     await fs.writeFile(defaultInput, JSON.stringify({ ...sample, status: '확인 완료' }), 'utf8');
 
     expect(await runInProject(['receipt'])).toBe(1);
-    expect(errors).toEqual(['오류: status 항목은 영수증 입력에 넣을 수 없어요.']);
+    expect(errors[0]).toContain('오류: status 항목은 영수증 입력에 넣을 수 없어요.');
+    expect(errors[0]).toContain('"result":"확인함"');
 
     await expect(fs.access(defaultInput)).rejects.toMatchObject({ code: 'ENOENT' });
     await expect(fs.access(path.join(paths.dataRoot, 'reports'))).rejects.toMatchObject({ code: 'ENOENT' });
