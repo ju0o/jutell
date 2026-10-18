@@ -357,6 +357,10 @@ describe('receipt command', () => {
     await fs.writeFile(path.join(paths.targetRoot, 'new-file.txt'), 'new\n', 'utf8');
     await fs.mkdir(path.join(paths.targetRoot, '.jutell-local'), { recursive: true });
     await fs.writeFile(path.join(paths.targetRoot, '.jutell-local', 'private.txt'), 'local\n', 'utf8');
+    await fs.mkdir(path.join(paths.targetRoot, '.agents', 'skills', 'beginner-bridge'), { recursive: true });
+    await fs.writeFile(path.join(paths.targetRoot, '.agents', 'skills', 'beginner-bridge', 'SKILL.md'), 'x\n', 'utf8');
+    await fs.writeFile(path.join(paths.targetRoot, '.jutell.json'), '{}\n', 'utf8');
+    await fs.writeFile(path.join(paths.targetRoot, 'AGENTS.md'), 'x\n', 'utf8');
     const stdin = new PassThrough();
     stdin.end(JSON.stringify({ done: ['한 일'] }));
 
@@ -368,6 +372,9 @@ describe('receipt command', () => {
     expect(changedFiles).toContain('tracked.txt');
     expect(changedFiles).toContain('new-file.txt');
     expect(changedFiles).not.toContain('.jutell-local');
+    expect(changedFiles).not.toContain('beginner-bridge');
+    expect(changedFiles).not.toContain('.jutell.json');
+    expect(changedFiles).not.toContain('AGENTS.md');
   });
 
   it('does not accept inline JSON or incomplete --file arguments', async () => {

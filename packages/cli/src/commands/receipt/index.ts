@@ -77,7 +77,10 @@ function pathsFromStatus(stdout: string): string[] {
     const statusPath = line.slice(3);
     const renameAt = statusPath.lastIndexOf(' -> ');
     const file = (renameAt >= 0 ? statusPath.slice(renameAt + 4) : statusPath).replace(/^\.\//, '');
-    if (file === '.jutell-local' || file.startsWith('.jutell-local/')) continue;
+    // JuTell's own setup files are not the user's work; an untracked AGENTS.md/CLAUDE.md was created by JuTell.
+    if (file === '.jutell-local' || file.startsWith('.jutell-local/') || file === '.jutell.json') continue;
+    if (file.startsWith('.agents/skills/beginner-bridge/') || file.startsWith('.claude/skills/beginner-bridge/')) continue;
+    if (line.startsWith('??') && (file === 'AGENTS.md' || file === 'CLAUDE.md')) continue;
     files.push(file);
   }
   return files;
