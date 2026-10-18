@@ -61,6 +61,12 @@ describe('receipt renderer', () => {
     expect(first).not.toMatch(/확인 완료|일부 확인|추가 확인 필요/);
   });
 
+  it('rejects each forbidden phrase when it appears in receipt text', () => {
+    for (const phrase of ['확인 완료', '일부 확인', '추가 확인 필요']) {
+      expect(() => renderReceipt({ ...sample, done: [phrase] }, timestamp)).toThrow();
+    }
+  });
+
   it('prints 없음 for empty groups and masks absolute paths in text', () => {
     const output = renderReceipt({
       done: ['/home/jo/sample.ts'],
@@ -189,6 +195,10 @@ describe('receipt command', () => {
     expect(reportFiles[0]).toMatch(/^\d{4}-\d{2}-\d{2}-\d{6}\.md$/);
     expect(output).toHaveLength(1);
     expect(output[0]).toContain(`저장됨: .jutell-local/reports/${reportFiles[0]}`);
+    expect(output[0].split('\n').map((line) => line.trim()).filter((line) => line.startsWith('저장됨: '))).toEqual([
+      `저장됨: .jutell-local/reports/${reportFiles[0]}`,
+    ]);
+    expect(output[0]).not.toContain(path.join(paths.dataRoot, 'reports'));
     const report = path.join(paths.dataRoot, 'reports', reportFiles[0]);
     expect(await fs.readFile(report, 'utf8')).toBe(`${output[0]}\n`);
     await expect(fs.access(defaultInput)).rejects.toMatchObject({ code: 'ENOENT' });
