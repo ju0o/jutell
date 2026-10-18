@@ -5,7 +5,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { doctorCommand, statusCommand } from '../dist/commands/status.js';
-import { resolveScope } from '../dist/config/paths.js';
+import { codexScopedPaths, packageRoot, resolveScope } from '../dist/config/paths.js';
+import { registerMcp } from '../dist/config/managed.js';
 import type { CliIo, CliOptions, ScopePaths } from '../src/types.js';
 
 const temporaryRoots: string[] = [];
@@ -184,4 +185,18 @@ describe('Codex jutell approval check', () => {
     const noColorDoctor = await runDoctor(paths, false, true);
     expect(noColorDoctor.output).not.toMatch(/\u001b\[[0-9;]*m/);
   }, 15000);
+
+  it('treats a user-chosen prompt tool setting outside the block as 주의 with a factual note', async () => {
+    const { paths, codexConfig } = await fixture();
+    await fs.writeFile(codexConfig, '[mcp_servers.jutell.tools.get_bridge_status]\napproval_mode = "prompt"\n', 'utf8');
+    await registerMcp(codexScopedPaths(paths), packageRoot(), false);
+
+    const { checks } = await runDoctor(paths, true);
+    const check = checks.find((item) => item.name === '자동 실행(codex exec)에서 jutell 도구 호출');
+    expect(check?.status).toBe('주의');
+    expect(check?.detail).toContain('이 도구는 직접 정한 대로 매번 승인을 물어요.');
+    expect(check?.detail).toContain('config.toml의 해당 줄을 지우세요');
+    expect(check?.detail).not.toContain('jutell use codex');
+    expect(await fs.readFile(codexConfig, 'utf8')).toContain('approval_mode = "prompt"');
+  });
 });
