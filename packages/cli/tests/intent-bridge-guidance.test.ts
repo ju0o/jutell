@@ -822,9 +822,9 @@ describe('Case D shape (dogfood-reproduced) is documented as a known, unsolved l
     expect(skill).toMatch(/필드 제거로 외부 서비스 연결처럼 이미 중요한 미확인 사항으로 보는 항목에 새로 의존하게 됐는데 그 연결이 확인되지 않은 경우/);
   });
 
-  it('the spec worked example shows the disclosure in prose, with 일부 확인 as the resulting status (not hardcoded elsewhere, no field)', async () => {
+  it('the spec worked example shows the disclosure in prose, as a plain 확인 못 한 것 line (no status line, no meta sentence)', async () => {
     const spec = await fs.readFile(reportSpecFile, 'utf8');
-    expect(spec).toMatch(/> 위험과 사용자 확인: 외부 신원 인증 서비스 실제 연결은 확인하지 못했습니다\.\n> 확인 못 한 것: 외부 신원 인증 서비스 실제 연결 \(그래서 "확인 완료"라고 쓰지 않습니다\)/);
+    expect(spec).toMatch(/> 위험과 사용자 확인: 외부 신원 인증 서비스 실제 연결은 확인하지 못했습니다\.\n> 확인 못 한 것: 외부 신원 인증 서비스 실제 연결\n/);
   });
 });
 
