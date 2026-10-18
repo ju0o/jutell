@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
+import { readBridgeConfig } from '../../config/managed.js';
 import type { CliIo, ScopePaths } from '../../types.js';
 import { renderReceipt } from './render.js';
 
@@ -108,6 +109,12 @@ export async function receiptCommand(
   input: Readable = process.stdin,
   now = new Date(),
 ): Promise<number> {
+  const { config } = await readBridgeConfig(paths);
+  if (!config.features.receiptReport) {
+    io.write('영수증이 꺼져 있어요');
+    return 0;
+  }
+
   const source = parseArgs(args);
   const raw = await readReceipt(source, paths, input);
   let receipt: unknown;

@@ -27,6 +27,7 @@ JuTell 보고서의 선택 기능을 프로젝트별 로컬 설정으로 조절�
     "riskAssessment": true,
     "userActions": true,
     "nextActionSuggestions": true,
+    "receiptReport": true,
     "requestClarificationGuide": true,
     "manualEditGuidance": true,
     "requestBuilder": true
@@ -57,13 +58,14 @@ JSON에는 주석을 넣지 않는다.
 | `riskAssessment` | 위험도와 위험 근거 설명 |
 | `userActions` | 사용자 확인·추가 테스트·설정·결정 안내 |
 | `nextActionSuggestions` | 보고서 끝에 다음 행동 제안 최대 3개 추가 |
+| `receiptReport` | CLI `jutell receipt` 작업 영수증 생성·저장 사용 여부 |
 | `requestClarificationGuide` | 요청이 모호할 때 결과가 크게 달라지는 항목을 작업 전에 확인 |
 | `manualEditGuidance` | 사용자가 직접 파일을 고칠 때 위치와 주의점 안내 |
 | `requestBuilder` | 요청 만들기 템플릿 제공 안내 (보고서와 무관) |
 
 기본값은 모든 Feature가 `true`다. Feature 값은 반드시 boolean이어야 한다.
 
-`nextActionSuggestions`가 꺼지면 보고서 끝의 다음 행동 제안을 생략한다. 단, 안전·데이터 손실과 관련된 사용자 행동은 `userActions`와 같은 강제 예외로 계속 보고한다. `requestBuilder`는 보고서 내용이 아니라 요청 만들기 탭의 템플릿 제공 여부만 조절한다. `explainedDiff`는 근거가 확인된 변경에만 설명을 덧붙인다. 변경 이유나 다듬기 위치의 근거가 없으면 추측으로 만들지 않고 "변경 이유는 Agent 결과에서 확인되지 않았습니다."처럼 표시하거나 해당 항목을 생략한다. 데이터 손실·보안 관련 중요 변경은 꺼져 있어도 짧게 남긴다.
+`nextActionSuggestions`가 꺼지면 보고서 끝의 다음 행동 제안을 생략한다. 단, 안전·데이터 손실과 관련된 사용자 행동은 `userActions`와 같은 강제 예외로 계속 보고한다. `receiptReport`가 켜져 있으면 `jutell receipt` 명령을 사용할 수 있고, 꺼져 있으면 영수증을 출력하거나 저장하지 않는다. 이 Feature는 MCP 보고 규칙에 선택 항목을 추가하지 않는다. `requestBuilder`는 보고서 내용이 아니라 요청 만들기 탭의 템플릿 제공 여부만 조절한다. `explainedDiff`는 근거가 확인된 변경에만 설명을 덧붙인다. 변경 이유나 다듬기 위치의 근거가 없으면 추측으로 만들지 않고 "변경 이유는 Agent 결과에서 확인되지 않았습니다."처럼 표시하거나 해당 항목을 생략한다. 데이터 손실·보안 관련 중요 변경은 꺼져 있어도 짧게 남긴다.
 
 ## 4. Profile
 

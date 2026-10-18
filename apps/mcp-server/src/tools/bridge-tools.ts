@@ -108,7 +108,7 @@ export function voiceRule(config: BridgeConfig) {
 }
 
 export function beginnerReportRules(config: BridgeConfig) {
-  const active = Object.entries(config.features).filter(([, enabled]) => enabled).map(([id]) => FEATURE_CATALOG[id as FeatureId].label);
+  const active = Object.entries(config.features).filter(([id, enabled]) => id !== 'receiptReport' && enabled).map(([id]) => FEATURE_CATALOG[id as FeatureId].label);
   return {
     language: '비개발자가 이해할 수 있는 쉬운 한국어',
     activeReportSections: active,
@@ -119,6 +119,7 @@ export function beginnerReportRules(config: BridgeConfig) {
     diffRule: '코드 또는 Diff를 사용자에게 보여줄 경우, 바로 뒤에 무엇을 수정했고 사용자에게 어떤 영향이 있는지 기능 단위로 설명합니다.',
     ...(config.features.explainedDiff ? { explainedDiffRule } : {}),
     ...(config.features.requestBuilder ? { handoffRule } : {}),
+    ...(config.features.receiptReport ? {} : { receiptReport: false }),
     safetyRequirements: SAFETY_REQUIREMENTS,
     notCollected: ['프로젝트 코드', 'Git diff', 'Prompt', 'AI 답변 원문', '파일 경로', '비밀정보'],
   };

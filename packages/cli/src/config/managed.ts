@@ -65,13 +65,13 @@ function userApprovalOverrideTools(content: string) {
   });
 }
 
-export const FEATURE_IDS = ['changeSummary', 'userVisibleChanges', 'internalChanges', 'mainFiles', 'explainedDiff', 'glossary', 'validationResults', 'riskAssessment', 'userActions', 'nextActionSuggestions', 'requestClarificationGuide', 'manualEditGuidance', 'requestBuilder'];
+export const FEATURE_IDS = ['changeSummary', 'userVisibleChanges', 'internalChanges', 'mainFiles', 'explainedDiff', 'glossary', 'validationResults', 'riskAssessment', 'userActions', 'nextActionSuggestions', 'receiptReport', 'requestClarificationGuide', 'manualEditGuidance', 'requestBuilder'];
 export const PROFILES = ['minimal', 'balanced', 'learning', 'detailed'] as const;
 export const PROFILE_FEATURES: Record<(typeof PROFILES)[number], Record<string, boolean>> = {
-  minimal: { changeSummary: true, userVisibleChanges: true, internalChanges: false, mainFiles: false, explainedDiff: false, glossary: false, validationResults: true, riskAssessment: false, userActions: true, nextActionSuggestions: false, requestClarificationGuide: false, manualEditGuidance: false, requestBuilder: true },
-  balanced: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, explainedDiff: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true },
-  learning: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, explainedDiff: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true },
-  detailed: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, explainedDiff: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true },
+  minimal: { changeSummary: true, userVisibleChanges: true, internalChanges: false, mainFiles: false, explainedDiff: false, glossary: false, validationResults: true, riskAssessment: false, userActions: true, nextActionSuggestions: false, receiptReport: true, requestClarificationGuide: false, manualEditGuidance: false, requestBuilder: true },
+  balanced: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, explainedDiff: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, receiptReport: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true },
+  learning: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, explainedDiff: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, receiptReport: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true },
+  detailed: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, explainedDiff: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, receiptReport: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true },
 };
 
 const fallbackConfig: BridgeConfig = {

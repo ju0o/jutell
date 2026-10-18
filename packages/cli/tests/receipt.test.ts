@@ -196,6 +196,27 @@ describe('receipt command', () => {
     expect(await fs.readFile(path.join(paths.targetRoot, '.gitignore'), 'utf8')).toBe('keep-me\n');
   });
 
+  it('prints one line and saves nothing when receiptReport is disabled', async () => {
+    await setup();
+    await fs.writeFile(paths.configFile, JSON.stringify({
+      version: 1,
+      profile: 'minimal',
+      features: { receiptReport: false },
+      limits: { maxMainFiles: 3, maxGlossaryTerms: 1, compactReportMaxSentences: 8 },
+    }), 'utf8');
+    await fs.mkdir(paths.dataRoot, { recursive: true });
+    const defaultInput = path.join(paths.dataRoot, 'receipt.json');
+    await fs.writeFile(defaultInput, JSON.stringify(sample), 'utf8');
+
+    expect(await runInProject(['receipt'])).toBe(0);
+
+    expect(output).toEqual(['영수증이 꺼져 있어요']);
+    expect(errors).toEqual([]);
+    expect(await fs.readFile(defaultInput, 'utf8')).toBe(JSON.stringify(sample));
+    await expect(fs.access(path.join(paths.dataRoot, 'reports'))).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(fs.access(path.join(paths.dataRoot, '.gitignore'))).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
   it('adds numeric suffixes when report names already exist', async () => {
     await setup();
     const source = path.join(temporaryRoot, 'input.json');
