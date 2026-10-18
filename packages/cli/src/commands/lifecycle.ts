@@ -133,7 +133,7 @@ export async function uninstallCommand(paths: ScopePaths, options: CliOptions, i
   if (!codexSkipped) {
     const removal = await removeMcp(codexScopedPaths(paths), packageRoot());
     if (removal.commentedTables.length > 0) {
-      io.write(`직접 넣은 jutell 설정(${removal.commentedTables.join(', ')})은 지우지 않고 주석으로 남겼어요. 백업: ${removal.backupPath}`);
+      io.write(`직접 넣은 jutell 설정(${removal.commentedTables.join(', ')})은 지우지 않고 주석으로 남겼어요. 바로 전 백업: ${removal.backupPath}, 처음 원본: ${codexScopedPaths(paths).codexConfigFile}.jutell-original`);
     }
   }
   await removeManagedSkillFiles(assets().skill, paths.skillRoot, paths);

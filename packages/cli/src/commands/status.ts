@@ -207,7 +207,7 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   checks.push({ name: '포트 사용 가능 여부', status: await portAvailable() ? '정상' : '주의', detail: '127.0.0.1의 임시 포트를 확인했습니다.' });
   checks.push({ name: '쓰기 권한', status: await writeCheck(paths) ? '정상' : '오류', detail: '로컬 상태 폴더에 임시 파일을 만들고 삭제했습니다.' });
   const backupExists = await exists(`${codexPaths.codexConfigFile}.previous`);
-  checks.push({ name: '설정 백업 상태', status: !await exists(codexPaths.codexConfigFile) || backupExists ? '정상' : '주의', detail: !await exists(codexPaths.codexConfigFile) ? '아직 Provider 설정을 변경하지 않았습니다.' : backupExists ? '이전 설정 백업을 확인했습니다.' : '기존 Provider 설정 백업이 없습니다.' });
+  checks.push({ name: '설정 백업 상태', status: !await exists(codexPaths.codexConfigFile) || backupExists ? '정상' : '주의', detail: !await exists(codexPaths.codexConfigFile) ? '아직 Provider 설정을 변경하지 않았습니다.' : backupExists ? '이전 설정 백업을 확인했습니다. JuTell이 처음 바꾸기 전 원본은 config.toml.jutell-original에 그대로 남아 있습니다.' : '기존 Provider 설정 백업이 없습니다.' });
   const externalCode = /(?:https?:\/\/(?!127\.0\.0\.1)|https?\.request|net\.connect)/i.test(mcpText);
   checks.push({ name: '외부 전송 코드', status: externalCode ? '오류' : '정상', detail: externalCode ? 'MCP 빌드에서 외부 네트워크 관련 코드를 찾았습니다.' : 'MCP 빌드에 외부 전송 패턴이 없습니다.' });
   const hasRegisteredMcp = registration.registered || opencode.registered || claude.registered;

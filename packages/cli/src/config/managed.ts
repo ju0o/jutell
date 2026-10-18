@@ -1,5 +1,5 @@
 import { parse } from 'smol-toml';
-import { promises as fs } from 'node:fs';
+import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
 import { assets } from './paths.js';
 import type { BridgeConfig, FileSnapshot, ScopePaths } from '../types.js';
@@ -123,6 +123,13 @@ export async function writeTextSafely(file: string, content: string) {
 
 export async function backupFile(file: string) {
   if (!(await exists(file))) return undefined;
+  // First-ever backup: kept forever so the user's original survives any number of writes.
+  try {
+    await fs.copyFile(file, `${file}.jutell-original`, fsConstants.COPYFILE_EXCL);
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+  }
+  // Immediately previous version: overwritten on every write.
   const backupPath = `${file}.previous`;
   await fs.copyFile(file, backupPath);
   return backupPath;
