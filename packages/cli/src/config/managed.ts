@@ -298,7 +298,7 @@ export async function removeMcp(paths: ScopePaths, packageRoot: string) {
 
 export async function readVersionInfo() {
   const content = await readText(assets().version);
-  const fallback = { cli: '0.2.1', skill: '확인 필요', mcp: '0.1.0', admin: '0.1.0' };
+  const fallback = { cli: '2.0.1', skill: '확인 필요', mcp: '0.1.0', admin: '0.1.0' };
   if (!content) return fallback;
   try { return JSON.parse(content) as { cli: string; skill: string; mcp: string; admin: string }; } catch { return fallback; }
 }
