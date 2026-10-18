@@ -1,6 +1,8 @@
 import { promises as fs } from 'node:fs';
+import { spawnSync } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { doctorCommand, statusCommand } from '../dist/commands/status.js';
 import { resolveScope } from '../dist/config/paths.js';
@@ -15,6 +17,7 @@ const tools = [
   'get_safe_report_requirements',
 ];
 const warning = '자동 실행에서는 jutell 도구가 막힙니다. `jutell use codex`로 고칠 수 있어요';
+const cliEntry = fileURLToPath(new URL('../dist/index.js', import.meta.url));
 
 async function fixture() {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-codex-approval-'));
@@ -30,7 +33,7 @@ async function fixture() {
   const paths = resolveScope('project', project);
   const codexConfig = path.join(home, '.codex', 'config.toml');
   await fs.mkdir(path.dirname(codexConfig), { recursive: true });
-  return { paths, codexConfig };
+  return { paths, codexConfig, project, home };
 }
 
 function codexConfigText(defaultMode: string, perToolApprove: boolean, approvalPolicyNever = false) {
@@ -75,12 +78,46 @@ async function runStatus(paths: ScopePaths, json = false) {
   return { status, output: lines.join('\n') };
 }
 
+function spawnDoctor(project: string, home: string) {
+  return spawnSync(process.execPath, [cliEntry, 'doctor', '--json', '--no-funding'], {
+    cwd: project,
+    env: {
+      ...process.env,
+      BEGINNER_BRIDGE_HOME: home,
+      CODEX_HOME: path.join(home, '.codex'),
+      CLAUDE_CONFIG_DIR: home,
+    },
+    encoding: 'utf8',
+    timeout: 20000,
+  });
+}
+
 afterEach(async () => {
   vi.unstubAllEnvs();
   for (const root of temporaryRoots.splice(0)) await fs.rm(root, { recursive: true, force: true });
 });
 
 describe('Codex jutell approval check', () => {
+  it('built doctor exits nonzero when any check is an error', async () => {
+    const { paths, codexConfig, project, home } = await fixture();
+    await fs.writeFile(codexConfig, codexConfigText('prompt', false), 'utf8');
+
+    const errorRun = spawnDoctor(project, home);
+    expect(errorRun.error).toBeUndefined();
+    expect(errorRun.status).toBe(1);
+    const errorChecks = JSON.parse(errorRun.stdout) as Array<{ name: string; status: string }>;
+    expect(errorChecks.find((check) => check.name === '자동 실행(codex exec)에서 jutell 도구 호출')?.status).toBe('오류');
+    expect(errorChecks.some((check) => check.status === '오류')).toBe(true);
+
+    await fs.writeFile(codexConfig, codexConfigText('prompt', true), 'utf8');
+    const noApprovalErrorRun = spawnDoctor(project, home);
+    expect(noApprovalErrorRun.error).toBeUndefined();
+    const noApprovalErrorChecks = JSON.parse(noApprovalErrorRun.stdout) as Array<{ name: string; status: string }>;
+    expect(noApprovalErrorChecks.find((check) => check.name === '자동 실행(codex exec)에서 jutell 도구 호출')?.status).toBe('정상');
+    const hasError = noApprovalErrorChecks.some((check) => check.status === '오류');
+    expect(noApprovalErrorRun.status).toBe(hasError ? 1 : 0);
+  }, 30000);
+
   it('server prompt default without per-tool overrides is an error and adds the same status warning', async () => {
     const { paths, codexConfig } = await fixture();
     await fs.writeFile(codexConfig, codexConfigText('prompt', false), 'utf8');

@@ -25,6 +25,7 @@ export async function run(argv: string[] = process.argv.slice(2), io: CliIo = cr
   const fundingSuppressed = argv.includes('--no-funding');
   if (fundingSuppressed) argv = argv.filter((a) => a !== '--no-funding');
   if (argv.includes('--version')) { io.write((await readVersionInfo()).cli); return 0; }
+  let exitCode = 0;
   try {
     const { command, options, defaultInvocation, extraArgs } = parseOptions(argv);
     if (command === 'help') { printHelp(io); return 0; }
@@ -38,7 +39,10 @@ export async function run(argv: string[] = process.argv.slice(2), io: CliIo = cr
     else if (command === 'status') await statusCommand(paths, options, io);
     else if (command === 'enable') await enableCommand(paths, options, io);
     else if (command === 'disable') await disableCommand(paths, options, io);
-    else if (command === 'doctor') await doctorCommand(paths, options, io);
+    else if (command === 'doctor') {
+      const checks = await doctorCommand(paths, options, io);
+      if (checks.some((check) => check.status === '오류')) exitCode = 1;
+    }
     else if (command === 'uninstall') await uninstallCommand(paths, options, io);
     else if (command === 'provider') await providerCommand(paths, options, io, extraArgs);
     else if (command === 'use') await useCommand(paths, options, io, [command, ...extraArgs]);
@@ -50,7 +54,7 @@ export async function run(argv: string[] = process.argv.slice(2), io: CliIo = cr
     else if (command === 'session') await sessionCommand(paths, options, io, extraArgs);
     else throw new Error(`알 수 없는 명령입니다: ${command}`);
     maybeShowFundingNotice(paths, io, fundingSuppressed);
-    return 0;
+    return exitCode;
   } catch (error) {
     const message = error instanceof Error ? error.message : '작업을 처리하지 못했습니다.';
     io.error(`오류: ${safeError(message, argv.includes('--verbose'))}`);
