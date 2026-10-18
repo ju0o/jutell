@@ -277,9 +277,10 @@ limitations, see [Product scope](docs/PRODUCT_SCOPE.md).
 
 ## What's new
 
-**`jutell@2.0.1`** is published on npm. It helps before work starts as well as after it finishes:
-project facts are checked first, only a real decision is asked, and verified / expected /
-not-checked remain separate.
+**`jutell@2.1.0-dev`** is a release candidate on `main` and is not yet published; the latest npm
+release is `jutell@2.0.1`. It helps before work starts as well as after it finishes: project facts
+are checked first, only a real decision is asked, and verified / expected / not-checked remain
+separate.
 
 See the [2.0.0 release showcase](docs/releases/2.0.0-showcase.md) for a real report, a real
 failure, an honest efficiency snapshot, and this release's known limits — not marketing copy, the
@@ -310,7 +311,7 @@ You can tune reports with a project `.jutell.json` file created by the CLI. Avai
 underlying facts or risk.
 
 If you are verifying the repository source instead of installing from npm, `npm pack` creates
-`jutell-2.0.1.tgz` in `packages/cli`; ordinary users do not need this path.
+`jutell-2.1.0-dev.tgz` in `packages/cli`; ordinary users do not need this path.
 
 For contributors: [Changelog](CHANGELOG.md) · [Documentation map](docs/DOCUMENTATION_MAP.md) ·
 [OpenCode connection](docs/PROVIDER_OPENCODE.md) ·
