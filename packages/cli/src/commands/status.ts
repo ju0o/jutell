@@ -15,16 +15,29 @@ async function processAlive(pid: number) {
   try { process.kill(pid, 0); return true; } catch { return false; }
 }
 
+const CODEX_APPROVAL_MODES = ['approve', 'prompt', 'auto', 'writes'] as const;
+type UserApprovalOverride = { tool: string; mode: string };
 const USER_APPROVAL_NOTE = '이 도구는 직접 정한 대로 매번 승인을 물어요. 자동 실행(codex exec)에서는 이 도구가 멈출 수 있어요. 바꾸려면 config.toml의 해당 줄을 지우세요.';
 
 // The approval conflict comes only from the user's own non-approve tool settings outside
 // the managed block (JuTell's block itself is current): a deliberate choice, not an error.
-function isUserOnlyApprovalOverride(registration: { userApprovalOverride?: boolean; canonicalUpToDate?: boolean }) {
+function isUserOnlyApprovalOverride(registration: { userApprovalOverride?: boolean; userApprovalOverrides?: UserApprovalOverride[]; canonicalUpToDate?: boolean }) {
   return Boolean(registration.userApprovalOverride && registration.canonicalUpToDate);
 }
 
-function codexApprovalWarning(approvalPolicyNever: boolean, userOnlyOverride = false) {
-  const warning = userOnlyOverride ? USER_APPROVAL_NOTE : '자동 실행에서는 jutell 도구가 막힙니다. `jutell use codex`로 고칠 수 있어요';
+function codexApprovalWarning(approvalPolicyNever: boolean, userOnlyOverride = false, userApprovalOverrides: UserApprovalOverride[] = []) {
+  const invalidOverride = userOnlyOverride
+    ? userApprovalOverrides.find(({ mode }) => !CODEX_APPROVAL_MODES.includes(mode as (typeof CODEX_APPROVAL_MODES)[number]))
+    : undefined;
+  const promptOverride = userOnlyOverride && userApprovalOverrides.some(({ mode }) => mode === 'prompt');
+  const selectedOverride = userApprovalOverrides[0];
+  const warning = !userOnlyOverride
+    ? '자동 실행에서는 jutell 도구가 막힙니다. `jutell use codex`로 고칠 수 있어요'
+    : invalidOverride
+      ? `config.toml의 ${invalidOverride.tool} approval_mode 값("${invalidOverride.mode}")을 Codex가 읽지 못해요. 그 줄을 고치거나 지우세요.`
+      : promptOverride
+        ? USER_APPROVAL_NOTE
+        : `이 도구는 직접 정한 승인 방식("${selectedOverride?.mode ?? 'prompt'}")을 따라요. 자동 실행(codex exec)에서는 멈출 수 있어요. 바꾸려면 config.toml의 해당 줄을 지우세요.`;
   return approvalPolicyNever ? `${warning} 대화형 Codex에서도 jutell 도구 호출이 차단됩니다.` : warning;
 }
 
@@ -62,7 +75,7 @@ export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
   if (!config.valid) warnings.push('설정 파일을 읽지 못해 balanced 기본값을 사용 중입니다.');
   if (config.invalidLimitsFields.length) warnings.push(`.jutell.json의 limits 값 중 숫자가 아닌 항목이 있어 기본값을 대신 사용했습니다: ${config.invalidLimitsFields.join(', ')}. 실제 파일 값은 바뀌지 않았으니 직접 고쳐주세요.`);
   if (registration.conflict) warnings.push('같은 이름의 관리되지 않는 Codex MCP 설정이 있어 자동 변경하지 않았습니다.');
-  if (registration.approvalConflict) warnings.push(codexApprovalWarning(registration.approvalPolicyNever, isUserOnlyApprovalOverride(registration)));
+  if (registration.approvalConflict) warnings.push(codexApprovalWarning(registration.approvalPolicyNever, isUserOnlyApprovalOverride(registration), registration.userApprovalOverrides));
   if (opencode.conflict) warnings.push('OpenCode 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.');
   if (registration.bothRegistered) warnings.push('Codex에 canonical jutell과 legacy beginner_bridge MCP가 모두 있습니다. 자동 정리하지 않았습니다. 이전 항목을 정리하려면 jutell migrate --clean 을 실행하세요.');
   if (opencode.bothRegistered) warnings.push('OpenCode에 canonical jutell과 legacy beginner_bridge MCP가 모두 있습니다. 자동 정리하지 않았습니다. 이전 항목을 정리하려면 jutell migrate --clean 을 실행하세요.');
@@ -167,11 +180,13 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   checks.push({ name: '현재 Agent 세션 적용', status: '직접 확인 필요', detail: '실제로 Skill과 규칙을 읽었는지 여부는 해당 Agent 세션에서 직접 확인해야 합니다.' });
   checks.push({ name: 'MCP 빌드 파일', status: await exists(mcpEntry) ? '정상' : '오류', detail: await exists(mcpEntry) ? '패키지에 포함되어 있습니다.' : 'MCP 빌드 파일이 없습니다.' });
   checks.push({ name: 'Codex MCP', status: registration.conflict ? '오류' : registration.registered ? '정상' : '주의', detail: registration.conflict ? '관리되지 않는 동일 이름 설정이 있습니다.' : registration.registered ? `JuTell 관리 블록을 확인했습니다. 새 세션 자동 시작: ${registration.enabled ? '켜짐' : '꺼짐'}.` : '등록되지 않았습니다.' });
-  const approvalCheckStatus = !registration.canonicalJuTellRegistered ? '직접 확인 필요' : registration.approvalConflict ? (isUserOnlyApprovalOverride(registration) ? '주의' : '오류') : '정상';
+  const userOnlyApprovalOverride = isUserOnlyApprovalOverride(registration);
+  const hasInvalidUserApprovalOverride = userOnlyApprovalOverride && registration.userApprovalOverrides?.some(({ mode }) => !CODEX_APPROVAL_MODES.includes(mode as (typeof CODEX_APPROVAL_MODES)[number]));
+  const approvalCheckStatus = !registration.canonicalJuTellRegistered ? '직접 확인 필요' : registration.approvalConflict ? (hasInvalidUserApprovalOverride ? '오류' : userOnlyApprovalOverride ? '주의' : '오류') : '정상';
   const approvalCheckDetail = !registration.canonicalJuTellRegistered
     ? 'Codex jutell 등록이 없어 승인 설정을 확인할 수 없습니다.'
     : registration.approvalConflict
-      ? codexApprovalWarning(registration.approvalPolicyNever, isUserOnlyApprovalOverride(registration))
+      ? codexApprovalWarning(registration.approvalPolicyNever, userOnlyApprovalOverride, registration.userApprovalOverrides)
       : registration.approvalPolicyNever
         ? '자동 실행에서는 모든 jutell 도구가 승인됩니다. 대화형 Codex에서도 jutell 도구 호출이 차단됩니다.'
         : '자동 실행에서 모든 jutell 도구가 승인됩니다.';

@@ -186,6 +186,29 @@ describe('Codex jutell approval check', () => {
     expect(noColorDoctor.output).not.toMatch(/\u001b\[[0-9;]*m/);
   }, 15000);
 
+  it('reports an unreadable user tool setting outside the block as 오류', async () => {
+    const { paths, codexConfig } = await fixture();
+    await fs.writeFile(codexConfig, '[mcp_servers.jutell.tools.get_bridge_status]\napproval_mode = "bogus"\n', 'utf8');
+    await registerMcp(codexScopedPaths(paths), packageRoot(), false);
+
+    const { checks } = await runDoctor(paths, true);
+    const check = checks.find((item) => item.name === '자동 실행(codex exec)에서 jutell 도구 호출');
+    expect(check?.status).toBe('오류');
+    expect(check?.detail).toContain('config.toml의 get_bridge_status approval_mode 값("bogus")을 Codex가 읽지 못해요. 그 줄을 고치거나 지우세요.');
+  });
+
+  it('reports a user-chosen auto tool setting outside the block as 주의 without prompt wording', async () => {
+    const { paths, codexConfig } = await fixture();
+    await fs.writeFile(codexConfig, '[mcp_servers.jutell.tools.get_bridge_status]\napproval_mode = "auto"\n', 'utf8');
+    await registerMcp(codexScopedPaths(paths), packageRoot(), false);
+
+    const { checks } = await runDoctor(paths, true);
+    const check = checks.find((item) => item.name === '자동 실행(codex exec)에서 jutell 도구 호출');
+    expect(check?.status).toBe('주의');
+    expect(check?.detail).toContain('이 도구는 직접 정한 승인 방식("auto")을 따라요. 자동 실행(codex exec)에서는 멈출 수 있어요. 바꾸려면 config.toml의 해당 줄을 지우세요.');
+    expect(check?.detail).not.toContain('매번');
+  });
+
   it('treats a user-chosen prompt tool setting outside the block as 주의 with a factual note', async () => {
     const { paths, codexConfig } = await fixture();
     await fs.writeFile(codexConfig, '[mcp_servers.jutell.tools.get_bridge_status]\napproval_mode = "prompt"\n', 'utf8');

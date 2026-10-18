@@ -65,6 +65,14 @@ function userApprovalOverrideTools(content: string) {
   });
 }
 
+function userApprovalOverrideModes(content: string): Array<{ tool: string; mode: string }> {
+  const outsideManagedBlocks = managedBlocks(content).reduce((outside, block) => outside.replace(block, ''), content);
+  return READ_ONLY_MCP_TOOLS.flatMap((tool) => {
+    const mode = readTomlString(outsideManagedBlocks, `mcp_servers.${CANONICAL_MCP_KEY}.tools.${tool}`, 'approval_mode');
+    return mode !== undefined && mode !== 'approve' ? [{ tool, mode: String(mode) }] : [];
+  });
+}
+
 export const FEATURE_IDS = ['changeSummary', 'userVisibleChanges', 'internalChanges', 'mainFiles', 'explainedDiff', 'glossary', 'validationResults', 'riskAssessment', 'userActions', 'nextActionSuggestions', 'receiptReport', 'requestClarificationGuide', 'manualEditGuidance', 'requestBuilder'];
 export const PROFILES = ['minimal', 'balanced', 'learning', 'detailed'] as const;
 export const PROFILE_FEATURES: Record<(typeof PROFILES)[number], Record<string, boolean>> = {
@@ -437,6 +445,7 @@ export async function readCodexRegistration(paths: ScopePaths, packageRoot: stri
     legacyRegistered,
     approvalConflict: canonicalJuTellRegistered && approvalState.approvalConflict,
     userApprovalOverride: userOverrides.length > 0,
+    userApprovalOverrides: userApprovalOverrideModes(content),
     approvalPolicyNever: approvalState.approvalPolicyNever,
     bothRegistered: canonicalRegistered && legacyRegistered,
     canonicalUpToDate,
