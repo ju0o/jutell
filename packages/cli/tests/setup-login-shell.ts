@@ -3,12 +3,22 @@
 // sees a fake `jutell` on PATH and a fake login shell. The fake shell runs the command
 // without login mode, because /etc/profile on many systems resets PATH. Tests that exercise the
 // check itself (doctor-login-shell.test.ts) pass their own explicit env.
-import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { afterAll } from 'vitest';
 
 if (process.platform !== 'win32') {
-  const bin = path.join(mkdtempSync(path.join(os.tmpdir(), 'jutell-fake-bin-')), 'bin');
+  const root = mkdtempSync(path.join(os.tmpdir(), 'jutell-fake-bin-'));
+  const bin = path.join(root, 'bin');
+  const previousPath = process.env.PATH;
+  const previousShell = process.env.SHELL;
+  // Remove this file's fake bin once its tests finish, so runs leave nothing in /tmp.
+  afterAll(() => {
+    process.env.PATH = previousPath;
+    if (previousShell === undefined) delete process.env.SHELL; else process.env.SHELL = previousShell;
+    rmSync(root, { recursive: true, force: true });
+  });
   mkdirSync(bin);
   writeFileSync(path.join(bin, 'jutell'), '#!/bin/sh\nexit 0\n');
   chmodSync(path.join(bin, 'jutell'), 0o755);
