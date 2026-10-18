@@ -558,6 +558,39 @@ describe('registerMcp and removeMcp - final TOML validation', () => {
     expect(countCanonicalHeaders(content)).toBe(1);
   });
 
+  it('keeps a user approval override outside the managed block and stays idempotent', async () => {
+    const dir = await mkdtemp();
+    const paths = await scopePaths(dir);
+    const oldBlockWithoutOverriddenTool = buildMcpBlock(paths, '/opt/old-jutell-package', true).replace(
+      /\n\[mcp_servers\.jutell\.tools\.get_bridge_status\]\napproval_mode = "approve"/,
+      '',
+    );
+    const userToolTable = [
+      '[mcp_servers.jutell.tools.get_bridge_status]',
+      'approval_mode = "prompt"',
+    ].join('\n');
+    await writeConfig(dir, `${oldBlockWithoutOverriddenTool}\n\n${userToolTable}\n`);
+
+    await registerMcp(paths, FAKE_PACKAGE_ROOT, true);
+
+    const firstContent = await readConfig(dir);
+    expect(() => parse(firstContent)).not.toThrow();
+    expect(firstContent).toContain(`${userToolTable}`);
+    expect(firstContent).not.toContain('[mcp_servers.jutell.tools.get_bridge_status]\napproval_mode = "approve"');
+    for (const tool of READ_ONLY_MCP_TOOLS.filter((name) => name !== 'get_bridge_status')) {
+      expect(firstContent).toContain(`[mcp_servers.jutell.tools.${tool}]\napproval_mode = "approve"`);
+    }
+    expect(countCanonicalHeaders(firstContent)).toBe(1);
+    const registration = await readCodexRegistration(paths, FAKE_PACKAGE_ROOT, true);
+    expect(registration.approvalConflict).toBe(true);
+    expect(registration.userApprovalOverride).toBe(true);
+
+    await registerMcp(paths, FAKE_PACKAGE_ROOT, true);
+
+    const secondContent = await readConfig(dir);
+    expect(Buffer.compare(Buffer.from(firstContent), Buffer.from(secondContent))).toBe(0);
+  });
+
   it('preserves a user JuTell environment table when registering', async () => {
     const dir = await mkdtemp();
     const paths = await scopePaths(dir);

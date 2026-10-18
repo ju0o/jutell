@@ -15,9 +15,10 @@ async function processAlive(pid: number) {
   try { process.kill(pid, 0); return true; } catch { return false; }
 }
 
-function codexApprovalWarning(approvalPolicyNever: boolean) {
+function codexApprovalWarning(approvalPolicyNever: boolean, userApprovalOverride = false) {
   const warning = '자동 실행에서는 jutell 도구가 막힙니다. `jutell use codex`로 고칠 수 있어요';
-  return approvalPolicyNever ? `${warning} 대화형 Codex에서도 jutell 도구 호출이 차단됩니다.` : warning;
+  const message = approvalPolicyNever ? `${warning} 대화형 Codex에서도 jutell 도구 호출이 차단됩니다.` : warning;
+  return userApprovalOverride ? `${message} (사용자가 직접 정한 승인 설정은 바꾸지 않았어요)` : message;
 }
 
 async function adminState(paths: ScopePaths) {
@@ -54,7 +55,7 @@ export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
   if (!config.valid) warnings.push('설정 파일을 읽지 못해 balanced 기본값을 사용 중입니다.');
   if (config.invalidLimitsFields.length) warnings.push(`.jutell.json의 limits 값 중 숫자가 아닌 항목이 있어 기본값을 대신 사용했습니다: ${config.invalidLimitsFields.join(', ')}. 실제 파일 값은 바뀌지 않았으니 직접 고쳐주세요.`);
   if (registration.conflict) warnings.push('같은 이름의 관리되지 않는 Codex MCP 설정이 있어 자동 변경하지 않았습니다.');
-  if (registration.approvalConflict) warnings.push(codexApprovalWarning(registration.approvalPolicyNever));
+  if (registration.approvalConflict) warnings.push(codexApprovalWarning(registration.approvalPolicyNever, registration.userApprovalOverride));
   if (opencode.conflict) warnings.push('OpenCode 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.');
   if (registration.bothRegistered) warnings.push('Codex에 canonical jutell과 legacy beginner_bridge MCP가 모두 있습니다. 자동 정리하지 않았습니다. 이전 항목을 정리하려면 jutell migrate --clean 을 실행하세요.');
   if (opencode.bothRegistered) warnings.push('OpenCode에 canonical jutell과 legacy beginner_bridge MCP가 모두 있습니다. 자동 정리하지 않았습니다. 이전 항목을 정리하려면 jutell migrate --clean 을 실행하세요.');
@@ -157,7 +158,7 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   const approvalCheckDetail = !registration.canonicalJuTellRegistered
     ? 'Codex jutell 등록이 없어 승인 설정을 확인할 수 없습니다.'
     : registration.approvalConflict
-      ? codexApprovalWarning(registration.approvalPolicyNever)
+      ? codexApprovalWarning(registration.approvalPolicyNever, registration.userApprovalOverride)
       : registration.approvalPolicyNever
         ? '자동 실행에서는 모든 jutell 도구가 승인됩니다. 대화형 Codex에서도 jutell 도구 호출이 차단됩니다.'
         : '자동 실행에서 모든 jutell 도구가 승인됩니다.';

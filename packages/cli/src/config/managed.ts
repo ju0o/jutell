@@ -57,6 +57,14 @@ function codexApprovalState(content: string) {
   };
 }
 
+function userApprovalOverrideTools(content: string) {
+  const outsideManagedBlocks = managedBlocks(content).reduce((outside, block) => outside.replace(block, ''), content);
+  return READ_ONLY_MCP_TOOLS.filter((tool) => {
+    const mode = readTomlString(outsideManagedBlocks, `mcp_servers.${CANONICAL_MCP_KEY}.tools.${tool}`, 'approval_mode');
+    return mode !== undefined && mode !== 'approve';
+  });
+}
+
 export const FEATURE_IDS = ['changeSummary', 'userVisibleChanges', 'internalChanges', 'mainFiles', 'explainedDiff', 'glossary', 'validationResults', 'riskAssessment', 'userActions', 'nextActionSuggestions', 'requestClarificationGuide', 'manualEditGuidance', 'requestBuilder'];
 export const PROFILES = ['minimal', 'balanced', 'learning', 'detailed'] as const;
 export const PROFILE_FEATURES: Record<(typeof PROFILES)[number], Record<string, boolean>> = {
@@ -293,7 +301,7 @@ function extractField(block: string | undefined, field: 'command' | 'args') {
   return match?.[1];
 }
 
-function hasCanonicalApprovalConfig(block: string | undefined) {
+function hasCanonicalApprovalConfig(block: string | undefined, userOverrides: readonly string[] = []) {
   if (!block) return false;
   const tables = [...block.matchAll(/^[ \t]*\[([^\[\]\r\n]+)\][ \t]*(?:#.*)?\r?$/gm)];
   const canonicalHeaders = tables
@@ -301,7 +309,7 @@ function hasCanonicalApprovalConfig(block: string | undefined) {
     .filter((header): header is string => header === `mcp_servers.${CANONICAL_MCP_KEY}` || header.startsWith(`mcp_servers.${CANONICAL_MCP_KEY}.`));
   const expectedHeaders = [
     `mcp_servers.${CANONICAL_MCP_KEY}`,
-    ...READ_ONLY_MCP_TOOLS.map((tool) => `mcp_servers.${CANONICAL_MCP_KEY}.tools.${tool}`),
+    ...READ_ONLY_MCP_TOOLS.filter((tool) => !userOverrides.includes(tool)).map((tool) => `mcp_servers.${CANONICAL_MCP_KEY}.tools.${tool}`),
   ];
   if (JSON.stringify(canonicalHeaders) !== JSON.stringify(expectedHeaders)) return false;
 
@@ -316,7 +324,7 @@ function hasCanonicalApprovalConfig(block: string | undefined) {
 
   const serverTable = tables.find((table) => table[1] === `mcp_servers.${CANONICAL_MCP_KEY}`);
   if (!serverTable || !hasSingleField(tableBody(serverTable), 'default_tools_approval_mode', '"prompt"')) return false;
-  return READ_ONLY_MCP_TOOLS.every((tool) => {
+  return READ_ONLY_MCP_TOOLS.filter((tool) => !userOverrides.includes(tool)).every((tool) => {
     const toolTable = tables.find((table) => table[1] === `mcp_servers.${CANONICAL_MCP_KEY}.tools.${tool}`);
     return Boolean(toolTable && hasSingleField(tableBody(toolTable), 'approval_mode', '"approve"'));
   });
@@ -346,11 +354,11 @@ function withoutKeySection(content: string, key: string) {
   return result + content.slice(cursor);
 }
 
-function withoutManagedMcpTables(content: string, key: string) {
+function withoutManagedMcpTables(content: string, key: string, preservedToolTables: readonly string[] = []) {
   const keyPath = `mcp_servers.${key}`;
   const ownedTablePaths = new Set([
     keyPath,
-    ...READ_ONLY_MCP_TOOLS.map((tool) => `${keyPath}.tools.${tool}`),
+    ...READ_ONLY_MCP_TOOLS.filter((tool) => !preservedToolTables.includes(tool)).map((tool) => `${keyPath}.tools.${tool}`),
   ]);
   const headers = [...content.matchAll(/^[ \t]*(\[\[[^\r\n]*?\]\]|\[[^\r\n]*?\])[ \t]*(?:#.*)?\r?$/gm)];
   if (headers.length === 0) return content;
@@ -374,12 +382,13 @@ function tomlString(value: string) {
   return JSON.stringify(value.replaceAll('\\', '/'));
 }
 
-export function buildMcpBlock(scope: ScopePaths, packageRoot: string, enabled: boolean) {
+export function buildMcpBlock(scope: ScopePaths, packageRoot: string, enabled: boolean, userOverrides: readonly string[] = []) {
   const serverEntry = path.join(packageRoot, 'assets', 'mcp-server', 'index.js');
   const lines = [BEGIN_MARKER, `[mcp_servers.${CANONICAL_MCP_KEY}]`, `command = ${tomlString(process.execPath)}`, `args = [${tomlString(serverEntry)}]`];
   if (scope.scope === 'project') lines.push('cwd = "."');
   lines.push(`enabled = ${enabled ? 'true' : 'false'}`, 'required = false', 'default_tools_approval_mode = "prompt"');
   for (const tool of READ_ONLY_MCP_TOOLS) {
+    if (userOverrides.includes(tool)) continue;
     lines.push('', `[mcp_servers.${CANONICAL_MCP_KEY}.tools.${tool}]`, 'approval_mode = "approve"');
   }
   lines.push(END_MARKER);
@@ -397,6 +406,7 @@ export async function readCodexRegistration(paths: ScopePaths, packageRoot: stri
   const legacyHeuristic = !legacyManaged && legacyRegistered && hasJuTellMcpEvidence(content, LEGACY_MCP_KEY);
   const canonicalJuTellRegistered = Boolean(canonicalManaged || canonicalHeuristic);
   const approvalState = codexApprovalState(content);
+  const userOverrides = userApprovalOverrideTools(content);
   const registered = Boolean(canonicalManaged || legacyManaged || canonicalHeuristic || legacyHeuristic);
   const conflict = !registered && (canonicalRegistered || legacyRegistered);
   const enabledFlag = (() => {
@@ -422,7 +432,7 @@ export async function readCodexRegistration(paths: ScopePaths, packageRoot: stri
     }
     return false;
   })();
-  const preview = buildMcpBlock(paths, packageRoot, enabled);
+  const preview = buildMcpBlock(paths, packageRoot, enabled, userOverrides);
   // The command/args a currently-recognized JuTell entry (managed-block or heuristic-evidence)
   // actually has, vs. what the current installation would write today. A mismatch means the
   // entry is stale — e.g. left over from a different machine/OS or an older JuTell install —
@@ -432,7 +442,7 @@ export async function readCodexRegistration(paths: ScopePaths, packageRoot: stri
     canonicalEntryText
     && extractField(canonicalEntryText, 'command') === extractField(preview, 'command')
     && extractField(canonicalEntryText, 'args') === extractField(preview, 'args')
-    && hasCanonicalApprovalConfig(canonicalEntryText),
+    && hasCanonicalApprovalConfig(canonicalEntryText, userOverrides),
   );
   return {
     content,
@@ -444,6 +454,7 @@ export async function readCodexRegistration(paths: ScopePaths, packageRoot: stri
     canonicalJuTellRegistered,
     legacyRegistered,
     approvalConflict: canonicalJuTellRegistered && approvalState.approvalConflict,
+    userApprovalOverride: userOverrides.length > 0,
     approvalPolicyNever: approvalState.approvalPolicyNever,
     bothRegistered: canonicalRegistered && legacyRegistered,
     canonicalUpToDate,
@@ -471,7 +482,8 @@ export async function registerMcp(paths: ScopePaths, packageRoot: string, enable
   // Safe to strip unconditionally here: reaching this point already ruled out (via `conflict`
   // above) any bare `[mcp_servers.jutell]` that isn't JuTell's own.
   const removed = withoutCanonicalBlock(current.content);
-  const withoutManaged = withoutManagedMcpTables(removed.content, CANONICAL_MCP_KEY).replace(/\n{3,}/g, '\n\n').trimEnd();
+  const userOverrides = userApprovalOverrideTools(current.content);
+  const withoutManaged = withoutManagedMcpTables(removed.content, CANONICAL_MCP_KEY, userOverrides).replace(/\n{3,}/g, '\n\n').trimEnd();
   const next = restorePreservedTables(`${withoutManaged}${withoutManaged ? '\n\n' : ''}${current.preview}\n`, removed.preservedTables);
   assertValidConfigToml(next);
   await backupFile(paths.codexConfigFile);
