@@ -278,7 +278,7 @@ Agent가 먼저 확인할 것 (있을 때만)
 15. 필요한 용어만 처음 등장할 때 설명한다. 기술 전용 용어는 해당 기술이 사용되는 것을 확인한 경우에만 설명한다. 기본 사전에 없는 용어는 추측하지 않는다.
 16. 활성 Feature와 `references/report-format.md`에 따라 하나의 비개발자용 최종 보고를 작성한다. `explainedDiff`가 활성이면 의미 있는 변경에 같은 근거로 설명형 변경 요약을 덧붙인다. 중요한 코드 블록이 이미 작업 과정에서 확인되었고 사용자 이해에 실제 도움이 될 때만 1~2개까지 보여준다. 이 섹션만을 위해 파일을 다시 읽거나 git diff를 다시 실행하지 않는다. `explainedDiff`가 꺼져 있으면 Readable Code도 생략한다(사용자가 코드 설명을 명시한 경우만 예외).
 17. `requestBuilder`가 활성이고 사용자가 다음 AI에게 넘기기·세션 마무리·이어서 할 일 정리를 요청하면, 현재 작업에서 이미 아는 근거만으로 `다음 AI에게 전달하기` 블록을 만든다. Request Builder의 `NEXT_AGENT_HANDOFF` 템플릿 또는 세션 `SESSION_SUMMARY`를 재사용해도 된다. 저장소 재탐색, 테스트 재실행, 자동 전송, HTML/클라우드 산출물은 만들지 않는다. 이번 작업에서 Intent Bridge로 승인받은 내용이 있으면 "지금 하던 일"에 그대로 재사용하고, 다시 확인하지 않는다.
-18. `receiptReport`가 켜져 있으면 끝날 때 AGENTS.md의 한 줄대로 영수증 입력을 `jutell receipt --file -`(없으면 `npx jutell receipt --file -`)에 넘기고 출력을 답 맨 위에 붙인다. 변경 요약·다음 행동 제안(최대 3개)·보고서 상태를 이것으로 대신한다. checked는 실제로 실행하거나 읽은 것만 쓴다. 명령이 없으면 재시도 없이 "JuTell 업데이트 필요"라고 적고 같은 모양을 직접 쓴다. `nextActionSuggestions`가 꺼져 있으면 next는 비운다.
+18. `receiptReport`가 켜져 있으면 끝날 때 AGENTS.md대로 `.jutell-local/receipt.json`을 파일 쓰기 도구로 쓰고 인자 없이 `jutell receipt`를 한 번 실행해 출력을 답 맨 위에 붙인다. 변경 요약·다음 행동 제안(최대 3개)·보고서 상태를 이것으로 대신한다. checked는 실제로 실행하거나 읽은 것만 쓴다. 명령이 없으면 재시도 없이 "확인 못 한 것: 영수증 저장 못 함, jutell doctor 실행"만 쓴다. `nextActionSuggestions`가 꺼져 있으면 next는 비운다.
 19. 제출 전 다음을 점검한다.
    * 화면 변화와 내부 변화를 분리했는가
    * 예상과 실제 확인을 구분했는가

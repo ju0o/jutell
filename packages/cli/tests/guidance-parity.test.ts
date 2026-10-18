@@ -31,20 +31,28 @@ describe('M2.6 Codex Experience Parity guidance', () => {
     expect(text).not.toMatch(/JuTell 보고 규칙을 (먼저 )?적용/);
   });
 
-  it('AGENTS block pipes a minimal receipt via stdin and stops once with 업데이트 필요 on an old jutell', async () => {
+  it('AGENTS block has the agent write receipt.json with its file tool and run jutell receipt without a shell pipe', async () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-guidance-receipt-'));
     temporaryRoots.push(tmp);
     await ensureJuTellAgentsBlock(tmp);
     const text = await fs.readFile(path.join(tmp, 'AGENTS.md'), 'utf8');
-    expect(text).toContain('| jutell receipt --file -');
-    expect(text).toContain('"asked"');
-    expect(text).toContain('다시 시도하지 말고 "JuTell 업데이트 필요"');
-    expect(text).not.toContain('--help');
-    const { version } = JSON.parse(await fs.readFile(path.join(repoRoot, 'packages', 'cli', 'package.json'), 'utf8'));
-    expect(text).toContain(`npx -y jutell@${version}`);
-    expect(text).toContain('exit 127');
+    expect(text).toContain('파일 쓰기 도구로 `.jutell-local/receipt.json`');
+    expect(text).toContain('인자 없이 `jutell receipt`');
+    expect(text).not.toMatch(/echo '|\| jutell receipt|--file -|npx/);
+    expect(text).toContain('"summary"');
+    expect(text).toContain('"확인 못 한 것: 영수증 저장 못 함, jutell doctor 실행"');
     expect(text.indexOf('get_beginner_report_rules`를 호출하고, 그다음에 영수증')).toBeGreaterThan(0);
     expect(text).toContain('영수증 아래에는 확인 내용을 다시 쓰지 않습니다');
+  });
+
+  it('AGENTS block drops the receipt lines when receiptReport is off', async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-guidance-noreceipt-'));
+    temporaryRoots.push(tmp);
+    await fs.writeFile(path.join(tmp, '.jutell.json'), JSON.stringify({ features: { receiptReport: false } }), 'utf8');
+    await ensureJuTellAgentsBlock(tmp);
+    const text = await fs.readFile(path.join(tmp, 'AGENTS.md'), 'utf8');
+    expect(text).not.toContain('jutell receipt');
+    expect(text).toContain('`직접 확인한 것:`과 `확인 못 한 것:` 두 줄');
   });
 
   it('SKILL.md contains MCP server selection and early report application', async () => {
