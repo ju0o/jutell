@@ -5,7 +5,7 @@ export const JUTELL_AGENTS_BEGIN = '<!-- BEGIN JUTELL MANAGED BLOCK -->';
 export const JUTELL_AGENTS_END = '<!-- END JUTELL MANAGED BLOCK -->';
 
 const RECEIPT_LINES = `- 순서: 먼저 \`get_beginner_report_rules\`를 호출하고, 그다음에 영수증을 저장합니다.
-- 영수증: 파일 쓰기 도구로 \`.jutell-local/receipt.json\`에 \`{"asked":["요청 요약"],"done":["한 일"],"checked":["직접 확인한 것"],"unchecked":["확인 못 한 것 (이유)"],"next":["해도 되고 안 해도 되는 추천"],"summary":"한 줄 요약"}\`을 쓰고(셸·heredoc 말고 반드시 파일 편집 도구로 씁니다), 인자 없이 \`jutell receipt\`를 한 번 실행해 출력을 답 맨 위에 그대로 붙입니다. 바뀐 파일은 영수증이 세므로 저장소 상태·브랜치·변경 비교는 보지 않습니다. 단, 요청이 테스트·실행 결과·화면 확인을 필요로 하면 실행하고, 실행하거나 읽지 않은 것(예: 다른 파일을 안 건드렸는지)은 checked가 아닌 unchecked에 씁니다. 파일을 읽은 것은 화면 확인이 아닙니다. 화면은 unchecked에 씁니다. 폴더 확인·형식 찾기 없이 바로 씁니다. 명령을 찾지 못하거나(exit 127) "알 수 없는 명령"이 나오면 재시도 없이 "영수증을 저장하지 못했어요. 터미널에서 jutell doctor를 실행하면 해결 방법을 알려 줘요." 한 줄만 씁니다.
+- 영수증: 파일 쓰기 도구로 \`.jutell-local/receipt.json\`에 \`{"asked":["요청 요약"],"done":["한 일"],"checked":["직접 확인한 것"],"unchecked":["확인 못 한 것 (이유)"],"next":["해도 되고 안 해도 되는 추천"],"summary":"한 줄 요약"}\`을 쓰고(셸·heredoc 말고 반드시 파일 편집 도구로 씁니다), 인자 없이 \`jutell receipt\`를 한 번 실행해 출력을 답 맨 위에 그대로 붙입니다. 바뀐 파일은 영수증이 세므로 저장소 상태·브랜치·변경 비교는 보지 않습니다. 단, 요청이 테스트·실행 결과·화면 확인을 필요로 하면 실행하고, 실행하거나 읽지 않은 것(예: 다른 파일을 안 건드렸는지)은 checked가 아닌 unchecked에 씁니다. 직접 보지 않았으면 화면은 unchecked에 씁니다(파일을 읽은 것은 화면 확인이 아닙니다). 폴더 확인·형식 찾기 없이 바로 씁니다. 명령을 찾지 못하거나(exit 127) "알 수 없는 명령"이 나오면 재시도 없이 "영수증을 저장하지 못했어요. 터미널에서 jutell doctor를 실행하면 해결 방법을 알려 줘요." 한 줄만 씁니다.
 - 영수증이 최종 답입니다. 영수증 아래에는 아무것도 쓰지 않고, 붙이지 못했을 때만 \`직접 확인한 것:\`/\`확인 못 한 것:\` 두 줄을 씁니다. "설명형 변경 요약" 같은 내부 소제목은 쓰지 않습니다.
 `;
 const NO_RECEIPT_LINES = `- 최종 답에는 \`직접 확인한 것:\`과 \`확인 못 한 것:\` 두 줄(없으면 "없음")을 씁니다. "설명형 변경 요약" 같은 내부 소제목은 쓰지 않습니다.
@@ -19,11 +19,12 @@ const B = '`';
 const code = (name: string) => `${B}${name}${B}`;
 const toolLine = (target: GuidanceTarget, receiptReport: boolean) => {
   const rules = code('mcp__jutell__get_beginner_report_rules');
+  // Agent-specific names (incl. exec_command / ALL_TOOLS) appear only inside the labelled
+  // "Codex:" sentence, because OpenCode reads the same AGENTS.md.
   const names = target === 'claude'
-    ? `파일 편집 ${code('Edit')}/${code('Write')}, 보고 규칙 ${rules}.`
-    : `Codex: 파일 편집 ${code('apply_patch')}, 보고 규칙 ${rules}.`;
-  const shell = target === 'claude' ? code('Bash') : code('exec_command');
-  return `- 도구 목록(ALL_TOOLS)을 검색하지 말고 바로 호출합니다. ${names}${receiptReport ? ` ${code('jutell receipt')}는 도구가 아닌 셸 명령(${shell})입니다.` : ''}\n`;
+    ? `파일 편집 ${code('Edit')}/${code('Write')}, 보고 규칙 ${rules}, 셸 ${code('Bash')}.`
+    : `Codex: 도구 목록(ALL_TOOLS) 검색 없이 파일 편집 ${code('apply_patch')}, 보고 규칙 ${rules}, 셸 ${code('exec_command')}.`;
+  return `- 도구가 보이면 바로 호출하고, 안 보이면 검색하지 말고 Skill로 계속합니다. ${names}${receiptReport ? ` ${code('jutell receipt')}는 도구가 아닌 셸 명령입니다.` : ''}\n`;
 };
 const managedBlockFor = (receiptReport: boolean, target: GuidanceTarget = 'agents') => {
   const receiptLines = `${toolLine(target, receiptReport)}${receiptReport ? RECEIPT_LINES : NO_RECEIPT_LINES}`;

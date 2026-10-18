@@ -75,9 +75,26 @@ describe('upgrading over an old (32 KB) SKILL.md', () => {
     expect(backups).toHaveLength(1);
     expect(backups[0].skill).toContain('내가 덧붙인 메모');
     expect(path.relative(skillDir, backups[0].dir).startsWith('..')).toBe(true);
-    expect(result.stdout).toContain(`직접 고친 내용이 있어서 예전 것을 보관하고 새 버전으로 바꿨어요. 보관한 곳: ${path.relative(project, backups[0].dir)}`);
+    expect(result.stdout).toContain(`직접 고친 내용이 있어서 예전 것을 보관하고 새 버전으로 바꿨어요. 보관한 파일: SKILL.md. 보관한 곳: ${path.relative(project, backups[0].dir)}`);
+    expect(result.stdout).not.toContain('예전 안내 파일을 보관하고');
     expect(path.basename(backups[0].dir)).toMatch(/^skill-\d{4}-\d{2}-\d{2}-\d{4}(-\d+)?$/);
     expect(await fs.readFile(path.join(project, '.jutell-local', '.gitignore'), 'utf8')).toBe('*\n');
+  });
+
+  it('old install that recorded files but no hashes: says it kept the old guide file (not "you edited it") and names it', async () => {
+    const { project, run, skillDir, current } = await installed();
+    const manifestFile = path.join(project, '.jutell-local', 'cli-install.json');
+    const manifest = JSON.parse(await fs.readFile(manifestFile, 'utf8'));
+    delete manifest.skillHashes;
+    await fs.writeFile(manifestFile, JSON.stringify(manifest));
+    await fs.writeFile(path.join(skillDir, 'SKILL.md'), `${current}\n예전 버전 내용\n`);
+    const result = run(['--yes']);
+    expect(result.status).toBe(0);
+    expect(await fs.readFile(path.join(skillDir, 'SKILL.md'), 'utf8')).toBe(current);
+    const backups = await backupsOf(project);
+    expect(backups).toHaveLength(1);
+    expect(result.stdout).toContain(`예전 안내 파일을 보관하고 새 버전으로 바꿨어요. 보관한 파일: SKILL.md. 보관한 곳: ${path.relative(project, backups[0].dir)}`);
+    expect(result.stdout).not.toContain('직접 고친 내용이 있어서');
   });
 
   it('2.0.1-style install (no manifest): a known shipped SKILL.md is replaced, an unknown one is left alone', async () => {

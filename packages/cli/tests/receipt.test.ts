@@ -175,6 +175,12 @@ describe('receipt renderer', () => {
     const mixed = renderReceipt(normalizeReceipt({ done: ['제목 변경'], next: ['- 없음', '모바일 화면 확인'] }), timestamp);
     expect(mixed).toContain('   - 모바일 화면 확인');
     expect(mixed).not.toContain('   - - 없음');
+    // Placeholders are dropped before the 3-item cut.
+    const late = renderReceipt(normalizeReceipt({ done: ['x'], next: ['없음', '없음', '없음', 'real'] }), timestamp);
+    expect(late).toContain('   - real');
+    expect(late).not.toContain(NOTHING_NEXT_LINE);
+    const lateOld = renderReceipt(normalizeReceipt({ done: ['x'], next: { continue: ['없음', '', '- 없음', 'real'], nice: [], stop: [] } }), timestamp);
+    expect(lateOld).toContain('   - real');
   });
 
   it('does not print the save line for an absolute saved path', () => {

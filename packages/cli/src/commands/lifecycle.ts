@@ -26,7 +26,7 @@ export async function setupCommand(paths: ScopePaths, options: CliOptions, io: C
   const configSnapshot = await snapshot(paths.configFile);
   const codexSnapshot = await snapshot(codexScopedPaths(paths).codexConfigFile);
   const agentsSnapshot = paths.scope === 'project' ? await snapshot(agentsFile(paths.targetRoot)) : undefined;
-  let skillResult: Awaited<ReturnType<typeof installSkill>> = { conflicts: [], changed: [], replaced: [], backedUp: [], backupDir: undefined };
+  let skillResult: Awaited<ReturnType<typeof installSkill>> = { conflicts: [], changed: [], replaced: [], backedUp: [], backedUpLegacy: [], backupDir: undefined };
   try {
     skillResult = options.mcpOnly ? skillResult : await installSkill(assets().skill, paths.skillRoot, paths);
     const ensured = await ensureBridgeConfig(paths, options.profile);
@@ -63,7 +63,7 @@ export async function enableCommand(paths: ScopePaths, options: CliOptions, io: 
   const configSnapshot = await snapshot(paths.configFile);
   const codexSnapshot = await snapshot(codexScopedPaths(paths).codexConfigFile);
   const agentsSnapshot = paths.scope === 'project' ? await snapshot(agentsFile(paths.targetRoot)) : undefined;
-  let skillResult: Awaited<ReturnType<typeof installSkill>> = { conflicts: [], changed: [], replaced: [], backedUp: [], backupDir: undefined };
+  let skillResult: Awaited<ReturnType<typeof installSkill>> = { conflicts: [], changed: [], replaced: [], backedUp: [], backedUpLegacy: [], backupDir: undefined };
   try {
     skillResult = options.mcpOnly ? skillResult : await installSkill(assets().skill, paths.skillRoot, paths);
     const config = await ensureBridgeConfig(paths, undefined);

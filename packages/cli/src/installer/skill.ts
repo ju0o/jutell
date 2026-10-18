@@ -85,6 +85,8 @@ export async function installSkill(source: string, destination: string, paths?: 
   const changed: string[] = [];
   const replaced: string[] = [];
   const backedUp: string[] = [];
+  // Backups of files from an old install that never recorded a hash (we cannot tell an edit from an old version).
+  const backedUpLegacy: string[] = [];
   let backupDir: string | undefined;
   const manifest = paths ? await readManifest(paths) : { skillFiles: [] as string[], skillHashes: {} as Record<string, string> };
   const managed = new Set(manifest.skillFiles);
@@ -120,11 +122,12 @@ export async function installSkill(source: string, destination: string, paths?: 
       await fs.mkdir(path.dirname(backupFile), { recursive: true });
       await writeNewFile(backupFile, targetContent);
       backedUp.push(relative);
+      if (!manifest.skillHashes[relative]) backedUpLegacy.push(relative);
     }
     await replaceFile(targetFile, sourceContent);
     replaced.push(relative);
   }
-  return { conflicts, changed, replaced, backedUp, backupDir };
+  return { conflicts, changed, replaced, backedUp, backedUpLegacy, backupDir };
 }
 
 /** Skill files whose installed content differs from this package (missing files included). */
@@ -138,11 +141,14 @@ export async function differingSkillFiles(source: string, destination: string) {
 }
 
 /** Plain lines for the user about refreshed guide files (empty when nothing was replaced). */
-export function skillRefreshMessage(result: { replaced?: string[]; backupDir?: string }, paths: ScopePaths) {
+export function skillRefreshMessage(result: { replaced?: string[]; backedUp?: string[]; backedUpLegacy?: string[]; backupDir?: string }, paths: ScopePaths) {
   if (!result.replaced?.length) return undefined;
   if (!result.backupDir) return '안내 파일을 새 버전으로 바꿨어요.';
   const shown = paths.scope === 'project' ? path.relative(paths.targetRoot, result.backupDir) : result.backupDir;
-  return `직접 고친 내용이 있어서 예전 것을 보관하고 새 버전으로 바꿨어요. 보관한 곳: ${shown}`;
+  const files = result.backedUp ?? [];
+  const legacy = new Set(result.backedUpLegacy ?? []);
+  const lead = files.length > 0 && files.every((file) => legacy.has(file)) ? '예전 안내 파일을 보관하고' : '직접 고친 내용이 있어서 예전 것을 보관하고';
+  return `${lead} 새 버전으로 바꿨어요. 보관한 파일: ${files.join(', ')}. 보관한 곳: ${shown}`;
 }
 
 /** One plain line for skill files left alone, or undefined. */

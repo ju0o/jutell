@@ -189,28 +189,38 @@ describe('slim SKILL.md (skill-slim)', () => {
 });
 
 describe('exact tool names, so agents do not search their tool list', () => {
+  const CODEX_ONLY = ['apply_patch', 'exec_command', 'ALL_TOOLS'];
+  const CODEX_SENTENCE = /Codex: [^.]*\./g;
+
   async function blocks(receiptReport?: boolean) {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-tool-names-'));
     temporaryRoots.push(tmp);
     if (receiptReport === false) await fs.writeFile(path.join(tmp, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', features: { receiptReport: false } }));
+    // `use codex` and `use opencode` both write AGENTS.md through ensureJuTellAgentsBlock (use.ts);
+    // `use claude` writes CLAUDE.md through ensureJuTellClaudeMdBlock (installer/claude.ts).
     await ensureJuTellAgentsBlock(tmp);
     await ensureJuTellClaudeMdBlock(tmp);
     return { agents: await fs.readFile(path.join(tmp, 'AGENTS.md'), 'utf8'), claude: await fs.readFile(path.join(tmp, 'CLAUDE.md'), 'utf8') };
   }
 
-  it('AGENTS.md (Codex, also read by OpenCode) names the Codex tools, labelled as Codex', async () => {
+  it('Codex AGENTS.md: exact Codex names, all inside the labelled "Codex:" sentence', async () => {
     const { agents } = await blocks();
-    expect(agents).toContain('도구 목록(ALL_TOOLS)을 검색하지 말고 바로 호출합니다. Codex: 파일 편집 `apply_patch`, 보고 규칙 `mcp__jutell__get_beginner_report_rules`.');
-    expect(agents).toContain('`jutell receipt`는 도구가 아닌 셸 명령(`exec_command`)입니다.');
-    expect(agents).not.toContain('`Edit`');
+    expect(agents).toContain('- 도구가 보이면 바로 호출하고, 안 보이면 검색하지 말고 Skill로 계속합니다. Codex: 도구 목록(ALL_TOOLS) 검색 없이 파일 편집 `apply_patch`, 보고 규칙 `mcp__jutell__get_beginner_report_rules`, 셸 `exec_command`. `jutell receipt`는 도구가 아닌 셸 명령입니다.');
   });
 
-  it('CLAUDE.md names Claude Code tools and never the Codex-only ones', async () => {
+  it('OpenCode AGENTS.md (same file): no Codex name appears outside the "Codex:" label', async () => {
+    const { agents } = await blocks();
+    const unlabelled = agents.replace(CODEX_SENTENCE, '');
+    for (const name of CODEX_ONLY) expect(unlabelled).not.toContain(name);
+    expect(unlabelled).not.toContain('`Edit`');
+    expect(unlabelled).not.toContain('`Bash`');
+  });
+
+  it('CLAUDE.md: Claude Code names only, no Codex names or ALL_TOOLS', async () => {
     const { claude } = await blocks();
-    expect(claude).toContain('파일 편집 `Edit`/`Write`, 보고 규칙 `mcp__jutell__get_beginner_report_rules`.');
-    expect(claude).toContain('`jutell receipt`는 도구가 아닌 셸 명령(`Bash`)입니다.');
-    expect(claude).not.toContain('apply_patch');
-    expect(claude).not.toContain('exec_command');
+    expect(claude).toContain('- 도구가 보이면 바로 호출하고, 안 보이면 검색하지 말고 Skill로 계속합니다. 파일 편집 `Edit`/`Write`, 보고 규칙 `mcp__jutell__get_beginner_report_rules`, 셸 `Bash`. `jutell receipt`는 도구가 아닌 셸 명령입니다.');
+    for (const name of CODEX_ONLY) expect(claude).not.toContain(name);
+    expect(claude).not.toContain('Codex:');
   });
 
   it('with receiptReport off, the tool names stay but the receipt command is not mentioned', async () => {
@@ -221,14 +231,23 @@ describe('exact tool names, so agents do not search their tool list', () => {
     }
   });
 
-  it('SKILL.md (shared by every agent) labels the Codex names and says reading a file is not checking the screen', async () => {
+  it('SKILL.md (shared by every agent): call visible tools directly, else continue with the Skill; Codex names labelled', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
-    expect(skill).toContain('도구 목록을 검색하지 말고 바로 호출한다(Codex: `mcp__jutell__get_beginner_report_rules`, 파일 편집 `apply_patch`). `jutell receipt`는 도구가 아닌 셸 명령이다.');
-    expect(skill).toContain('파일을 읽은 것은 화면 확인이 아니다. 화면은 unchecked에 쓴다.');
+    expect(skill).toContain('도구가 보이면 바로 호출하고, 안 보이면 검색하지 말고 Skill로 계속한다(Codex: `mcp__jutell__get_beginner_report_rules`, `apply_patch`). `jutell receipt`는 셸 명령이다.');
+    expect(skill.replace(/\(Codex: [^)]*\)/g, '')).not.toContain('apply_patch');
+    expect(skill).not.toContain('exec_command');
+    expect(skill).not.toContain('ALL_TOOLS');
   });
 
-  it('AGENTS.md says reading a file is not checking the screen', async () => {
+  it('screen checks: if you did not see it yourself, it goes to unchecked (SKILL.md and AGENTS.md)', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
     const { agents } = await blocks();
-    expect(agents).toContain('파일을 읽은 것은 화면 확인이 아닙니다. 화면은 unchecked에 씁니다.');
+    expect(skill).toContain('직접 보지 않았으면 화면은 unchecked에 쓴다(파일을 읽은 것은 화면 확인이 아니다).');
+    expect(agents).toContain('직접 보지 않았으면 화면은 unchecked에 씁니다(파일을 읽은 것은 화면 확인이 아닙니다).');
+  });
+
+  it('scope rule opens only requested, changed, and check-needed files (B3)', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toContain('요청에 적힌 파일, 바꿀 파일, 그리고 확인(규칙 3·5)에 직접 필요한 파일만 연다.');
   });
 });

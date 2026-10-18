@@ -156,6 +156,11 @@ function cleanReceiptText(value: unknown): string | undefined {
   return text ? limitText(text) : undefined;
 }
 
+// A placeholder like '없음' is not a recommendation. Dropped BEFORE the 3-item cut, so
+// ['없음','없음','없음','real'] keeps 'real'; with nothing real, the receipt says it's fine to stop.
+const isPlaceholder = (item: string) => /^[\s\-–—:]*(없음|없습니다|없어요|추천 없음|추천할 것 없음|해당 없음|none|n\/a)?[\s.。!]*$/i.test(item);
+const withoutPlaceholders = (value: unknown) => Array.isArray(value) ? value.filter((item) => typeof item !== 'string' || !isPlaceholder(item)) : value;
+
 function normalizeTextArray(
   value: unknown,
   label: string,
@@ -204,7 +209,7 @@ export function normalizeReceipt(value: unknown, problems?: string[]): ReceiptIn
       const unchecked = normalizeTextArray(input.unchecked, '확인 못 한 것', issues, 4);
       for (const what of checked) sourceChecks.push({ what, result: '확인함', how: '' });
       for (const what of unchecked) sourceChecks.push({ what, result: '안 해봄', reason: '' });
-      next.nice = normalizeTextArray(input.next, '다음 추천', issues, 3);
+      next.nice = normalizeTextArray(withoutPlaceholders(input.next), '다음 추천', issues, 3);
     } else {
       if (input.checks !== undefined && !Array.isArray(input.checks)) {
         issues.push('확인 항목 목록을 읽지 못했습니다.');
@@ -232,7 +237,7 @@ export function normalizeReceipt(value: unknown, problems?: string[]): ReceiptIn
       } else if (isRecord(input.next)) {
         let remaining = 3;
         for (const group of ['continue', 'nice', 'stop'] as const) {
-          next[group] = normalizeTextArray(input.next[group], '다음 추천', issues, remaining);
+          next[group] = normalizeTextArray(withoutPlaceholders(input.next[group]), '다음 추천', issues, remaining);
           remaining -= next[group].length;
         }
       }
@@ -281,7 +286,6 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
   const files = receipt.files ?? [];
   const filesUnknownReason = receipt.filesUnknownReason;
   // A placeholder like '없음' is not a recommendation: with nothing real, say it's fine to stop here.
-  const isPlaceholder = (item: string) => /^[\s\-–—:]*(없음|없습니다|없어요|추천 없음|추천할 것 없음|해당 없음|none|n\/a)?[\s.。!]*$/i.test(item);
   const nextGroups = [receipt.next.continue, receipt.next.nice, receipt.next.stop].map((group) => group.filter((item) => !isPlaceholder(item)));
   const lines = [
     '==============================',
