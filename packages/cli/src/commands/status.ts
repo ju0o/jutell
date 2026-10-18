@@ -145,7 +145,13 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   const anyProviderDetectedOrConfigured = codexDetected() || opencodeDetected() || claudeDetected() || await exists(codexPaths.codexConfigFile) || await exists(paths.opencodeConfigFile) || claude.exists;
   checks.push({ name: 'AI Agent Provider 설치 또는 설정', status: anyProviderDetectedOrConfigured ? '정상' : '직접 확인 필요', detail: anyProviderDetectedOrConfigured ? 'Provider 명령 또는 설정을 확인했습니다.' : 'Provider 명령과 설정을 모두 자동 확인하지 못했습니다.' });
   checks.push({ name: 'OpenCode 명령 감지', status: opencodeDetected() ? '정상' : '직접 확인 필요', detail: opencodeDetected() ? 'opencode --version 명령을 확인했습니다.' : 'opencode 명령을 자동 확인하지 못했습니다. PATH·shell 실행 권한을 확인해 주세요.' });
-  checks.push({ name: 'Skill 파일', status: skillText?.includes('name: beginner-bridge') ? '정상' : '오류', detail: skillText ? 'Skill 파일을 확인했습니다.' : 'Skill 파일이 없습니다.' });
+  checks.push({
+    name: 'Skill 파일',
+    status: skillText === undefined ? '주의' : skillText.includes('name: beginner-bridge') ? '정상' : '오류',
+    detail: skillText === undefined
+      ? '아직 연결하지 않았어요. 프로젝트 폴더에서 `jutell`을 실행하세요.'
+      : skillText.includes('name: beginner-bridge') ? 'Skill 파일을 확인했습니다.' : 'Skill 파일 형식이 올바르지 않습니다.',
+  });
   const skillVersion = parseSkillVersion(skillText);
   const sourceSkillText = await readText(path.join(assets().skill, 'SKILL.md'));
   const sourceVersion = parseSkillVersion(sourceSkillText);
@@ -182,8 +188,15 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   checks.push({ name: '설정 백업 상태', status: !await exists(codexPaths.codexConfigFile) || backupExists ? '정상' : '주의', detail: !await exists(codexPaths.codexConfigFile) ? '아직 Provider 설정을 변경하지 않았습니다.' : backupExists ? '이전 설정 백업을 확인했습니다.' : '기존 Provider 설정 백업이 없습니다.' });
   const externalCode = /(?:https?:\/\/(?!127\.0\.0\.1)|https?\.request|net\.connect)/i.test(mcpText);
   checks.push({ name: '외부 전송 코드', status: externalCode ? '오류' : '정상', detail: externalCode ? 'MCP 빌드에서 외부 네트워크 관련 코드를 찾았습니다.' : 'MCP 빌드에 외부 전송 패턴이 없습니다.' });
-  const probe = await probeMcpServer(mcpEntry);
-  checks.push({ name: 'MCP 서버 실제 연결 (Stdio)', status: probe.ok ? '정상' : '오류', detail: probe.ok ? `${probe.serverName || 'JuTell'} 서버가 응답하고 ${probe.toolCount}개 도구를 제공합니다.` : `서버 응답 실패: ${probe.error ?? '알 수 없는 오류'}` });
+  const hasRegisteredMcp = registration.registered || opencode.registered || claude.registered;
+  const probe = hasRegisteredMcp ? await probeMcpServer(mcpEntry) : undefined;
+  checks.push({
+    name: 'MCP 서버 실제 연결 (Stdio)',
+    status: probe ? probe.ok ? '정상' : '오류' : '직접 확인 필요',
+    detail: probe
+      ? probe.ok ? `${probe.serverName || 'JuTell'} 서버가 응답하고 ${probe.toolCount}개 도구를 제공합니다.` : `서버 응답 실패: ${probe.error ?? '알 수 없는 오류'}`
+      : '아직 MCP를 등록하지 않아 실제 연결을 확인할 수 없습니다. 프로젝트 폴더에서 `jutell`을 실행하세요.',
+  });
   return checks;
 }
 

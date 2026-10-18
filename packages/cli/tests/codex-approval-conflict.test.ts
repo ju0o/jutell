@@ -98,6 +98,21 @@ afterEach(async () => {
 });
 
 describe('Codex jutell approval check', () => {
+  it('fresh project shows setup guidance without errors and exits successfully', async () => {
+    const { project, home } = await fixture();
+
+    const doctor = spawnDoctor(project, home);
+
+    expect(doctor.error).toBeUndefined();
+    expect(doctor.status).toBe(0);
+    const checks = JSON.parse(doctor.stdout) as Array<{ name: string; status: string; detail: string }>;
+    expect(checks.some((check) => check.status === '오류')).toBe(false);
+    expect(checks.find((check) => check.name === 'Skill 파일')).toMatchObject({
+      status: '주의',
+      detail: '아직 연결하지 않았어요. 프로젝트 폴더에서 `jutell`을 실행하세요.',
+    });
+  }, 30000);
+
   it('built doctor exits nonzero when any check is an error', async () => {
     const { paths, codexConfig, project, home } = await fixture();
     await fs.writeFile(codexConfig, codexConfigText('prompt', false), 'utf8');
