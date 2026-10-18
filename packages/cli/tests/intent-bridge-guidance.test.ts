@@ -774,7 +774,8 @@ describe('Honest status choice is still required, expressed as prose guidance, n
   it('report-format.md still says a known completion-critical gap goes in 위험과 사용자 확인 and blocks 확인 완료, without naming a dedicated field', async () => {
     const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
     expect(reportFormat).toMatch(/완료에 필수적인 미확인·실패를 이미 알고 있으면, 형식을 위한 별도 항목을 만들지 않고 `위험과 사용자 확인`에 그 사실을 짧게 밝힌다/);
-    expect(reportFormat).toMatch(/그런 사실이 있으면 `보고서 상태`에 `확인 완료`를 쓰지 않는다/);
+    expect(reportFormat).toMatch(/그런 사실이 있으면 그 내용을 `확인 못 한 것`에 쓰고 `확인 완료`라고 쓰지 않는다/);
+    expect(reportFormat).not.toMatch(/`보고서 상태`에 `확인 완료`/);
   });
 
   it('SKILL.md states the same rule: a known critical gap goes into 위험과 사용자 확인, not a field, and still blocks 확인 완료', async () => {
@@ -930,5 +931,16 @@ describe('Existing report-format parity remains valid (N)', () => {
     const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
     expect(reportFormat).toMatch(/작업 완료 여부: <완료\/미완료>/);
     expect(reportFormat).toMatch(/기본 6개 항목을 유지한다/);
+  });
+});
+
+describe('Report status guidance uses direct check descriptions', () => {
+  it('uses checked and unchecked fields in the template and removes the status line from the skill', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
+    expect(reportFormat).toContain('- 직접 확인한 것:');
+    expect(reportFormat).toContain('- 확인 못 한 것:');
+    expect(reportFormat).not.toContain('- 보고서 상태: <상태>');
+    expect(skill).toContain('"보고서 상태:" 줄 대신');
   });
 });

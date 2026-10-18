@@ -53,7 +53,7 @@ Prompt, 코드, 파일 경로, 비밀정보를 피드백에 그대로 적지 않
 
 ## Distribution CLI
 
-일반 사용자가 Skill을 직접 복사하지 않도록 `jutell@2.0.1`을 npm에 공개했습니다. 일반 설치는 npm registry에서 진행합니다.
+일반 사용자가 Skill을 직접 복사하지 않도록 `jutell@2.0.1`을 최신 npm 릴리스로 공개했으며, `jutell@2.1.0-dev`는 개발 중인 프리릴리스입니다. 일반 설치는 npm registry에서 진행합니다.
 
 ```powershell
 npm install -g jutell
@@ -72,7 +72,7 @@ jutell
 cd packages/cli
 npm install
 npm pack
-npm install -g ./jutell-2.0.1.tgz
+npm install -g ./jutell-2.1.0-dev.tgz
 ```
 
 </details>

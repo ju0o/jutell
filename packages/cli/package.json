@@ -1,6 +1,6 @@
 {
   "name": "jutell",
-  "version": "2.0.1",
+  "version": "2.1.0-dev",
   "description": "Understand what your AI coding agent actually did - a clarify-before / verify-after layer for Codex, Claude Code and OpenCode",
   "license": "MIT",
   "repository": {
@@ -59,6 +59,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
+    "smol-toml": "1.9.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {

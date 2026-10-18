@@ -2,6 +2,14 @@
 
 Notable user-facing changes to JuTell. See [GitHub Releases](https://github.com/ju0o/jutell/releases) for the full history and exact publish dates.
 
+## v2.1.0-dev (release candidate)
+
+Release candidate — not yet published on npm. The latest npm release is still v2.0.1.
+
+- `doctor` exits with code 1 when any check is `오류` (error).
+- `jutell use codex` / setup keeps user TOML tables, removes stale JuTell subtables, and validates TOML before writing.
+- `jutell --yes` or non-interactive runs never open the admin page/browser.
+
 ## v2.0.1
 
 Published on npm.

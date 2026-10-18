@@ -15,11 +15,21 @@ know whether it actually worked.
 
 **Quick start**
 
+First, go to your project folder:
+
+```bash
+cd /path/to/your-project
+```
+
 ```bash
 npm install -g jutell
 jutell
 ```
-```
+
+JuTell creates or updates `AGENTS.md`, `.agents/`, `.jutell.json`, and `.jutell-local/` in that
+folder. When you connect Codex, it also adds connection settings to `~/.codex/config.toml`.
+
+For non-interactive or automated runs, use `jutell --yes` to skip the `(Y/n)` prompt.
 
 **Don't want to install anything?** JuTell's normal job is a one-time connection - it hands you
 back to your own agent and gets out of the way - so you can just run it without installing:
@@ -28,8 +38,8 @@ back to your own agent and gets out of the way - so you can just run it without 
 npx jutell@latest
 ```
 
-Same flow, nothing left on your machine, and it sidesteps npm's global-folder permission errors
-entirely. Node.js is still required either way.
+No install files are left, but the connection settings and project files remain; it also sidesteps
+npm's global-folder permission errors entirely. Node.js is still required either way.
 
 JuTell sits beside a coding agent you already use — Codex, Claude Code, or OpenCode — checking
 project facts before work and separating verified from assumed after it. It does not provide
@@ -267,9 +277,10 @@ limitations, see [Product scope](docs/PRODUCT_SCOPE.md).
 
 ## What's new
 
-**`jutell@2.0.1`** is published on npm. It helps before work starts as well as after it finishes:
-project facts are checked first, only a real decision is asked, and verified / expected /
-not-checked remain separate.
+**`jutell@2.1.0-dev`** is a release candidate on `main` and is not yet published; the latest npm
+release is `jutell@2.0.1`. It helps before work starts as well as after it finishes: project facts
+are checked first, only a real decision is asked, and verified / expected / not-checked remain
+separate.
 
 See the [2.0.0 release showcase](docs/releases/2.0.0-showcase.md) for a real report, a real
 failure, an honest efficiency snapshot, and this release's known limits — not marketing copy, the
@@ -300,7 +311,7 @@ You can tune reports with a project `.jutell.json` file created by the CLI. Avai
 underlying facts or risk.
 
 If you are verifying the repository source instead of installing from npm, `npm pack` creates
-`jutell-2.0.1.tgz` in `packages/cli`; ordinary users do not need this path.
+`jutell-2.1.0-dev.tgz` in `packages/cli`; ordinary users do not need this path.
 
 For contributors: [Changelog](CHANGELOG.md) · [Documentation map](docs/DOCUMENTATION_MAP.md) ·
 [OpenCode connection](docs/PROVIDER_OPENCODE.md) ·
