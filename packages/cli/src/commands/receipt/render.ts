@@ -14,6 +14,7 @@ export type ReceiptInput = {
     stop: string[];
   };
   summary?: string;
+  askedMore?: number;
   risk?: unknown;
   nextMessage?: unknown;
 };
@@ -27,7 +28,8 @@ export const SUMMARY_PREFIX = '한 줄 요약: ';
 const forbiddenStatusPhrases = ['확인 완료', '일부 확인', '추가 확인 필요'];
 const rawCommandPattern = /`|(?:^|[^A-Za-z0-9_])(?:git|npm|npx|node|pnpm|yarn|rg|grep|cat|sed|ls|cd|python|pytest|vitest|tsc|make|curl)\s+\S+|(?:^|\s)--[A-Za-z][A-Za-z0-9-]*(?=\s|=|$)|(?:^|\s)-[A-Za-z](?:[A-Za-z0-9-]*)(?=\s|$)/;
 const normalizedReceipts = new WeakSet<object>();
-const controlCharacters = /[\u0000-\u001f\u007f-\u009f]/g;
+// C0/C1 controls, bidi controls (U+202A–202E, U+2066–2069, U+200E/F, U+061C) and zero-width characters (U+200B–200D, U+2060, U+FEFF).
+const controlCharacters = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069\u200e\u200f\u061c\u200b-\u200d\u2060\ufeff]/g;
 
 function limitText(value: string): string {
   return value.length > 300 ? `${value.slice(0, 299)}…` : value;
@@ -189,7 +191,9 @@ export function normalizeReceipt(value: unknown, problems?: string[]): ReceiptIn
 
     const hasNewFields = ['asked', 'checked', 'unchecked'].some((field) => Object.hasOwn(input, field));
     const newShape = hasNewFields || Array.isArray(input.next);
-    const asked = normalizeTextArray(input.asked, '요청한 것', issues, 5);
+    const allAsked = normalizeTextArray(input.asked, '요청한 것', issues);
+    const asked = allAsked.slice(0, 5);
+    const askedMore = allAsked.length - asked.length;
     const done = normalizeTextArray(input.done, '이번에 한 작업', issues, 5);
     const files = readFileNames(input.files);
     const sourceChecks: ReceiptCheck[] = [];
@@ -244,7 +248,7 @@ export function normalizeReceipt(value: unknown, problems?: string[]): ReceiptIn
     const availableCheckSlots = Math.max(0, 4 - gapChecks.length);
     const checks = [...sourceChecks.slice(0, availableCheckSlots), ...gapChecks];
     const summary = cleanReceiptText(input.summary);
-    return markNormalized({ asked, done, files, checks, next, ...(summary ? { summary } : {}) });
+    return markNormalized({ asked, done, files, checks, next, ...(summary ? { summary } : {}), ...(askedMore > 0 ? { askedMore } : {}) });
   } catch {
     addProblem(problems, '영수증 입력을 읽지 못했습니다.');
     return markNormalized({
@@ -272,6 +276,8 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
   const summary = limitText(cleanReceiptText(summarySource)
     ?? (receipt.done.length > 0 ? `${receipt.done[0]}${receipt.done.length > 1 ? ` 외 ${receipt.done.length - 1}건` : ''}` : DEFAULT_SUMMARY));
   const asked = receipt.asked ?? [];
+  const askedMoreSource = typeof input === 'object' && input !== null ? (input as { askedMore?: unknown }).askedMore : undefined;
+  const askedMore = typeof askedMoreSource === 'number' && Number.isInteger(askedMoreSource) && askedMoreSource > 0 ? askedMoreSource : 0;
   const files = receipt.files ?? [];
   const filesUnknownReason = receipt.filesUnknownReason;
   const nextGroups = [receipt.next.continue, receipt.next.nice, receipt.next.stop];
@@ -280,7 +286,12 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
     '  JuTell 작업 영수증',
     `  ${time}`,
     '==============================',
-    ...(asked.length > 0 ? [RECEIPT_SECTIONS[0], ...asked.map((item, index) => ` ${index + 1}. ${item}`), ''] : []),
+    ...(asked.length > 0 ? [
+      RECEIPT_SECTIONS[0],
+      ...asked.map((item, index) => ` ${index + 1}. ${item}`),
+      ...(askedMore > 0 ? [` 외 ${askedMore}개`] : []),
+      '',
+    ] : []),
     RECEIPT_SECTIONS[1],
     ...renderList(receipt.done, (item, index) => ` ${index + 1}. ${item}`, ' 없음'),
     '',

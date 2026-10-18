@@ -496,8 +496,70 @@ describe('receipt command', () => {
     stdin.end('x'.repeat(64 * 1024 + 100));
 
     expect(await receiptCommand(paths, ['--file', '-'], io, stdin)).toBe(0);
-    expect(output[0]).toContain('입력이 너무 길어 앞부분만 읽었어요');
+    expect(output[0]).toContain('입력이 너무 커서 읽지 못했어요');
+    expect(output[0]).not.toContain('앞부분만 읽었어요');
     expect(await fs.readdir(path.join(paths.dataRoot, 'reports'))).toHaveLength(1);
+  });
+
+  it.skipIf(process.platform === 'win32')('does not read or delete a receipt.json symlink that points outside the project (B5)', async () => {
+    await setup();
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-receipt-outside-'));
+    try {
+      const secret = path.join(outside, 'secret.json');
+      await fs.writeFile(secret, JSON.stringify({ done: ['바깥 파일 내용'] }), 'utf8');
+      await fs.mkdir(paths.dataRoot, { recursive: true });
+      await fs.symlink(secret, path.join(paths.dataRoot, 'receipt.json'));
+
+      expect(await runInProject(['receipt'])).toBe(0);
+      expect(output[0]).not.toContain('바깥 파일 내용');
+      expect(output[0]).toContain('receipt.json 확인 못 함');
+      expect((await fs.lstat(path.join(paths.dataRoot, 'receipt.json'))).isSymbolicLink()).toBe(true);
+      expect(await fs.readFile(secret, 'utf8')).toContain('바깥 파일 내용');
+    } finally {
+      await fs.rm(outside, { recursive: true, force: true });
+    }
+  });
+
+  it.skipIf(process.platform === 'win32')('does not block on or delete a receipt.json FIFO (B5)', async () => {
+    await setup();
+    await fs.mkdir(paths.dataRoot, { recursive: true });
+    const fifo = path.join(paths.dataRoot, 'receipt.json');
+    await execFileAsync('mkfifo', [fifo]);
+
+    expect(await runInProject(['receipt'])).toBe(0);
+    expect(output[0]).toContain('receipt.json 확인 못 함');
+    expect((await fs.lstat(fifo)).isFIFO()).toBe(true);
+  }, 10000);
+
+  it.skipIf(process.platform === 'win32')('does not read receipt.json through a .jutell-local symlink (B5)', async () => {
+    await setup();
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-receipt-outside-'));
+    try {
+      await fs.writeFile(path.join(outside, 'receipt.json'), JSON.stringify({ done: ['바깥 파일 내용'] }), 'utf8');
+      await fs.symlink(outside, paths.dataRoot, 'dir');
+
+      expect(await runInProject(['receipt'])).toBe(1);
+      expect(await fs.readdir(outside)).toEqual(['receipt.json']);
+      expect(output.join('\n')).not.toContain('바깥 파일 내용');
+    } finally {
+      await fs.rm(outside, { recursive: true, force: true });
+    }
+  });
+
+  it('strips bidi and zero-width characters, and shows 5 requested items then 외 N개', async () => {
+    await setup();
+    const stdin = new PassThrough();
+    stdin.end(JSON.stringify({
+      asked: ['요청1\u202e뒤집기', '요청2\u200b', '요청3\u2066', '요청4\ufeff', '요청5\u061c', '요청6', '요청7'],
+      done: ['한\u200d일\u2060'],
+      checked: ['확인\u200e\u200f'],
+    }));
+
+    expect(await receiptCommand(paths, ['--file', '-'], io, stdin)).toBe(0);
+    expect(output[0]).not.toMatch(/[\u202a-\u202e\u2066-\u2069\u200e\u200f\u061c\u200b-\u200d\u2060\ufeff]/);
+    expect(output[0]).toContain(' 5. 요청5\n 외 2개');
+    expect(output[0]).not.toContain('요청6');
+    expect(output[0]).toContain('한일');
   });
 
   it('strips ESC and NUL from receipt text before printing and saving', async () => {

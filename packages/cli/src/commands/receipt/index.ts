@@ -49,8 +49,33 @@ async function readStdin(input: Readable): Promise<LimitedInput> {
   return { text: Buffer.concat(chunks).subarray(0, MAX_INPUT_BYTES).toString('utf8'), tooLong };
 }
 
-async function readLimitedFile(file: string): Promise<LimitedInput> {
-  const handle = await fs.open(file, 'r');
+class UnsafeReceiptInput extends Error {}
+
+function isInside(root: string, target: string) {
+  const relative = path.relative(root, target);
+  return relative === '' || (!relative.startsWith('..') && !path.isAbsolute(relative));
+}
+
+// B5: `.jutell-local` must be a real directory inside the project (not a link).
+async function assertSafeDataRoot(paths: ScopePaths) {
+  const stats = await fs.lstat(paths.dataRoot);
+  if (stats.isSymbolicLink() || !stats.isDirectory()) throw new UnsafeReceiptInput('.jutell-local이 링크이거나 폴더가 아니라서 읽지 않았어요');
+  const [realRoot, realData] = await Promise.all([fs.realpath(paths.targetRoot), fs.realpath(paths.dataRoot)]);
+  if (!isInside(realRoot, realData)) throw new UnsafeReceiptInput('.jutell-local이 프로젝트 밖을 가리켜서 읽지 않았어요');
+}
+
+async function readLimitedFile(file: string, noFollow = false): Promise<LimitedInput> {
+  // Only regular files: never follow a link, never block on a FIFO/device, and re-check after opening.
+  const before = await fs.lstat(file);
+  if ((noFollow && before.isSymbolicLink()) || (!before.isFile() && !before.isSymbolicLink())) {
+    throw new UnsafeReceiptInput('receipt.json이 일반 파일이 아니라서 읽지도 지우지도 않았어요');
+  }
+  const flags = fsConstants.O_RDONLY | (fsConstants.O_NONBLOCK ?? 0) | (noFollow ? (fsConstants.O_NOFOLLOW ?? 0) : 0);
+  const handle = await fs.open(file, flags);
+  if (!(await handle.stat()).isFile()) {
+    await handle.close();
+    throw new UnsafeReceiptInput('receipt.json이 일반 파일이 아니라서 읽지도 지우지도 않았어요');
+  }
   const buffer = Buffer.alloc(MAX_READ_BYTES);
   let total = 0;
   try {
@@ -73,7 +98,8 @@ async function readReceipt(source: ReceiptSource, paths: ScopePaths, input: Read
   const file = source.kind === 'default'
     ? path.join(paths.dataRoot, 'receipt.json')
     : path.resolve(source.file);
-  const contents = await readLimitedFile(file);
+  if (source.kind === 'default') await assertSafeDataRoot(paths);
+  const contents = await readLimitedFile(file, source.kind === 'default');
   if (source.kind === 'default') {
     try {
       await fs.unlink(file);
@@ -273,20 +299,24 @@ export async function receiptCommand(
   const problems: string[] = [];
   let raw = '';
   let inputTooLong = false;
+  let unsafeInput: string | undefined;
   try {
     const contents = await readReceipt(source, paths, input);
     raw = contents.text;
     inputTooLong = contents.tooLong;
-  } catch {
+  } catch (error) {
+    if (error instanceof UnsafeReceiptInput) unsafeInput = error.message;
     problems.push('입력을 읽지 못했습니다.');
   }
   let parsed: unknown = {};
+  let parseFailed = false;
   if (raw.trim().length === 0) {
     problems.push('입력이 비어 있습니다.');
   } else if (problems.length === 0) {
     try {
       parsed = JSON.parse(raw);
     } catch {
+      parseFailed = true;
       problems.push('영수증 입력을 JSON으로 읽지 못했습니다.');
     }
   }
@@ -295,7 +325,13 @@ export async function receiptCommand(
   if (inputTooLong) {
     receipt.checks = [
       ...receipt.checks.slice(0, 3),
-      { what: '입력이 너무 길어 앞부분만 읽었어요', result: '안 해봄', reason: '' },
+      { what: parseFailed ? '입력이 너무 커서 읽지 못했어요' : '입력이 너무 길어 앞부분만 읽었어요', result: '안 해봄', reason: '' },
+    ];
+  }
+  if (unsafeInput) {
+    receipt.checks = [
+      ...receipt.checks.slice(0, 3),
+      { what: `receipt.json 확인 못 함 (${unsafeInput})`, result: '안 해봄', reason: '' },
     ];
   }
   const changedFiles = await readChangedFiles(paths.targetRoot);
