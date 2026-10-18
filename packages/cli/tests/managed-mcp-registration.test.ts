@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { buildMcpBlock, readCodexRegistration, registerMcp } from '../src/config/managed.js';
+import { buildMcpBlock, readCodexRegistration, registerMcp, removeMcp } from '../src/config/managed.js';
 import type { ScopePaths } from '../src/types.js';
 
 // JUTELL-V1.0.1-CODEX-STALE-MCP-PATH-REPAIR-01
@@ -42,6 +42,8 @@ async function scopePaths(dir: string): Promise<ScopePaths> {
 }
 
 const FAKE_PACKAGE_ROOT = '/opt/fake-jutell-package';
+const USER_PROJECT_TABLE = '[projects."X"]\ntrust_level = "trusted"\n';
+const OTHER_MCP_TABLE = '[mcp_servers.other]\ncommand = "/usr/bin/other-mcp"\nargs = ["--keep"]\nenabled = true\n';
 
 async function writeConfig(dir: string, content: string) {
   await fs.writeFile(path.join(dir, 'config.toml'), content, 'utf8');
@@ -49,6 +51,29 @@ async function writeConfig(dir: string, content: string) {
 
 async function readConfig(dir: string) {
   return fs.readFile(path.join(dir, 'config.toml'), 'utf8');
+}
+
+async function writeConfigWithUserTables(dir: string, paths: ScopePaths, packageRoot: string, enabled: boolean) {
+  const block = buildMcpBlock(paths, packageRoot, enabled).replace(
+    '# JUTELL_CLI_MCP_END',
+    `${USER_PROJECT_TABLE}\n${OTHER_MCP_TABLE}# JUTELL_CLI_MCP_END`,
+  );
+  await writeConfig(dir, `${block}\n`);
+}
+
+async function expectUserTablesPreserved(dir: string) {
+  const content = await readConfig(dir);
+  expect(content).toContain(USER_PROJECT_TABLE);
+  expect(content).toContain(OTHER_MCP_TABLE);
+  return content;
+}
+
+function expectCanonicalBlockContainsOnlyJuTell(content: string) {
+  const block = content.match(/# JUTELL_CLI_MCP_BEGIN[\s\S]*?# JUTELL_CLI_MCP_END/)?.[0];
+  expect(block).toBeTruthy();
+  expect(block).toContain('[mcp_servers.jutell]');
+  expect(block).not.toContain('[projects."X"]');
+  expect(block).not.toContain('[mcp_servers.other]');
 }
 
 async function backupExists(dir: string) {
@@ -207,5 +232,56 @@ describe('registerMcp - canonical Codex MCP registration currency (managed block
     // And the canonical key was still correctly added alongside it.
     expect(finalContent).toContain(`command = ${JSON.stringify(process.execPath)}`);
     expect(countCanonicalHeaders(finalContent)).toBe(1);
+  });
+
+  it('preserves user tables inside the canonical block while re-registering, then keeps the JuTell block clean', async () => {
+    const dir = await mkdtemp();
+    const paths = await scopePaths(dir);
+    // Even an otherwise current entry must be rewritten to move user tables out of the block.
+    await writeConfigWithUserTables(dir, paths, FAKE_PACKAGE_ROOT, true);
+
+    await registerMcp(paths, FAKE_PACKAGE_ROOT, true);
+
+    const finalContent = await expectUserTablesPreserved(dir);
+    expectCanonicalBlockContainsOnlyJuTell(finalContent);
+    expect(countCanonicalHeaders(finalContent)).toBe(1);
+  });
+
+  it('preserves user tables inside the canonical block when disabling MCP', async () => {
+    const dir = await mkdtemp();
+    const paths = await scopePaths(dir);
+    await writeConfigWithUserTables(dir, paths, FAKE_PACKAGE_ROOT, true);
+
+    await registerMcp(paths, FAKE_PACKAGE_ROOT, false);
+
+    const finalContent = await expectUserTablesPreserved(dir);
+    expectCanonicalBlockContainsOnlyJuTell(finalContent);
+    expect(finalContent).toContain('enabled = false');
+  });
+
+  it('preserves user tables inside the canonical block when upgrade refreshes a stale MCP path', async () => {
+    const dir = await mkdtemp();
+    const paths = await scopePaths(dir);
+    await writeConfigWithUserTables(dir, paths, '/opt/old-jutell-install', true);
+
+    // upgradeCommand refreshes an existing canonical registration through registerMcp().
+    await registerMcp(paths, FAKE_PACKAGE_ROOT, true);
+
+    const finalContent = await expectUserTablesPreserved(dir);
+    expectCanonicalBlockContainsOnlyJuTell(finalContent);
+    expect(finalContent).toContain(FAKE_PACKAGE_ROOT);
+    expect(finalContent).not.toContain('/opt/old-jutell-install');
+  });
+
+  it('preserves user tables inside the canonical block when uninstall removes the JuTell MCP entry', async () => {
+    const dir = await mkdtemp();
+    const paths = await scopePaths(dir);
+    await writeConfigWithUserTables(dir, paths, FAKE_PACKAGE_ROOT, true);
+
+    await removeMcp(paths, FAKE_PACKAGE_ROOT);
+
+    const finalContent = await expectUserTablesPreserved(dir);
+    expect(finalContent).not.toContain('# JUTELL_CLI_MCP_BEGIN');
+    expect(finalContent).not.toContain('[mcp_servers.jutell]');
   });
 });
