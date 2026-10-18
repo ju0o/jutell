@@ -445,7 +445,7 @@ export async function readCodexRegistration(paths: ScopePaths, packageRoot: stri
   };
 }
 
-function assertValidConfigToml(content: string) {
+export function assertValidConfigToml(content: string) {
   try {
     parse(content);
   } catch {
@@ -475,19 +475,13 @@ export async function registerMcp(paths: ScopePaths, packageRoot: string, enable
   return { ...(await readCodexRegistration(paths, packageRoot, enabled)), restoredHint };
 }
 
-export async function removeMcp(paths: ScopePaths, packageRoot: string) {
-  const current = await readCodexRegistration(paths, packageRoot, false);
-  if (current.conflict) throw new Error('관리되지 않는 같은 이름의 MCP 항목은 자동으로 제거하지 않습니다.');
-  if (!current.registered) return { ...current, commentedTables: [], backupPath: undefined };
-  const removed = withoutManagedBlocks(current.content);
-  const normalized = removed.content.replace(/\n{3,}/g, '\n\n').trim();
-  const next = restorePreservedTables(normalized, removed.preservedTables);
-  let finalText = next ? (next.endsWith('\n') ? next : `${next}\n`) : '';
+export function commentOutOrphanTables(text: string, prefix: string): { text: string; commentedTables: string[] } {
+  let finalText = text;
   const commentedTables: string[] = [];
   const tableHeaders = [...finalText.matchAll(/^[ \t]*(\[\[[^\r\n]*?\]\]|\[[^\r\n]*?\])[ \t]*(?:#.*)?\r?$/gm)];
   const rootTableRemains = tableHeaders.some((header) => {
     const tableHeader = header[1];
-    return tableHeader && !tableHeader.startsWith('[[') && tableHeader.slice(1, -1).trim() === 'mcp_servers.jutell';
+    return tableHeader && !tableHeader.startsWith('[[') && tableHeader.slice(1, -1).trim() === prefix;
   });
   if (!rootTableRemains) {
     let commentedText = '';
@@ -498,7 +492,7 @@ export async function removeMcp(paths: ScopePaths, packageRoot: string) {
       const tableHeader = header[1];
       const tablePath = tableHeader && !tableHeader.startsWith('[[') ? tableHeader.slice(1, -1).trim() : undefined;
       commentedText += finalText.slice(cursor, start);
-      if (tablePath?.startsWith('mcp_servers.jutell.')) {
+      if (tablePath?.startsWith(`${prefix}.`)) {
         commentedTables.push(tablePath);
         const tableText = finalText.slice(start, end);
         commentedText += '# jutell 제거로 주석 처리됨\n';
@@ -513,10 +507,23 @@ export async function removeMcp(paths: ScopePaths, packageRoot: string) {
     });
     finalText = commentedText + finalText.slice(cursor);
   }
+  return { text: finalText, commentedTables };
+}
+
+export async function removeMcp(paths: ScopePaths, packageRoot: string) {
+  const current = await readCodexRegistration(paths, packageRoot, false);
+  if (current.conflict) throw new Error('관리되지 않는 같은 이름의 MCP 항목은 자동으로 제거하지 않습니다.');
+  if (!current.registered) return { ...current, commentedTables: [], backupPath: undefined };
+  const removed = withoutManagedBlocks(current.content);
+  const normalized = removed.content.replace(/\n{3,}/g, '\n\n').trim();
+  const next = restorePreservedTables(normalized, removed.preservedTables);
+  let finalText = next ? (next.endsWith('\n') ? next : `${next}\n`) : '';
+  const orphanCleanup = commentOutOrphanTables(finalText, 'mcp_servers.jutell');
+  finalText = orphanCleanup.text;
   assertValidConfigToml(finalText);
   const backupPath = await backupFile(paths.codexConfigFile);
   await writeTextSafely(paths.codexConfigFile, finalText);
-  return { ...(await readCodexRegistration(paths, packageRoot, false)), commentedTables, backupPath };
+  return { ...(await readCodexRegistration(paths, packageRoot, false)), commentedTables: orphanCleanup.commentedTables, backupPath };
 }
 
 export async function readVersionInfo() {
