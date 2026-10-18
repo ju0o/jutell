@@ -27,12 +27,14 @@ export async function run(argv: string[] = process.argv.slice(2), io: CliIo = cr
   if (fundingSuppressed) argv = argv.filter((a) => a !== '--no-funding');
   if (argv.includes('--version')) { io.write((await readVersionInfo()).cli); return 0; }
   let exitCode = 0;
+  let commandName = '';
   try {
     if (argv[0] === 'receipt') {
       await receiptCommand(resolveScope('project'), argv.slice(1), io);
       return 0;
     }
     const { command, options, defaultInvocation, extraArgs } = parseOptions(argv);
+    commandName = command;
     if (command === 'help') { printHelp(io); return 0; }
     const paths = resolveScope(options.scope);
     if (options.statusOnly) await statusCommand(paths, options, io);
@@ -61,8 +63,16 @@ export async function run(argv: string[] = process.argv.slice(2), io: CliIo = cr
     maybeShowFundingNotice(paths, io, fundingSuppressed);
     return exitCode;
   } catch (error) {
+    if (error instanceof NeedsConfirmationError) {
+      io.error(commandName === 'uninstall'
+        ? '확인 없이는 제거하지 않았어요. --yes를 붙이세요'
+        : '확인 없이는 진행하지 않았어요. --yes를 붙이세요');
+      return 1;
+    }
     const message = error instanceof Error ? error.message : '작업을 처리하지 못했습니다.';
     io.error(`오류: ${safeError(message, argv.includes('--verbose'))}`);
     return 1;
   }
 }
+import { NeedsConfirmationError } from './output/format.js';
+

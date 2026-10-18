@@ -2,11 +2,18 @@ import readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import type { CliIo, CliOptions, InstallScope, Profile } from '../types.js';
 
+export class NeedsConfirmationError extends Error {
+  constructor() {
+    super('확인 없이는 진행하지 않았어요. --yes를 붙이세요');
+  }
+}
+
 export function createIo(): CliIo {
   return {
     write: (message) => console.log(message),
     error: (message) => console.error(message),
     ask: async (message, defaultYes = false) => {
+      if (input.isTTY !== true) throw new NeedsConfirmationError();
       const rl = readline.createInterface({ input, output });
       try {
         const answer = await rl.question(`${message} ${defaultYes ? '(Y/n)' : '(y/N)'} `);
