@@ -4,7 +4,7 @@ import path from 'node:path';
 import type { Readable } from 'node:stream';
 import { readBridgeConfig } from '../../config/managed.js';
 import type { CliIo, ScopePaths } from '../../types.js';
-import { normalizeReceipt, renderReceipt } from './render.js';
+import { normalizeReceipt, receiptMarkdown, renderReceipt } from './render.js';
 
 const RECEIPT_INPUT_EXAMPLE = `표준 입력으로 전달하는 방식을 권장합니다:
 ... | jutell receipt --file -
@@ -126,7 +126,7 @@ async function saveReceipt(
 
     try {
       const output = renderReceipt(input, timestamp, relativePath(paths.targetRoot, file));
-      await handle.writeFile(`${output}\n`, 'utf8');
+      await handle.writeFile(receiptMarkdown(output), 'utf8');
       await handle.close();
       return output;
     } catch (error) {

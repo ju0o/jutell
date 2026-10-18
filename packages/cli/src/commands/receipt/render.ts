@@ -12,12 +12,16 @@ export type ReceiptInput = {
     nice: string[];
     stop: string[];
   };
+  summary?: string;
   risk?: unknown;
   nextMessage?: unknown;
 };
 
 export const RECEIPT_SECTIONS = ['[요청한 것]', '[이번에 한 작업]', '[바뀐 파일]', '[확인]', '[다음 추천]'] as const;
-export const NEXT_GROUPS = [' ▶ 계속 진행', ' ○ 해두면 좋은 것', ' ■ 여기서 멈춰도 됨'] as const;
+export const NEXT_GROUPS = [' ▶ 계속', ' ○ 추천', ' ■ 여기서 멈춰도 됨'] as const;
+export const NOTHING_NEXT_LINE = ' 여기서 멈춰도 됩니다 – 요청한 작업이 끝났어요';
+export const DEFAULT_SUMMARY = '요청한 작업을 마쳤어요.';
+export const SUMMARY_PREFIX = '한 줄 요약: ';
 
 const forbiddenStatusPhrases = ['확인 완료', '일부 확인', '추가 확인 필요'];
 const rawCommandPattern = /`|(?:^|[^A-Za-z0-9_])(?:git|npm|npx|node|pnpm|yarn|rg|grep|cat|sed|ls|cd|python|pytest|vitest|tsc|make|curl)\s+\S+|(?:^|\s)--[A-Za-z][A-Za-z0-9-]*(?=\s|=|$)|(?:^|\s)-[A-Za-z](?:[A-Za-z0-9-]*)(?=\s|$)/;
@@ -175,7 +179,7 @@ export function normalizeReceipt(value: unknown, problems?: string[]): ReceiptIn
       const unchecked = normalizeTextArray(input.unchecked, '확인 못 한 것', issues, 4);
       for (const what of checked) sourceChecks.push({ what, result: '확인함', how: '' });
       for (const what of unchecked) sourceChecks.push({ what, result: '안 해봄', reason: '' });
-      next.continue = normalizeTextArray(input.next, '다음 추천', issues, 3);
+      next.nice = normalizeTextArray(input.next, '다음 추천', issues, 3);
     } else {
       if (input.checks !== undefined && !Array.isArray(input.checks)) {
         issues.push('확인 항목 목록을 읽지 못했습니다.');
@@ -218,7 +222,8 @@ export function normalizeReceipt(value: unknown, problems?: string[]): ReceiptIn
 
     const availableCheckSlots = Math.max(0, 4 - gapChecks.length);
     const checks = [...sourceChecks.slice(0, availableCheckSlots), ...gapChecks];
-    return markNormalized({ asked, done, files, checks, next });
+    const summary = cleanReceiptText(input.summary);
+    return markNormalized({ asked, done, files, checks, next, ...(summary ? { summary } : {}) });
   } catch {
     addProblem(problems, '영수증 입력을 읽지 못했습니다.');
     return markNormalized({
@@ -242,21 +247,27 @@ function renderList<T>(items: T[], format: (item: T, index: number) => string, e
 export function renderReceipt(input: unknown, timestamp: string, savedPath?: string): string {
   const receipt = validateReceipt(input, typeof input === 'object' && input !== null && normalizedReceipts.has(input));
   const time = readText(timestamp, '시간');
+  const summarySource = typeof input === 'object' && input !== null ? (input as { summary?: unknown }).summary : undefined;
+  const summary = cleanReceiptText(summarySource)
+    ?? (receipt.done.length > 0 ? `${receipt.done[0]}${receipt.done.length > 1 ? ` 외 ${receipt.done.length - 1}건` : ''}` : DEFAULT_SUMMARY);
+  const asked = receipt.asked ?? [];
+  const files = receipt.files ?? [];
+  const nextGroups = [receipt.next.continue, receipt.next.nice, receipt.next.stop];
   const lines = [
     '==============================',
     '  JuTell 작업 영수증',
     `  ${time}`,
     '==============================',
-    RECEIPT_SECTIONS[0],
-    ...renderList(receipt.asked ?? [], (item, index) => ` ${index + 1}. ${item}`, ' 없음'),
-    '',
+    ...(asked.length > 0 ? [RECEIPT_SECTIONS[0], ...asked.map((item, index) => ` ${index + 1}. ${item}`), ''] : []),
     RECEIPT_SECTIONS[1],
     ...renderList(receipt.done, (item, index) => ` ${index + 1}. ${item}`, ' 없음'),
     '',
-    RECEIPT_SECTIONS[2],
-    ...renderList((receipt.files ?? []).slice(0, 8), (item, index) => ` ${index + 1}. ${item}`, ' 없음'),
-    ...(receipt.files && receipt.files.length > 8 ? [` 외 ${receipt.files.length - 8}개`] : []),
-    '',
+    ...(files.length > 0 ? [
+      RECEIPT_SECTIONS[2],
+      ...files.slice(0, 8).map((item, index) => ` ${index + 1}. ${item}`),
+      ...(files.length > 8 ? [` 외 ${files.length - 8}개`] : []),
+      '',
+    ] : []),
     RECEIPT_SECTIONS[3],
     ...renderList(
       receipt.checks,
@@ -267,12 +278,9 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
     ),
     '------------------------------',
     RECEIPT_SECTIONS[4],
-    NEXT_GROUPS[0],
-    ...renderList(receipt.next.continue, (item) => `   - ${item}`, '   - 없음'),
-    NEXT_GROUPS[1],
-    ...renderList(receipt.next.nice, (item) => `   - ${item}`, '   - 없음'),
-    NEXT_GROUPS[2],
-    ...renderList(receipt.next.stop, (item) => `   - ${item}`, '   - 없음'),
+    ...(nextGroups.every((group) => group.length === 0)
+      ? [NOTHING_NEXT_LINE]
+      : nextGroups.flatMap((group, index) => group.length === 0 ? [] : [NEXT_GROUPS[index], ...group.map((item) => `   - ${item}`)])),
     '------------------------------',
   ];
 
@@ -280,5 +288,13 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
     lines.push(` 저장됨: ${maskAbsolutePaths(readText(savedPath, '저장 경로'))}`);
   }
   lines.push('==============================');
+  lines.push(`${SUMMARY_PREFIX}${summary}`);
   return lines.join('\n');
+}
+
+/** Saved report file: the receipt inside a text code block (valid Markdown), summary as the last line. */
+export function receiptMarkdown(output: string): string {
+  const lines = output.split('\n');
+  const summary = lines[lines.length - 1]?.startsWith(SUMMARY_PREFIX) ? lines.pop()! : `${SUMMARY_PREFIX}${DEFAULT_SUMMARY}`;
+  return ['# JuTell 작업 영수증', '', '```text', ...lines, '```', '', summary, ''].join('\n');
 }
