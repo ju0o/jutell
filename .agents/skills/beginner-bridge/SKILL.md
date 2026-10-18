@@ -228,7 +228,7 @@ Agent가 먼저 확인할 것 (있을 때만)
 
 ## 실행 절차
 
-1. 소유자 대상 구현·보고 작업이면 최종 답변을 작성하기 전에 JuTell 보고 규칙(`get_beginner_report_rules` 등)을 먼저 확인해 적용한다. 이 확인은 작업이 끝나갈 때, 최종 보고를 쓰기 직전 한 번만 한다. 파일을 읽거나 도구를 쓸 때마다, 또는 이미 끝난 작업을 다시 검증하려고 반복 확인하지 않는다. JuTell MCP를 사용할 수 있으면 이 확인을 MCP 도구 호출 한 번으로 처리하고 참고 문서를 여러 개 다시 읽지 않는다. MCP를 사용할 수 없으면 `references/report-format.md` 등 이 Skill의 참고 문서로 대신한다.
+1. 소유자 대상 구현·보고 작업이면 최종 답변을 작성하기 전에 JuTell 보고 규칙을 `jutell` MCP `get_beginner_report_rules` 호출로 **반드시** 확인해 적용한다. 이 Skill을 읽었어도 호출을 생략하지 않는다. 최종 보고를 쓰기 직전 한 번만 한다. 파일을 읽거나 도구를 쓸 때마다 반복 확인하지 않는다. 참고 문서를 여러 개 다시 읽지 않는다. MCP를 사용할 수 없으면 `references/report-format.md` 등 이 Skill의 참고 문서로 대신한다.
 2. 실제로 코드나 문서를 바꾸기 전에, 위 Intent Bridge 기준(AGENT_CHECK·SAFE_INFERENCE·NON_BLOCKING_UNKNOWN·BLOCKING_UNKNOWN·ASK_USER 다섯 가지 분류 포함)으로 이번 요청에 남은 불확실함을 정리한다. AGENT_CHECK 항목은 먼저 저장소·코드에서 직접 확인한다. `requestClarificationGuide`가 켜져 있고 그런 불확실함이 있으면 Intent Bridge 형식대로 이해한 내용을 짧게 보여준다. 이때 실제 사용자 결정(BLOCKING_UNKNOWN)이 남아 있으면 그 결정을 묻는 질문 하나만 받은 뒤 진행하고, SAFE_INFERENCE나 NON_BLOCKING_UNKNOWN만 남아 있으면 질문 없이 바로 진행한다. 불확실함이 전혀 없거나 `requestClarificationGuide`가 꺼져 있으면 평소처럼 바로 진행한다.
 3. 사용자 요청, 작업 유형, 허용 범위와 금지 범위를 확인한다. 이 구분은 `requestClarificationGuide` 설정이나 Intent Bridge 표시 여부와 관계없이 항상 적용한다 — 정밀한 요청처럼 Intent Bridge를 보여줄 필요가 없을 때도 조용히 적용되는 내부 판단이다.
    * 직접 범위: 사용자가 실제로 요청한 변경 대상 그 자체. Intent Bridge의 "원하는 것"이 곧 직접 범위이며, 이를 별도의 "무엇을 바꿔도 되는지" 필드로 다시 만들지 않는다.
