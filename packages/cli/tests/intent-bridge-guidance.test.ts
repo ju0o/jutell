@@ -824,7 +824,7 @@ describe('Case D shape (dogfood-reproduced) is documented as a known, unsolved l
 
   it('the spec worked example shows the disclosure in prose, with 일부 확인 as the resulting status (not hardcoded elsewhere, no field)', async () => {
     const spec = await fs.readFile(reportSpecFile, 'utf8');
-    expect(spec).toMatch(/> 위험과 사용자 확인: 외부 신원 인증 서비스 실제 연결은 확인하지 못했습니다\.\n> 보고서 상태: 일부 확인/);
+    expect(spec).toMatch(/> 위험과 사용자 확인: 외부 신원 인증 서비스 실제 연결은 확인하지 못했습니다\.\n> 확인 못 한 것: 외부 신원 인증 서비스 실제 연결 \(그래서 "확인 완료"라고 쓰지 않습니다\)/);
   });
 });
 
@@ -924,7 +924,7 @@ describe('V2.0/V2.1/V2.2 guidance remains intact under the finalized completion 
 describe('Existing report-format parity remains valid (N)', () => {
   it('keeps the §18 canonical example (no completion-critical gap) unaffected - field stays absent, 추가 확인 필요 unchanged', async () => {
     const spec = await fs.readFile(reportSpecFile, 'utf8');
-    expect(spec).toMatch(/- 보고서 상태: 추가 확인 필요\n```/);
+    expect(spec).toMatch(/- 확인 못 한 것: 실제 화면에서 문구가 잘리는지는 아직 보지 않았습니다\.\n```/);
   });
 
   it('keeps the minimal-report and general-report sections untouched (field is scoped to the 6-item base structure only)', async () => {

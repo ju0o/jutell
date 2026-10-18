@@ -110,7 +110,7 @@ describe('explainedDiff (J01 explained diff reporting)', () => {
     const rules = beginnerReportRules(DEFAULT_CONFIG);
     expect(rules.statusRule).toContain('"보고서 상태:" 줄을 쓰지 않고');
     expect(rules.statusRule).toContain('직접 확인한 것 / 확인 못 한 것');
-    expect(rules.statusRule).toContain('실제로 실행하거나 읽은 확인이 없으면');
+    expect(rules.statusRule).toContain("원하는 결과와 사용자가 말한 지킬 조건을 모두 실제로 확인했을 때만 '확인 완료'라고 쓰고, 하나라도 확인 못 했으면 쓰지 않습니다.");
     expect(rules.statusRule).toContain('확인 완료');
   });
 

@@ -19,6 +19,8 @@ MCP 입력으로 임의 경로를 받지 않습니다. 서버는 프로젝트 �
 - 모든 V0.1 도구는 읽기 전용입니다. 코드·파일을 수정하는 도구는 제공하지 않습니다.
 - Codex에 등록할 때는 JuTell 자신의 읽기 전용 도구 5개(get_bridge_status, get_active_features, get_report_preferences, get_beginner_report_rules, get_safe_report_requirements)에만 도구별로 approval_mode = "approve"(묻지 않고 실행)를 적용합니다. 서버 기본값 default_tools_approval_mode = "prompt"와 다른 MCP 서버 설정은 바꾸지 않습니다. 나중에 새 도구가 추가되어도 이 목록에 자동으로 들어가지 않습니다.
 - 관리 블록(`# JUTELL_CLI_MCP_BEGIN`~`END`) 안을 직접 고치면 `jutell use` 때 되돌아요. 바꾸려면 블록 밖에 쓰세요. 블록 밖에 직접 둔 도구별 `approval_mode`(예: `"prompt"`)는 JuTell이 바꾸지 않습니다.
+- 관리 블록 **안**에 `approval_mode = "prompt"`를 써 두면 `jutell use`/설치 때 `"approve"`로 되돌아갑니다. 계속 묻게 하려면 블록 밖에 쓰세요.
+- `jutell uninstall --global`과 `jutell migrate --clean`은 부모 표가 없어진 뒤 남는 하위 표(예: `[mcp_servers.jutell.env]`, `[mcp_servers.beginner_bridge.tools.*]`)를 지우지 않고 `# jutell 제거로 주석 처리됨` 머리줄과 함께 주석으로 바꿉니다. 바꾸기 전 파일은 백업하고, 안내에 실제 백업 경로를 보여 줍니다. 다시 설치해도 자동으로 되살리지 않으니, 다시 쓰려면 그 줄들 맨 앞의 `# `을 지우세요.
 - 예외는 로컬 사용량 카운터 기록뿐입니다. `usageMeasurement.localCountersEnabled`가 켜진 경우에만 `.jutell-local/usage-counters.json`에 도구 이름, 호출 수, 응답 문자 수 합계, 시각을 기록하며, 기록 실패는 도구 응답에 영향을 주지 않습니다. 자세한 구조는 `docs/USAGE_EFFICIENCY_EXPERIMENTS.md`를 참조하세요.
 - 자동 Commit, Profile 변경, Feedback 전송을 하지 않습니다.
 - API Key, 환경변수, Cookie, Token을 요구하거나 출력하지 않습니다.

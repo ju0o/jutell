@@ -88,6 +88,8 @@ export async function migrateCommand(paths: ScopePaths, options: CliOptions, io:
     }
   }
 
+  let codexCleanCommentedTables: string[] = [];
+  let codexCleanBackupPath: string | undefined;
   // Codex legacy clean: only if canonical exists
   if (hasBothCodex || hasLegacyCodex) {
     const afterCodex = await readCodexRegistration(codexScopedPaths(paths), packageRoot(), true);
@@ -131,7 +133,22 @@ export async function migrateCommand(paths: ScopePaths, options: CliOptions, io:
         }
       }
       next = next.replace(/\n{3,}/g, '\n\n').trim();
-      await writeTextSafely(file, next ? `${next}\n` : '');
+      const { commentOutOrphanTables, assertValidConfigToml, backupFile } = await import('../config/managed.js');
+      const orphanCleanup = commentOutOrphanTables(next, 'mcp_servers.beginner_bridge');
+      next = orphanCleanup.text;
+      let configValid = true;
+      try {
+        assertValidConfigToml(next);
+      } catch (error) {
+        configValid = false;
+        errors.push(error instanceof Error ? error.message : 'Codex 설정 검증에 실패하여 legacy 정리를 건너뛰었습니다.');
+      }
+      const cleanedText = next ? `${next}\n` : '';
+      if (configValid && cleanedText !== text) {
+        codexCleanBackupPath = await backupFile(file);
+        await writeTextSafely(file, cleanedText);
+      }
+      if (configValid) codexCleanCommentedTables = orphanCleanup.commentedTables;
     }
   }
 
@@ -166,7 +183,15 @@ export async function migrateCommand(paths: ScopePaths, options: CliOptions, io:
   if (errors.length) {
     io.write(['정리 중 일부를 건너뛰었습니다:', ...errors.map(e => `- ${e}`), '남은 레거시는 jutell doctor 로 확인하세요.'].join('\n'));
   } else {
-    io.write('레거시 정리가 끝났습니다.\n- .beginner-bridge.json (있었다면) 제거\n- Codex/OpenCode의 beginner_bridge 항목 제거\n관련 없는 설정은 보존했습니다.\njutell status / jutell doctor 로 확인하세요.');
+    io.write([
+      '레거시 정리가 끝났습니다.',
+      '- .beginner-bridge.json (있었다면) 제거',
+      '- Codex/OpenCode의 beginner_bridge 항목 제거',
+      ...(codexCleanCommentedTables.length > 0 ? [`- 남은 beginner_bridge 하위 항목 ${codexCleanCommentedTables.length}개를 주석 처리했습니다`] : []),
+      ...(codexCleanBackupPath ? [`- 백업: ${codexCleanBackupPath}`] : []),
+      '관련 없는 설정은 보존했습니다.',
+      'jutell status / jutell doctor 로 확인하세요.',
+    ].join('\n'));
   }
   return { cancelled: false };
 }
