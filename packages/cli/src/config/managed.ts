@@ -117,7 +117,10 @@ export async function restore(snapshotValue: FileSnapshot) {
 export async function writeTextSafely(file: string, content: string) {
   await fs.mkdir(path.dirname(file), { recursive: true });
   const temporary = `${file}.beginner-bridge-tmp-${process.pid}`;
-  await fs.writeFile(temporary, content, 'utf8');
+  // Keep the existing file's permissions (e.g. 600 on config.toml with secrets in env); rename would reset them.
+  const existingMode = await fs.stat(file).then((stat) => stat.mode & 0o777, () => undefined);
+  await fs.writeFile(temporary, content, { encoding: 'utf8', ...(existingMode !== undefined ? { mode: existingMode } : {}) });
+  if (existingMode !== undefined) await fs.chmod(temporary, existingMode);
   try { await fs.rename(temporary, file); } catch (error) { await fs.rm(temporary, { force: true }); throw error; }
 }
 
