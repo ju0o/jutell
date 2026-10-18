@@ -44,6 +44,8 @@ describe('M2.6 Codex Experience Parity guidance', () => {
     expect(text.indexOf('get_beginner_report_rules`를 호출하고, 그다음에 영수증')).toBeGreaterThan(0);
     expect(text).toContain('영수증이 최종 답입니다. 영수증 아래에는 아무것도 쓰지 않고');
     expect(text).toContain('반드시 파일 편집 도구로 씁니다');
+    expect(text).toContain('테스트·실행 결과·화면 확인을 요구하면 실행하고');
+    expect(text).toContain('checked가 아닌 unchecked에 씁니다');
     expect(text).toContain("'브라우저 탭 제목', '페이지 맨 위 큰 제목'");
   });
 
