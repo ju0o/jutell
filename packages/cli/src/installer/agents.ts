@@ -16,7 +16,7 @@ const managedBlockFor = (receiptReport: boolean) => {
 ## JuTell
 
 - 작업을 마치고 최종 답을 쓰기 직전에 jutell MCP 도구 \`get_beginner_report_rules\`를 SKILL.md를 읽었어도 반드시 한 번 호출합니다(MCP가 안 보일 때만 생략).
-- 시작할 때 \`.agents/skills/beginner-bridge/SKILL.md\`·\`.jutell.json\`·할 일 목록·바꿀 파일 등 필요한 파일을 명령 하나로 읽고, 읽은 파일은 다시 읽지 않습니다(고칠 때마다 바꾼 곳만 다시 확인). 그 규칙대로 최종 답을 씁니다.
+- 시작할 때 \`.agents/skills/beginner-bridge/SKILL.md\`·\`.jutell.json\`·요청에 나온 파일·바꿀 파일 등 필요한 파일만 명령 하나로 읽고, 읽은 파일은 다시 읽지 않습니다(고칠 때마다 바꾼 곳만 다시 확인). 그 규칙대로 최종 답을 씁니다.
 - 실제로 코드나 문서를 바꾸기 전에는, 요청에 결과를 크게 바꿀 수 있는 불확실함이 있는지 SKILL.md의 Intent Bridge 규칙으로 판단합니다. 불확실함이 없거나 \`requestClarificationGuide\`가 꺼져 있으면 평소처럼 바로 진행합니다.
 - JuTell MCP는 canonical \`jutell\` 서버를 우선하고, legacy \`beginner_bridge\`는 호환용으로만 씁니다.
 - JuTell MCP가 이미 확보한 근거로 보고·검증·핸드오프의 모호함을 줄이면 우선 씁니다. 쓸 수 없거나 Provider 정책으로 막혀 있으면 작업을 멈추지 않고 JuTell Skill로 계속합니다. 실제로 호출해 응답을 받은 경우에만 JuTell MCP를 사용했다고 말합니다.

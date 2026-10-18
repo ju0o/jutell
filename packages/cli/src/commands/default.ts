@@ -3,6 +3,10 @@ import { dashboardCommand } from './dashboard.js';
 import { enableCommand } from './lifecycle.js';
 import { getStatus } from './status.js';
 import { useCommand } from './use.js';
+import { assets } from '../config/paths.js';
+import { installSkill, recordSkillFiles, skillConflictMessage, skillRefreshMessage } from '../installer/skill.js';
+import { exists } from '../config/managed.js';
+import path from 'node:path';
 import { AGENT_PROVIDERS, type AgentProvider, type AgentProviderId } from '../installer/providers.js';
 import type { CliIo, CliOptions, ScopePaths, StatusResult } from '../types.js';
 
@@ -152,7 +156,20 @@ export async function offerAutoConnect(paths: ScopePaths, options: CliOptions, i
   return { cancelled: false };
 }
 
+// A repeat `jutell` (also after a package upgrade) refreshes the guide files JuTell installed,
+// whenever their content differs from this package. Unknown user files are kept.
+async function refreshInstalledSkill(paths: ScopePaths, io: CliIo) {
+  if (!(await exists(path.join(paths.skillRoot, 'SKILL.md')))) return;
+  const result = await installSkill(assets().skill, paths.skillRoot, paths);
+  await recordSkillFiles(paths, [...result.changed, ...result.replaced]);
+  const message = skillRefreshMessage(result, paths);
+  if (message) io.write(message);
+  const kept = skillConflictMessage(result);
+  if (kept) io.write(`주의: ${kept}`);
+}
+
 export async function defaultCommand(paths: ScopePaths, options: CliOptions, io: CliIo) {
+  await refreshInstalledSkill(paths, io);
   const status = await getStatus(paths);
   const statuses = providerRuntimeStatuses(status);
   const detected = statuses.filter((row) => row.detected);

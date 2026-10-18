@@ -7,6 +7,7 @@ import { claudeDetected, codexDetected, nodeMajorVersion, operatingSystem } from
 import { exists, parseSkillVersion, readBridgeConfig, readCodexRegistration, readText, readVersionInfo, FEATURE_IDS } from '../config/managed.js';
 import { setupCommand } from './lifecycle.js';
 import { hasJuTellAgentsBlock } from '../installer/agents.js';
+import { differingSkillFiles } from '../installer/skill.js';
 import { opencodeDetected, readOpenCodeRegistration } from '../installer/opencode.js';
 import { readClaudeRegistration } from '../installer/claude.js';
 import { probeMcpServer } from '../process/mcpProbe.js';
@@ -200,8 +201,10 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   const skillVersion = parseSkillVersion(skillText);
   const sourceSkillText = await readText(path.join(assets().skill, 'SKILL.md'));
   const sourceVersion = parseSkillVersion(sourceSkillText);
-  const skillMatch = Boolean(skillText && sourceSkillText && skillText === sourceSkillText);
-  checks.push({ name: 'Skill 버전', status: skillMatch ? '정상' : skillVersion ? '주의' : '직접 확인 필요', detail: skillMatch ? `스킬 버전 ${sourceVersion ?? '(버전 기록 없음)'} (설치 사본 일치).` : skillVersion ? `설치 사본 버전 ${skillVersion}이 원본과 다릅니다. jutell use <agent> 로 재설치하세요.` : '설치된 Skill에 버전 기록이 없습니다.' });
+  const differing = skillText === undefined ? [] : await differingSkillFiles(assets().skill, paths.skillRoot);
+  const skillMatch = Boolean(skillText && sourceSkillText && differing.length === 0);
+  const differingList = `${differing.slice(0, 5).join(', ')}${differing.length > 5 ? ` 외 ${differing.length - 5}개` : ''}`;
+  checks.push({ name: 'Skill 버전', status: skillMatch ? '정상' : skillVersion ? '주의' : '직접 확인 필요', detail: skillMatch ? `스킬 버전 ${sourceVersion ?? '(버전 기록 없음)'} (설치 사본 일치).` : skillVersion ? `설치된 안내 파일이 이 버전과 달라요: ${differingList}. 프로젝트 폴더에서 \`jutell\`을 실행하면 새 버전으로 바꿔요(예전 것은 .jutell-local/backups에 보관).` : '설치된 Skill에 버전 기록이 없습니다.' });
   checks.push({ name: '현재 Agent 세션 적용', status: '직접 확인 필요', detail: '실제로 Skill과 규칙을 읽었는지 여부는 해당 Agent 세션에서 직접 확인해야 합니다.' });
   checks.push({ name: 'MCP 빌드 파일', status: await exists(mcpEntry) ? '정상' : '오류', detail: await exists(mcpEntry) ? '패키지에 포함되어 있습니다.' : 'MCP 빌드 파일이 없습니다.' });
   checks.push({ name: 'Codex MCP', status: registration.conflict ? '오류' : registration.registered ? '정상' : '주의', detail: registration.conflict ? '관리되지 않는 동일 이름 설정이 있습니다.' : registration.registered ? `JuTell 관리 블록을 확인했습니다. 새 세션 자동 시작: ${registration.enabled ? '켜짐' : '꺼짐'}.` : '등록되지 않았습니다.' });

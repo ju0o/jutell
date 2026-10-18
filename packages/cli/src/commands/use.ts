@@ -1,7 +1,7 @@
 import { assets, codexScopedPaths, packageRoot } from '../config/paths.js';
 import { readCodexRegistration, registerMcp, snapshot, restore } from '../config/managed.js';
 import { ensureBridgeConfig, setMcpEnabled } from '../installer/config.js';
-import { installSkill, recordSkillFiles, removeAddedSkillFiles } from '../installer/skill.js';
+import { installSkill, recordSkillFiles, removeAddedSkillFiles, skillConflictMessage, skillRefreshMessage } from '../installer/skill.js';
 import { agentsFile, claudeMdFile, ensureJuTellAgentsBlock } from '../installer/agents.js';
 import { opencodeDetected, readOpenCodeRegistration, registerOpenCodeMcp, setOpenCodeEnabled } from '../installer/opencode.js';
 import { readClaudeRegistration, registerClaudeMcp, removeClaudeMcp } from '../installer/claude.js';
@@ -127,7 +127,11 @@ export async function useCommand(paths: ScopePaths, options: CliOptions, io: Cli
     if (paths.scope === 'project') await ensureJuTellAgentsBlock(paths.targetRoot);
     await setMcpEnabled(paths, true);
     await registerProviderEnabled(paths, provider, io);
-    await recordSkillFiles(paths, changed);
+    await recordSkillFiles(paths, [...changed, ...skillResult.replaced]);
+    const refreshed = skillRefreshMessage(skillResult, paths);
+    if (refreshed) io.write(refreshed);
+    const kept = skillConflictMessage(skillResult);
+    if (kept) io.write(`주의: ${kept}`);
     await verifyRegistration(paths, provider);
     printSuccess(io, provider, { detected, skill: true, agents: paths.scope === 'project', keepNote: true });
     return { cancelled: false };

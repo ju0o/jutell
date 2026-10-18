@@ -1,7 +1,7 @@
 import { assets, codexScopedPaths, packageRoot } from '../config/paths.js';
 import { readBridgeConfig, snapshot, restore } from '../config/managed.js';
 import { ensureBridgeConfig } from '../installer/config.js';
-import { installSkill, recordSkillFiles, removeAddedSkillFiles } from '../installer/skill.js';
+import { installSkill, recordSkillFiles, removeAddedSkillFiles, skillConflictMessage, skillRefreshMessage } from '../installer/skill.js';
 import { agentsFile, ensureJuTellAgentsBlock } from '../installer/agents.js';
 import { readCodexRegistration, registerMcp } from '../config/managed.js';
 import { readOpenCodeRegistration, registerOpenCodeMcp } from '../installer/opencode.js';
@@ -80,7 +80,7 @@ export async function upgradeCommand(paths: ScopePaths, options: CliOptions, io:
       claudeRefreshed = true;
     }
 
-    await recordSkillFiles(paths, changedSkill);
+    await recordSkillFiles(paths, [...changedSkill, ...skillResult.replaced]);
 
     // 5. Report — what changed / preserved / legacy / next
     const parts: string[] = ['JuTell 업그레이드가 끝났습니다.'];
@@ -89,9 +89,12 @@ export async function upgradeCommand(paths: ScopePaths, options: CliOptions, io:
     else if (configCreated) parts.push('- 설정: 새 .jutell.json을 만들었습니다.');
     else parts.push('- 설정: 기존 .jutell.json을 유지했습니다.');
 
-    if (skillResult.conflicts.length) parts.push(`- Skill: 기존 파일을 덮어쓰지 않았습니다 (${skillResult.conflicts.join(', ')}).`);
+    const refreshed = skillRefreshMessage(skillResult, paths);
+    const kept = skillConflictMessage(skillResult);
+    if (refreshed) parts.push(`- Skill: ${refreshed}`);
     else if (changedSkill.length) parts.push('- Skill: 최신 Skill로 새로고침했습니다.');
-    else parts.push('- Skill: 최신 상태를 유지했습니다.');
+    else if (!kept) parts.push('- Skill: 최신 상태를 유지했습니다.');
+    if (kept) parts.push(`- Skill: ${kept}`);
 
     parts.push('- AGENTS.md: JuTell 블록을 확인/새로고침했습니다.');
     if (codexRefreshed || opencodeRefreshed || claudeRefreshed) {

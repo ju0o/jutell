@@ -22,27 +22,162 @@ async function tempProject() {
   return { root, home, project, env };
 }
 
+async function installed() {
+  const t = await tempProject();
+  const run = (args: string[]) => spawnSync(process.execPath, [cliEntry, ...args], { cwd: t.project, env: t.env, encoding: 'utf8', timeout: 30000 });
+  expect(run(['use', 'codex', '--yes']).status).toBe(0);
+  const skillDir = path.join(t.project, '.agents', 'skills', 'beginner-bridge');
+  const current = await fs.readFile(path.join(skillDir, 'SKILL.md'), 'utf8');
+  return { ...t, run, skillDir, current, old: await fs.readFile(oldSkill, 'utf8') };
+}
+
+async function backupsOf(project: string) {
+  const root = path.join(project, '.jutell-local', 'backups');
+  const dirs = await fs.readdir(root).catch(() => [] as string[]);
+  return Promise.all(dirs.map(async (dir) => ({ dir: path.join(root, dir), skill: await fs.readFile(path.join(root, dir, 'SKILL.md'), 'utf8').catch(() => undefined) })));
+}
+
 describe('upgrading over an old (32 KB) SKILL.md', () => {
-  it('re-running setup replaces the JuTell-installed SKILL.md, keeps a backup, and adds the new references', async () => {
-    const { project, env } = await tempProject();
-    const run = (args: string[]) => spawnSync(process.execPath, [cliEntry, ...args], { cwd: project, env, encoding: 'utf8', timeout: 30000 });
-    expect(run(['use', 'codex', '--yes']).status).toBe(0);
-    const skillDir = path.join(project, '.agents', 'skills', 'beginner-bridge');
-    const current = await fs.readFile(path.join(skillDir, 'SKILL.md'), 'utf8');
-    // Simulate an install made by the previous release: old SKILL.md, new reference files absent.
-    const old = await fs.readFile(oldSkill, 'utf8');
+  it('plain `jutell --yes` after a #28-style install replaces the unmodified old SKILL.md directly and adds references', async () => {
+    const { project, run, skillDir, current, old } = await installed();
     await fs.writeFile(path.join(skillDir, 'SKILL.md'), old);
     await fs.rm(path.join(skillDir, 'references', 'procedure.md'));
     await fs.rm(path.join(skillDir, 'references', 'intent-bridge.md'));
 
-    const second = run(['use', 'codex', '--yes']);
-    expect(second.status).toBe(0);
-    expect(`${second.stdout}${second.stderr}`).not.toContain('덮어쓰지 않았습니다');
+    const result = run(['--yes']);
+    expect(result.status).toBe(0);
     expect(await fs.readFile(path.join(skillDir, 'SKILL.md'), 'utf8')).toBe(current);
-    expect(Buffer.byteLength(current)).toBeLessThan(8192);
-    expect(await fs.readFile(path.join(skillDir, 'SKILL.md.jutell-original'), 'utf8')).toBe(old);
     await expect(fs.stat(path.join(skillDir, 'references', 'procedure.md'))).resolves.toBeTruthy();
     await expect(fs.stat(path.join(skillDir, 'references', 'intent-bridge.md'))).resolves.toBeTruthy();
+    // Unmodified shipped content: nothing of the user's to keep, so no backup.
+    expect(result.stdout).toContain('안내 파일을 새 버전으로 바꿨어요.');
+    expect(result.stdout).not.toContain('보관했어요');
+    expect(await backupsOf(project)).toHaveLength(0);
+    // Nothing old stays where agents read the Skill.
+    expect((await fs.readdir(skillDir)).filter((name) => name !== 'SKILL.md' && name !== 'references')).toEqual([]);
+    const again = run(['--yes']);
+    expect(again.stdout).not.toContain('안내 파일을 새 버전으로');
+  });
+
+  it.each([
+    ['--yes', ['--yes']],
+    ['use codex', ['use', 'codex', '--yes']],
+    ['upgrade', ['upgrade', '--yes']],
+    ['setup', ['setup', '--yes']],
+    ['enable', ['enable', '--yes']],
+  ])('a user-modified JuTell-installed SKILL.md is backed up outside the skill folder, then replaced (%s)', async (_label, args) => {
+    const { project, run, skillDir, current } = await installed();
+    await fs.writeFile(path.join(skillDir, 'SKILL.md'), `${current}\n내가 덧붙인 메모\n`);
+    const result = run(args);
+    expect(result.status).toBe(0);
+    expect(await fs.readFile(path.join(skillDir, 'SKILL.md'), 'utf8')).toBe(current);
+    const backups = await backupsOf(project);
+    expect(backups).toHaveLength(1);
+    expect(backups[0].skill).toContain('내가 덧붙인 메모');
+    expect(path.relative(skillDir, backups[0].dir).startsWith('..')).toBe(true);
+    expect(result.stdout).toContain(`안내 파일을 새 버전으로 바꿨어요. 예전 것은 ${path.relative(project, backups[0].dir)}에 보관했어요.`);
+    expect(await fs.readFile(path.join(project, '.jutell-local', '.gitignore'), 'utf8')).toBe('*\n');
+  });
+
+  it('2.0.1-style install (no manifest): a known shipped SKILL.md is replaced, an unknown one is left alone', async () => {
+    const { project, run, skillDir, current, old } = await installed();
+    await fs.rm(path.join(project, '.jutell-local', 'cli-install.json'));
+    await fs.writeFile(path.join(skillDir, 'SKILL.md'), old);
+    expect(run(['--yes']).status).toBe(0);
+    expect(await fs.readFile(path.join(skillDir, 'SKILL.md'), 'utf8')).toBe(current);
+
+    await fs.rm(path.join(project, '.jutell-local', 'cli-install.json'));
+    await fs.writeFile(path.join(skillDir, 'SKILL.md'), '사용자가 직접 쓴 Skill\n');
+    const result = run(['--yes']);
+    expect(result.stdout).not.toContain('안내 파일을 새 버전으로');
+    expect(await fs.readFile(path.join(skillDir, 'SKILL.md'), 'utf8')).toBe('사용자가 직접 쓴 Skill\n');
+  });
+
+  describe.skipIf(process.platform === 'win32')('never follows links or hard links (B2)', () => {
+    async function outsideCopy(root: string, old: string) {
+      const outside = path.join(root, 'outside');
+      await fs.mkdir(outside, { recursive: true });
+      await fs.writeFile(path.join(outside, 'SKILL.md'), old);
+      await fs.writeFile(path.join(outside, 'procedure.md'), old);
+      return outside;
+    }
+
+    it('SKILL.md as a symlink', async () => {
+      const { root, run, skillDir, old } = await installed();
+      const outside = await outsideCopy(root, old);
+      await fs.rm(path.join(skillDir, 'SKILL.md'));
+      await fs.symlink(path.join(outside, 'SKILL.md'), path.join(skillDir, 'SKILL.md'));
+      const result = run(['--yes']);
+      expect(result.status).toBe(0);
+      expect((await fs.lstat(path.join(skillDir, 'SKILL.md'))).isSymbolicLink()).toBe(true);
+      expect(await fs.readFile(path.join(outside, 'SKILL.md'), 'utf8')).toBe(old);
+    });
+
+    it('references/ directory as a symlink', async () => {
+      const { root, run, skillDir, old } = await installed();
+      const outside = await outsideCopy(root, old);
+      await fs.rm(path.join(skillDir, 'references'), { recursive: true });
+      await fs.symlink(outside, path.join(skillDir, 'references'));
+      run(['--yes']);
+      expect(await fs.readFile(path.join(outside, 'procedure.md'), 'utf8')).toBe(old);
+      expect((await fs.readdir(outside)).sort()).toEqual(['SKILL.md', 'procedure.md']);
+    });
+
+    it('a file inside references/ as a symlink', async () => {
+      const { root, run, skillDir, old } = await installed();
+      const outside = await outsideCopy(root, old);
+      await fs.rm(path.join(skillDir, 'references', 'procedure.md'));
+      await fs.symlink(path.join(outside, 'procedure.md'), path.join(skillDir, 'references', 'procedure.md'));
+      run(['--yes']);
+      expect(await fs.readFile(path.join(outside, 'procedure.md'), 'utf8')).toBe(old);
+    });
+
+    it('SKILL.md hard-linked to another file (nlink > 1)', async () => {
+      const { root, run, skillDir, old } = await installed();
+      const outside = await outsideCopy(root, old);
+      await fs.rm(path.join(skillDir, 'SKILL.md'));
+      await fs.link(path.join(outside, 'SKILL.md'), path.join(skillDir, 'SKILL.md'));
+      const result = run(['--yes']);
+      expect(result.stdout).toContain('직접 만든 파일이거나 링크라서 바꾸지 않은 안내 파일이 있어요: SKILL.md');
+      expect(await fs.readFile(path.join(outside, 'SKILL.md'), 'utf8')).toBe(old);
+      expect((await fs.stat(path.join(skillDir, 'SKILL.md'))).nlink).toBe(2);
+    });
+
+    it('a repo-planted cli-install.json (with a forged hash) plus a symlinked SKILL.md', async () => {
+      const { root, project, run, skillDir, old } = await installed();
+      const outside = await outsideCopy(root, old);
+      const { createHash } = await import('node:crypto');
+      await fs.writeFile(path.join(project, '.jutell-local', 'cli-install.json'), JSON.stringify({ skillFiles: ['SKILL.md'], skillHashes: { 'SKILL.md': createHash('sha256').update(old).digest('hex') } }));
+      await fs.rm(path.join(skillDir, 'SKILL.md'));
+      await fs.symlink(path.join(outside, 'SKILL.md'), path.join(skillDir, 'SKILL.md'));
+      run(['--yes']);
+      expect((await fs.lstat(path.join(skillDir, 'SKILL.md'))).isSymbolicLink()).toBe(true);
+      expect(await fs.readFile(path.join(outside, 'SKILL.md'), 'utf8')).toBe(old);
+    });
+
+    it('backupFile replaces a planted .previous symlink instead of writing through it', async () => {
+      const { root } = await tempProject();
+      const { backupFile } = await import('../src/config/managed.js');
+      const file = path.join(root, 'config.toml');
+      const victim = path.join(root, 'victim.txt');
+      await fs.writeFile(file, 'config');
+      await fs.writeFile(victim, 'victim');
+      await fs.symlink(victim, `${file}.previous`);
+      await fs.symlink(victim, `${file}.jutell-original`);
+      await backupFile(file);
+      expect(await fs.readFile(victim, 'utf8')).toBe('victim');
+      expect((await fs.lstat(`${file}.previous`)).isSymbolicLink()).toBe(false);
+      expect(await fs.readFile(`${file}.previous`, 'utf8')).toBe('config');
+    });
+  });
+
+  it('doctor names the differing files and the fix command', async () => {
+    const { run, skillDir, old } = await installed();
+    await fs.writeFile(path.join(skillDir, 'SKILL.md'), old);
+    await fs.rm(path.join(skillDir, 'references', 'procedure.md'));
+    const doctor = run(['doctor', '--no-funding']);
+    expect(doctor.stdout).toContain('설치된 안내 파일이 이 버전과 달라요: SKILL.md, references/procedure.md.');
+    expect(doctor.stdout).toContain('프로젝트 폴더에서 `jutell`을 실행하면 새 버전으로 바꿔요');
   });
 
   it('never overwrites a differing skill file JuTell did not install (kept as a conflict)', async () => {

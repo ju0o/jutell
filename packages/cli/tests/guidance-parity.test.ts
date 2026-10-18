@@ -53,7 +53,7 @@ describe('M2.6 Codex Experience Parity guidance', () => {
     expect(text).toContain('반드시 파일 편집 도구로 씁니다');
     expect(text).toContain('테스트·실행 결과·화면 확인을 필요로 하면 실행하고');
     expect(text).toContain('checked가 아닌 unchecked에 씁니다');
-    expect(text).toContain('필요한 파일을 명령 하나로 읽고, 읽은 파일은 다시 읽지 않습니다');
+    expect(text).toContain('필요한 파일만 명령 하나로 읽고, 읽은 파일은 다시 읽지 않습니다');
     expect(text).toContain("실행한 테스트·명령은 최종 답과 영수증의 \`이번에 한 작업\`(done)에도 사용자가 쓴 말 그대로(예: '테스트') 적습니다");
     expect(text).toContain("'브라우저 탭 제목', '페이지 맨 위 큰 제목'");
   });
@@ -164,10 +164,14 @@ describe('slim SKILL.md (skill-slim)', () => {
       '비밀정보를 출력할 수 있는 명령은 실행하지 않는다',
       '`get_beginner_report_rules`를 한 번 호출한다',
       // Dogfooder fixes
-      '`unchecked`는 비워 두지 않는다',
+      '`unchecked`는 빼지 말고, 없으면 없다고 쓴다',
+      '사용자가 말한 조건을 모두 확인했을 때만 완료',
+      '적용하지 않을 상황:',
+      '사용자에게 질문하기로 했을 때, 또는 불확실함을 어떻게 분류할지 애매할 때 읽는다',
+      '다음 AI에게 넘기기(핸드오프)를 요청받았을 때, 설정 파일 오류가 있을 때',
       '원문을 붙여 넣지 않는다',
       "'종료 코드 0' 대신 '테스트 통과'",
-      '요청에 없는 할 일 목록·TODO 파일을 찾아 읽지 않는다',
+      '요청에 이름이 나오지 않은 TODO·할 일·작업 목록 파일(예: TODO.md, tasks)은 찾지도(목록 보기·검색 포함) 읽지도 않는다',
       '일관된 존댓말',
     ]) expect(skill).toContain(text);
   });
