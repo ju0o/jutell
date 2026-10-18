@@ -228,7 +228,7 @@ Agent가 먼저 확인할 것 (있을 때만)
 
 ## 실행 절차
 
-1. 소유자 대상 구현·보고 작업이면 최종 답변을 작성하기 전에 JuTell 보고 규칙을 `jutell` MCP `get_beginner_report_rules` 호출로 **반드시** 확인해 적용한다. 이 Skill을 읽었어도 호출을 생략하지 않는다. 최종 보고를 쓰기 직전 한 번만 한다. 파일을 읽거나 도구를 쓸 때마다 반복 확인하지 않는다. 참고 문서를 여러 개 다시 읽지 않는다. MCP를 사용할 수 없으면 `references/report-format.md` 등 이 Skill의 참고 문서로 대신한다.
+1. 소유자 대상 구현·보고 작업이면 최종 답변을 작성하기 전에 JuTell 보고 규칙을 `jutell` MCP `get_beginner_report_rules` 호출로 **반드시** 확인해 적용한다. Skill을 읽었어도 생략하지 않는다. 최종 보고를 쓰기 직전 한 번만 한다. 파일을 읽거나 도구를 쓸 때마다 반복 확인하지 않는다. MCP를 사용할 수 없으면 `references/report-format.md` 등 이 Skill의 참고 문서로 대신한다.
 2. 실제로 코드나 문서를 바꾸기 전에, 위 Intent Bridge 기준(AGENT_CHECK·SAFE_INFERENCE·NON_BLOCKING_UNKNOWN·BLOCKING_UNKNOWN·ASK_USER 다섯 가지 분류 포함)으로 이번 요청에 남은 불확실함을 정리한다. AGENT_CHECK 항목은 먼저 저장소·코드에서 직접 확인한다. `requestClarificationGuide`가 켜져 있고 그런 불확실함이 있으면 Intent Bridge 형식대로 이해한 내용을 짧게 보여준다. 이때 실제 사용자 결정(BLOCKING_UNKNOWN)이 남아 있으면 그 결정을 묻는 질문 하나만 받은 뒤 진행하고, SAFE_INFERENCE나 NON_BLOCKING_UNKNOWN만 남아 있으면 질문 없이 바로 진행한다. 불확실함이 전혀 없거나 `requestClarificationGuide`가 꺼져 있으면 평소처럼 바로 진행한다.
 3. 사용자 요청, 작업 유형, 허용 범위와 금지 범위를 확인한다. 이 구분은 `requestClarificationGuide` 설정이나 Intent Bridge 표시 여부와 관계없이 항상 적용한다 — 정밀한 요청처럼 Intent Bridge를 보여줄 필요가 없을 때도 조용히 적용되는 내부 판단이다.
    * 직접 범위: 사용자가 실제로 요청한 변경 대상 그 자체. Intent Bridge의 "원하는 것"이 곧 직접 범위이며, 이를 별도의 "무엇을 바꿔도 되는지" 필드로 다시 만들지 않는다.
@@ -278,12 +278,7 @@ Agent가 먼저 확인할 것 (있을 때만)
 15. 필요한 용어만 처음 등장할 때 설명한다. 기술 전용 용어는 해당 기술이 사용되는 것을 확인한 경우에만 설명한다. 기본 사전에 없는 용어는 추측하지 않는다.
 16. 활성 Feature와 `references/report-format.md`에 따라 하나의 비개발자용 최종 보고를 작성한다. `explainedDiff`가 활성이면 의미 있는 변경에 같은 근거로 설명형 변경 요약을 덧붙인다. 중요한 코드 블록이 이미 작업 과정에서 확인되었고 사용자 이해에 실제 도움이 될 때만 1~2개까지 보여준다. 이 섹션만을 위해 파일을 다시 읽거나 git diff를 다시 실행하지 않는다. `explainedDiff`가 꺼져 있으면 Readable Code도 생략한다(사용자가 코드 설명을 명시한 경우만 예외).
 17. `requestBuilder`가 활성이고 사용자가 다음 AI에게 넘기기·세션 마무리·이어서 할 일 정리를 요청하면, 현재 작업에서 이미 아는 근거만으로 `다음 AI에게 전달하기` 블록을 만든다. Request Builder의 `NEXT_AGENT_HANDOFF` 템플릿 또는 세션 `SESSION_SUMMARY`를 재사용해도 된다. 저장소 재탐색, 테스트 재실행, 자동 전송, HTML/클라우드 산출물은 만들지 않는다. 이번 작업에서 Intent Bridge로 승인받은 내용이 있으면 "지금 하던 일"에 그대로 재사용하고, 다시 확인하지 않는다.
-18. `nextActionSuggestions`가 활성일 때 보고서 끝에 다음 행동 제안을 **최대 3개**만 추가한다. 다음 경우에만 제안한다.
-     * 사용자가 직접 확인해야 할 항목이 남은 경우
-     * 검증되지 않아 보류된 항목이 있는 경우
-     * 설정이 필요한 경우
-     * 데이터 손실·보안 위험이 확인된 경우
-     제안은 보고서에서 이미 확인된 항목 중에서만 고르고, 추측이나 새 작업을 제안하지 않는다. 해당하지 않으면 생략한다.
+18. `receiptReport`가 켜져 있으면 끝날 때 `.jutell-local/receipt.json`(done·checks·next)을 쓰고 `jutell receipt`(없으면 `npx jutell receipt`)를 실행해, 출력을 답 맨 위에 붙인다. 변경 요약·다음 행동 제안(최대 3개)·보고서 상태를 이것으로 대신한다. `확인함`은 실제로 실행하거나 읽은 것만 쓴다. 실행이 안 되면 같은 모양을 직접 쓰고 "파일은 저장 못 함"이라고 한 줄 적는다. `nextActionSuggestions`가 꺼져 있으면 next는 비운다.
 19. 제출 전 다음을 점검한다.
    * 화면 변화와 내부 변화를 분리했는가
    * 예상과 실제 확인을 구분했는가
