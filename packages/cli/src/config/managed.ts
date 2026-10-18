@@ -346,6 +346,30 @@ function withoutKeySection(content: string, key: string) {
   return result + content.slice(cursor);
 }
 
+function withoutManagedMcpTables(content: string, key: string) {
+  const keyPath = `mcp_servers.${key}`;
+  const ownedTablePaths = new Set([
+    keyPath,
+    ...READ_ONLY_MCP_TOOLS.map((tool) => `${keyPath}.tools.${tool}`),
+  ]);
+  const headers = [...content.matchAll(/^[ \t]*(\[\[[^\r\n]*?\]\]|\[[^\r\n]*?\])[ \t]*(?:#.*)?\r?$/gm)];
+  if (headers.length === 0) return content;
+  let result = '';
+  let cursor = 0;
+  headers.forEach((header, index) => {
+    const start = header.index!;
+    const end = headers[index + 1]?.index ?? content.length;
+    const tableHeader = header[1];
+    const tablePath = tableHeader?.startsWith('[[') ? undefined : tableHeader?.slice(1, -1).trim();
+    result += content.slice(cursor, start);
+    if (!ownedTablePaths.has(tablePath ?? '')) {
+      result += content.slice(start, end);
+    }
+    cursor = end;
+  });
+  return result + content.slice(cursor);
+}
+
 function tomlString(value: string) {
   return JSON.stringify(value.replaceAll('\\', '/'));
 }
@@ -447,7 +471,7 @@ export async function registerMcp(paths: ScopePaths, packageRoot: string, enable
   // Safe to strip unconditionally here: reaching this point already ruled out (via `conflict`
   // above) any bare `[mcp_servers.jutell]` that isn't JuTell's own.
   const removed = withoutCanonicalBlock(current.content);
-  const withoutManaged = withoutKeySection(removed.content, CANONICAL_MCP_KEY).replace(/\n{3,}/g, '\n\n').trimEnd();
+  const withoutManaged = withoutManagedMcpTables(removed.content, CANONICAL_MCP_KEY).replace(/\n{3,}/g, '\n\n').trimEnd();
   const next = restorePreservedTables(`${withoutManaged}${withoutManaged ? '\n\n' : ''}${current.preview}\n`, removed.preservedTables);
   assertValidConfigToml(next);
   await backupFile(paths.codexConfigFile);

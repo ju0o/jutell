@@ -558,6 +558,31 @@ describe('registerMcp and removeMcp - final TOML validation', () => {
     expect(countCanonicalHeaders(content)).toBe(1);
   });
 
+  it('preserves a user JuTell environment table when registering', async () => {
+    const dir = await mkdtemp();
+    const paths = await scopePaths(dir);
+    const staleBlock = buildMcpBlock(paths, '/opt/old-jutell-package', true);
+    const staleRootTable = staleBlock
+      .slice(staleBlock.indexOf('[mcp_servers.jutell]'))
+      .split(/(?=^\[)/m)[0]
+      .split('\n')
+      .filter((line) => !line.trimStart().startsWith('#'))
+      .join('\n')
+      .trimEnd();
+    const userEnvTable = [
+      '[mcp_servers.jutell.env]',
+      'FOO = "bar"',
+    ].join('\n');
+    await writeConfig(dir, `${staleRootTable}\n\n${userEnvTable}\n`);
+
+    await registerMcp(paths, FAKE_PACKAGE_ROOT, true);
+
+    const content = await readConfig(dir);
+    expect(content).toContain(userEnvTable);
+    expect(() => parse(content)).not.toThrow();
+    expect(countCanonicalHeaders(content)).toBe(1);
+  });
+
   it('replaces all canonical blocks while preserving user tables from each block', async () => {
     const dir = await mkdtemp();
     const paths = await scopePaths(dir);
