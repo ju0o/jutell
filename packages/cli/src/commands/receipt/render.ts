@@ -3,7 +3,9 @@ export type ReceiptCheck =
   | { what: string; result: '안 해봄'; reason: string };
 
 export type ReceiptInput = {
+  asked?: string[];
   done: string[];
+  files?: string[];
   checks: ReceiptCheck[];
   next: {
     continue: string[];
@@ -14,11 +16,12 @@ export type ReceiptInput = {
   nextMessage?: unknown;
 };
 
-export const RECEIPT_SECTIONS = ['[이번에 한 작업]', '[확인]', '[다음 추천]'] as const;
+export const RECEIPT_SECTIONS = ['[요청한 것]', '[이번에 한 작업]', '[바뀐 파일]', '[확인]', '[다음 추천]'] as const;
 export const NEXT_GROUPS = [' ▶ 계속 진행', ' ○ 해두면 좋은 것', ' ■ 여기서 멈춰도 됨'] as const;
 
 const forbiddenStatusPhrases = ['확인 완료', '일부 확인', '추가 확인 필요'];
 const rawCommandPattern = /`|(?:^|[^A-Za-z0-9_])(?:git|npm|npx|node|pnpm|yarn|rg|grep|cat|sed|ls|cd|python|pytest|vitest|tsc|make|curl)\s+\S+|(?:^|\s)--[A-Za-z][A-Za-z0-9-]*(?=\s|=|$)|(?:^|\s)-[A-Za-z](?:[A-Za-z0-9-]*)(?=\s|$)/;
+const normalizedReceipts = new WeakSet<object>();
 
 function fail(message: string): never {
   throw new Error(message);
@@ -64,11 +67,13 @@ function readTextArray(value: unknown, label: string, max: number): string[] {
   return value.map((item, index) => readText(item, `${label} ${index + 1}번`));
 }
 
-function validateReceipt(value: unknown): ReceiptInput {
+function validateReceipt(value: unknown, allowEmptyDetails = false): ReceiptInput {
   if (!isRecord(value)) return fail('영수증 입력은 JSON 객체여야 해요.');
   if (Object.hasOwn(value, 'status')) return fail('status 항목은 영수증 입력에 넣을 수 없어요.');
 
+  const asked = value.asked === undefined ? [] : readTextArray(value.asked, '요청한 것', Number.POSITIVE_INFINITY);
   const done = readTextArray(value.done, '이번에 한 작업', 5);
+  const files = value.files === undefined ? [] : readTextArray(value.files, '바뀐 파일', Number.POSITIVE_INFINITY);
   if (!Array.isArray(value.checks)) return fail('확인 항목은 목록이어야 해요.');
   if (value.checks.length > 4) return fail('확인 항목은 최대 4개까지 적을 수 있어요.');
 
@@ -78,10 +83,12 @@ function validateReceipt(value: unknown): ReceiptInput {
 
     const what = readText(check.what, `${label}의 대상`);
     if (check.result === '확인함') {
-      return { what, result: '확인함', how: readText(check.how, `${label}의 확인 방법`) };
+      const how = allowEmptyDetails && check.how === '' ? '' : readText(check.how, `${label}의 확인 방법`);
+      return { what, result: '확인함', how };
     }
     if (check.result === '안 해봄') {
-      return { what, result: '안 해봄', reason: readText(check.reason, `${label}의 이유`) };
+      const reason = allowEmptyDetails && check.reason === '' ? '' : readText(check.reason, `${label}의 이유`);
+      return { what, result: '안 해봄', reason };
     }
     return fail(`${label}의 결과는 '확인함' 또는 '안 해봄'이어야 해요.`);
   });
@@ -95,7 +102,137 @@ function validateReceipt(value: unknown): ReceiptInput {
   const nextCount = next.continue.length + next.nice.length + next.stop.length;
   if (nextCount > 3) return fail('다음 추천은 세 묶음을 합쳐 최대 3개까지 적을 수 있어요.');
 
-  return { done, checks, next };
+  return { asked, done, files, checks, next };
+}
+
+function addProblem(problems: string[] | undefined, message: string): void {
+  if (!problems) return;
+  try {
+    problems.push(message);
+  } catch {
+    // A caller-provided problem list must not make normalization fail.
+  }
+}
+
+function cleanReceiptText(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  let text = value.replace(/[\r\n]+/g, ' ').trim();
+  for (const phrase of forbiddenStatusPhrases) text = text.split(phrase).join('');
+  text = text.trim();
+  if (!text) return undefined;
+
+  const withoutBackticks = text.replace(/`/g, '');
+  text = rawCommandPattern.test(withoutBackticks)
+    ? '명령어 줄은 쉬운 말로 바꾸지 못해 뺐어요'
+    : withoutBackticks;
+  text = maskAbsolutePaths(text).trim();
+  return text || undefined;
+}
+
+function normalizeTextArray(
+  value: unknown,
+  label: string,
+  problems: string[],
+  maximum = Number.POSITIVE_INFINITY,
+): string[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value)) {
+    problems.push(`${label} 목록을 읽지 못했습니다.`);
+    return [];
+  }
+  const items: string[] = [];
+  for (let index = 0; index < Math.min(value.length, maximum); index += 1) {
+    const text = cleanReceiptText(value[index]);
+    if (text) items.push(text);
+  }
+  return items;
+}
+
+function markNormalized(receipt: ReceiptInput): ReceiptInput {
+  normalizedReceipts.add(receipt);
+  return receipt;
+}
+
+/** Converts old and minimal receipt inputs into renderable data without throwing. */
+export function normalizeReceipt(value: unknown, problems?: string[]): ReceiptInput {
+  const initialProblemCount = Array.isArray(problems) ? problems.length : 0;
+  try {
+    const issues: string[] = [];
+    const input = isRecord(value) ? value : {};
+    if (!isRecord(value)) issues.push('영수증 입력을 객체로 읽지 못했습니다.');
+    if (Object.hasOwn(input, 'status')) issues.push('status 항목은 사용할 수 없습니다.');
+
+    const hasNewFields = ['asked', 'checked', 'unchecked'].some((field) => Object.hasOwn(input, field));
+    const newShape = hasNewFields || Array.isArray(input.next);
+    const asked = normalizeTextArray(input.asked, '요청한 것', issues);
+    const done = normalizeTextArray(input.done, '이번에 한 작업', issues, 5);
+    const files = normalizeTextArray(input.files, '바뀐 파일', issues);
+    const sourceChecks: ReceiptCheck[] = [];
+    const next = { continue: [] as string[], nice: [] as string[], stop: [] as string[] };
+
+    if (newShape) {
+      const checked = normalizeTextArray(input.checked, '직접 확인한 것', issues, 4);
+      const unchecked = normalizeTextArray(input.unchecked, '확인 못 한 것', issues, 4);
+      for (const what of checked) sourceChecks.push({ what, result: '확인함', how: '' });
+      for (const what of unchecked) sourceChecks.push({ what, result: '안 해봄', reason: '' });
+      next.continue = normalizeTextArray(input.next, '다음 추천', issues, 3);
+    } else {
+      if (input.checks !== undefined && !Array.isArray(input.checks)) {
+        issues.push('확인 항목 목록을 읽지 못했습니다.');
+      } else if (Array.isArray(input.checks)) {
+        for (let index = 0; index < Math.min(input.checks.length, 4); index += 1) {
+          const check = input.checks[index];
+          if (!isRecord(check)) {
+            issues.push('확인 항목을 읽지 못했습니다.');
+            continue;
+          }
+          const what = cleanReceiptText(check.what);
+          if (!what) continue;
+          if (check.result === '확인함') {
+            sourceChecks.push({ what, result: '확인함', how: cleanReceiptText(check.how) ?? '' });
+          } else if (check.result === '안 해봄') {
+            sourceChecks.push({ what, result: '안 해봄', reason: cleanReceiptText(check.reason) ?? '' });
+          } else {
+            issues.push('확인 항목 결과를 읽지 못했습니다.');
+          }
+        }
+      }
+
+      if (input.next !== undefined && !isRecord(input.next)) {
+        issues.push('다음 추천을 읽지 못했습니다.');
+      } else if (isRecord(input.next)) {
+        let remaining = 3;
+        for (const group of ['continue', 'nice', 'stop'] as const) {
+          next[group] = normalizeTextArray(input.next[group], '다음 추천', issues, remaining);
+          remaining -= next[group].length;
+        }
+      }
+    }
+
+    const gapChecks: ReceiptCheck[] = [];
+    if (done.length === 0) gapChecks.push({ what: '한 일 목록이 비어 있었어요', result: '안 해봄', reason: '' });
+    if (sourceChecks.length === 0) gapChecks.push({ what: '확인한 내용을 받지 못했어요', result: '안 해봄', reason: '' });
+    const hasInputProblems = initialProblemCount > 0 || issues.length > 0;
+    if (hasInputProblems) gapChecks.push({ what: '입력을 읽지 못했어요', result: '안 해봄', reason: '' });
+    for (const issue of issues) addProblem(problems, issue);
+
+    const availableCheckSlots = Math.max(0, 4 - gapChecks.length);
+    const checks = [...sourceChecks.slice(0, availableCheckSlots), ...gapChecks];
+    return markNormalized({ asked, done, files, checks, next });
+  } catch {
+    addProblem(problems, '영수증 입력을 읽지 못했습니다.');
+    return markNormalized({
+      asked: [],
+      done: [],
+      files: [],
+      checks: [
+        { what: '한 일 목록이 비어 있었어요', result: '안 해봄', reason: '' },
+        { what: '확인한 내용을 받지 못했어요', result: '안 해봄', reason: '' },
+        { what: '입력을 읽지 못했어요', result: '안 해봄', reason: '' },
+      ],
+      next: { continue: [], nice: [], stop: [] },
+    });
+  }
 }
 
 function renderList<T>(items: T[], format: (item: T, index: number) => string, empty: string): string[] {
@@ -103,7 +240,7 @@ function renderList<T>(items: T[], format: (item: T, index: number) => string, e
 }
 
 export function renderReceipt(input: unknown, timestamp: string, savedPath?: string): string {
-  const receipt = validateReceipt(input);
+  const receipt = validateReceipt(input, typeof input === 'object' && input !== null && normalizedReceipts.has(input));
   const time = readText(timestamp, '시간');
   const lines = [
     '==============================',
@@ -111,18 +248,25 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
     `  ${time}`,
     '==============================',
     RECEIPT_SECTIONS[0],
-    ...renderList(receipt.done, (item, index) => ` ${index + 1}. ${item}`, ' 없음'),
+    ...renderList(receipt.asked ?? [], (item, index) => ` ${index + 1}. ${item}`, ' 없음'),
     '',
     RECEIPT_SECTIONS[1],
+    ...renderList(receipt.done, (item, index) => ` ${index + 1}. ${item}`, ' 없음'),
+    '',
+    RECEIPT_SECTIONS[2],
+    ...renderList((receipt.files ?? []).slice(0, 8), (item, index) => ` ${index + 1}. ${item}`, ' 없음'),
+    ...(receipt.files && receipt.files.length > 8 ? [` 외 ${receipt.files.length - 8}개`] : []),
+    '',
+    RECEIPT_SECTIONS[3],
     ...renderList(
       receipt.checks,
       (check) => check.result === '확인함'
-        ? ` ✔ 직접 확인한 것: ${check.what} (${check.how})`
-        : ` ✖ 확인 못 한 것: ${check.what} (${check.reason})`,
+        ? ` ✔ 직접 확인한 것: ${check.what}${check.how ? ` (${check.how})` : ''}`
+        : ` ✖ 확인 못 한 것: ${check.what}${check.reason ? ` (${check.reason})` : ''}`,
       ' 없음',
     ),
     '------------------------------',
-    RECEIPT_SECTIONS[2],
+    RECEIPT_SECTIONS[4],
     NEXT_GROUPS[0],
     ...renderList(receipt.next.continue, (item) => `   - ${item}`, '   - 없음'),
     NEXT_GROUPS[1],

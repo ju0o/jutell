@@ -1,13 +1,17 @@
 import { PassThrough } from 'node:stream';
+import { execFile } from 'node:child_process';
 import os from 'node:os';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
+import { promisify } from 'node:util';
 import { afterEach, describe, expect, it } from 'vitest';
 import { receiptCommand } from '../src/commands/receipt/index.js';
 import { NEXT_GROUPS, RECEIPT_SECTIONS, renderReceipt } from '../src/commands/receipt/render.js';
 import { resolveScope } from '../src/config/paths.js';
 import { run } from '../src/cli.js';
 import type { CliIo, ScopePaths } from '../src/types.js';
+
+const execFileAsync = promisify(execFile);
 
 const timestamp = '2026-10-18 16:40';
 const sample = {
@@ -30,9 +34,15 @@ describe('receipt renderer', () => {
       '  JuTell 작업 영수증',
       '  2026-10-18 16:40',
       '==============================',
+      '[요청한 것]',
+      ' 없음',
+      '',
       '[이번에 한 작업]',
       ' 1. 브라우저 탭 이름: 할 일 목록 → 오늘 할 일',
       ' 2. 화면 맨 위 큰 글씨: 할 일 목록 → 오늘 할 일',
+      '',
+      '[바뀐 파일]',
+      ' 없음',
       '',
       '[확인]',
       ' ✔ 직접 확인한 것: 파일에서 두 제목이 바뀐 것 (파일 내용을 읽음)',
@@ -112,7 +122,7 @@ describe('receipt renderer', () => {
     ];
     const lines = output.split('\n');
 
-    expect(RECEIPT_SECTIONS).toEqual(['[이번에 한 작업]', '[확인]', '[다음 추천]']);
+    expect(RECEIPT_SECTIONS).toEqual(['[요청한 것]', '[이번에 한 작업]', '[바뀐 파일]', '[확인]', '[다음 추천]']);
     expect(NEXT_GROUPS).toEqual([' ▶ 계속 진행', ' ○ 해두면 좋은 것', ' ■ 여기서 멈춰도 됨']);
     expect(lines.filter((line) => headings.includes(line))).toEqual(headings);
   });
@@ -186,23 +196,18 @@ describe('receipt command', () => {
 
     expect(await runInProject(['receipt', '--help'])).toBe(0);
     expect(output).toHaveLength(1);
-    expect(output[0]).toContain('.jutell-local/receipt.json 형식:');
-    expect(output[0]).toContain('"result":"확인함"');
+    expect(output[0]).toContain('표준 입력으로 전달하는 방식을 권장합니다:');
+    expect(output[0]).toContain('... | jutell receipt --file -');
+    expect(output[0]).toContain('"checked"');
     await expect(fs.access(path.join(paths.dataRoot, 'reports'))).rejects.toMatchObject({ code: 'ENOENT' });
   });
 
-  it('appends the receipt input example when receipt.json is missing', async () => {
+  it('saves a report with gaps when receipt.json is missing', async () => {
     await setup();
-    let status = 0;
-    try {
-      await receiptCommand(paths, [], io);
-    } catch (error) {
-      status = 1;
-      errors.push(`오류: ${(error as Error).message}`);
-    }
-
-    expect(status).toBe(1);
-    expect(errors.join('\n')).toContain('"result":"확인함"');
+    expect(await receiptCommand(paths, [], io)).toBe(0);
+    expect(errors).toEqual([]);
+    expect(output[0]).toContain('✖ 확인 못 한 것: 입력을 읽지 못했어요');
+    expect(await fs.readdir(path.join(paths.dataRoot, 'reports'))).toHaveLength(1);
   });
 
   it('reads and removes the default input, saves the report, and creates only the local ignore file', async () => {
@@ -277,19 +282,92 @@ describe('receipt command', () => {
     expect(output[0]).toContain('저장됨: .jutell-local/reports/2026-10-18-164012.md');
   });
 
-  it('rejects invalid receipt data before saving and removes only the default input', async () => {
+  it('saves an incomplete receipt and removes only the default input', async () => {
     await setup();
     await fs.mkdir(paths.dataRoot, { recursive: true });
     const defaultInput = path.join(paths.dataRoot, 'receipt.json');
     await fs.writeFile(defaultInput, JSON.stringify({ ...sample, status: '확인 완료' }), 'utf8');
 
-    expect(await runInProject(['receipt'])).toBe(1);
-    expect(errors[0]).toContain('오류: status 항목은 영수증 입력에 넣을 수 없어요.');
-    expect(errors[0]).toContain('"result":"확인함"');
+    expect(await runInProject(['receipt'])).toBe(0);
+    expect(errors).toEqual([]);
+    expect(output[0]).toContain('[이번에 한 작업]');
 
     await expect(fs.access(defaultInput)).rejects.toMatchObject({ code: 'ENOENT' });
-    await expect(fs.access(path.join(paths.dataRoot, 'reports'))).rejects.toMatchObject({ code: 'ENOENT' });
-    await expect(fs.access(path.join(paths.dataRoot, '.gitignore'))).rejects.toMatchObject({ code: 'ENOENT' });
+    expect(await fs.readdir(path.join(paths.dataRoot, 'reports'))).toHaveLength(1);
+    expect(await fs.readFile(path.join(paths.dataRoot, '.gitignore'), 'utf8')).toBe('*\n');
+  });
+
+  it('renders and saves all five sections for the minimal stdin shape', async () => {
+    await setup();
+    const stdin = new PassThrough();
+    stdin.end(JSON.stringify({
+      asked: ['요청한 것'],
+      done: ['한 일'],
+      checked: ['직접 확인한 것'],
+      unchecked: ['확인 못 한 것 (이유)'],
+      next: ['다음 추천'],
+    }));
+
+    expect(await receiptCommand(paths, ['--file', '-'], io, stdin, new Date(2026, 9, 18, 16, 40, 12))).toBe(0);
+
+    const sectionPositions = RECEIPT_SECTIONS.map((section) => output[0].indexOf(section));
+    expect(sectionPositions.every((position) => position >= 0)).toBe(true);
+    expect(sectionPositions).toEqual([...sectionPositions].sort((a, b) => a - b));
+    expect(output[0]).toContain('요청한 것');
+    expect(output[0]).toContain('한 일');
+    expect(output[0]).toContain('✔ 직접 확인한 것: 직접 확인한 것');
+    expect(output[0]).toContain('✖ 확인 못 한 것: 확인 못 한 것 (이유)');
+    expect(output[0]).toContain('다음 추천');
+    expect(await fs.readdir(path.join(paths.dataRoot, 'reports'))).toHaveLength(1);
+  });
+
+  it('saves reports for invalid JSON and malformed receipt shapes', async () => {
+    await setup();
+
+    for (const raw of ['{', JSON.stringify({ done: 'x', checks: 5 })]) {
+      const stdin = new PassThrough();
+      stdin.end(raw);
+      expect(await receiptCommand(paths, ['--file', '-'], io, stdin)).toBe(0);
+    }
+
+    expect(output).toHaveLength(2);
+    expect(output.join('\n')).toContain('✖ 확인 못 한 것:');
+    expect(await fs.readdir(path.join(paths.dataRoot, 'reports'))).toHaveLength(2);
+  });
+
+  it('does not print raw command text from checked items', async () => {
+    await setup();
+    const stdin = new PassThrough();
+    stdin.end(JSON.stringify({ done: ['한 일'], checked: ['npm test'] }));
+
+    expect(await receiptCommand(paths, ['--file', '-'], io, stdin)).toBe(0);
+    expect(output[0]).not.toContain('npm test');
+    expect(output[0]).toContain('명령어 줄은 쉬운 말로 바꾸지 못해 뺐어요');
+  });
+
+  it('lists modified and untracked files while excluding .jutell-local', async () => {
+    await setup();
+    await execFileAsync('git', ['init', '-q'], { cwd: paths.targetRoot });
+    await execFileAsync('git', ['config', 'user.name', 'JuTell Test'], { cwd: paths.targetRoot });
+    await execFileAsync('git', ['config', 'user.email', 'jutell-test@example.invalid'], { cwd: paths.targetRoot });
+    await fs.writeFile(path.join(paths.targetRoot, 'tracked.txt'), 'before\n', 'utf8');
+    await execFileAsync('git', ['add', 'tracked.txt'], { cwd: paths.targetRoot });
+    await execFileAsync('git', ['commit', '-m', 'initial'], { cwd: paths.targetRoot });
+    await fs.writeFile(path.join(paths.targetRoot, 'tracked.txt'), 'after\n', 'utf8');
+    await fs.writeFile(path.join(paths.targetRoot, 'new-file.txt'), 'new\n', 'utf8');
+    await fs.mkdir(path.join(paths.targetRoot, '.jutell-local'), { recursive: true });
+    await fs.writeFile(path.join(paths.targetRoot, '.jutell-local', 'private.txt'), 'local\n', 'utf8');
+    const stdin = new PassThrough();
+    stdin.end(JSON.stringify({ done: ['한 일'] }));
+
+    expect(await receiptCommand(paths, ['--file', '-'], io, stdin)).toBe(0);
+
+    const start = output[0].indexOf('[바뀐 파일]');
+    const end = output[0].indexOf('[확인]', start);
+    const changedFiles = output[0].slice(start, end);
+    expect(changedFiles).toContain('tracked.txt');
+    expect(changedFiles).toContain('new-file.txt');
+    expect(changedFiles).not.toContain('.jutell-local');
   });
 
   it('does not accept inline JSON or incomplete --file arguments', async () => {

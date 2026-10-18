@@ -1,13 +1,16 @@
+import { execFile } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import type { Readable } from 'node:stream';
 import { readBridgeConfig } from '../../config/managed.js';
 import type { CliIo, ScopePaths } from '../../types.js';
-import { renderReceipt } from './render.js';
+import { normalizeReceipt, renderReceipt } from './render.js';
 
-const RECEIPT_INPUT_EXAMPLE = `.jutell-local/receipt.json 형식:
-{"done":["바꾼 일 한 줄"],"checks":[{"what":"확인한 것","result":"확인함","how":"실제로 읽거나 실행한 것(쉬운 말)"},{"what":"못 한 것","result":"안 해봄","reason":"이유"}],"next":{"continue":[],"nice":[],"stop":["여기서 멈춰도 됨"]}}
-(done 최대 5, checks 최대 4, next 합쳐 최대 3, 명령어 대신 쉬운 말, status 칸 금지)`;
+const RECEIPT_INPUT_EXAMPLE = `표준 입력으로 전달하는 방식을 권장합니다:
+... | jutell receipt --file -
+
+입력 예시:
+{"asked":["요청한 것"],"done":["한 일"],"checked":["직접 확인한 것"],"unchecked":["확인 못 한 것 (이유)"],"next":["다음 추천"]}`;
 
 type ReceiptSource = { kind: 'default' } | { kind: 'file'; file: string };
 
@@ -17,11 +20,6 @@ function parseArgs(args: string[]): ReceiptSource {
     return { kind: 'file', file: args[1] };
   }
   throw new Error('사용법: jutell receipt [--file <경로>|--file -]');
-}
-
-function withReceiptInputExample(error: unknown): Error {
-  const message = error instanceof Error ? error.message : String(error);
-  return new Error(`${message}\n${RECEIPT_INPUT_EXAMPLE}`);
 }
 
 async function readStdin(input: Readable): Promise<string> {
@@ -69,6 +67,31 @@ async function ensureLocalGitignore(dataRoot: string): Promise<void> {
 
 function relativePath(root: string, file: string): string {
   return path.relative(root, file).split(path.sep).join('/');
+}
+
+function pathsFromStatus(stdout: string): string[] {
+  const files: string[] = [];
+  for (const rawLine of stdout.split('\n')) {
+    const line = rawLine.endsWith('\r') ? rawLine.slice(0, -1) : rawLine;
+    if (line.length < 4) continue;
+    const statusPath = line.slice(3);
+    const renameAt = statusPath.lastIndexOf(' -> ');
+    const file = (renameAt >= 0 ? statusPath.slice(renameAt + 4) : statusPath).replace(/^\.\//, '');
+    if (file === '.jutell-local' || file.startsWith('.jutell-local/')) continue;
+    files.push(file);
+  }
+  return files;
+}
+
+async function readChangedFiles(cwd: string): Promise<string[]> {
+  return new Promise((resolve) => {
+    execFile(
+      'git',
+      ['-c', 'core.quotepath=false', 'status', '--porcelain', '--untracked-files=all'],
+      { cwd },
+      (error, stdout) => resolve(error ? [] : pathsFromStatus(stdout)),
+    );
+  });
 }
 
 async function saveReceipt(
@@ -130,28 +153,27 @@ export async function receiptCommand(
   }
 
   const source = parseArgs(args);
-  let raw: string;
+  const problems: string[] = [];
+  let raw = '';
   try {
     raw = await readReceipt(source, paths, input);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      throw withReceiptInputExample(error);
-    }
-    throw error;
-  }
-  let receipt: unknown;
-  try {
-    receipt = JSON.parse(raw);
   } catch {
-    throw withReceiptInputExample(new Error('영수증 입력을 JSON으로 읽지 못했습니다.'));
+    problems.push('입력을 읽지 못했습니다.');
+  }
+  let parsed: unknown = {};
+  if (raw.trim().length === 0) {
+    problems.push('입력이 비어 있습니다.');
+  } else if (problems.length === 0) {
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      problems.push('영수증 입력을 JSON으로 읽지 못했습니다.');
+    }
   }
 
+  const receipt = normalizeReceipt(parsed, problems);
+  receipt.files = await readChangedFiles(paths.targetRoot);
   const time = receiptTimestamp(now);
-  try {
-    renderReceipt(receipt, time.display);
-  } catch (error) {
-    throw withReceiptInputExample(error);
-  }
   const output = await saveReceipt(paths, receipt, time.display, time.filename);
   io.write(output);
   return 0;
