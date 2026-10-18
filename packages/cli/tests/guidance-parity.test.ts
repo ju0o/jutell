@@ -40,6 +40,11 @@ describe('M2.6 Codex Experience Parity guidance', () => {
     expect(text).toContain('"asked"');
     expect(text).toContain('다시 시도하지 말고 "JuTell 업데이트 필요"');
     expect(text).not.toContain('--help');
+    const { version } = JSON.parse(await fs.readFile(path.join(repoRoot, 'packages', 'cli', 'package.json'), 'utf8'));
+    expect(text).toContain(`npx -y jutell@${version}`);
+    expect(text).toContain('exit 127');
+    expect(text.indexOf('get_beginner_report_rules`를 호출하고, 그다음에 영수증')).toBeGreaterThan(0);
+    expect(text).toContain('영수증 아래에는 확인 내용을 다시 쓰지 않습니다');
   });
 
   it('SKILL.md contains MCP server selection and early report application', async () => {
