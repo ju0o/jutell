@@ -24,8 +24,8 @@ describe('M2.6 Codex Experience Parity guidance', () => {
     await ensureJuTellAgentsBlock(tmp);
     const text = await fs.readFile(path.join(tmp, 'AGENTS.md'), 'utf8');
     expect(text).toContain('canonical `jutell`');
-    expect(text).toContain('`jutell`과 legacy `beginner_bridge`');
-    expect(text).toContain('호환용으로만 사용');
+    expect(text).toContain('canonical `jutell` 서버를 우선하고, legacy `beginner_bridge`');
+    expect(text).toContain('호환용으로만 씁니다');
     // also early report rule guidance
     expect(text).toContain('그 규칙대로 최종 답을 씁니다');
     expect(text).not.toMatch(/JuTell 보고 규칙을 (먼저 )?적용/);
@@ -44,8 +44,10 @@ describe('M2.6 Codex Experience Parity guidance', () => {
     expect(text.indexOf('get_beginner_report_rules`를 호출하고, 그다음에 영수증')).toBeGreaterThan(0);
     expect(text).toContain('영수증이 최종 답입니다. 영수증 아래에는 아무것도 쓰지 않고');
     expect(text).toContain('반드시 파일 편집 도구로 씁니다');
-    expect(text).toContain('테스트·실행 결과·화면 확인을 요구하면 실행하고');
+    expect(text).toContain('테스트·실행 결과·화면 확인을 필요로 하면 실행하고');
     expect(text).toContain('checked가 아닌 unchecked에 씁니다');
+    expect(text).toContain('필요한 파일을 명령 하나로 읽고, 읽은 파일은 다시 읽지 않습니다');
+    expect(text).toContain("실행한 테스트·명령은 최종 답과 영수증의 \`이번에 한 작업\`(done)에도 사용자가 쓴 말 그대로(예: '테스트') 적습니다");
     expect(text).toContain("'브라우저 탭 제목', '페이지 맨 위 큰 제목'");
   });
 
@@ -82,7 +84,7 @@ describe('M2.6 Codex Experience Parity guidance', () => {
     const first = await fs.readFile(path.join(tmp, 'AGENTS.md'), 'utf8');
     expect(first.match(/BEGIN JUTELL MANAGED BLOCK/g)).toHaveLength(1);
     expect(first.match(/canonical `jutell`/g)).toHaveLength(1);
-    expect(first).toContain('호환용으로만 사용');
+    expect(first).toContain('호환용으로만 씁니다');
     await ensureJuTellAgentsBlock(tmp);
     const second = await fs.readFile(path.join(tmp, 'AGENTS.md'), 'utf8');
     expect(second).toBe(first);
@@ -107,8 +109,8 @@ describe('spontaneous JuTell MCP preference (with Skill fallback)', () => {
     temporaryRoots.push(tmp);
     await ensureJuTellAgentsBlock(tmp);
     const text = await fs.readFile(path.join(tmp, 'AGENTS.md'), 'utf8');
-    expect(text).toMatch(/사용할 수 있고.*모호함을 줄여줄 때는.*우선/);
-    expect(text).toMatch(/사용할 수 없거나 Provider 정책으로 막혀 있으면 작업을 멈추지 않고 JuTell Skill로 계속/);
+    expect(text).toMatch(/모호함을 줄이면 우선 씁니다/);
+    expect(text).toMatch(/쓸 수 없거나 Provider 정책으로 막혀 있으면 작업을 멈추지 않고 JuTell Skill로 계속/);
     expect(text).toMatch(/실제로 호출해 응답을 받은 경우에만 JuTell MCP를 사용했다고 말합니다/);
   });
 
