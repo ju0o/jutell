@@ -10,7 +10,7 @@ const roots: string[] = [];
 let lastStatus: number | null = null;
 afterAll(async () => { await Promise.all(roots.map((root) => rm(root, { recursive: true, force: true }))); });
 
-async function runDoctor(withJutellOnLoginPath: boolean, shell?: string) {
+async function runDoctor(withJutellOnLoginPath: boolean, shell?: string, receiptReport?: boolean) {
   const root = await mkdtemp(path.join(os.tmpdir(), 'jutell-doctor-login-'));
   roots.push(root);
   const home = path.join(root, 'home');
@@ -21,6 +21,7 @@ async function runDoctor(withJutellOnLoginPath: boolean, shell?: string) {
   // A fake npm whose global prefix is known, so the PATH line doctor prints can be checked exactly.
   await writeFile(path.join(npmBin, 'npm'), `#!/bin/sh\necho ${path.join(root, 'npm-global')}\n`, 'utf8');
   await chmod(path.join(npmBin, 'npm'), 0o755);
+  if (receiptReport !== undefined) await writeFile(path.join(project, '.jutell.json'), JSON.stringify({ version: 1, profile: 'balanced', features: { receiptReport } }), 'utf8');
   if (withJutellOnLoginPath) {
     await writeFile(path.join(bin, 'jutell'), '#!/bin/sh\nexit 0\n', 'utf8');
     await chmod(path.join(bin, 'jutell'), 0o755);
@@ -47,6 +48,19 @@ describe.skipIf(process.platform === 'win32')('doctor checks jutell on the login
     expect(output).toContain('Codex가 명령을 실행하는 셸에서 jutell을 찾지 못했어요');
     expect(output).toContain(`~/.profile 파일 맨 아래에 이 한 줄을 넣고 터미널과 Codex를 다시 여세요: export PATH="${path.join(root, 'npm-global', 'bin')}:$PATH"`);
     expect(output).not.toContain('npm install -g');
+    expect(lastStatus).toBe(1);
+  });
+
+  it('with receiptReport off, a missing jutell is only 주의 and doctor exits 0 (B7)', async () => {
+    const output = await runDoctor(false, undefined, false);
+    expect(output).toMatch(/주의\s+Codex에서 jutell 명령 찾기/);
+    expect(output).not.toContain('작업 영수증이 저장되지 않아요');
+    expect(lastStatus).toBe(0);
+  });
+
+  it('with receiptReport explicitly on, a missing jutell is 오류 and doctor exits 1 (B7)', async () => {
+    const output = await runDoctor(false, undefined, true);
+    expect(output).toMatch(/오류\s+Codex에서 jutell 명령 찾기/);
     expect(lastStatus).toBe(1);
   });
 
