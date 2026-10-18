@@ -1,5 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { PassThrough } from 'node:stream';
+import os from 'node:os';
+import path from 'node:path';
+import { promises as fs } from 'node:fs';
+import { afterEach, describe, expect, it } from 'vitest';
+import { receiptCommand } from '../src/commands/receipt/index.js';
 import { renderReceipt } from '../src/commands/receipt/render.js';
+import { resolveScope } from '../src/config/paths.js';
+import { run } from '../src/cli.js';
+import type { CliIo, ScopePaths } from '../src/types.js';
 
 const timestamp = '2026-10-18 16:40';
 const sample = {
@@ -92,5 +100,113 @@ describe('receipt renderer', () => {
   it('does not print the save line for an absolute saved path', () => {
     expect(renderReceipt({ done: [], checks: [], next: { continue: [], nice: [], stop: [] } }, timestamp, '/tmp/report.md'))
       .not.toContain('저장됨:');
+  });
+});
+
+describe('receipt command', () => {
+  let temporaryRoot: string;
+  let paths: ScopePaths;
+  let output: string[];
+  let errors: string[];
+  let io: CliIo;
+
+  async function setup() {
+    temporaryRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-receipt-'));
+    const project = path.join(temporaryRoot, 'project');
+    await fs.mkdir(project, { recursive: true });
+    paths = resolveScope('project', project);
+    output = [];
+    errors = [];
+    io = {
+      write: (message) => output.push(message),
+      error: (message) => errors.push(message),
+      ask: async () => false,
+      choose: async () => undefined,
+    };
+  }
+
+  async function runInProject(args: string[]) {
+    const previousDirectory = process.cwd();
+    process.chdir(paths.targetRoot);
+    try {
+      return await run(args, io);
+    } finally {
+      process.chdir(previousDirectory);
+    }
+  }
+
+  afterEach(async () => {
+    if (temporaryRoot) await fs.rm(temporaryRoot, { recursive: true, force: true });
+  });
+
+  it('reads and removes the default input, saves the report, and creates only the local ignore file', async () => {
+    await setup();
+    const defaultInput = path.join(paths.dataRoot, 'receipt.json');
+    await fs.mkdir(paths.dataRoot, { recursive: true });
+    await fs.writeFile(defaultInput, JSON.stringify(sample), 'utf8');
+    await fs.writeFile(path.join(paths.targetRoot, '.gitignore'), 'keep-me\n', 'utf8');
+
+    expect(await runInProject(['receipt'])).toBe(0);
+
+    const reportFiles = await fs.readdir(path.join(paths.dataRoot, 'reports'));
+    expect(reportFiles).toHaveLength(1);
+    expect(reportFiles[0]).toMatch(/^\d{4}-\d{2}-\d{2}-\d{6}\.md$/);
+    expect(output).toHaveLength(1);
+    expect(output[0]).toContain(`저장됨: .jutell-local/reports/${reportFiles[0]}`);
+    const report = path.join(paths.dataRoot, 'reports', reportFiles[0]);
+    expect(await fs.readFile(report, 'utf8')).toBe(`${output[0]}\n`);
+    await expect(fs.access(defaultInput)).rejects.toMatchObject({ code: 'ENOENT' });
+    expect(await fs.readFile(path.join(paths.dataRoot, '.gitignore'), 'utf8')).toBe('*\n');
+    expect(await fs.readFile(path.join(paths.targetRoot, '.gitignore'), 'utf8')).toBe('keep-me\n');
+  });
+
+  it('adds numeric suffixes when report names already exist', async () => {
+    await setup();
+    const source = path.join(temporaryRoot, 'input.json');
+    await fs.writeFile(source, JSON.stringify(sample), 'utf8');
+    const now = new Date(2026, 9, 18, 16, 40, 12);
+
+    await receiptCommand(paths, ['--file', source], io, new PassThrough(), now);
+    await receiptCommand(paths, ['--file', source], io, new PassThrough(), now);
+    await receiptCommand(paths, ['--file', source], io, new PassThrough(), now);
+
+    expect(output[0]).toContain('저장됨: .jutell-local/reports/2026-10-18-164012.md');
+    expect(output[1]).toContain('저장됨: .jutell-local/reports/2026-10-18-164012-2.md');
+    expect(output[2]).toContain('저장됨: .jutell-local/reports/2026-10-18-164012-3.md');
+    expect(await fs.readFile(source, 'utf8')).toBe(JSON.stringify(sample));
+  });
+
+  it('reads JSON from stdin with --file -', async () => {
+    await setup();
+    const stdin = new PassThrough();
+    stdin.end(JSON.stringify(sample));
+
+    await receiptCommand(paths, ['--file', '-'], io, stdin, new Date(2026, 9, 18, 16, 40, 12));
+
+    expect(output[0]).toContain('저장됨: .jutell-local/reports/2026-10-18-164012.md');
+  });
+
+  it('rejects invalid receipt data before saving and removes only the default input', async () => {
+    await setup();
+    await fs.mkdir(paths.dataRoot, { recursive: true });
+    const defaultInput = path.join(paths.dataRoot, 'receipt.json');
+    await fs.writeFile(defaultInput, JSON.stringify({ ...sample, status: '확인 완료' }), 'utf8');
+
+    expect(await runInProject(['receipt'])).toBe(1);
+    expect(errors).toEqual(['오류: status 항목은 영수증 입력에 넣을 수 없어요.']);
+
+    await expect(fs.access(defaultInput)).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(fs.access(path.join(paths.dataRoot, 'reports'))).rejects.toMatchObject({ code: 'ENOENT' });
+    await expect(fs.access(path.join(paths.dataRoot, '.gitignore'))).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('does not accept inline JSON or incomplete --file arguments', async () => {
+    await setup();
+
+    await expect(receiptCommand(paths, [JSON.stringify(sample)], io))
+      .rejects.toThrow('사용법: jutell receipt');
+    await expect(receiptCommand(paths, ['--file'], io))
+      .rejects.toThrow('사용법: jutell receipt');
+    await expect(fs.access(paths.dataRoot)).rejects.toMatchObject({ code: 'ENOENT' });
   });
 });

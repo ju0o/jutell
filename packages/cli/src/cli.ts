@@ -11,6 +11,7 @@ import { useCommand, connectCommand, disconnectCommand, switchCommand } from './
 import { sessionCommand } from './commands/session/index.js';
 import { upgradeCommand } from './commands/upgrade.js';
 import { migrateCommand } from './commands/migrate.js';
+import { receiptCommand } from './commands/receipt/index.js';
 import { maybeShowFundingNotice } from './output/funding.js';
 import type { CliIo } from './types.js';
 
@@ -27,6 +28,10 @@ export async function run(argv: string[] = process.argv.slice(2), io: CliIo = cr
   if (argv.includes('--version')) { io.write((await readVersionInfo()).cli); return 0; }
   let exitCode = 0;
   try {
+    if (argv[0] === 'receipt') {
+      await receiptCommand(resolveScope('project'), argv.slice(1), io);
+      return 0;
+    }
     const { command, options, defaultInvocation, extraArgs } = parseOptions(argv);
     if (command === 'help') { printHelp(io); return 0; }
     const paths = resolveScope(options.scope);
