@@ -35,8 +35,8 @@ describe('receipt renderer', () => {
       ' 2. 화면 맨 위 큰 글씨: 할 일 목록 → 오늘 할 일',
       '',
       '[확인]',
-      ' ✔ 확인함: 파일에서 두 제목이 바뀐 것 (파일 내용을 읽음)',
-      ' ✖ 안 해봄: 브라우저로 열어보기 (이 환경에서 화면을 못 열어서)',
+      ' ✔ 직접 확인한 것: 파일에서 두 제목이 바뀐 것 (파일 내용을 읽음)',
+      ' ✖ 확인 못 한 것: 브라우저로 열어보기 (이 환경에서 화면을 못 열어서)',
       '------------------------------',
       '[다음 추천]',
       ' ▶ 계속 진행',
@@ -75,7 +75,7 @@ describe('receipt renderer', () => {
     }, timestamp);
 
     expect(output).toContain(' 1. [경로]');
-    expect(output).toContain(' ✔ 확인함: 파일 확인 ([경로])');
+    expect(output).toContain(' ✔ 직접 확인한 것: 파일 확인 ([경로])');
     expect(output.match(/- 없음/g)).toHaveLength(3);
     expect(output).not.toContain('/home/jo/sample.ts');
     expect(output).not.toContain('C:\\Users');

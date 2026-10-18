@@ -117,8 +117,8 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
     ...renderList(
       receipt.checks,
       (check) => check.result === '확인함'
-        ? ` ✔ 확인함: ${check.what} (${check.how})`
-        : ` ✖ 안 해봄: ${check.what} (${check.reason})`,
+        ? ` ✔ 직접 확인한 것: ${check.what} (${check.how})`
+        : ` ✖ 확인 못 한 것: ${check.what} (${check.reason})`,
       ' 없음',
     ),
     '------------------------------',
