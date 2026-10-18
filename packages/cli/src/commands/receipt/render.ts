@@ -14,7 +14,11 @@ export type ReceiptInput = {
   nextMessage?: unknown;
 };
 
+export const RECEIPT_SECTIONS = ['[이번에 한 작업]', '[확인]', '[다음 추천]'] as const;
+export const NEXT_GROUPS = [' ▶ 계속 진행', ' ○ 해두면 좋은 것', ' ■ 여기서 멈춰도 됨'] as const;
+
 const forbiddenStatusPhrases = ['확인 완료', '일부 확인', '추가 확인 필요'];
+const rawCommandPattern = /`|(?:^|[^A-Za-z0-9_])(?:git|npm|npx|node|pnpm|yarn|rg|grep|cat|sed|ls|cd|python|pytest|vitest|tsc|make|curl)\s+\S+|(?:^|\s)--[A-Za-z][A-Za-z0-9-]*(?=\s|=|$)|(?:^|\s)-[A-Za-z](?:[A-Za-z0-9-]*)(?=\s|$)/;
 
 function fail(message: string): never {
   throw new Error(message);
@@ -47,6 +51,9 @@ function readText(value: unknown, label: string): string {
   }
   if (forbiddenStatusPhrases.some((phrase) => value.includes(phrase))) {
     return fail('상태 문구는 영수증 내용에 넣을 수 없어요.');
+  }
+  if (rawCommandPattern.test(value)) {
+    return fail(`명령어를 그대로 쓰지 말고, 무엇을 확인했는지 쉬운 말로 써 주세요: ${label}`);
   }
   return maskAbsolutePaths(value.trim());
 }
@@ -103,10 +110,10 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
     '  JuTell 작업 영수증',
     `  ${time}`,
     '==============================',
-    '[이번에 한 작업]',
+    RECEIPT_SECTIONS[0],
     ...renderList(receipt.done, (item, index) => ` ${index + 1}. ${item}`, ' 없음'),
     '',
-    '[확인]',
+    RECEIPT_SECTIONS[1],
     ...renderList(
       receipt.checks,
       (check) => check.result === '확인함'
@@ -115,12 +122,12 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
       ' 없음',
     ),
     '------------------------------',
-    '[다음 추천]',
-    ' ▶ 계속 진행',
+    RECEIPT_SECTIONS[2],
+    NEXT_GROUPS[0],
     ...renderList(receipt.next.continue, (item) => `   - ${item}`, '   - 없음'),
-    ' ○ 해두면 좋은 것',
+    NEXT_GROUPS[1],
     ...renderList(receipt.next.nice, (item) => `   - ${item}`, '   - 없음'),
-    ' ■ 여기서 멈춰도 됨',
+    NEXT_GROUPS[2],
     ...renderList(receipt.next.stop, (item) => `   - ${item}`, '   - 없음'),
     '------------------------------',
   ];

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { receiptCommand } from '../src/commands/receipt/index.js';
-import { renderReceipt } from '../src/commands/receipt/render.js';
+import { NEXT_GROUPS, RECEIPT_SECTIONS, renderReceipt } from '../src/commands/receipt/render.js';
 import { resolveScope } from '../src/config/paths.js';
 import { run } from '../src/cli.js';
 import type { CliIo, ScopePaths } from '../src/types.js';
@@ -73,6 +73,42 @@ describe('receipt renderer', () => {
     expect(output.match(/- 없음/g)).toHaveLength(3);
     expect(output).not.toContain('/home/jo/sample.ts');
     expect(output).not.toContain('C:\\Users');
+  });
+
+  it('rejects raw commands and accepts plain language in receipt text', () => {
+    expect(() => renderReceipt({
+      ...sample,
+      checks: [{ what: '변경 내용', result: '확인함', how: 'git diff --check 통과' }],
+    }, timestamp)).toThrow('명령어를 그대로 쓰지 말고, 무엇을 확인했는지 쉬운 말로 써 주세요: 확인 항목 1번의 확인 방법');
+    expect(() => renderReceipt({ ...sample, done: ['변경 사항을 `git diff`로 확인함'] }, timestamp))
+      .toThrow('명령어를 그대로 쓰지 말고');
+
+    const output = renderReceipt({
+      ...sample,
+      checks: [{ what: '바뀐 줄', result: '확인함', how: '바뀐 줄에 쓸데없는 빈칸이 없는지 검사함' }],
+    }, timestamp);
+    expect(output).toContain('바뀐 줄에 쓸데없는 빈칸이 없는지 검사함');
+  });
+
+  it('keeps every section and next group in order when all lists are empty', () => {
+    const output = renderReceipt({
+      done: [],
+      checks: [],
+      next: { continue: [], nice: [], stop: [] },
+    }, timestamp);
+    const headings = [
+      '[이번에 한 작업]',
+      '[확인]',
+      '[다음 추천]',
+      ' ▶ 계속 진행',
+      ' ○ 해두면 좋은 것',
+      ' ■ 여기서 멈춰도 됨',
+    ];
+    const lines = output.split('\n');
+
+    expect(RECEIPT_SECTIONS).toEqual(['[이번에 한 작업]', '[확인]', '[다음 추천]']);
+    expect(NEXT_GROUPS).toEqual([' ▶ 계속 진행', ' ○ 해두면 좋은 것', ' ■ 여기서 멈춰도 됨']);
+    expect(lines.filter((line) => headings.includes(line))).toEqual(headings);
   });
 
   it('rejects unsupported results, missing detail, and status fields', () => {
