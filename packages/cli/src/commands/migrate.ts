@@ -96,11 +96,8 @@ export async function migrateCommand(paths: ScopePaths, options: CliOptions, io:
       // Remove only legacy block: read file and strip legacy marker blocks
       const file = codexScopedPaths(paths).codexConfigFile;
       const text = (await readText(file)) ?? '';
-      // Use managed.ts patterns: remove only legacy/beginner_bridge blocks, keep canonical and other
-      // Direct patterns for legacy markers (keep canonical JUTELL_CLI_MCP_BEGIN/END)
-      const legacyPattern = /# BEGINNER_BRIDGE_CLI_MCP_BEGIN[\s\S]*?# BEGINNER_BRIDGE_CLI_MCP_END\n?/m;
-      const legacyPattern2 = /# BEGINNER_BRIDGE_MCP_BEGIN[\s\S]*?# BEGINNER_BRIDGE_MCP_END\n?/m;
-      let next = text.replace(legacyPattern, '').replace(legacyPattern2, '');
+      // Remove legacy marker blocks while keeping any user tables embedded in them.
+      let next = removeManagedBlocksPreserving(text, false);
       // Also remove unmarked legacy with heuristic: if beginner_bridge still present but not in managed block, check evidence.
       // Use indexOf (not a `\s*`-prefixed regex .search()) to find the header: `^\s*\[...\]` lets
       // `\s*` swallow a preceding blank line, so .search() can return an index *before* the literal
@@ -172,3 +169,5 @@ export async function migrateCommand(paths: ScopePaths, options: CliOptions, io:
   }
   return { cancelled: false };
 }
+import { removeManagedBlocksPreserving } from '../config/managed.js';
+

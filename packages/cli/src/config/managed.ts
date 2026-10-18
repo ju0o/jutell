@@ -1,3 +1,4 @@
+import { parse } from 'smol-toml';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { assets } from './paths.js';
@@ -11,7 +12,7 @@ const LEGACY_BEGIN_MARKER = '# BEGINNER_BRIDGE_MCP_BEGIN';
 const LEGACY_END_MARKER = '# BEGINNER_BRIDGE_MCP_END';
 const CANONICAL_MCP_KEY = 'jutell';
 const LEGACY_MCP_KEY = 'beginner_bridge';
-const READ_ONLY_MCP_TOOLS = [
+export const READ_ONLY_MCP_TOOLS = [
   'get_bridge_status',
   'get_active_features',
   'get_report_preferences',
@@ -180,7 +181,7 @@ export async function writeBridgeConfig(paths: ScopePaths, config: BridgeConfig)
 }
 
 function markerPair(begin: string, end: string) {
-  return new RegExp(`${begin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?${end.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'm');
+  return new RegExp(`${begin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s\\S]*?${end.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'gm');
 }
 
 function managedPatterns() {
@@ -192,12 +193,14 @@ function managedPatterns() {
 }
 
 function managedBlocks(content: string) {
-  return managedPatterns().flatMap((pattern) => content.match(pattern)?.[0] ?? []);
+  return managedPatterns().flatMap((pattern) => content.match(pattern) ?? []);
 }
 
 function nonJuTellTables(block: string) {
   const bodyStart = block.indexOf('\n') + 1;
-  const endMarkerStart = block.lastIndexOf(END_MARKER);
+  const endMarkerStart = Math.max(
+    ...[END_MARKER, PREVIOUS_END_MARKER, LEGACY_END_MARKER].map((marker) => block.lastIndexOf(marker)),
+  );
   if (bodyStart <= 0 || endMarkerStart < bodyStart) return [];
   const body = block.slice(bodyStart, endMarkerStart);
   const headers = [...body.matchAll(/^[ \t]*(\[\[[^\r\n]*?\]\]|\[[^\r\n]*?\])[ \t]*(?:#.*)?\r?$/gm)];
@@ -205,7 +208,15 @@ function nonJuTellTables(block: string) {
     const tableHeader = header[1];
     if (!tableHeader || tableHeader.startsWith('[[')) return [body.slice(header.index!, headers[index + 1]?.index ?? body.length)];
     const keyPath = tableHeader.slice(1, -1).trim();
-    if (keyPath === 'mcp_servers.jutell' || keyPath.startsWith('mcp_servers.jutell.')) return [];
+    if (
+      keyPath === 'mcp_servers.beginner_bridge' ||
+      keyPath.startsWith('mcp_servers.beginner_bridge.')
+    ) return [];
+    if (
+      ['mcp_servers.jutell', 'mcp_servers.beginner_bridge'].some(
+        (ownedKey) => keyPath === ownedKey || keyPath.startsWith(`${ownedKey}.`),
+      )
+    ) return [];
     return [body.slice(header.index!, headers[index + 1]?.index ?? body.length)];
   });
 }
@@ -220,14 +231,23 @@ function blockRemoval(content: string, pattern: RegExp, preserveTables: boolean,
   });
 }
 
-function withoutManagedBlocks(content: string) {
+function withoutManagedBlocks(content: string, includeCanonical = true) {
   const preservedTables: string[] = [];
   const patterns = managedPatterns();
-  // The canonical block can contain user-added TOML tables. Older JuTell marker
-  // blocks remain fully managed and are removed as before.
-  const withoutCanonical = blockRemoval(content, patterns[0]!, true, preservedTables);
-  const withoutOlderBlocks = patterns.slice(1).reduce((text, pattern) => blockRemoval(text, pattern, false, preservedTables), withoutCanonical);
-  return { content: withoutOlderBlocks, preservedTables };
+  // All managed marker blocks can contain user-added TOML tables.
+  const selectedPatterns = includeCanonical ? patterns : patterns.slice(1);
+  const withoutBlocks = selectedPatterns.reduce(
+    (text, pattern) => blockRemoval(text, pattern, true, preservedTables),
+    content,
+  );
+  return { content: withoutBlocks, preservedTables };
+}
+
+export function removeManagedBlocksPreserving(content: string, includeCanonical = true) {
+  const { content: withoutBlocks, preservedTables } = withoutManagedBlocks(content, includeCanonical);
+  return withoutBlocks.replace(/\u0000JUTELL_PRESERVED_TABLE_(\d+)\u0000/g, (_placeholder, index: string) => {
+    return preservedTables[Number(index)] ?? '';
+  });
 }
 
 function withoutCanonicalBlock(content: string) {
@@ -243,8 +263,8 @@ function restorePreservedTables(content: string, preservedTables: string[]) {
 }
 
 function hasNonJuTellTablesInCanonicalBlock(content: string) {
-  const block = content.match(markerPair(BEGIN_MARKER, END_MARKER))?.[0];
-  return Boolean(block && nonJuTellTables(block).length > 0);
+  const blocks = content.match(markerPair(BEGIN_MARKER, END_MARKER)) ?? [];
+  return blocks.some((block) => nonJuTellTables(block).length > 0);
 }
 
 function hasMcpKey(content: string, key: string) {
@@ -307,14 +327,23 @@ function hasCanonicalApprovalConfig(block: string | undefined) {
 // heuristic-recognized entry that predates JUTELL_CLI_MCP markers, so a rewrite replaces it
 // instead of leaving a duplicate `[mcp_servers.<key>]` table behind.
 function withoutKeySection(content: string, key: string) {
-  const headerPattern = new RegExp(`^\\s*\\[mcp_servers\\.${key}\\]\\s*$`, 'm');
-  const match = content.match(headerPattern);
-  if (!match || match.index === undefined) return content;
-  const start = match.index;
-  const afterHeader = start + match[0].length;
-  const nextHeaderMatch = content.slice(afterHeader).match(/^\s*\[/m);
-  const end = nextHeaderMatch?.index !== undefined ? afterHeader + nextHeaderMatch.index : content.length;
-  return content.slice(0, start) + content.slice(end);
+  const keyPath = `mcp_servers.${key}`;
+  const headers = [...content.matchAll(/^[ \t]*(\[\[[^\r\n]*?\]\]|\[[^\r\n]*?\])[ \t]*(?:#.*)?\r?$/gm)];
+  if (headers.length === 0) return content;
+  let result = '';
+  let cursor = 0;
+  headers.forEach((header, index) => {
+    const start = header.index!;
+    const end = headers[index + 1]?.index ?? content.length;
+    const tableHeader = header[1];
+    const tablePath = tableHeader?.startsWith('[[') ? undefined : tableHeader?.slice(1, -1).trim();
+    result += content.slice(cursor, start);
+    if (tablePath !== keyPath && !tablePath?.startsWith(`${keyPath}.`)) {
+      result += content.slice(start, end);
+    }
+    cursor = end;
+  });
+  return result + content.slice(cursor);
 }
 
 function tomlString(value: string) {
@@ -398,12 +427,19 @@ export async function readCodexRegistration(paths: ScopePaths, packageRoot: stri
   };
 }
 
+function assertValidConfigToml(content: string) {
+  try {
+    parse(content);
+  } catch {
+    throw new Error('Codex 설정을 변경하면 유효하지 않은 TOML이 되어 파일을 변경하지 않았습니다.');
+  }
+}
+
 export async function registerMcp(paths: ScopePaths, packageRoot: string, enabled: boolean) {
   const current = await readCodexRegistration(paths, packageRoot, enabled);
   if (current.conflict) throw new Error('Codex 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.');
   const hasEmbeddedUserTables = hasNonJuTellTablesInCanonicalBlock(current.content);
   if (current.canonicalRegistered && current.enabled === enabled && current.canonicalUpToDate && !hasEmbeddedUserTables) return current;
-  await backupFile(paths.codexConfigFile);
   // withoutCanonicalBlock removes the marker-wrapped block and moves its user tables
   // outside the block. A stale entry recognized by heuristic evidence alone (no markers,
   // e.g. from an older JuTell install) would otherwise survive as a leftover bare
@@ -413,6 +449,8 @@ export async function registerMcp(paths: ScopePaths, packageRoot: string, enable
   const removed = withoutCanonicalBlock(current.content);
   const withoutManaged = withoutKeySection(removed.content, CANONICAL_MCP_KEY).replace(/\n{3,}/g, '\n\n').trimEnd();
   const next = restorePreservedTables(`${withoutManaged}${withoutManaged ? '\n\n' : ''}${current.preview}\n`, removed.preservedTables);
+  assertValidConfigToml(next);
+  await backupFile(paths.codexConfigFile);
   await writeTextSafely(paths.codexConfigFile, next);
   return readCodexRegistration(paths, packageRoot, enabled);
 }
@@ -421,11 +459,13 @@ export async function removeMcp(paths: ScopePaths, packageRoot: string) {
   const current = await readCodexRegistration(paths, packageRoot, false);
   if (current.conflict) throw new Error('관리되지 않는 같은 이름의 MCP 항목은 자동으로 제거하지 않습니다.');
   if (!current.registered) return current;
-  await backupFile(paths.codexConfigFile);
   const removed = withoutManagedBlocks(current.content);
   const normalized = removed.content.replace(/\n{3,}/g, '\n\n').trim();
   const next = restorePreservedTables(normalized, removed.preservedTables);
-  await writeTextSafely(paths.codexConfigFile, next ? (next.endsWith('\n') ? next : `${next}\n`) : '');
+  const finalText = next ? (next.endsWith('\n') ? next : `${next}\n`) : '';
+  assertValidConfigToml(finalText);
+  await backupFile(paths.codexConfigFile);
+  await writeTextSafely(paths.codexConfigFile, finalText);
   return readCodexRegistration(paths, packageRoot, false);
 }
 
