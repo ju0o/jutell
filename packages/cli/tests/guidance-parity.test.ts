@@ -27,7 +27,19 @@ describe('M2.6 Codex Experience Parity guidance', () => {
     expect(text).toContain('`jutell`과 legacy `beginner_bridge`');
     expect(text).toContain('호환용으로만 사용');
     // also early report rule guidance
-    expect(text).toContain('소유자 대상 구현/보고 전에는 JuTell 보고 규칙');
+    expect(text).toContain('그 규칙대로 최종 답을 씁니다');
+    expect(text).not.toMatch(/JuTell 보고 규칙을 (먼저 )?적용/);
+  });
+
+  it('AGENTS block pipes a minimal receipt via stdin and stops once with 업데이트 필요 on an old jutell', async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-guidance-receipt-'));
+    temporaryRoots.push(tmp);
+    await ensureJuTellAgentsBlock(tmp);
+    const text = await fs.readFile(path.join(tmp, 'AGENTS.md'), 'utf8');
+    expect(text).toContain('| jutell receipt --file -');
+    expect(text).toContain('"asked"');
+    expect(text).toContain('다시 시도하지 말고 "JuTell 업데이트 필요"');
+    expect(text).not.toContain('--help');
   });
 
   it('SKILL.md contains MCP server selection and early report application', async () => {

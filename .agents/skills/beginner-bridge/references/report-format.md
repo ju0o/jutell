@@ -132,13 +132,7 @@
 
 ## 6.6 다음 행동 제안
 
-`receiptReport`가 켜져 있으면 다음 행동 제안은 영수증의 `[다음 추천]`(▶ 계속 진행 / ○ 해두면 좋은 것 / ■ 여기서 멈춰도 됨, 합쳐서 **최대 3개**)으로 대신한다. `.jutell-local/receipt.json` 형식:
-
-```json
-{"done":["…"],"checks":[{"what":"…","result":"확인함","how":"…"},{"what":"…","result":"안 해봄","reason":"…"}],"next":{"continue":[],"nice":[],"stop":[]}}
-```
-
-`result`는 `확인함`/`안 해봄`만 쓰고(`확인함`은 실제로 실행하거나 읽은 것만, `how` 필수 / `안 해봄`은 `reason` 필수), `status` 칸이나 "확인 완료" 같은 상태말은 쓰지 않는다. 명령어 대신 쉬운 말로 쓴다. 영수증이 꺼져 있으면 아래 형식을 쓴다.
+`receiptReport`가 켜져 있으면 다음 행동 제안은 영수증의 `[다음 추천]`(합쳐서 **최대 3개**)으로 대신한다. 입력은 AGENTS.md의 한 줄(asked·done·checked·unchecked·next)을 `jutell receipt --file -`로 넘기는 것이 기본이다. checked에는 실제로 실행하거나 읽은 것만 쓰고, 상태말과 명령어 대신 쉬운 말로 쓴다. 바뀐 파일은 JuTell이 직접 센다. 영수증이 꺼져 있으면 아래 형식을 쓴다.
 
 `nextActionSuggestions`가 활성일 때 보고서 마지막에 한 문장 제안을 **최대 3개**만 추가한다. 다음 경우에만 추가한다.
 
