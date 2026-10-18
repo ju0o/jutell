@@ -188,7 +188,7 @@ export async function migrateCommand(paths: ScopePaths, options: CliOptions, io:
       '- .beginner-bridge.json (있었다면) 제거',
       '- Codex/OpenCode의 beginner_bridge 항목 제거',
       ...(codexCleanCommentedTables.length > 0 ? [`- 남은 beginner_bridge 하위 항목 ${codexCleanCommentedTables.length}개를 주석 처리했습니다`] : []),
-      ...(codexCleanBackupPath ? [`- 백업: ${codexCleanBackupPath}`] : []),
+      ...(codexCleanBackupPath ? [`- 바로 전 백업: ${codexCleanBackupPath}`, `- 처음 원본: ${codexScopedPaths(paths).codexConfigFile}.jutell-original`] : []),
       '관련 없는 설정은 보존했습니다.',
       'jutell status / jutell doctor 로 확인하세요.',
     ].join('\n'));
