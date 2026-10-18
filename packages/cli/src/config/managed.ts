@@ -333,10 +333,9 @@ function hasCanonicalApprovalConfig(block: string | undefined, userOverrides: re
   });
 }
 
-// Removes a bare (unmarked) `[mcp_servers.<key>]` table — header line through its own
-// key/value lines, up to the next table header or end of file. Used when repairing a stale
-// heuristic-recognized entry that predates JUTELL_CLI_MCP markers, so a rewrite replaces it
-// instead of leaving a duplicate `[mcp_servers.<key>]` table behind.
+// Removes the unmarked tables JuTell itself writes: `[mcp_servers.<key>]` and its
+// `tools.<read-only tool>` subtables (except tools the user overrides). Other user tables
+// such as `[mcp_servers.<key>.env]` are kept.
 function withoutManagedMcpTables(content: string, key: string, preservedToolTables: readonly string[] = []) {
   const keyPath = `mcp_servers.${key}`;
   const ownedTablePaths = new Set([
@@ -456,7 +455,7 @@ export function assertValidConfigToml(content: string) {
 export async function registerMcp(paths: ScopePaths, packageRoot: string, enabled: boolean) {
   const current = await readCodexRegistration(paths, packageRoot, enabled);
   if (current.conflict) throw new Error('Codex 설정에 같은 이름의 관리되지 않는 MCP 항목이 있어 자동 변경하지 않았습니다.');
-  const restoredHint = current.content.includes('# jutell 제거로 주석 처리됨');
+  const restoredHint = /^#[ \t]*\[mcp_servers\.jutell\./m.test(current.content);
   const hasEmbeddedUserTables = hasNonJuTellTablesInCanonicalBlock(current.content);
   if (current.canonicalRegistered && current.enabled === enabled && current.canonicalUpToDate && !hasEmbeddedUserTables) return { ...current, restoredHint };
   // withoutCanonicalBlock removes the marker-wrapped block and moves its user tables
