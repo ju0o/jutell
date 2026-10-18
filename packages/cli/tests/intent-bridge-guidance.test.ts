@@ -932,3 +932,14 @@ describe('Existing report-format parity remains valid (N)', () => {
     expect(reportFormat).toMatch(/기본 6개 항목을 유지한다/);
   });
 });
+
+describe('Report status guidance uses direct check descriptions', () => {
+  it('uses checked and unchecked fields in the template and removes the status line from the skill', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    const reportFormat = await fs.readFile(reportFormatFile, 'utf8');
+    expect(reportFormat).toContain('- 직접 확인한 것:');
+    expect(reportFormat).toContain('- 확인 못 한 것:');
+    expect(reportFormat).not.toContain('- 보고서 상태: <상태>');
+    expect(skill).toContain('"보고서 상태:" 줄 대신');
+  });
+});
