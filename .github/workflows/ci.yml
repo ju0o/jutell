@@ -50,3 +50,43 @@ jobs:
 
       - name: Public repository safety check
         run: npm run check:public
+
+  # Cycle 2 W0: Windows and macOS run the same steps so their results are visible,
+  # but they do NOT block merging (continue-on-error, and not a required check).
+  # The ubuntu `test` job above stays the merge gate. Windows test fixes are Cycle 3.
+  test-os:
+    name: test-os (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+        node: ["22"]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: apps/mcp-server
+        working-directory: apps/mcp-server
+        run: npm ci && npm run build && npm test
+
+      - name: apps/local-admin
+        working-directory: apps/local-admin
+        run: npm ci && npm run build && npm test
+
+      - name: packages/cli install + build
+        working-directory: packages/cli
+        run: npm ci && npm run build
+
+      - name: packages/cli tests
+        working-directory: packages/cli
+        run: npx vitest run --exclude tests/cli.test.ts --exclude tests/default-command.test.ts
+
+      - name: Public repository safety check
+        run: npm run check:public
