@@ -45,6 +45,4 @@ Codex 작업 결과를 비개발자가 이해할 수 있는 하나의 보고서�
 * `references/glossary-ko.md` — 용어 설명
 * `references/explained-diff-format.md` — 설명형 변경 요약
 * `references/feature-registry.md` — Feature ID와 강제 보고 예외
-* `docs/` 아래 제품 범위·보고 사양·설정 문서
-
-V0.1 시나리오를 실제로 실행하지 않았다면 V0.1 통과를 선언하지 않는다.
+* `JuTellMap.md`(프로젝트 맨 위) — 고칠 파일을 모를 때만 먼저 읽는다
