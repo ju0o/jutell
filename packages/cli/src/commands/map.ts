@@ -4,7 +4,7 @@ import { ensureDataRoot, readBridgeConfig, writeBridgeConfig } from '../config/m
 import { addGitExclude, gitExcludeMessage, removeGitExclude } from '../map/git-exclude.js';
 import { MAP_HTML_FILE, renderMapHtml } from '../map/html.js';
 import { scanProject } from '../map/scan.js';
-import { MAP_FILE, mapFile, mapWriteMessage, writeMap, writeViaTemp } from '../map/write.js';
+import { MAP_FILE, MAP_STATE_FILE, mapFile, mapWriteMessage, sha256, writeMap, writeViaTemp } from '../map/write.js';
 import type { CliIo, ScopePaths } from '../types.js';
 
 export const MAP_HELP = `jutell map             프로젝트 지도(JuTellMap.md)와 .jutell-local/map.html을 만들거나 갱신합니다.
@@ -81,5 +81,51 @@ export async function mapFreshnessCheck(paths: ScopePaths) {
     return { name, status: '주의' as const, detail: `지도 오래됨: 지도보다 새로 바뀐 파일 ${stale.newer.length}개(${shown}${stale.newer.length > 3 ? ' 등' : ''}). \`jutell map\`으로 갱신하세요.` };
   } catch {
     return { name, status: '직접 확인 필요' as const, detail: '지도를 확인하지 못했어요.' };
+  }
+}
+
+export const RECEIPT_MAP_TIMEOUT_MS = 3000;
+
+/**
+ * Receipt step (plan.md W5): refresh the map only when it exists, within a time limit.
+ * - jutellOwned: the map's content at the start matched map-state.json, so its git change is JuTell's own
+ *   and is left out of [바뀐 파일]. Otherwise someone else edited it and it is a normal changed file.
+ * - note: the receipt's "ⓘ 지도를 갱신했어요 … [JuTell이 고침]" or "ⓘ 지도 갱신 못 함(이유)" line.
+ * Never throws: a failed refresh must not stop the receipt from being saved.
+ */
+export async function refreshMapForReceipt(paths: ScopePaths, timeoutMs = RECEIPT_MAP_TIMEOUT_MS): Promise<{ jutellOwned: boolean; note?: string }> {
+  const file = mapFile(paths);
+  const stats = await fs.lstat(file).catch(() => undefined);
+  if (!stats) return { jutellOwned: false };
+  let jutellOwned = false;
+  try {
+    if (stats.isFile()) {
+      const [text, state] = await Promise.all([
+        fs.readFile(file, 'utf8'),
+        fs.readFile(path.join(paths.dataRoot, MAP_STATE_FILE), 'utf8').then((raw) => JSON.parse(raw) as { hash?: unknown }).catch(() => undefined),
+      ]);
+      jutellOwned = typeof state?.hash === 'string' && state.hash === sha256(text);
+    }
+  } catch {
+    jutellOwned = false;
+  }
+  let timer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<'timeout'>((resolve) => { timer = setTimeout(() => resolve('timeout'), timeoutMs); });
+  try {
+    const result = await Promise.race([writeMap(paths), timeout]);
+    if (result === 'timeout') return { jutellOwned, note: 'ⓘ 지도 갱신 못 함(시간 초과로 건너뜀)' };
+    if (result.status === 'link') return { jutellOwned: false, note: 'ⓘ 지도 갱신 못 함(지도가 링크예요)' };
+    if (result.status === 'broken') return { jutellOwned, note: 'ⓘ 지도 갱신 못 함(자동 칸 표시가 망가져 있어요. `jutell map`으로 확인하세요)' };
+    if (result.status !== 'updated') return { jutellOwned };
+    await writeMapHtml(paths).catch(() => undefined);
+    const parts = [
+      result.added.length ? `새 파일 ${result.added.length}개` : '',
+      result.removed.length ? `빠진 파일 ${result.removed.length}개` : '',
+    ].filter(Boolean);
+    return { jutellOwned, note: `ⓘ 지도를 갱신했어요${parts.length ? ` (${parts.join(', ')} 반영)` : ''}  [JuTell이 고침]` };
+  } catch (error) {
+    return { jutellOwned, note: `ⓘ 지도 갱신 못 함(${(error as Error).message || '알 수 없는 오류'})` };
+  } finally {
+    if (timer) clearTimeout(timer);
   }
 }

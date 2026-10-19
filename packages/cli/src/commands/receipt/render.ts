@@ -7,6 +7,8 @@ export type ReceiptInput = {
   done: string[];
   files?: string[];
   filesUnknownReason?: string;
+  /** JuTell's own line about the map refresh (set by code, never by the AI). */
+  mapNote?: string;
   checks: ReceiptCheck[];
   next: {
     continue: string[];
@@ -118,7 +120,8 @@ function validateReceipt(value: unknown, allowEmptyDetails = false): ReceiptInpu
   const nextCount = next.continue.length + next.nice.length + next.stop.length;
   if (nextCount > 3) return fail('다음 추천은 세 묶음을 합쳐 최대 3개까지 적을 수 있어요.');
 
-  return { asked, done, files, ...(filesUnknownReason ? { filesUnknownReason } : {}), checks, next };
+  const mapNote = typeof value.mapNote === 'string' ? cleanReceiptText(value.mapNote) : undefined;
+  return { asked, done, files, ...(filesUnknownReason ? { filesUnknownReason } : {}), ...(mapNote ? { mapNote } : {}), checks, next };
 }
 
 function cleanFileName(value: unknown): string | undefined {
@@ -311,6 +314,7 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
       ...(files.length > 8 ? [` 외 ${files.length - 8}개`] : []),
       '',
     ] : []),
+    ...(receipt.mapNote ? [` ${receipt.mapNote}`, ''] : []),
     RECEIPT_SECTIONS[3],
     ...renderList(
       receipt.checks,
