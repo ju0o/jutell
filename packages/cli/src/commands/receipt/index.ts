@@ -7,6 +7,7 @@ import type { CliIo, ScopePaths } from '../../types.js';
 import { normalizeReceipt, receiptMarkdown, renderReceipt } from './render.js';
 import { refreshMapForReceipt, RECEIPT_MAP_TIMEOUT_MS } from '../map.js';
 import { MAP_FILE } from '../../map/write.js';
+import { beforeWorkNote } from './before.js';
 import { matchRequests, readMapSections } from './match.js';
 
 const RECEIPT_INPUT_EXAMPLE = `표준 입력으로 전달하는 방식을 권장합니다:
@@ -356,6 +357,12 @@ export async function receiptCommand(
   }
   receipt.filesUnknownReason = changedFiles.unknownReason;
   receipt.filesChecked = true;
+  if (!changedFiles.unknownReason) {
+    // Make sure `.jutell-local` exists (same link checks as the receipt) so the state can be saved.
+    await prepareSafeReportsDirectory(paths).catch(() => undefined);
+    const note = await beforeWorkNote(paths, receipt.files ?? []).catch(() => undefined);
+    if (note) receipt.beforeNote = note;
+  }
   const time = receiptTimestamp(now);
   const output = await saveReceipt(paths, receipt, time.display, time.filename);
   io.write(output);
