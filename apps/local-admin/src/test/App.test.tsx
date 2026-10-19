@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import App from '../App';
+import App, { cloneConfig } from '../App';
 
 const config = { version: 1 as const, profile: 'balanced' as const, features: { changeSummary: true, userVisibleChanges: true, internalChanges: true, mainFiles: true, explainedDiff: true, glossary: true, validationResults: true, riskAssessment: true, userActions: true, nextActionSuggestions: true, receiptReport: true, requestClarificationGuide: true, manualEditGuidance: true, requestBuilder: true }, limits: { maxMainFiles: 5, maxGlossaryTerms: 3, compactReportMaxSentences: 12 }, mcp: { enabled: false }, usageMeasurement: { localCountersEnabled: false } };
 const feedback = { feedback: [] };
@@ -120,5 +120,12 @@ describe('local admin screens', () => {
     expect(screen.getByText(/기본 꺼짐이며/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '켜기' }));
     await waitFor(() => expect(fetch).toHaveBeenCalledWith(expect.stringContaining('/api/usage-settings'), expect.any(Object)));
+  });
+});
+
+describe('admin UI keeps map.gitExclude', () => {
+  it('cloneConfig (used for every draft and save) keeps map', () => {
+    expect(cloneConfig({ ...config, map: { gitExclude: true } }).map).toEqual({ gitExclude: true });
+    expect('map' in cloneConfig(config)).toBe(false);
   });
 });

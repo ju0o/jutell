@@ -297,7 +297,9 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       if (!input || typeof input !== 'object' || (input as { confirm?: unknown }).confirm !== true) {
         return error(res, 400, '기본값 복원 확인이 필요합니다.');
       }
-      const saved = await saveConfig(paths, structuredClone(DEFAULT_CONFIG));
+      // map.gitExclude mirrors .git/info/exclude (changed only by `jutell map --git-exclude/--git-include`), so a reset keeps it.
+      const current = await readConfig(paths);
+      const saved = await saveConfig(paths, { ...structuredClone(DEFAULT_CONFIG), ...(current.config.map ? { map: { ...current.config.map } } : {}) });
       return json(res, 200, { ...saved, ...(await readOverview(paths)) });
     }
     if (method === 'DELETE' && url.pathname === '/api/config/history') {

@@ -56,6 +56,8 @@ export type ScopePaths = {
 
 export type BridgeConfig = {
   version: 1;
+  /** Optional; absent means { gitExclude: false }. Kept as-is by every reader (CLI, MCP server, admin). */
+  map?: { gitExclude: boolean };
   profile: Profile;
   features: Record<string, boolean>;
   limits: {

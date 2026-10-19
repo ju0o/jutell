@@ -1,12 +1,23 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { ensureDataRoot } from '../config/managed.js';
+import { ensureDataRoot, readBridgeConfig, writeBridgeConfig } from '../config/managed.js';
+import { addGitExclude, gitExcludeMessage, removeGitExclude } from '../map/git-exclude.js';
 import { MAP_HTML_FILE, renderMapHtml } from '../map/html.js';
 import { scanProject } from '../map/scan.js';
 import { MAP_FILE, mapFile, mapWriteMessage, writeMap, writeViaTemp } from '../map/write.js';
 import type { CliIo, ScopePaths } from '../types.js';
 
-export const MAP_HELP = `jutell map             프로젝트 지도(JuTellMap.md)와 .jutell-local/map.html을 만들거나 갱신합니다.`;
+export const MAP_HELP = `jutell map             프로젝트 지도(JuTellMap.md)와 .jutell-local/map.html을 만들거나 갱신합니다.
+jutell map --git-exclude  지도를 이 컴퓨터에서만 git에서 뺍니다(.git/info/exclude, .gitignore는 그대로).
+jutell map --git-include  뺀 것을 되돌립니다.`;
+
+/** Records map.gitExclude in .jutell.json only when that file already exists (never creates a config). */
+async function recordGitExclude(paths: ScopePaths, value: boolean) {
+  const current = await readBridgeConfig(paths);
+  if (current.source !== 'new' || !current.valid) return;
+  if ((current.config.map?.gitExclude ?? false) === value) return;
+  await writeBridgeConfig(paths, { ...current.config, map: { gitExclude: value } });
+}
 
 /** Writes .jutell-local/map.html from the current JuTellMap.md (only when it differs). */
 export async function writeMapHtml(paths: ScopePaths): Promise<'written' | 'unchanged' | 'skipped'> {
@@ -25,6 +36,15 @@ export async function writeMapHtml(paths: ScopePaths): Promise<'written' | 'unch
 
 export async function mapCommand(paths: ScopePaths, args: string[], io: CliIo) {
   if (args.includes('--help') || args.includes('-h')) { io.write(MAP_HELP); return 0; }
+  const exclude = args.includes('--git-exclude');
+  const include = args.includes('--git-include');
+  if (exclude && include) throw new Error('--git-exclude와 --git-include는 함께 쓸 수 없어요.');
+  if (exclude || include) {
+    const result = exclude ? await addGitExclude(paths.targetRoot) : await removeGitExclude(paths.targetRoot);
+    io.write(gitExcludeMessage(result));
+    if (['added', 'already', 'removed', 'absent'].includes(result.status)) await recordGitExclude(paths, exclude);
+    return 0;
+  }
   const unknown = args.filter((arg) => arg.startsWith('-'));
   if (unknown.length) throw new Error(`jutell map에서 알 수 없는 옵션입니다: ${unknown.join(', ')}`);
   const result = await writeMap(paths);

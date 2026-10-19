@@ -36,6 +36,7 @@ export type Config = {
   mcp: McpSettings;
   usageMeasurement: { localCountersEnabled: boolean };
   voice?: { preset?: 'default' | 'plain' | 'learning' | 'jutell' };
+  map?: { gitExclude?: boolean };
 };
 
 export type Feedback = {

@@ -155,6 +155,15 @@ describe('local config API', () => {
     expect(reset.body.config.profile).toBe('balanced');
   });
 
+  it('keeps map.gitExclude through a save and a reset (set by `jutell map --git-exclude`)', async () => {
+    const saved = await request('/api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...DEFAULT_CONFIG, map: { gitExclude: true } }) });
+    expect(saved.status).toBe(200);
+    expect(saved.body.config.map).toEqual({ gitExclude: true });
+    expect((await request('/api/config')).body.config.map).toEqual({ gitExclude: true });
+    const reset = await request('/api/config/reset', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
+    expect(reset.body.config.map).toEqual({ gitExclude: true });
+  });
+
   it('reports repository readiness without claiming the current session applied the Skill', async () => {
     const readiness = await request('/api/readiness');
     expect(readiness.status).toBe(200);
