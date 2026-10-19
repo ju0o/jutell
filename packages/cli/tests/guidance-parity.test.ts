@@ -68,6 +68,14 @@ describe('M2.6 Codex Experience Parity guidance', () => {
     expect(text).toContain('`직접 확인한 것:`과 `확인 못 한 것:` 두 줄');
   });
 
+  it('SKILL.md points to JuTellMap.md instead of docs/ and drops the V0.1 line (W8)', async () => {
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toContain('* `JuTellMap.md`(프로젝트 맨 위) — 고칠 파일을 모를 때만 먼저 읽는다');
+    expect(skill).not.toContain('* `docs/` 아래 제품 범위·보고 사양·설정 문서');
+    expect(skill).not.toContain('V0.1 시나리오를 실제로 실행하지 않았다면');
+    expect(Buffer.byteLength(skill, 'utf8')).toBeLessThanOrEqual(6144);
+  });
+
   it('SKILL.md contains MCP server selection and early report application', async () => {
     const skill = await readSkillWithReferences();
     expect(skill).toContain('## MCP 서버 선택');
