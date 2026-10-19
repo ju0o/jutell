@@ -15,6 +15,8 @@ export type ReceiptInput = {
   match?: ReceiptMatch;
   /** Set by the receipt command after reading Git; render-only input never claims files were checked. */
   filesChecked?: boolean;
+  /** W7: files already changed at the previous receipt (set by code). */
+  beforeNote?: string;
   checks: ReceiptCheck[];
   next: {
     continue: string[];
@@ -135,7 +137,8 @@ function validateReceipt(value: unknown, allowEmptyDetails = false): ReceiptInpu
 
   const mapNote = typeof value.mapNote === 'string' ? cleanReceiptText(value.mapNote) : undefined;
   const match = readMatch(value.match, asked.length);
-  return { asked, done, files, ...(filesUnknownReason ? { filesUnknownReason } : {}), ...(mapNote ? { mapNote } : {}), ...(match ? { match } : {}), ...(value.filesChecked === true ? { filesChecked: true } : {}), checks, next };
+  const beforeNote = typeof value.beforeNote === 'string' ? cleanReceiptText(value.beforeNote) : undefined;
+  return { asked, done, files, ...(filesUnknownReason ? { filesUnknownReason } : {}), ...(mapNote ? { mapNote } : {}), ...(beforeNote ? { beforeNote } : {}), ...(match ? { match } : {}), ...(value.filesChecked === true ? { filesChecked: true } : {}), checks, next };
 }
 
 function readNames(value: unknown): string[] {
@@ -381,6 +384,7 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
       `${RECEIPT_SECTIONS[2]}  ${LABEL_GIT}`,
       ...files.slice(0, 8).map((item, index) => ` ${index + 1}. ${item}`),
       ...(files.length > 8 ? [` 외 ${files.length - 8}개`] : []),
+      ...(receipt.beforeNote ? [` ${receipt.beforeNote.trim()}`] : []),
       '',
     ] : []),
     ...(asked.length === 0 && receipt.mapNote ? [` ${receipt.mapNote}`, ''] : []),
