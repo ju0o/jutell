@@ -12,6 +12,7 @@ import { sessionCommand } from './commands/session/index.js';
 import { upgradeCommand } from './commands/upgrade.js';
 import { migrateCommand } from './commands/migrate.js';
 import { receiptCommand } from './commands/receipt/index.js';
+import { mapCommand } from './commands/map.js';
 import { maybeShowFundingNotice } from './output/funding.js';
 import type { CliIo } from './types.js';
 
@@ -31,6 +32,10 @@ export async function run(argv: string[] = process.argv.slice(2), io: CliIo = cr
   try {
     if (argv[0] === 'receipt') {
       await receiptCommand(resolveScope('project'), argv.slice(1), io);
+      return 0;
+    }
+    if (argv[0] === 'map') {
+      await mapCommand(resolveScope('project'), argv.slice(1), io);
       return 0;
     }
     const { command, options, defaultInvocation, extraArgs } = parseOptions(argv);

@@ -157,6 +157,10 @@ JuTell은 AI Agent를 대신 실행하지 않고 연결과 보고만 도와줍�
   jutell receipt --file <경로>  지정한 파일에서 입력을 읽습니다. -는 표준 입력입니다.
   jutell receipt --help  receipt.json 형식을 보여 줍니다.
 
+프로젝트 지도
+
+  jutell map            프로젝트 지도(JuTellMap.md)와 .jutell-local/map.html을 만들거나 갱신합니다.
+
 공개 설치: npm install -g jutell
 업데이트: npm update -g jutell`);
 }

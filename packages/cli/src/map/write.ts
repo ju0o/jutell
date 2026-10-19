@@ -22,7 +22,8 @@ const CLOSE = '<!-- /jutell:auto -->';
 
 export type MapWriteResult =
   | { status: 'created'; file: string; files: number; unclassified: number }
-  | { status: 'updated' | 'unchanged'; file: string }
+  | { status: 'updated'; file: string; added: string[]; removed: string[]; newSections: string[] }
+  | { status: 'unchanged'; file: string }
   | { status: 'broken'; file: string; copy: string; reason: string }
   | { status: 'link'; file: string };
 
@@ -115,7 +116,7 @@ function group(items: Classified[], placement: Map<string, string>) {
  * Lines a person wrote ("설명:", headings, moved file lines) stay byte for byte.
  * A file moved into another auto block stays in that block; a file moved outside every block is left out of the blocks.
  */
-export function updateMap(existing: string, items: Classified[], now: Date): { text: string; changed: boolean } | string {
+export function updateMap(existing: string, items: Classified[], now: Date): { text: string; changed: boolean; added: string[]; removed: string[]; newSections: string[] } | string {
   const parsed = parseMap(existing);
   if (typeof parsed === 'string') return parsed;
   const { lines, eol, blocks, placed, pinned } = parsed;
@@ -147,18 +148,25 @@ export function updateMap(existing: string, items: Classified[], now: Date): { t
     tail = [...tail, ...freshUnclassified, ...(trailing !== undefined ? [''] : [])];
   }
   const result = [...out, ...tail];
-  if (result.join(eol) === lines.join(eol)) return { text: existing, changed: false };
+  const before = new Set(placed.keys());
+  const after = new Set(items.filter((item) => !pinned.has(item.path)).map((item) => item.path));
+  const diff = {
+    added: [...after].filter((file) => !before.has(file)),
+    removed: [...before].filter((file) => !after.has(file)),
+    newSections: [...groups.keys()],
+  };
+  if (result.join(eol) === lines.join(eol)) return { text: existing, changed: false, ...diff };
   const unclassified = items.filter((item) => !pinned.has(item.path) && (placement.get(item.path) ?? keyOf(item)) === UNCLASSIFIED_KEY).length;
   const header = result.findIndex((line) => line.startsWith(HEADER_PREFIX));
   if (header >= 0) result[header] = headerLine(now, items.length, unclassified);
-  return { text: result.join(eol), changed: true };
+  return { text: result.join(eol), changed: true, ...diff };
 }
 
 export function sha256(text: string) {
   return createHash('sha256').update(text).digest('hex');
 }
 
-async function writeViaTemp(file: string, content: string) {
+export async function writeViaTemp(file: string, content: string) {
   const temporary = path.join(path.dirname(file), `.${path.basename(file)}.jutell-tmp-${process.pid}`);
   const flags = fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_WRONLY | (fsConstants.O_NOFOLLOW ?? 0);
   const existingMode = await fs.lstat(file).then((stat) => stat.mode & 0o777, () => undefined);
@@ -208,14 +216,21 @@ export async function writeMap(paths: ScopePaths, now = new Date()): Promise<Map
   if (!updated.changed) return { status: 'unchanged', file };
   await writeViaTemp(file, updated.text);
   await recordState(paths, updated.text, now);
-  return { status: 'updated', file };
+  return { status: 'updated', file, added: updated.added, removed: updated.removed, newSections: updated.newSections };
 }
 
 /** One plain line about a map write, for the terminal. */
 export function mapWriteMessage(result: MapWriteResult, paths: ScopePaths): string {
   const shown = (file: string) => path.relative(paths.targetRoot, file) || file;
   if (result.status === 'created') return `프로젝트 지도(${MAP_FILE})를 만들었어요. 파일 ${result.files}개, 분류 안 된 파일 ${result.unclassified}개.`;
-  if (result.status === 'updated') return `프로젝트 지도(${MAP_FILE})를 갱신했어요.`;
+  if (result.status === 'updated') {
+    const parts = [
+      result.added.length ? `새 파일 ${result.added.length}개` : '',
+      result.removed.length ? `빠진 파일 ${result.removed.length}개` : '',
+      result.newSections.length ? `새 칸 ${result.newSections.length}개(${result.newSections.join(', ')})` : '',
+    ].filter(Boolean);
+    return `프로젝트 지도(${MAP_FILE})를 갱신했어요${parts.length ? `: ${parts.join(', ')}` : ''}.`;
+  }
   if (result.status === 'unchanged') return `프로젝트 지도(${MAP_FILE})는 바뀐 것이 없어요.`;
   if (result.status === 'link') return `${MAP_FILE}이 링크라서 쓰지 않았어요.`;
   if (result.status !== 'broken') return '';
