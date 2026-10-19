@@ -36,13 +36,14 @@ describe('receipt renderer', () => {
       '  JuTell 작업 영수증',
       '  2026-10-18 16:40',
       '==============================',
-      '[이번에 한 작업]',
+      '[이번에 한 작업]  [AI가 적음]',
       ' 1. 브라우저 탭 이름: 할 일 목록 → 오늘 할 일',
       ' 2. 화면 맨 위 큰 글씨: 할 일 목록 → 오늘 할 일',
       '',
       '[확인]',
-      ' ✔ 직접 확인한 것: 파일에서 두 제목이 바뀐 것 (파일 내용을 읽음)',
-      ' ✖ 확인 못 한 것: 브라우저로 열어보기 (이 환경에서 화면을 못 열어서)',
+      ' ✔ 직접 확인한 것: 파일에서 두 제목이 바뀐 것 (파일 내용을 읽음)  [AI가 적음]',
+      ' ✖ 확인 못 한 것: 브라우저로 열어보기 (이 환경에서 화면을 못 열어서)  [AI가 적음]',
+      ' ⓘ 테스트·명령 결과는 AI가 적은 내용이에요(JuTell이 직접 보지 않았어요)',
       '------------------------------',
       '[다음 추천]',
       ' ○ 추천',
@@ -118,17 +119,17 @@ describe('receipt renderer', () => {
       next: { continue: [], nice: [], stop: [] },
     }, timestamp);
     const headings = [
-      '[이번에 한 작업]',
+      '[이번에 한 작업]  [AI가 적음]',
       '[확인]',
       '[다음 추천]',
       ' 여기서 멈춰도 됩니다 – 요청한 작업이 끝났어요',
     ];
     const lines = output.split('\n');
 
-    expect(RECEIPT_SECTIONS).toEqual(['[요청한 것]', '[이번에 한 작업]', '[바뀐 파일]', '[확인]', '[다음 추천]']);
+    expect(RECEIPT_SECTIONS).toEqual(['[요청 대조]', '[이번에 한 작업]', '[바뀐 파일]', '[확인]', '[다음 추천]']);
     expect(NEXT_GROUPS).toEqual([' ▶ 계속', ' ○ 추천', ' ■ 여기서 멈춰도 됨']);
     expect(lines.filter((line) => headings.includes(line))).toEqual(headings);
-    expect(output).not.toContain('[요청한 것]');
+    expect(output).not.toContain('[요청 대조]');
     expect(output).not.toContain('[바뀐 파일]');
     expect(output).not.toMatch(/- 없음/);
     expect(lines.at(-1)).toBe('한 줄 요약: 요청한 작업을 마쳤어요.');
