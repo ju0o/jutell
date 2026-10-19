@@ -62,7 +62,8 @@ describe('receipt refreshes the map (W5)', () => {
     const { dir, receipt } = await project();
     await fs.writeFile(path.join(dir, 'a.ts'), 'x');
     const text = await receipt();
-    expect(text).not.toContain('지도');
+    expect(text).not.toContain('지도를 갱신');
+    expect(text).not.toContain('지도 갱신 못 함');
     await expect(fs.stat(path.join(dir, 'JuTellMap.md'))).rejects.toThrow();
   });
 

@@ -3,16 +3,19 @@
 export const UNCLASSIFIED = '아직 분류 안 된 파일';
 export const ESTIMATED_LABEL = '[지도 기준 추정]';
 
-/** Word dictionary: a whole word in a folder or file name (case-insensitive) → feature name. */
-export const FEATURE_DICTIONARY: ReadonlyArray<{ feature: string; words: readonly string[] }> = [
-  { feature: '로그인', words: ['auth', 'login', 'logout', 'signin', 'signup', 'signout', 'session', 'oauth', 'password'] },
-  { feature: '결제', words: ['pay', 'payment', 'checkout', 'billing', 'invoice', 'stripe'] },
-  { feature: '할 일 목록', words: ['todo', 'todos', 'task', 'tasks'] },
-  { feature: '검색', words: ['search'] },
-  { feature: '알림', words: ['notification', 'notifications', 'notify', 'alert', 'alerts'] },
-  { feature: '프로필', words: ['profile', 'profiles', 'avatar'] },
-  { feature: '관리자', words: ['admin'] },
-  { feature: '장바구니', words: ['cart', 'basket'] },
+/**
+ * Word dictionary: a whole word in a folder or file name (case-insensitive) → feature name.
+ * `ko` are the words a person uses in a request (substring match), for request matching in the receipt.
+ */
+export const FEATURE_DICTIONARY: ReadonlyArray<{ feature: string; words: readonly string[]; ko: readonly string[] }> = [
+  { feature: '로그인', words: ['auth', 'login', 'logout', 'signin', 'signup', 'signout', 'session', 'oauth', 'password'], ko: ['로그인', '로그아웃', '회원가입', '비밀번호'] },
+  { feature: '결제', words: ['pay', 'payment', 'checkout', 'billing', 'invoice', 'stripe'], ko: ['결제', '계산', '청구'] },
+  { feature: '할 일 목록', words: ['todo', 'todos', 'task', 'tasks'], ko: ['할 일', '할일', '투두'] },
+  { feature: '검색', words: ['search'], ko: ['검색'] },
+  { feature: '알림', words: ['notification', 'notifications', 'notify', 'alert', 'alerts'], ko: ['알림'] },
+  { feature: '프로필', words: ['profile', 'profiles', 'avatar'], ko: ['프로필'] },
+  { feature: '관리자', words: ['admin'], ko: ['관리자'] },
+  { feature: '장바구니', words: ['cart', 'basket'], ko: ['장바구니'] },
 ];
 
 /** Folders skipped when a folder name is used as the feature name (case-insensitive). */
