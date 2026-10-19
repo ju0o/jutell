@@ -6,6 +6,7 @@ import { useCommand } from './use.js';
 import { assets } from '../config/paths.js';
 import { installSkill, recordSkillFiles, skillConflictMessage, skillRefreshMessage } from '../installer/skill.js';
 import { exists } from '../config/managed.js';
+import { offerMap } from '../map/write.js';
 import path from 'node:path';
 import { AGENT_PROVIDERS, type AgentProvider, type AgentProviderId } from '../installer/providers.js';
 import type { CliIo, CliOptions, ScopePaths, StatusResult } from '../types.js';
@@ -188,6 +189,7 @@ export async function defaultCommand(paths: ScopePaths, options: CliOptions, io:
     // user asked to connect, not to open a local browser/server session.
     // `jutell dashboard` remains the explicit, unchanged, opt-in way to do that.
     io.write(connectedSummaryMessage(providerRuntimeStatuses(await getStatus(paths))));
+    await offerMap(paths, options, io, stdin.isTTY === true);
     return { cancelled: false };
   }
 

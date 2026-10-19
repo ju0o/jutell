@@ -8,6 +8,11 @@ export class NeedsConfirmationError extends Error {
   }
 }
 
+/** Enter takes the default; "n"/"no" or "y"/"yes" (any case) override it. */
+export function parseYesNo(answer: string, defaultYes: boolean) {
+  return defaultYes ? !/^n(o)?$/i.test(answer.trim()) : /^y(es)?$/i.test(answer.trim());
+}
+
 export function createIo(): CliIo {
   return {
     write: (message) => console.log(message),
@@ -17,7 +22,7 @@ export function createIo(): CliIo {
       const rl = readline.createInterface({ input, output });
       try {
         const answer = await rl.question(`${message} ${defaultYes ? '(Y/n)' : '(y/N)'} `);
-        return defaultYes ? !/^n(o)?$/i.test(answer.trim()) : /^y(es)?$/i.test(answer.trim());
+        return parseYesNo(answer, defaultYes);
       } finally { rl.close(); }
     },
     choose: async (message, choices, defaultValue) => {

@@ -8,6 +8,7 @@ import { registerMcp, removeMcp } from '../config/managed.js';
 import { removeOpenCodeMcp, readOpenCodeRegistration, setOpenCodeEnabled } from '../installer/opencode.js';
 import { removeClaudeMcp } from '../installer/claude.js';
 import { scopeLabel } from '../output/format.js';
+import { offerMap } from '../map/write.js';
 import { codexDetected, nodeMajorVersion, operatingSystem } from '../process/system.js';
 import type { CliIo, CliOptions, ScopePaths } from '../types.js';
 
@@ -48,7 +49,6 @@ export async function setupCommand(paths: ScopePaths, options: CliOptions, io: C
       const kept = skillConflictMessage(skillResult);
       if (kept) io.write(`\n주의: ${kept}`);
     }
-    return { cancelled: false, skillResult };
   } catch (error) {
     await restore(configSnapshot);
     await restore(codexSnapshot);
@@ -56,6 +56,9 @@ export async function setupCommand(paths: ScopePaths, options: CliOptions, io: C
     await removeAddedSkillFiles(paths.skillRoot, skillResult.changed);
     throw error;
   }
+  // Asked after a successful install only (a map problem never rolls the install back).
+  if (!options.oneCommand && !options.mcpOnly) await offerMap(paths, options, io, process.stdin.isTTY === true);
+  return { cancelled: false, skillResult };
 }
 
 export async function enableCommand(paths: ScopePaths, options: CliOptions, io: CliIo) {
