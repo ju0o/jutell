@@ -18,7 +18,8 @@ const CODES: Record<string, string> = {
   ABORT_ERR: '시간 제한으로 멈췄어요',
 };
 
-const ABSOLUTE = /(^|[\s("'`=[,;:])((?:\/|[A-Za-z]:[\\/]|\\\\)[^\s"'`<>|?*,;)]*)/g;
+// A rooted path without a drive letter (\home\me on Windows) counts too, as does a UNC path (\\server).
+const ABSOLUTE = /(^|[\s("'`=[,;:])((?:[\\/]|[A-Za-z]:[\\/])[^\s"'`<>|?*,;)]*)/g;
 
 /** Replaces absolute paths: inside `root` → relative path, elsewhere → [경로]. */
 export function hideAbsolutePaths(text: string, root?: string): string {
