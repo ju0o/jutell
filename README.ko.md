@@ -465,7 +465,7 @@ JuTell은 자기 `jutell` 항목만 바꾸고, 파일 백업을 남기고, 다�
 | 앱 | 연결 | 바뀌는 파일 | 연결한 뒤 | 빼기 |
 |---|---|---|---|---|
 | **Cursor** (이 프로젝트) | `jutell use cursor` | `<프로젝트>/.cursor/mcp.json` (모든 OS) | Cursor 다시 시작 | `jutell disconnect cursor` |
-| **Cursor** (모든 폴더) | `jutell use cursor --global` | `~/.cursor/mcp.json` (모든 OS) | Cursor 다시 시작 | `jutell disconnect cursor --global` |
+| **Cursor** (모든 폴더) | `jutell use cursor --global` | Linux·macOS: `~/.cursor/mcp.json`. Windows: 확인 안 됨 (JuTell은 홈 폴더 아래 `~/.cursor/mcp.json`을 씀) | Cursor 다시 시작 | `jutell disconnect cursor --global` |
 | **VS Code** (이 프로젝트) | `jutell use vscode` | `<프로젝트>/.vscode/mcp.json` (모든 OS) | MCP: List Servers → jutell → Restart Server | `jutell disconnect vscode` |
 | **VS Code** (사용자 프로필) | `jutell use vscode --global` | Linux: `~/.config/Code/User/mcp.json` (`$XDG_CONFIG_HOME`이 있으면 그 아래). macOS·Windows: 확인 안 됨. 방법만 알려 주고 바꾸지 않아요 | MCP: List Servers → jutell → Restart Server | `jutell disconnect vscode --global` |
 | **Claude Desktop** | `jutell use claude-desktop` | macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`. Windows: `%APPDATA%\Claude\claude_desktop_config.json`. Linux: 확인 안 됨. 넣을 항목만 보여 주고 바꾸지 않아요 | Claude Desktop을 완전히 종료한 뒤 다시 열기 | `jutell disconnect claude-desktop` |

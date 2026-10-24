@@ -460,7 +460,7 @@ other servers and comments as they are.
 | App | Connect | File it changes | After connecting | Remove |
 |---|---|---|---|---|
 | **Cursor** (this project) | `jutell use cursor` | `<project>/.cursor/mcp.json` (all OS) | Restart Cursor | `jutell disconnect cursor` |
-| **Cursor** (every folder) | `jutell use cursor --global` | `~/.cursor/mcp.json` (all OS) | Restart Cursor | `jutell disconnect cursor --global` |
+| **Cursor** (every folder) | `jutell use cursor --global` | Linux / macOS: `~/.cursor/mcp.json`. Windows: not confirmed (JuTell uses `~/.cursor/mcp.json` under your home folder) | Restart Cursor | `jutell disconnect cursor --global` |
 | **VS Code** (this project) | `jutell use vscode` | `<project>/.vscode/mcp.json` (all OS) | MCP: List Servers → jutell → Restart Server | `jutell disconnect vscode` |
 | **VS Code** (user profile) | `jutell use vscode --global` | Linux: `~/.config/Code/User/mcp.json` (`$XDG_CONFIG_HOME` if set). macOS / Windows: not confirmed, so JuTell only explains what to do and changes nothing | MCP: List Servers → jutell → Restart Server | `jutell disconnect vscode --global` |
 | **Claude Desktop** | `jutell use claude-desktop` | macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`. Windows: `%APPDATA%\Claude\claude_desktop_config.json`. Linux: not confirmed, so JuTell prints the entry to add and changes nothing | Quit Claude Desktop completely, then open it again | `jutell disconnect claude-desktop` |

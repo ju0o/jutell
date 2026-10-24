@@ -246,6 +246,21 @@ describe('README GUI app section matches app-specs.ts and paths.ts (W9)', () => 
       expect(text).toMatch(/not confirmed|확인 안 됨/);
     });
 
+    it(`${label} OS labels: only project-relative paths say "all OS"; unconfirmed OS paths say so on their own row`, () => {
+      const rows = text.split('\n').filter((line) => /^\| \*\*(Cursor|VS Code|Claude Desktop|Windsurf)/.test(line));
+      expect(rows.length).toBe(6);
+      const unconfirmed = /not confirmed|확인 안 됨/;
+      for (const row of rows) {
+        const file = row.split('|')[3];
+        if (/all OS|모든 OS/.test(file)) expect(file, row).toMatch(/<(project|프로젝트)>\//);
+      }
+      const row = (re: RegExp) => rows.find((line) => re.test(line))!.split('|')[3];
+      // w0-facts: Cursor Windows real path, VS Code macOS/Windows user profile, Claude Desktop Linux are not documented.
+      expect(row(/cursor --global/)).toMatch(new RegExp(`Windows: (${unconfirmed.source})`));
+      expect(row(/vscode --global/)).toMatch(new RegExp(`macOS( /|·) ?Windows: (${unconfirmed.source})`));
+      expect(row(/claude-desktop/)).toMatch(new RegExp(`Linux: (${unconfirmed.source})`));
+    });
+
     it(`${label} restart steps are the ones the CLI prints`, () => {
       expect(text).toContain('MCP: List Servers → jutell → Restart Server');
       const cursor = GUI_APPS.find((app) => app.id === 'cursor')!;
