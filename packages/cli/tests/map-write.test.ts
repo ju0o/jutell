@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import { resolveScope } from '../src/config/paths.js';
-import { MAP_COPY_FILE, MAP_DECLINED_FILE, MAP_DECLINED_NOTE, MAP_GUIDE, MAP_FILE, MAP_LATER, MAP_QUESTION, MAP_STATE_FILE, mapDeclined, mapWriteMessage, offerMap, rememberMapDeclined, parseMap, sha256, writeMap } from '../src/map/write.js';
+import { MAP_COPY_FILE, MAP_DECLINED_FILE, MAP_DECLINED_NOTE, MAP_GUIDE, MAP_FILE, MAP_LATER, MAP_QUESTION, MAP_STATE_FILE, mapDeclined, mapWriteMessage, offerMap, rememberMapDeclined, parseMap, sha256, stamp, writeMap } from '../src/map/write.js';
 import { MAP_HTML_FILE, renderMapHtml } from '../src/map/html.js';
 import { readMapSelectionDetail, writeMapSelectionFiles } from '../src/map/selection.js';
 import { scanProject } from '../src/map/scan.js';
@@ -97,7 +97,7 @@ describe('map write (W2)', () => {
     expect(text).toBe([
       '# JuTell 지도 — 이 프로젝트는 어떻게 생겼나요?',
       MAP_GUIDE,
-      '마지막 갱신: 2026-10-20 14:03 UTC · 파일 5개 · 분류 안 된 파일 2개 · 목록 기준 폴더 탐색 · 20,000개 상한 내',
+      `마지막 갱신: ${stamp(NOW)} · 파일 5개 · 분류 안 된 파일 2개 · 목록 기준 폴더 탐색 · 20,000개 상한 내`,
       '',
       '## 로그인 [지도로 짐작]', '<!-- jutell:auto 로그인 -->', '- src/auth/LoginForm.tsx — 화면', '<!-- /jutell:auto -->',
       '',
@@ -138,7 +138,7 @@ describe('map write (W2)', () => {
     expect(after).toContain('## 결제 (내가 지은 이름)\n<!-- jutell:auto 결제 -->\n- scripts/migrate-2024.js — 기능\n- src/payments/pay-ui.ts — 기능\n- src/payments/refund.ts — 기능');
     expect(after).toContain('## 로그인 [지도로 짐작]');
     expect(after).not.toContain('## 결제 (내가 지은 이름) [지도로 짐작]');
-    expect(after).toContain('마지막 갱신: 2026-10-21 09:00 UTC · 파일 6개 · 분류 안 된 파일 0개 · 목록 기준 폴더 탐색 · 20,000개 상한 내');
+    expect(after).toContain(`마지막 갱신: ${stamp(LATER)} · 파일 6개 · 분류 안 된 파일 0개 · 목록 기준 폴더 탐색 · 20,000개 상한 내`);
   });
 
   it('new features get a new section before "아직 분류 안 된 파일"; CRLF maps stay CRLF', async () => {
@@ -154,6 +154,27 @@ describe('map write (W2)', () => {
     expect(after.split('\r\n').join('').includes('\n')).toBe(false);
     expect(after.indexOf('## reports [지도로 짐작]')).toBeGreaterThan(after.indexOf('## 결제'));
     expect(after.indexOf('## reports [지도로 짐작]')).toBeLessThan(after.indexOf('## 아직 분류 안 된 파일'));
+  });
+
+  it('header time is the local time with its zone; a content-identical refresh later keeps the old header', async () => {
+    expect(stamp(NOW)).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2} \(UTC[+-]\d{1,2}(:\d{2})?\)$/);
+    const local = new Date(NOW.getTime() - NOW.getTimezoneOffset() * 60000).toISOString().slice(0, 16).replace('T', ' ');
+    expect(stamp(NOW).startsWith(local)).toBe(true);
+    const { dir, paths } = await project();
+    await writeMap(paths, NOW);
+    const file = path.join(dir, MAP_FILE);
+    expect(await read(file)).toContain(`마지막 갱신: ${stamp(NOW)}`);
+    await writeMap(paths, LATER);
+    expect(await read(file)).toContain(`마지막 갱신: ${stamp(NOW)}`);
+    expect(await read(file)).not.toContain(stamp(LATER));
+  });
+
+  it('map.html shows the guide line with its literal "<!-- -->" (escaped), while real marker comments stay hidden', async () => {
+    const { dir, paths } = await project();
+    await writeMap(paths, NOW);
+    const html = renderMapHtml(await read(path.join(dir, MAP_FILE)));
+    expect(html).toContain('&lt;!-- --&gt; 로 된 줄은 JuTell이');
+    expect(html).not.toContain('jutell:auto');
   });
 
   it('writes nothing when nothing changed (mtime and bytes stay the same)', async () => {

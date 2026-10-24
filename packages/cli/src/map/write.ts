@@ -50,8 +50,12 @@ function linePath(line: string): string | undefined {
   return cut > 2 ? line.slice(2, cut) : undefined;
 }
 
-function stamp(now: Date) {
-  return `${now.toISOString().slice(0, 16).replace('T', ' ')} UTC`;
+/** User's local time with its zone, e.g. "2026-10-24 21:07 (UTC+9)". */
+export function stamp(now: Date) {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  const offset = -now.getTimezoneOffset();
+  const zone = `UTC${offset < 0 ? '-' : '+'}${Math.floor(Math.abs(offset) / 60)}${Math.abs(offset) % 60 ? `:${pad(Math.abs(offset) % 60)}` : ''}`;
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())} (${zone})`;
 }
 function headerLine(now: Date, files: number, unclassified: number, scan?: Pick<MapScan, 'source' | 'truncated'>) {
   const source = scan?.source === 'git' ? 'Git 파일 목록' : scan?.source === 'walk' ? '폴더 탐색' : undefined;
