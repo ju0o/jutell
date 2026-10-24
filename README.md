@@ -451,6 +451,46 @@ actual output.
 
 ## Install, control & advanced
 
+### Connect a GUI app (Cursor · VS Code · Claude Desktop · Windsurf)
+
+Bare `jutell` never touches these apps. They are connected only when you type `jutell use <app>`
+yourself. JuTell changes only its own `jutell` entry, keeps a backup of the file, and leaves your
+other servers and comments as they are.
+
+| App | Connect | File it changes | After connecting | Remove |
+|---|---|---|---|---|
+| **Cursor** (this project) | `jutell use cursor` | `<project>/.cursor/mcp.json` (all OS) | Restart Cursor | `jutell disconnect cursor` |
+| **Cursor** (every folder) | `jutell use cursor --global` | Linux / macOS: `~/.cursor/mcp.json`. Windows: not confirmed (JuTell uses `~/.cursor/mcp.json` under your home folder) | Restart Cursor | `jutell disconnect cursor --global` |
+| **VS Code** (this project) | `jutell use vscode` | `<project>/.vscode/mcp.json` (all OS) | MCP: List Servers → jutell → Restart Server | `jutell disconnect vscode` |
+| **VS Code** (user profile) | `jutell use vscode --global` | Linux: `~/.config/Code/User/mcp.json` (`$XDG_CONFIG_HOME` if set). macOS / Windows: not confirmed, so JuTell only explains what to do and changes nothing | MCP: List Servers → jutell → Restart Server | `jutell disconnect vscode --global` |
+| **Claude Desktop** | `jutell use claude-desktop` | macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`. Windows: `%APPDATA%\Claude\claude_desktop_config.json`. Linux: not confirmed, so JuTell prints the entry to add and changes nothing | Quit Claude Desktop completely, then open it again | `jutell disconnect claude-desktop` |
+| **Windsurf** | Status only | JuTell only reads it and never writes to it | — | Remove the `jutell` entry yourself |
+
+`--global` apps use this project's map and receipts in every folder. In another project, run the
+same `--global` command again there. `jutell status` shows every app file, and
+`jutell uninstall --yes` also takes JuTell out of this project's app files.
+
+Real output (Linux; the temp folder is shown as `~/my-project`):
+
+```text
+$ jutell use cursor
+Cursor (이 프로젝트) 연결이 끝났어요. 설정 파일: ~/my-project/.cursor/mcp.json
+바뀐 연결은 Cursor를 다시 시작하면 적용돼요.
+
+$ jutell use windsurf
+Windsurf은(는) 아직 읽기만 지원해요. 설정 파일을 바꾸지 않았어요. 연결 상태는 `jutell status`에서 볼 수 있어요.
+
+$ jutell disconnect cursor
+Cursor (이 프로젝트): JuTell이 만든 설정 파일이라 통째로 지웠어요 (~/my-project/.cursor/mcp.json).
+바뀐 연결은 Cursor를 다시 시작하면 적용돼요.
+```
+
+If the file already existed, `disconnect` takes out only the `jutell` entry and keeps the file.
+JuTell deletes a whole file only when JuTell created it and nothing else is left in it.
+
+Not confirmed yet: VS Code user-profile paths on macOS and Windows, the Claude Desktop path on
+Linux, and writing Windsurf files. JuTell does not guess these paths.
+
 ### Useful commands
 
 | Command | What it does |
