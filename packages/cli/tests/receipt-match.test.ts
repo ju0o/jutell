@@ -40,6 +40,25 @@ async function project(options: { map?: boolean; name?: string } = {}) {
   const edit = (file: string) => fs.appendFile(path.join(dir, file), '\nchanged');
   return { dir, paths, receipt, edit };
 }
+/** Content lines (not frames, blanks, section/group headers whose lines carry labels) without a source label. */
+const LABEL_END = /(\[(Git 기준|AI가 적음|지도로 짐작|JuTell이 적음|JuTell이 고침|Git 기준 · 지도 대조|Git 기준 · 지도: [^\]]+)\])$/;
+function unlabeled(text: string): string[] {
+  const lines = text.split('\n');
+  const start = lines.findIndex((line, index) => index > 2 && line.startsWith('='));
+  let sectionLabeled = false;
+  let matchSection = false;
+  return lines.slice(start + 1).filter((line) => {
+    if (/^[=-]+$/.test(line) || line === '' || line.startsWith(' 저장됨:')) return false;
+    if (LABEL_END.test(line)) {
+      if (line.startsWith('[')) { sectionLabeled = true; matchSection = line.startsWith('[요청 대조]'); }
+      return false;
+    }
+    if (line.startsWith('[')) { sectionLabeled = false; matchSection = false; return line !== '[확인]' && line !== '[다음 추천]'; }
+    if (/^ [▶○■] /.test(line)) return false;
+    // Items under a labeled header inherit it, except the request sentences in [요청 대조] (the header is Git's count).
+    return !(sectionLabeled && !matchSection && /^ +(\d+\.|-) /.test(line));
+  });
+}
 const base = { checked: ['테스트를 돌려 통과했다고 봤어요'], unchecked: ['브라우저 화면 (안 열어 봄)'], next: [] };
 
 describe('request matching (W6, plan.md §2)', () => {
@@ -47,26 +66,26 @@ describe('request matching (W6, plan.md §2)', () => {
     const { receipt, edit } = await project();
     await edit('test-app/todo.html');
     const text = await receipt({ ...base, asked: ['할 일 페이지 제목 바꾸기'], done: ['제목을 바꿨어요'] });
-    expect(text).toContain('[요청 대조]  요청 1개 중 1개 바뀐 곳 있음');
-    expect(text).toContain(' 1. 할 일 페이지 제목 바꾸기\n    → 바뀐 곳 있음: test-app/todo.html  [Git 기준 · 지도: 할 일]');
+    expect(text).toContain('[요청 대조]  요청 1개 중 1개 바뀐 곳 있음  [Git 기준 · 지도 대조]');
+    expect(text).toContain(' 1. 할 일 페이지 제목 바꾸기  [AI가 적음]\n    → 바뀐 곳 있음: test-app/todo.html  [Git 기준 · 지도: 할 일]');
     expect(text).not.toContain('요청에 없던 곳');
-    expect(text.split('\n').at(-1)).toBe('한 줄 요약: 요청 1개 중 1개를 처리했어요.');
+    expect(text.split('\n').at(-1)).toBe('한 줄 요약: 제목을 바꿨어요  [AI가 적음] · 요청 1개 중 1개 처리  [Git 기준]');
   });
 
   it('② the feature\'s files did not change → 바뀐 곳 없음, and the summary counts it by code', async () => {
     const { receipt, edit } = await project();
     await edit('test-app/todo.html');
     const text = await receipt({ ...base, asked: ['할 일 페이지 제목 바꾸기', '로그인 버튼 색 바꾸기'], done: ['둘 다 했어요'], summary: '요청 2개를 모두 처리했어요' });
-    expect(text).toContain('[요청 대조]  요청 2개 중 1개 바뀐 곳 있음 · 1개 바뀐 곳 없음');
-    expect(text).toContain(" 2. 로그인 버튼 색 바꾸기\n    → 바뀐 곳 없음: '로그인' 파일이 바뀌지 않았어요  [Git 기준 · 지도: 로그인]");
-    expect(text.split('\n').at(-1)).toBe('한 줄 요약: 요청 2개 중 1개를 처리했어요.');
+    expect(text).toContain('[요청 대조]  요청 2개 중 1개 바뀐 곳 있음 · 1개 바뀐 곳 없음  [Git 기준 · 지도 대조]');
+    expect(text).toContain(" 2. 로그인 버튼 색 바꾸기  [AI가 적음]\n    → 바뀐 곳 없음: '로그인' 파일이 바뀌지 않았어요  [Git 기준 · 지도: 로그인]");
+    expect(text.split('\n').at(-1)).toBe('한 줄 요약: 요청 2개를 모두 처리했어요  [AI가 적음] · 요청 2개 중 1개 처리  [Git 기준]');
   });
 
   it('③ no feature matches → 장소를 못 찾았어요 [지도로 짐작]', async () => {
     const { receipt, edit } = await project();
     await edit('test-app/todo.html');
     const text = await receipt({ ...base, asked: ['배경 음악 넣기'], done: ['넣었어요'] });
-    expect(text).toContain('[요청 대조]  요청 1개 중 1개 장소 못 찾음');
+    expect(text).toContain('[요청 대조]  요청 1개 중 1개 장소 못 찾음  [Git 기준 · 지도 대조]');
     expect(text).toContain('    → 장소를 못 찾았어요(지도에 맞는 기능이 없어요)  [지도로 짐작]');
   });
 
@@ -109,20 +128,30 @@ describe('request matching (W6, plan.md §2)', () => {
     expect(text).toContain('[바뀐 파일]  [Git 기준]');
     expect(text).toContain(' ✔ 직접 확인한 것: 테스트를 돌려 통과했다고 봤어요  [AI가 적음]');
     expect(text).toContain(' ✖ 확인 못 한 것: 브라우저 화면 (안 열어 봄)  [AI가 적음]');
-    expect(text).toContain(' ⓘ 테스트·명령 결과는 AI가 적은 내용이에요(JuTell이 직접 보지 않았어요)');
-    for (const line of text.split('\n')) {
-      if (/^ +(→|⚠|✔|✖)/.test(line)) expect(line).toMatch(/\[(Git 기준|AI가 적음|지도로 짐작|Git 기준 · 지도: [^\]]+)\]$/);
-    }
+    expect(text).toContain(' ⓘ 위 테스트·명령 결과는 AI가 알려 준 내용이에요. JuTell이 직접 돌려 보지는 않았어요  [JuTell이 적음]');
+    expect(text).toContain('[다음 추천]\n 여기서 멈춰도 됩니다 – 따로 추천할 다음 작업이 없어요  [JuTell이 적음]');
+    expect(text).toContain(' 1. 할 일 페이지 제목 바꾸기  [AI가 적음]');
+    expect(unlabeled(text)).toEqual([]);
+  });
+
+  it('the ⓘ test/command note appears only when a test or a command is mentioned', async () => {
+    const { receipt, edit } = await project();
+    await edit('test-app/todo.html');
+    const plain = await receipt({ asked: ['할 일 페이지 제목 바꾸기'], done: ['제목을 바꿨어요'], checked: ['파일을 다시 읽어 제목을 봤어요'], unchecked: [], next: ['페이지를 열어 보세요'] });
+    expect(plain).not.toContain('ⓘ 위 테스트');
+    expect(plain).toContain('[다음 추천]  [AI가 적음]');
+    expect(unlabeled(plain)).toEqual([]);
+    expect(plain.split('\n').at(-1)).toBe('한 줄 요약: 제목을 바꿨어요  [AI가 적음] · 요청 1개 중 1개 처리  [Git 기준]');
   });
 
   it('no map → Git only, "지도가 없어 장소 대조는 못 했어요", and the summary is not a code count', async () => {
     const { receipt, edit } = await project({ map: false });
     await edit('test-app/todo.html');
     const text = await receipt({ ...base, asked: ['할 일 페이지 제목 바꾸기'], done: ['제목을 바꿨어요'] });
-    expect(text).toContain('[요청 대조]  지도가 없어 장소 대조는 못 했어요  [Git 기준]\n 1. 할 일 페이지 제목 바꾸기');
+    expect(text).toContain('[요청 대조]  지도가 없어 장소 대조는 못 했어요  [Git 기준]\n 1. 할 일 페이지 제목 바꾸기  [AI가 적음]');
     expect(text).not.toContain('→');
     expect(text).toContain('[바뀐 파일]  [Git 기준]\n 1. test-app/todo.html');
-    expect(text.split('\n').at(-1)).toBe('한 줄 요약: 제목을 바꿨어요');
+    expect(text.split('\n').at(-1)).toBe('한 줄 요약: 제목을 바꿨어요  [AI가 적음]');
   });
 
   it('the forbidden status phrases rule is unchanged', async () => {
@@ -180,12 +209,14 @@ describe('files changed before the work in the comparison (W7 × W6)', () => {
     await receipt({ ...base, asked: ['할 일 페이지 제목 바꾸기'], done: ['첫 작업'] });
     // Second receipt: nothing new was touched; both files are from before.
     const text = await receipt({ ...base, asked: ['할 일 페이지 제목 바꾸기'], done: ['두 번째 작업'] });
-    expect(text).toContain('[요청 대조]  요청 1개 중 1개 바뀐 곳 없음');
+    expect(text).toContain('[요청 대조]  요청 1개 중 1개 바뀐 곳 없음  [Git 기준 · 지도 대조]');
     expect(text).toContain('    (작업 전부터) 바뀌어 있던 파일: test-app/todo.html  [Git 기준]');
     expect(text).toContain(' (작업 전부터) 바뀌어 있던 요청 밖 파일: scripts/migrate-2024.js  [Git 기준]');
     expect(text).not.toContain('바뀐 곳 있음');
     expect(text).not.toContain('⚠ 요청에 없던 곳');
-    expect(text.split('\n').at(-1)).toBe('한 줄 요약: 요청 1개 중 0개를 처리했어요.');
+    expect(text.split('\n').at(-1)).toBe('한 줄 요약: 두 번째 작업  [AI가 적음] · 요청 1개 중 0개 처리  [Git 기준]');
+    // Item 3: the [바뀐 파일] list marks them too.
+    expect(text).toContain('[바뀐 파일]  [Git 기준]\n 1. scripts/migrate-2024.js (작업 전부터)\n 2. test-app/todo.html (작업 전부터)');
   });
 
   it('a file edited again after the previous receipt counts as a change again', async () => {
@@ -196,7 +227,7 @@ describe('files changed before the work in the comparison (W7 × W6)', () => {
     await edit('test-app/todo.html');
     await edit('scripts/migrate-2024.js');
     const text = await receipt({ ...base, asked: ['할 일'], done: ['두 번째 작업'] });
-    expect(text).toContain('[요청 대조]  요청 1개 중 1개 바뀐 곳 있음');
+    expect(text).toContain('[요청 대조]  요청 1개 중 1개 바뀐 곳 있음  [Git 기준 · 지도 대조]');
     expect(text).toContain(' ⚠ 요청에 없던 곳도 바뀜: scripts/migrate-2024.js  [Git 기준]');
     expect(text).not.toContain('(작업 전부터)');
   });

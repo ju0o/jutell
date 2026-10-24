@@ -360,6 +360,7 @@ export async function receiptCommand(
     const result = await checkBeforeWork(paths, receipt.files ?? []).catch(() => undefined);
     if (result?.note) receipt.beforeNote = result.note;
     beforeWork = result?.before ?? [];
+    if (beforeWork.length) receipt.beforeFiles = beforeWork;
   }
   if ((receipt.asked?.length ?? 0) > 0 && !changedFiles.unknownReason) {
     const markdown = await fs.readFile(path.join(paths.targetRoot, MAP_FILE), { encoding: 'utf8', flag: fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) }).catch(() => undefined);

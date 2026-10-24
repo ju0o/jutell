@@ -48,7 +48,15 @@ describe('M2.6 Codex Experience Parity guidance', () => {
     expect(text).not.toMatch(/echo '|\| jutell receipt|--file -|npx/);
     expect(text).toContain('"summary"');
     expect(text).toContain('영수증을 저장하지 못했어요. 터미널에서 jutell doctor를 실행하면 해결 방법을 알려 줘요.');
-    expect(text.indexOf('get_beginner_report_rules`를 호출하고, 그다음에 영수증')).toBeGreaterThan(0);
+    // Item 4: the rule call is step ① of the one end procedure (① call ② receipt.json ③ jutell receipt).
+    const step = (text2: string, mark: string) => text2.indexOf(mark);
+    const line = text.split('\n').find((item) => item.startsWith('- 영수증(끝날 때 순서): ① `get_beginner_report_rules` 호출(생략 금지) ② 파일 쓰기 도구로')) ?? '';
+    expect(line).not.toBe('');
+    expect(step(line, '①')).toBeLessThan(step(line, '②'));
+    expect(step(line, '②')).toBeLessThan(step(line, '③ 인자 없이 `jutell receipt`'));
+    expect(text).not.toContain('그다음에 영수증');
+    const skill = await fs.readFile(skillFile, 'utf8');
+    expect(skill).toContain('12. 끝날 때 ① `get_beginner_report_rules` 호출(생략 금지) ② AGENTS.md대로 `.jutell-local/receipt.json`');
     expect(text).toContain('영수증이 최종 답입니다. 영수증 아래에는 아무것도 쓰지 않고');
     expect(text).toContain('반드시 파일 편집 도구로 씁니다');
     expect(text).toContain('테스트·실행 결과·화면 확인을 필요로 하면 실행하고');

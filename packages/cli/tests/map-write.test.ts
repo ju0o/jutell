@@ -291,6 +291,68 @@ describe('install question (W2)', () => {
     expect(await read(outside)).toBe('keep');
   });
 
+  const declined = (dir: string) => path.join(dir, '.jutell-local', MAP_DECLINED_FILE);
+  const decline = async (paths: never) => { await offerMap(paths, {} as never, fakeIo('n').io, true); };
+
+  it('(i) --yes overrides a saved "n": it creates the map without asking, and (iii) the "n" record is deleted', async () => {
+    const { dir, paths } = await project();
+    await decline(paths as never);
+    await expect(fs.stat(declined(dir))).resolves.toBeTruthy();
+    const { io, asked } = fakeIo();
+    expect(await offerMap(paths, { yes: true } as never, io, false)).toEqual({ asked: false, created: true });
+    expect(asked).toEqual([]);
+    await expect(fs.stat(path.join(dir, MAP_FILE))).resolves.toBeTruthy();
+    await expect(fs.lstat(declined(dir))).rejects.toMatchObject({ code: 'ENOENT' });
+  });
+
+  it('(iii) `jutell map` (writeMap) also deletes the saved "n"; a later map removal asks again', async () => {
+    const { dir, paths } = await project();
+    await decline(paths as never);
+    expect((await writeMap(paths, NOW)).status).toBe('created');
+    await expect(fs.lstat(declined(dir))).rejects.toMatchObject({ code: 'ENOENT' });
+    await fs.rm(path.join(dir, MAP_FILE));
+    const again = fakeIo('n');
+    await offerMap(paths, {} as never, again.io, true);
+    expect(again.asked).toEqual([MAP_QUESTION]);
+  });
+
+  it.skipIf(process.platform === 'win32')('(ii) a hardlinked "n" record is not trusted and not deleted', async () => {
+    const { dir, paths } = await project();
+    const outside = path.join(path.dirname(dir), 'outside-declined.json');
+    await fs.writeFile(outside, 'keep');
+    await fs.mkdir(path.join(dir, '.jutell-local'), { recursive: true });
+    await fs.link(outside, declined(dir));
+    const first = fakeIo('');
+    expect(await offerMap(paths, {} as never, first.io, true)).toEqual({ asked: true, created: true });
+    expect(first.asked).toEqual([MAP_QUESTION]);
+    expect((await fs.lstat(declined(dir))).nlink).toBe(2);
+    expect(await read(outside)).toBe('keep');
+  });
+
+  it.skipIf(process.platform === 'win32')('(ii) a folder or FIFO named like the record is not a saved "n"', async () => {
+    for (const make of ['dir', 'fifo'] as const) {
+      const { dir, paths } = await project();
+      await fs.mkdir(path.join(dir, '.jutell-local'), { recursive: true });
+      if (make === 'dir') await fs.mkdir(declined(dir));
+      else execFileSync('mkfifo', [declined(dir)]);
+      const first = fakeIo('n');
+      await offerMap(paths, {} as never, first.io, true);
+      expect(first.asked).toEqual([MAP_QUESTION]);
+    }
+  });
+
+  it.skipIf(process.platform === 'win32')('(ii) a .jutell-local that is a symlink to a folder outside the project is not read', async () => {
+    const { dir, paths } = await project();
+    const outsideDir = path.join(path.dirname(dir), 'outside-data');
+    await fs.mkdir(outsideDir);
+    await fs.writeFile(path.join(outsideDir, MAP_DECLINED_FILE), '{"version":1}\n');
+    await fs.symlink(outsideDir, path.join(dir, '.jutell-local'));
+    const first = fakeIo('n');
+    await offerMap(paths, {} as never, first.io, true);
+    expect(first.asked).toEqual([MAP_QUESTION]);
+    await expect(fs.stat(path.join(outsideDir, MAP_DECLINED_FILE))).resolves.toBeTruthy();
+  });
+
   it('--yes → creates without asking, plus .jutell-local/map.html (same as `jutell map`)', async () => {
     const { dir, paths } = await project();
     const { io, asked, written } = fakeIo();

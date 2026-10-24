@@ -230,6 +230,7 @@ export async function writeMap(paths: ScopePaths, now = new Date()): Promise<Map
     const text = renderNewMap(items, now);
     await writeViaTemp(file, text);
     await recordState(paths, sha256(text), listed, now).catch(() => undefined);
+    await forgetMapDeclined(paths).catch(() => undefined);
     return { status: 'created', file, files: items.length, unclassified: items.filter((item) => item.feature === UNCLASSIFIED).length };
   }
   const existing = await fs.readFile(file, { encoding: 'utf8', flag: fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) });
@@ -300,9 +301,35 @@ export const MAP_DECLINED_NOTE = '프로젝트 지도는 만들지 않기로 하
 export const MAP_DECLINED_FILE = 'map-declined.json';
 
 /** True when the person answered 'no' to the map question in this project before. */
+/** .jutell-local is a real directory (not a symlink) whose real path stays inside the project. */
+async function safeDataRoot(paths: ScopePaths): Promise<boolean> {
+  try {
+    const stats = await fs.lstat(paths.dataRoot);
+    if (stats.isSymbolicLink() || !stats.isDirectory()) return false;
+    const [root, data] = await Promise.all([fs.realpath(paths.targetRoot), fs.realpath(paths.dataRoot)]);
+    const relative = path.relative(root, data);
+    return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+  } catch {
+    return false;
+  }
+}
+
+/** The saved 'no' counts only as a plain single-link file inside a safe .jutell-local. */
+async function declinedRecord(paths: ScopePaths): Promise<string | undefined> {
+  if (!(await safeDataRoot(paths))) return undefined;
+  const file = path.join(paths.dataRoot, MAP_DECLINED_FILE);
+  const stats = await fs.lstat(file).catch(() => undefined);
+  return stats !== undefined && stats.isFile() && stats.nlink === 1 ? file : undefined;
+}
+
 export async function mapDeclined(paths: ScopePaths): Promise<boolean> {
-  const stats = await fs.lstat(path.join(paths.dataRoot, MAP_DECLINED_FILE)).catch(() => undefined);
-  return stats !== undefined && stats.isFile();
+  return (await declinedRecord(paths)) !== undefined;
+}
+
+/** Once a map exists the saved 'no' is stale: remove it (only a safe, plain record). */
+export async function forgetMapDeclined(paths: ScopePaths): Promise<void> {
+  const file = await declinedRecord(paths);
+  if (file) await fs.unlink(file).catch(() => undefined);
 }
 
 async function rememberMapDeclined(paths: ScopePaths, now = new Date()) {
