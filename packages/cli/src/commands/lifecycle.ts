@@ -203,7 +203,7 @@ export async function uninstallCommand(paths: ScopePaths, options: CliOptions, i
 /** Folders JuTell made for its Skill (.agents/skills, .agents) are removed only when nothing else is inside. */
 async function removeEmptyFolders(dirs: string[]) {
   for (const dir of dirs) {
-    try { await fs.rmdir(dir); } catch { return; }
+    try { await fs.rmdir(dir); } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') return; }
   }
 }
 
