@@ -43,6 +43,24 @@ const FOUNDATION_REQUIRED = [
 // - scope: 허용 범위 (kind 탐지로 한정)
 const ALLOWED_EXCEPTIONS = [
   {
+    file: 'packages/cli/src/installer/json-mcp.ts',
+    kind: 'winPath',
+    reason: '(k) Windows 경로 정규화 설명 주석의 placeholder(C:\\Users\\…). 운영자 절대 경로가 아님',
+    scope: '해당 파일의 winPath 탐지에만 적용',
+  },
+  {
+    file: 'packages/cli/tests/json-mcp.test.ts',
+    kind: 'winPath',
+    reason: 'Windows 이스케이프 경로 fixture(가상 사용자 홍 길동). 운영자 절대 경로가 아님',
+    scope: '해당 파일의 winPath 탐지에만 적용',
+  },
+  {
+    file: 'packages/cli/tests/app-paths.test.ts',
+    kind: 'winPath',
+    reason: 'OS별 앱 설정 경로 fixture(가상 사용자 홍 길동, W4). 운영자 절대 경로가 아님',
+    scope: '해당 파일의 winPath 탐지에만 적용',
+  },
+  {
     file: 'docs/PROVIDER_OPENCODE.md',
     kind: 'winPath',
     reason: '사용자 홈 placeholder 예시({드라이브}:\\Users\\<사용자>)가 문서 설명에 필요. 운영자 절대 경로가 아님',

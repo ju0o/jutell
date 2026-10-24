@@ -9,19 +9,20 @@ import { setupCommand } from '../src/commands/lifecycle.js';
 import { receiptCommand, recordReceiptBaseline } from '../src/commands/receipt/index.js';
 import type { CliIo } from '../src/types.js';
 
-const saved = { CODEX_HOME: process.env.CODEX_HOME, HOME: process.env.HOME };
+const saved = { ...process.env };
 const roots: string[] = [];
 afterEach(async () => {
-  process.env.CODEX_HOME = saved.CODEX_HOME; process.env.HOME = saved.HOME;
-  if (saved.CODEX_HOME === undefined) delete process.env.CODEX_HOME;
-  await Promise.all(roots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true })));
+  process.env = { ...saved };
+  // Windows: git may still hold the folder for a moment (EBUSY), so retry.
+  await Promise.all(roots.splice(0).map((root) => fs.rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })));
 });
 
 describe('setup records the receipt baseline', () => {
   it('package.json / package-lock.json changed by the install show as (작업 전부터), not as unrequested changes', async () => {
     const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-base-')));
     roots.push(root);
-    process.env.HOME = path.join(root, 'home');
+    // Temp home on every OS (Windows reads USERPROFILE, JuTell reads JUTELL_HOME first).
+    process.env.HOME = process.env.USERPROFILE = process.env.JUTELL_HOME = path.join(root, 'home');
     process.env.CODEX_HOME = path.join(root, 'codex');
     const project = path.join(root, 'proj');
     await fs.mkdir(path.join(project, 'src'), { recursive: true });
@@ -46,7 +47,7 @@ describe('setup records the receipt baseline', () => {
     expect(text).toMatch(/package-lock\.json.*\(작업 전부터\)|\(작업 전부터\).*package-lock\.json/);
     expect(text).not.toMatch(/요청에 없던 곳도 바뀜:[^\n]*package/);
     expect(text).not.toContain('첫 영수증이라');
-  });
+  }, 30000);
 
   it('a second `jutell` run mid-task does not move the baseline (the AI\'s edits stay real changes)', async () => {
     const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-base2-')));
@@ -69,5 +70,5 @@ describe('setup records the receipt baseline', () => {
     const text = out.join('\n');
     expect(text).toMatch(/notes\.txt.*\(작업 전부터\)/);
     expect(text).not.toMatch(/login\.ts.*\(작업 전부터\)/);
-  });
+  }, 30000);
 });
