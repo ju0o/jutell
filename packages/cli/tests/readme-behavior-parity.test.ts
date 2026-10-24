@@ -3,6 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { AGENT_PROVIDERS } from '../src/installer/providers.js';
+import { GUI_APPS } from '../src/installer/app-specs.js';
+import { appConfigPaths } from '../src/config/paths.js';
 
 // JUTELL-V1.X-PUBLIC-SURFACE-REWRITE-01: a Release README Gate. These checks
 // exist because the public-surface audit found four real, shipping surfaces
@@ -207,4 +209,47 @@ describe('docs/START_HERE.md normal install path cannot silently regress to a pr
       expect(startHere).toContain(provider.label);
     }
   });
+});
+
+// cycle-3 W9: the GUI app section in both READMEs and the npm README follows app-specs.ts / paths.ts.
+describe('README GUI app section matches app-specs.ts and paths.ts (W9)', () => {
+  const surfaces = [['README.md', read('README.md')], ['README.ko.md', read('README.ko.md')], ['packages/cli/README.md', read(path.join('packages', 'cli', 'README.md'))]] as const;
+
+  for (const [label, text] of surfaces) {
+    it(`${label} lists every GUI app with its real commands; status-only apps get no use/disconnect command`, () => {
+      for (const app of GUI_APPS) {
+        expect(text, `${label} should name ${app.label}`).toContain(app.label);
+        if (app.mode === 'write') {
+          expect(text).toContain(`jutell use ${app.id}`);
+          expect(text).toContain(`jutell disconnect ${app.id}`);
+        } else {
+          expect(text).not.toContain(`jutell use ${app.id}\``);
+          expect(text).not.toContain(`jutell disconnect ${app.id}`);
+        }
+      }
+    });
+  }
+
+  const home = '/HOME';
+  const linux = appConfigPaths('linux', {}, '/P', home);
+  const mac = appConfigPaths('darwin', {}, '/P', home);
+  const toTilde = (file: string | undefined) => file?.replace(home, '~');
+
+  for (const [label, text] of surfaces.slice(0, 2)) {
+    it(`${label} shows the per-OS paths paths.ts uses, and marks undocumented ones as not confirmed`, () => {
+      expect(text).toContain(toTilde(linux.cursor.global));
+      expect(text).toContain(toTilde(linux.vscode.userProfile));
+      expect(text).toContain(toTilde(mac.claudeDesktop));
+      expect(text).toContain('%APPDATA%\\Claude\\claude_desktop_config.json');
+      expect(appConfigPaths('linux', {}, '/P', home).claudeDesktop).toBeUndefined();
+      expect(mac.vscode.userProfile).toBeUndefined();
+      expect(text).toMatch(/not confirmed|확인 안 됨/);
+    });
+
+    it(`${label} restart steps are the ones the CLI prints`, () => {
+      expect(text).toContain('MCP: List Servers → jutell → Restart Server');
+      const cursor = GUI_APPS.find((app) => app.id === 'cursor')!;
+      expect(text).toContain(cursor.restartHint);
+    });
+  }
 });

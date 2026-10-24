@@ -200,6 +200,18 @@ You need a coding agent first — JuTell connects to one you already installed.
 | `jutell upgrade` | Refresh the installed Skill/config/MCP. |
 | `jutell uninstall` | Remove JuTell's managed setup. |
 
+### GUI apps (only when you type the command)
+
+| App | Connect / remove | File |
+|---|---|---|
+| Cursor | `jutell use cursor` / `jutell disconnect cursor` (`--global` for every folder) | `.cursor/mcp.json`, `~/.cursor/mcp.json` |
+| VS Code | `jutell use vscode` / `jutell disconnect vscode` (`--global`: Linux only) | `.vscode/mcp.json`, Linux `~/.config/Code/User/mcp.json` |
+| Claude Desktop | `jutell use claude-desktop` / `jutell disconnect claude-desktop` (macOS, Windows) | `claude_desktop_config.json` in the app's settings folder |
+| Windsurf | Status only (`jutell status`); JuTell never writes it | — |
+
+Paths that are not confirmed for an OS are never guessed: JuTell explains instead of writing.
+Per-OS paths, restart steps and real output: [README.md](https://github.com/ju0o/jutell#connect-a-gui-app-cursor--vs-code--claude-desktop--windsurf).
+
 Reports can be tuned with a project `.jutell.json` — profiles `minimal`, `balanced`, `learning`,
 `detailed` change explanation length, never the underlying facts or risk.
 

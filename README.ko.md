@@ -457,6 +457,45 @@ JuTell은 여러분 컴퓨터에 이미 있는 파일·Git·명령 결과를 바
 
 연결이 됐는지는 `jutell doctor`에서 `Codex MCP` / `Claude Code MCP` / `OpenCode MCP` 줄이 `정상`인지 보면 됩니다.
 
+### GUI 앱 연결하기 (Cursor · VS Code · Claude Desktop · Windsurf)
+
+`jutell`만 실행하면 이 앱들은 건드리지 않아요. `jutell use <앱>`을 직접 입력했을 때만 연결합니다.
+JuTell은 자기 `jutell` 항목만 바꾸고, 파일 백업을 남기고, 다른 서버와 주석은 그대로 둡니다.
+
+| 앱 | 연결 | 바뀌는 파일 | 연결한 뒤 | 빼기 |
+|---|---|---|---|---|
+| **Cursor** (이 프로젝트) | `jutell use cursor` | `<프로젝트>/.cursor/mcp.json` (모든 OS) | Cursor 다시 시작 | `jutell disconnect cursor` |
+| **Cursor** (모든 폴더) | `jutell use cursor --global` | `~/.cursor/mcp.json` (모든 OS) | Cursor 다시 시작 | `jutell disconnect cursor --global` |
+| **VS Code** (이 프로젝트) | `jutell use vscode` | `<프로젝트>/.vscode/mcp.json` (모든 OS) | MCP: List Servers → jutell → Restart Server | `jutell disconnect vscode` |
+| **VS Code** (사용자 프로필) | `jutell use vscode --global` | Linux: `~/.config/Code/User/mcp.json` (`$XDG_CONFIG_HOME`이 있으면 그 아래). macOS·Windows: 확인 안 됨. 방법만 알려 주고 바꾸지 않아요 | MCP: List Servers → jutell → Restart Server | `jutell disconnect vscode --global` |
+| **Claude Desktop** | `jutell use claude-desktop` | macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`. Windows: `%APPDATA%\Claude\claude_desktop_config.json`. Linux: 확인 안 됨. 넣을 항목만 보여 주고 바꾸지 않아요 | Claude Desktop을 완전히 종료한 뒤 다시 열기 | `jutell disconnect claude-desktop` |
+| **Windsurf** | 상태 보기만 | JuTell은 읽기만 하고 쓰지 않아요 | — | `jutell` 항목을 직접 지우세요 |
+
+`--global`로 연결한 앱은 모든 폴더에서 이 프로젝트의 지도·영수증을 씁니다. 다른 프로젝트에서는
+그 프로젝트에서 같은 `--global` 명령을 다시 실행하세요. `jutell status`에서 모든 앱 파일을 볼 수 있고,
+`jutell uninstall --yes`도 이 프로젝트의 앱 파일에서 JuTell을 뺍니다.
+
+실제 출력 (Linux, 임시 폴더를 `~/my-project`로 표시):
+
+```text
+$ jutell use cursor
+Cursor (이 프로젝트) 연결이 끝났어요. 설정 파일: ~/my-project/.cursor/mcp.json
+바뀐 연결은 Cursor를 다시 시작하면 적용돼요.
+
+$ jutell use windsurf
+Windsurf은(는) 아직 읽기만 지원해요. 설정 파일을 바꾸지 않았어요. 연결 상태는 `jutell status`에서 볼 수 있어요.
+
+$ jutell disconnect cursor
+Cursor (이 프로젝트): JuTell이 만든 설정 파일이라 통째로 지웠어요 (~/my-project/.cursor/mcp.json).
+바뀐 연결은 Cursor를 다시 시작하면 적용돼요.
+```
+
+파일이 원래 있었다면 `disconnect`는 `jutell` 항목만 빼고 파일은 남깁니다. 파일을 통째로 지우는 것은
+JuTell이 만든 파일이고 안에 다른 것이 하나도 없을 때뿐이에요.
+
+아직 확인 안 된 것: macOS·Windows의 VS Code 사용자 프로필 경로, Linux의 Claude Desktop 경로,
+Windsurf 파일 쓰기. JuTell은 이 경로를 짐작하지 않아요.
+
 ### 자주 쓰는 명령
 
 | 명령 | 하는 일 |
