@@ -191,7 +191,7 @@ export async function uninstallCommand(paths: ScopePaths, options: CliOptions, i
     await fs.rm(paths.configFile, { force: true });
     await fs.rm(paths.dataRoot, { recursive: true, force: true });
   }
-  if (paths.scope === 'project') await removeEmptyFolders([path.dirname(paths.skillRoot), path.dirname(path.dirname(paths.skillRoot))]);
+  if (paths.scope === 'project') await removeEmptyFolders([paths.skillRoot, path.dirname(paths.skillRoot), path.dirname(path.dirname(paths.skillRoot))]);
   io.write(`제거했습니다. ${removeData ? '설정과 Beta Journal(JuTell이 남긴 하루 작업 기록)도 삭제했습니다.' : '설정과 Beta Journal(JuTell이 남긴 하루 작업 기록)은 보존했습니다.'}`);
   if (paths.scope === 'project') io.write(leftoverNote(removeData));
   for (const note of codexNotes) io.write(note);
