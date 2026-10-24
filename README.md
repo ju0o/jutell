@@ -315,6 +315,15 @@ Claude Code, or OpenCode and use it as usual.
 
 ### Step 6 — What successful setup looks like
 
+Setup asks two questions: `JuTell을 지금 연결할까요? (Y/n)` ("Connect JuTell now?") and
+`프로젝트 지도(JuTellMap.md)를 만들까요? 파일이 어디 있는지 기능별로 정리해요. (Y/n)` ("Create the project map?").
+Press Enter for yes.
+
+If it ends with `JuTell 준비됨, 하나 확인 필요.` ("Ready, one thing to check") instead of `JuTell 준비 완료.`, read
+the ⚠ line just above it. Usually Codex cannot find the `jutell` command; `jutell doctor` shows the one fix.
+
+영수증은 AI가 알아서 만들어요 — the agent makes the receipt by itself at the end of its answer; you never need to type `jutell receipt`.
+
 You should see that an agent was found and connected, without an error. Then run `jutell status` if
 you want a short connection summary. If it says there is a problem, run `jutell doctor` for the
 next step to take.

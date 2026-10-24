@@ -407,8 +407,8 @@ describe('[확인] blank lines made by JuTell carry [JuTell이 적음], not [AI�
     const text = await receipt({ asked: [], done: [], checked: [], unchecked: [], next: [] });
     expect(text).toContain('\n ✖ 확인 못 한 것: 한 일 목록이 비어 있었어요  [JuTell이 적음]\n');
     expect(text).toContain('\n ✖ 확인 못 한 것: 확인한 내용을 받지 못했어요  [JuTell이 적음]\n');
-    // The heading covers both sources, and a hand-run receipt never claims the work is done (#37 dogfood).
-    expect(text).toContain('[확인]  [AI가 적음 · JuTell이 적은 줄은 따로 표시]');
+    // Every [확인] line is JuTell's here, so the heading says so; a hand-run receipt never claims the work is done.
+    expect(text).toContain('[확인]  [JuTell이 적음]');
     expect(text).not.toContain('마쳤어요');
     const withAi = await receipt({ ...base, asked: [], done: ['했어요'] });
     expect(withAi).toContain(' ✖ 확인 못 한 것: 브라우저 화면 (안 열어 봄)  [AI가 적음]');

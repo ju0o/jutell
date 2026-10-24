@@ -32,8 +32,8 @@ Codex 작업 결과를 비개발자가 이해할 수 있는 하나의 보고서�
 
 ## 영수증 절차 (`receiptReport`가 켜져 있을 때)
 
-12. 끝날 때 ① `get_beginner_report_rules` 호출(보이면 필수) ② `.jutell-local/receipt.json`을 파일 편집 도구로 쓴다. ③ AGENTS.md/CLAUDE.md에 적힌 영수증 명령(없으면 `jutell receipt`)을 한 번 실행한다. 출력을 답 맨 위에 붙여 나머지 보고를 대신한다.
-13. `asked`는 요청을 짧게 요약한 말로 쓰고 원문을 붙여 넣지 않는다. `unchecked`는 빼지 말고, 없으면 없다고 쓴다.
+12. 끝날 때 ① `get_beginner_report_rules` 호출(보이면 필수) ② `.jutell-local/receipt.json`을 파일 편집 도구로 쓴다. ③ AGENTS.md/CLAUDE.md에 적힌 영수증 명령(없으면 `jutell receipt`)을 한 번 실행한다. 출력을 한 글자도 바꾸지 말고(라벨·한 줄 요약 포함) 그대로 붙여 최종 답으로 쓴다.
+13. `asked`엔 사용자 요청 원문을 요청마다 그대로 쓴다(바꿔 말하지 않음). `unchecked`는 빼지 말고, 없으면 없다고 쓴다.
 14. 영수증 명령이 실패하면(없음·"알 수 없는 명령" 포함) 재시도 없이 "영수증을 저장하지 못했어요. 터미널에서 jutell doctor를 실행하면 해결 방법을 알려 줘요." 한 줄만 쓴다. 영수증 아래엔 아무것도 쓰지 않는다.
 
 ## 참고 문서 (필요할 때만 읽기)

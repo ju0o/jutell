@@ -454,7 +454,8 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
     ] : []),
     ...(asked.length === 0 && receipt.mapNote ? [` ${receipt.mapNote}`, ''] : []),
     // Every line carries its own source label (dogfood: [확인], ' ○ 추천' and '- …' lines had none).
-    `${RECEIPT_SECTIONS[3]}  ${mentionsRun || hasHanja || receipt.checks.some((check) => check.result !== '확인함' && check.jutell === true) ? LABEL_CHECK_MIXED : LABEL_AI}`,
+    // Every line in [확인] written by JuTell (dogfood #37): the heading says so, not 'AI가 적음'.
+    `${RECEIPT_SECTIONS[3]}  ${receipt.checks.length > 0 && receipt.checks.every((check) => check.result !== '확인함' && check.jutell === true) ? LABEL_JUTELL : mentionsRun || hasHanja || receipt.checks.some((check) => check.result !== '확인함' && check.jutell === true) ? LABEL_CHECK_MIXED : LABEL_AI}`,
     ...renderList(
       receipt.checks,
       (check) => check.result === '확인함'
