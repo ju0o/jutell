@@ -5,6 +5,7 @@ import { readBridgeConfig, readCodexRegistration, snapshot, restore } from '../c
 import { ensureBridgeConfig, setMcpDisabled, setMcpEnabled } from '../installer/config.js';
 import { installSkill, recordSkillFiles, removeAddedSkillFiles, removeManagedSkillFiles, skillConflictMessage, skillRefreshMessage } from '../installer/skill.js';
 import { agentsFile, ensureJuTellAgentsBlock, removeJuTellAgentsBlock } from '../installer/agents.js';
+import { recordReceiptBaseline } from './receipt/index.js';
 import { codexUninstallBlocker, managedCodexServerFile, readText, registerMcp, removeMcp, userKeysInManagedBlock } from '../config/managed.js';
 import { removeOpenCodeMcp, readOpenCodeRegistration, setOpenCodeEnabled } from '../installer/opencode.js';
 import { removeClaudeMcp } from '../installer/claude.js';
@@ -58,6 +59,8 @@ export async function setupCommand(paths: ScopePaths, options: CliOptions, io: C
     await removeAddedSkillFiles(paths.skillRoot, skillResult.changed);
     throw error;
   }
+  // The install's own changes (package.json, lockfile…) become the receipt's 'before work' baseline.
+  await recordReceiptBaseline(paths).catch(() => undefined);
   // Asked after a successful install only (a map problem never rolls the install back).
   if (!options.oneCommand && !options.mcpOnly) await offerMap(paths, options, io, process.stdin.isTTY === true);
   return { cancelled: false, skillResult };
