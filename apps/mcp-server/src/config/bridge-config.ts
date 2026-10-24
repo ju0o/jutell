@@ -5,7 +5,7 @@ export type Profile = 'minimal' | 'balanced' | 'learning' | 'detailed';
 export type VoicePreset = 'default' | 'plain' | 'learning' | 'jutell';
 export type FeatureId = 'changeSummary' | 'userVisibleChanges' | 'internalChanges' | 'mainFiles' | 'explainedDiff' | 'glossary' | 'validationResults' | 'riskAssessment' | 'userActions' | 'nextActionSuggestions' | 'receiptReport' | 'requestClarificationGuide' | 'manualEditGuidance' | 'requestBuilder';
 export type Limits = { maxMainFiles: number; maxGlossaryTerms: number; compactReportMaxSentences: number };
-export type BridgeConfig = { version: 1; profile: Profile; features: Record<FeatureId, boolean>; limits: Limits; mcp: { enabled: boolean }; usageMeasurement: { localCountersEnabled: boolean }; voice: { preset: VoicePreset } };
+export type BridgeConfig = { version: 1; profile: Profile; features: Record<FeatureId, boolean>; limits: Limits; mcp: { enabled: boolean }; usageMeasurement: { localCountersEnabled: boolean }; voice: { preset: VoicePreset }; map?: { gitExclude: boolean } };
 export const VOICE_PRESETS: VoicePreset[] = ['default', 'plain', 'learning', 'jutell'];
 
 export const FEATURE_IDS: FeatureId[] = ['changeSummary', 'userVisibleChanges', 'internalChanges', 'mainFiles', 'explainedDiff', 'glossary', 'validationResults', 'riskAssessment', 'userActions', 'nextActionSuggestions', 'receiptReport', 'requestClarificationGuide', 'manualEditGuidance', 'requestBuilder'];
@@ -43,6 +43,7 @@ export function normalizeConfig(value: unknown): BridgeConfig {
   if ('voice' in value && (!isRecord(value.voice) || !hasOnlyKeys(value.voice, ['preset']) || (value.voice.preset !== undefined && !VOICE_PRESETS.includes(String(value.voice.preset) as VoicePreset)))) {
     return structuredClone(DEFAULT_CONFIG);
   }
+  if ('map' in value && (!isRecord(value.map) || !hasOnlyKeys(value.map, ['gitExclude']) || (value.map.gitExclude !== undefined && typeof value.map.gitExclude !== 'boolean'))) return structuredClone(DEFAULT_CONFIG);
   const features = Object.fromEntries(
     FEATURE_IDS.map((id) => [id, typeof featuresInput[id] === 'boolean' ? (featuresInput[id] as boolean) : PROFILE_FEATURES[value.profile as Profile][id]]),
   ) as Record<FeatureId, boolean>;
@@ -57,6 +58,7 @@ export function normalizeConfig(value: unknown): BridgeConfig {
     mcp: isRecord(value.mcp) ? { enabled: value.mcp.enabled as boolean } : { ...DEFAULT_CONFIG.mcp },
     usageMeasurement: isRecord(value.usageMeasurement) ? { localCountersEnabled: value.usageMeasurement.localCountersEnabled as boolean } : { ...DEFAULT_CONFIG.usageMeasurement },
     voice: { preset: voicePreset },
+    ...(isRecord(value.map) ? { map: { gitExclude: value.map.gitExclude === true } } : {}),
   };
 }
 

@@ -8,6 +8,11 @@ export class NeedsConfirmationError extends Error {
   }
 }
 
+/** Enter takes the default; "n"/"no" or "y"/"yes" (any case) override it. */
+export function parseYesNo(answer: string, defaultYes: boolean) {
+  return defaultYes ? !/^n(o)?$/i.test(answer.trim()) : /^y(es)?$/i.test(answer.trim());
+}
+
 export function createIo(): CliIo {
   return {
     write: (message) => console.log(message),
@@ -17,7 +22,7 @@ export function createIo(): CliIo {
       const rl = readline.createInterface({ input, output });
       try {
         const answer = await rl.question(`${message} ${defaultYes ? '(Y/n)' : '(y/N)'} `);
-        return defaultYes ? !/^n(o)?$/i.test(answer.trim()) : /^y(es)?$/i.test(answer.trim());
+        return parseYesNo(answer, defaultYes);
       } finally { rl.close(); }
     },
     choose: async (message, choices, defaultValue) => {
@@ -151,6 +156,11 @@ JuTell은 AI Agent를 대신 실행하지 않고 연결과 보고만 도와줍�
   jutell receipt        receipt.json을 저장하고 작업 영수증을 출력합니다.
   jutell receipt --file <경로>  지정한 파일에서 입력을 읽습니다. -는 표준 입력입니다.
   jutell receipt --help  receipt.json 형식을 보여 줍니다.
+
+프로젝트 지도
+
+  jutell map            프로젝트 지도(JuTellMap.md)와 .jutell-local/map.html을 만들거나 갱신합니다.
+  jutell map --git-exclude  지도를 이 컴퓨터에서만 git에서 뺍니다. --git-include로 되돌립니다.
 
 공개 설치: npm install -g jutell
 업데이트: npm update -g jutell`);

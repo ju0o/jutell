@@ -1,3 +1,4 @@
+import { mapFreshnessCheck } from './map.js';
 import { execFile } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import net from 'node:net';
@@ -133,6 +134,8 @@ export async function statusCommand(paths: ScopePaths, options: CliOptions, io: 
   const claudeScopeNote = status.installationScope === 'global' ? '사용자 전역(user)' : '현재 프로젝트(local)';
   io.write(`JuTell 상태\n\nCLI: ${status.cliVersion}\nSkill: ${status.skillInstalled ? '설치됨' : '설치되지 않음'}\nAGENTS.md: ${status.agentsManaged ? 'JuTell 블록 있음' : 'JuTell 블록 없음'}\nJuTell 연결 정책: ${status.mcpEnabled ? '켜짐' : '꺼짐'}\nCodex MCP (전역, Codex는 프로젝트 설정을 읽지 않음): ${codexLabel}${status.codexDetected ? ` (명령 ${codexDetectedLabel})` : ''}\nOpenCode MCP: ${opencodeLabel}${status.opencode.enabled ? ' (새 세션 자동 시작 켜짐)' : ''}${status.opencodeDetected ? '' : ` (명령 ${opencodeDetectedLabel})`}\nClaude Code MCP (${claudeScopeNote}): ${claudeLabel}${status.claudeDetected ? '' : ` (명령 ${claudeDetectedLabel})`}\nMCP 서버 응답: ${actual}\n현재 Agent 세션 적용: 직접 확인 필요\nProfile: ${status.profile}\n활성 Feature: ${status.activeFeatureCount}개\n설치 범위 (설정·Skill·AGENTS.md): ${status.installationScope === 'global' ? '사용자 전역' : '현재 프로젝트'}\n로컬 관리자: ${status.localAdmin}\n로컬 사용량 카운터: ${status.usageCountersEnabled ? '켜짐' : '꺼짐'}\nTelemetry: ${status.telemetry}\n외부 전송: ${status.externalTransmission}\n설정 위치: ${status.configLocation}`);
   for (const warning of status.warnings) io.write(`주의: ${warning}`);
+  const map = await mapFreshnessCheck(paths);
+  if (map?.status === '주의') io.write(`주의: ${map.detail}`);
   return status;
 }
 
@@ -233,6 +236,8 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   checks.push({ name: 'limits', status: limitsValid ? '정상' : '오류', detail: config.invalidLimitsFields.length ? `숫자가 아닌 값이 있어 기본값을 대신 사용했습니다: ${config.invalidLimitsFields.join(', ')}.` : limitsValid ? '허용 범위를 확인했습니다.' : '허용 범위를 벗어난 값이 있습니다.' });
   checks.push({ name: '로컬 관리자 빌드', status: await exists(adminEntry) ? '정상' : '오류', detail: await exists(adminEntry) ? '관리자 화면 파일을 확인했습니다.' : '관리자 화면 파일이 없습니다.' });
   checks.push({ name: '포트 사용 가능 여부', status: await portAvailable() ? '정상' : '주의', detail: '127.0.0.1의 임시 포트를 확인했습니다.' });
+  const mapCheck = await mapFreshnessCheck(paths);
+  if (mapCheck) checks.push(mapCheck);
   checks.push({ name: '쓰기 권한', status: await writeCheck(paths) ? '정상' : '오류', detail: '로컬 상태 폴더에 임시 파일을 만들고 삭제했습니다.' });
   const backupExists = await exists(`${codexPaths.codexConfigFile}.previous`);
   if (process.platform !== 'win32') checks.push(await loginShellJutellCheck(config.config.features.receiptReport !== false));

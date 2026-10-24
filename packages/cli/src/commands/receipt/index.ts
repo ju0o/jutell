@@ -5,6 +5,8 @@ import type { Readable } from 'node:stream';
 import { readBridgeConfig } from '../../config/managed.js';
 import type { CliIo, ScopePaths } from '../../types.js';
 import { normalizeReceipt, receiptMarkdown, renderReceipt } from './render.js';
+import { refreshMapForReceipt, RECEIPT_MAP_TIMEOUT_MS } from '../map.js';
+import { MAP_FILE } from '../../map/write.js';
 
 const RECEIPT_INPUT_EXAMPLE = `표준 입력으로 전달하는 방식을 권장합니다:
 ... | jutell receipt --file -
@@ -289,6 +291,7 @@ export async function receiptCommand(
   io: CliIo,
   input: Readable = process.stdin,
   now = new Date(),
+  mapTimeoutMs = RECEIPT_MAP_TIMEOUT_MS,
 ): Promise<number> {
   if (args.length === 1 && (args[0] === '--help' || args[0] === '-h')) {
     io.write(RECEIPT_INPUT_EXAMPLE);
@@ -340,8 +343,12 @@ export async function receiptCommand(
       { what: `receipt.json 확인 못 함 (${unsafeInput})`, result: '안 해봄', reason: '' },
     ];
   }
+  // Refresh the map first, so the git listing below sees its final state.
+  const mapStep = await refreshMapForReceipt(paths, mapTimeoutMs);
   const changedFiles = await readChangedFiles(paths.targetRoot);
-  receipt.files = changedFiles.files;
+  // JuTell's own map change appears only as the ⓘ line, not in [바뀐 파일].
+  receipt.files = mapStep.jutellOwned ? changedFiles.files.filter((file) => file !== MAP_FILE) : changedFiles.files;
+  if (mapStep.note) receipt.mapNote = mapStep.note;
   receipt.filesUnknownReason = changedFiles.unknownReason;
   const time = receiptTimestamp(now);
   const output = await saveReceipt(paths, receipt, time.display, time.filename);

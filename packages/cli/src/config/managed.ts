@@ -192,6 +192,7 @@ export function normalizeConfig(value: unknown): BridgeConfig {
     mcp: { enabled: inputMcp.enabled === true },
     usageMeasurement: { localCountersEnabled: inputUsageMeasurement.localCountersEnabled === true },
     voice: { preset: voicePreset },
+    ...(input.map && typeof input.map === 'object' && !Array.isArray(input.map) ? { map: { gitExclude: (input.map as Record<string, unknown>).gitExclude === true } } : {}),
   };
 }
 

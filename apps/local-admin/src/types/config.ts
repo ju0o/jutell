@@ -31,6 +31,7 @@ export type Config = {
     localCountersEnabled: boolean;
   };
   voice?: { preset?: 'default' | 'plain' | 'learning' | 'jutell' };
+  map?: { gitExclude?: boolean };
 };
 
 export type McpProviderId = 'codex' | 'opencode' | 'claude-code' | 'cline';

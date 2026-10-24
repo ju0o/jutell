@@ -243,3 +243,14 @@ describe('lightweight handoff guidance (V1.5.3)', () => {
     expect(rules.handoffRule).toBeUndefined();
   });
 });
+
+describe('config key map.gitExclude (same as CLI and local-admin, hasOnlyKeys)', () => {
+  it('keeps map.gitExclude and does not add map when absent', () => {
+    expect(normalizeConfig({ ...DEFAULT_CONFIG, profile: 'minimal', map: { gitExclude: true } })).toMatchObject({ profile: 'minimal', map: { gitExclude: true } });
+    expect('map' in normalizeConfig({ ...DEFAULT_CONFIG })).toBe(false);
+  });
+  it('rejects an unknown map key or a non-boolean value like other sections', () => {
+    expect(normalizeConfig({ ...DEFAULT_CONFIG, profile: 'minimal', map: { gitExclude: 'yes' } }).profile).toBe('balanced');
+    expect(normalizeConfig({ ...DEFAULT_CONFIG, profile: 'minimal', map: { other: true } }).profile).toBe('balanced');
+  });
+});

@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -153,6 +154,39 @@ describe('local config API', () => {
     expect(history.body.history.at(-1).status).toBe('applied');
     const reset = await request('/api/config/reset', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
     expect(reset.body.config.profile).toBe('balanced');
+  });
+
+  it('keeps map.gitExclude through a save and a reset (set by `jutell map --git-exclude`)', async () => {
+    execFileSync('git', ['init', '-q'], { cwd: root });
+    const saved = await request('/api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...DEFAULT_CONFIG, map: { gitExclude: true } }) });
+    expect(saved.status).toBe(200);
+    expect(saved.body.config.map).toEqual({ gitExclude: true });
+    expect((await request('/api/config')).body.config.map).toEqual({ gitExclude: true });
+    const reset = await request('/api/config/reset', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ confirm: true }) });
+    expect(reset.body.config.map).toEqual({ gitExclude: true });
+  });
+
+  // Supervisor decision (1): the switch really changes .git/info/exclude, with the CLI's own code, and reports the result.
+  it('map.gitExclude ON/OFF adds/removes the exclude line right away and reports git check-ignore', async () => {
+    execFileSync('git', ['init', '-q'], { cwd: root });
+    const ignored = () => { try { execFileSync('git', ['check-ignore', '-q', 'JuTellMap.md'], { cwd: root, stdio: 'ignore' }); return true; } catch { return false; } };
+    const put = (gitExclude: boolean) => request('/api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...DEFAULT_CONFIG, map: { gitExclude } }) });
+    const on = await put(true);
+    expect(on.body.gitExclude).toMatchObject({ status: 'added', ignored: true });
+    expect(on.body.gitExclude.message).toContain('git에서 뺐어요');
+    expect(ignored()).toBe(true);
+    const off = await put(false);
+    expect(off.body.gitExclude).toMatchObject({ status: 'removed', ignored: false });
+    expect(off.body.config.map).toEqual({ gitExclude: false });
+    expect(ignored()).toBe(false);
+    expect((await put(false)).body.gitExclude).toBeUndefined();
+  });
+
+  it('map.gitExclude ON outside git is reported and not stored', async () => {
+    const on = await request('/api/config', { method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...DEFAULT_CONFIG, map: { gitExclude: true } }) });
+    expect(on.status).toBe(200);
+    expect(on.body.gitExclude.status).toBe('not-git');
+    expect(on.body.config.map?.gitExclude ?? false).toBe(false);
   });
 
   it('reports repository readiness without claiming the current session applied the Skill', async () => {
