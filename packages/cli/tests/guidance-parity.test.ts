@@ -174,6 +174,8 @@ describe('slim SKILL.md (skill-slim)', () => {
   it('keeps the every-time rules in SKILL.md itself', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
     for (const text of [
+      '보여주기 전에 민감한 값을 지운다',
+      '검증 명령은 프로젝트 문서·설정에서 찾고 임의로 만들지 않는다',
       '`references/report-format.md`',
       '맨 아래 줄은 항상 `한 줄 요약:`으로 끝낸다',
       'checked(직접 확인한 것)에는 실제로 실행하거나 읽은 것만 쓴다',
