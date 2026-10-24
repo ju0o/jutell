@@ -184,10 +184,13 @@ function removeMember(parsed: Parsed, node: Extract<JsoncNode, { kind: 'object' 
   const index = node.members.indexOf(member);
   let start = member.keyStart;
   let end = member.valueEnd;
+  // Last member without its own comma: drop only the previous member's comma character,
+  // so comments between that comma and our key stay byte for byte.
+  let previousComma: number | undefined;
   if (member.commaAt !== undefined) {
     end = member.commaAt + 1;
   } else if (index > 0 && node.members[index - 1].commaAt !== undefined) {
-    start = node.members[index - 1].commaAt!;
+    previousComma = node.members[index - 1].commaAt!;
   }
   // Take the whole line when the member sits on its own lines.
   const lineStart = body.lastIndexOf('\n', start - 1) + 1;
@@ -196,6 +199,7 @@ function removeMember(parsed: Parsed, node: Extract<JsoncNode, { kind: 'object' 
     if (rest) { start = lineStart; end += rest[0].length; }
   }
   let out = body.slice(0, start) + body.slice(end);
+  if (previousComma !== undefined) out = out.slice(0, previousComma) + out.slice(previousComma + 1);
   // (l) the object stays, as `{}` when nothing but whitespace is left inside.
   const open = node.start;
   const close = out.indexOf('}', open);

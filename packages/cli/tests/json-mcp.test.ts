@@ -108,6 +108,15 @@ describe('json-mcp adapter (W3)', () => {
     expect(await readFile(file, 'utf8')).toBe(text);
   });
 
+  it('(f) removing a last entry without its own comma keeps comments after the previous comma (review #41)', async () => {
+    const head = '{\n  "mcpServers": {\n    "o": {"command":"x"}';
+    const between = ' // other server note\n    // jutell below\n';
+    const tail = '  }\n}\n';
+    const { file } = await fileWith(`${head},${between}    "jutell": {"command":"node","args":["/opt/j/assets/mcp-server/index.js"]}\n${tail}`);
+    expect((await removeJsonMcp(CURSOR, file)).status).toBe('written');
+    expect(await readFile(file, 'utf8')).toBe(`${head}${between}${tail}`);
+  });
+
   it('(f)(l) remove takes out only the JuTell entry, keeps an empty server object and the file', async () => {
     const { file } = await fileWith(USER_FILE);
     await registerJsonMcp(CURSOR, file, ENTRY);
