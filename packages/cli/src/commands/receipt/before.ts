@@ -9,7 +9,7 @@ export const RECEIPT_STATE_FILE = 'receipt-state.json';
 const MAX_HASH_BYTES = 8 * 1024 * 1024;
 const MAX_STATE_BYTES = 2 * 1024 * 1024;
 const MAX_FILES = 5000;
-export const FIRST_RUN_NOTE = ' ⓘ 첫 영수증이라 아래 파일 중 일부는 작업 전부터 바뀌어 있었을 수도 있어요  [Git 기준]';
+export const FIRST_RUN_NOTE = ' ⓘ 첫 영수증이라 위 파일 중 일부는 작업 전부터 바뀌어 있었을 수도 있어요  [Git 기준]';
 export const beforeNote = (count: number) => ` ⓘ 작업 전부터 바뀌어 있던 파일 ${count}개 (지난 영수증 기준)  [Git 기준]`;
 
 type State = { version: 1; files: Record<string, string> };
@@ -46,7 +46,7 @@ async function safeDataRoot(paths: ScopePaths): Promise<boolean> {
 async function readState(file: string): Promise<State | undefined> {
   try {
     const stats = await fs.lstat(file);
-    if (!stats.isFile() || stats.size > MAX_STATE_BYTES) return undefined;
+    if (!stats.isFile() || stats.nlink > 1 || stats.size > MAX_STATE_BYTES) return undefined;
     const handle = await fs.open(file, fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) | (fsConstants.O_NONBLOCK ?? 0));
     let text: string;
     try { text = await handle.readFile('utf8'); } finally { await handle.close(); }
@@ -62,8 +62,22 @@ async function readState(file: string): Promise<State | undefined> {
   }
 }
 
+/** Same rule as receipt.json: only a missing file or a plain, single-link regular file is (re)written. */
+export async function canWriteState(file: string): Promise<boolean> {
+  const existing = await fs.lstat(file).catch((error: NodeJS.ErrnoException) => (error.code === 'ENOENT' ? null : undefined));
+  if (existing === null) return true;
+  return existing !== undefined && existing.isFile() && existing.nlink <= 1;
+}
+
+export type BeforeWork = { note?: string; before: string[] };
+
 /** Returns the ⓘ line for this receipt and records the current changed files for the next one. */
 export async function beforeWorkNote(paths: ScopePaths, files: string[]): Promise<string | undefined> {
+  return (await checkBeforeWork(paths, files)).note;
+}
+
+/** Like beforeWorkNote, plus the files that were already changed (same hash) at the previous receipt. */
+export async function checkBeforeWork(paths: ScopePaths, files: string[]): Promise<BeforeWork> {
   const listed = files.slice(0, MAX_FILES);
   const hashes: Record<string, string> = {};
   for (const file of listed) hashes[file] = await hashFile(paths.targetRoot, file);
@@ -71,13 +85,12 @@ export async function beforeWorkNote(paths: ScopePaths, files: string[]): Promis
   const stateFile = path.join(paths.dataRoot, RECEIPT_STATE_FILE);
   const previous = safe ? await readState(stateFile) : undefined;
   if (safe) {
-    const existing = await fs.lstat(stateFile).catch(() => undefined);
-    if (!existing || existing.isFile()) {
+    if (await canWriteState(stateFile)) {
       await writeViaTemp(stateFile, `${JSON.stringify({ version: 1, files: hashes } satisfies State)}\n`).catch(() => undefined);
     }
   }
-  if (listed.length === 0) return undefined;
-  if (!previous) return FIRST_RUN_NOTE;
-  const count = listed.filter((file) => previous.files[file] === hashes[file]).length;
-  return count > 0 ? beforeNote(count) : undefined;
+  if (listed.length === 0) return { before: [] };
+  if (!previous) return { note: FIRST_RUN_NOTE, before: [] };
+  const before = listed.filter((file) => previous.files[file] === hashes[file]);
+  return before.length > 0 ? { note: beforeNote(before.length), before } : { before: [] };
 }

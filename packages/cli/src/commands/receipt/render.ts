@@ -3,7 +3,7 @@ import { ESTIMATED_LABEL } from '../../map/classify.js';
 
 export type ReceiptCheck =
   | { what: string; result: '확인함'; how: string }
-  | { what: string; result: '안 해봄'; reason: string };
+  | { what: string; result: '안 해봄'; reason: string; jutell?: true };
 
 export type ReceiptInput = {
   asked?: string[];
@@ -37,6 +37,8 @@ export const DEFAULT_SUMMARY = '요청한 작업을 마쳤어요.';
 export const SUMMARY_PREFIX = '한 줄 요약: ';
 export const MATCH_SECTION = RECEIPT_SECTIONS[0];
 export const LABEL_GIT = '[Git 기준]';
+/** Files already changed before the work (W7): listed in the comparison, never counted as a change or a warning. */
+export const BEFORE_WORK_MARK = '(작업 전부터)';
 export const LABEL_AI = '[AI가 적음]';
 export const LABEL_ESTIMATE = ESTIMATED_LABEL;
 export const AI_RESULTS_NOTE = ' ⓘ 테스트·명령 결과는 AI가 적은 내용이에요(JuTell이 직접 보지 않았어요)';
@@ -122,7 +124,8 @@ function validateReceipt(value: unknown, allowEmptyDetails = false): ReceiptInpu
     }
     if (check.result === '안 해봄') {
       const reason = allowEmptyDetails && check.reason === '' ? '' : readText(check.reason, `${label}의 이유`);
-      return { what, result: '안 해봄', reason };
+      // Only code-made (normalized) receipts can mark a line as JuTell's own blank-line notice.
+      return { what, result: '안 해봄', reason, ...(allowEmptyDetails && check.jutell === true ? { jutell: true as const } : {}) };
     }
     return fail(`${label}의 결과는 '확인함' 또는 '안 해봄'이어야 해요.`);
   });
@@ -155,11 +158,17 @@ function readMatch(value: unknown, askedCount: number): ReceiptMatch | undefined
   for (const item of value.items) {
     if (!isRecord(item)) return undefined;
     if (item.status === 'unplaced') items.push({ status: 'unplaced' });
-    else if (item.status === 'unchanged') items.push({ status: 'unchanged', features: readNames(item.features) });
-    else if (item.status === 'changed') items.push({ status: 'changed', features: readNames(item.features), files: readFileNames(item.files) });
+    else if (item.status === 'unchanged') items.push({ status: 'unchanged', features: readNames(item.features), ...readBefore(item.before) });
+    else if (item.status === 'changed') items.push({ status: 'changed', features: readNames(item.features), files: readFileNames(item.files), ...readBefore(item.before) });
     else return undefined;
   }
-  return { map: true, items, extra: readFileNames(value.extra ?? []) };
+  const extraBefore = readFileNames(value.extraBefore ?? []);
+  return { map: true, items, extra: readFileNames(value.extra ?? []), ...(extraBefore.length ? { extraBefore } : {}) };
+}
+
+function readBefore(value: unknown): { before?: string[] } {
+  const before = readFileNames(value ?? []);
+  return before.length ? { before } : {};
 }
 
 function shortList(items: string[], max = 3) {
@@ -189,9 +198,11 @@ function matchLines(receipt: ReceiptInput, asked: string[], askedMore: number, s
     if (item.status === 'changed') lines.push(`    → 바뀐 곳 있음: ${shortList(item.files)}  [Git 기준 · 지도: ${item.features.join(', ')}]`);
     else if (item.status === 'unchanged') lines.push(`    → 바뀐 곳 없음: '${item.features.join(', ')}' 파일이 바뀌지 않았어요  [Git 기준 · 지도: ${item.features.join(', ')}]`);
     else lines.push(`    → 장소를 못 찾았어요(지도에 맞는 기능이 없어요)  ${LABEL_ESTIMATE}`);
+    if (item.status !== 'unplaced' && item.before?.length) lines.push(`    ${BEFORE_WORK_MARK} 바뀌어 있던 파일: ${shortList(item.before)}  ${LABEL_GIT}`);
   });
   lines.push(...more);
   if (match.extra.length) lines.push(` ⚠ 요청에 없던 곳도 바뀜: ${shortList(match.extra)}  ${LABEL_GIT}`);
+  if (match.extraBefore?.length) lines.push(` ${BEFORE_WORK_MARK} 바뀌어 있던 요청 밖 파일: ${shortList(match.extraBefore)}  ${LABEL_GIT}`);
   return [...lines, ...tail];
 }
 
@@ -318,10 +329,10 @@ export function normalizeReceipt(value: unknown, problems?: string[]): ReceiptIn
     }
 
     const gapChecks: ReceiptCheck[] = [];
-    if (done.length === 0) gapChecks.push({ what: '한 일 목록이 비어 있었어요', result: '안 해봄', reason: '' });
-    if (sourceChecks.length === 0) gapChecks.push({ what: '확인한 내용을 받지 못했어요', result: '안 해봄', reason: '' });
+    if (done.length === 0) gapChecks.push({ what: '한 일 목록이 비어 있었어요', result: '안 해봄', reason: '', jutell: true });
+    if (sourceChecks.length === 0) gapChecks.push({ what: '확인한 내용을 받지 못했어요', result: '안 해봄', reason: '', jutell: true });
     const hasInputProblems = initialProblemCount > 0 || issues.length > 0;
-    if (hasInputProblems) gapChecks.push({ what: '입력을 읽지 못했어요', result: '안 해봄', reason: '' });
+    if (hasInputProblems) gapChecks.push({ what: '입력을 읽지 못했어요', result: '안 해봄', reason: '', jutell: true });
     for (const issue of issues) addProblem(problems, issue);
 
     const availableCheckSlots = Math.max(0, 4 - gapChecks.length);
@@ -335,9 +346,9 @@ export function normalizeReceipt(value: unknown, problems?: string[]): ReceiptIn
       done: [],
       files: [],
       checks: [
-        { what: '한 일 목록이 비어 있었어요', result: '안 해봄', reason: '' },
-        { what: '확인한 내용을 받지 못했어요', result: '안 해봄', reason: '' },
-        { what: '입력을 읽지 못했어요', result: '안 해봄', reason: '' },
+        { what: '한 일 목록이 비어 있었어요', result: '안 해봄', reason: '', jutell: true },
+        { what: '확인한 내용을 받지 못했어요', result: '안 해봄', reason: '', jutell: true },
+        { what: '입력을 읽지 못했어요', result: '안 해봄', reason: '', jutell: true },
       ],
       next: { continue: [], nice: [], stop: [] },
     });
@@ -394,7 +405,7 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
       receipt.checks,
       (check) => check.result === '확인함'
         ? ` ✔ 직접 확인한 것: ${check.what}${check.how ? ` (${check.how})` : ''}  ${LABEL_AI}`
-        : ` ✖ 확인 못 한 것: ${check.what}${check.reason ? ` (${check.reason})` : ''}  ${LABEL_AI}`,
+        : ` ✖ 확인 못 한 것: ${check.what}${check.reason ? ` (${check.reason})` : ''}${check.jutell ? '' : `  ${LABEL_AI}`}`,
       ` ✔ 직접 확인한 것: 없음  ${LABEL_AI}`,
     ),
     // '확인 못 한 것' is never left out: with nothing unchecked it says so explicitly.

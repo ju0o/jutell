@@ -294,7 +294,26 @@ export function mapWriteMessage(result: MapWriteResult, paths: ScopePaths): stri
 }
 
 export const MAP_QUESTION = '프로젝트 지도(JuTellMap.md)를 만들까요? 파일이 어디 있는지 기능별로 정리해요.';
-export const MAP_LATER = '프로젝트 지도는 만들지 않았어요. 나중에 `jutell map`으로 만들 수 있어요.';
+export const MAP_LATER = '프로젝트 지도는 만들지 않았어요. 언제든 `jutell map`으로 만들 수 있어요.';
+/** Said when the person already answered 'no' once: we don't ask again (.jutell-local/map-declined.json). */
+export const MAP_DECLINED_NOTE = '프로젝트 지도는 만들지 않기로 하셨어요. 언제든 `jutell map`으로 만들 수 있어요.';
+export const MAP_DECLINED_FILE = 'map-declined.json';
+
+/** True when the person answered 'no' to the map question in this project before. */
+export async function mapDeclined(paths: ScopePaths): Promise<boolean> {
+  const stats = await fs.lstat(path.join(paths.dataRoot, MAP_DECLINED_FILE)).catch(() => undefined);
+  return stats !== undefined && stats.isFile();
+}
+
+async function rememberMapDeclined(paths: ScopePaths, now = new Date()) {
+  await ensureDataRoot(paths);
+  const data = await fs.lstat(paths.dataRoot);
+  if (data.isSymbolicLink() || !data.isDirectory()) return;
+  const file = path.join(paths.dataRoot, MAP_DECLINED_FILE);
+  const existing = await fs.lstat(file).catch(() => undefined);
+  if (existing && (!existing.isFile() || existing.nlink > 1)) return;
+  await writeViaTemp(file, `${JSON.stringify({ version: 1, declinedAt: now.toISOString() })}\n`);
+}
 
 /**
  * The one install question (plan.md §1): Enter or --yes creates the map, "n" does not.
@@ -307,8 +326,13 @@ export async function offerMap(paths: ScopePaths, options: CliOptions, io: CliIo
   let asked = false;
   if (!options.yes) {
     if (!interactive) { io.write(MAP_LATER); return { asked, created: false }; }
+    if (await mapDeclined(paths)) { io.write(MAP_DECLINED_NOTE); return { asked, created: false }; }
     asked = true;
-    if (!(await io.ask(MAP_QUESTION, true))) { io.write(MAP_LATER); return { asked, created: false }; }
+    if (!(await io.ask(MAP_QUESTION, true))) {
+      await rememberMapDeclined(paths).catch(() => undefined);
+      io.write(MAP_LATER);
+      return { asked, created: false };
+    }
   }
   try {
     const result = await writeMap(paths);

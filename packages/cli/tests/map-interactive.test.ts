@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import { defaultCommand } from '../src/commands/default.js';
 import { resolveScope } from '../src/config/paths.js';
-import { MAP_LATER, MAP_QUESTION } from '../src/map/write.js';
+import { MAP_DECLINED_NOTE, MAP_LATER, MAP_QUESTION } from '../src/map/write.js';
 import type { CliChoice, CliIo, CliOptions } from '../src/types.js';
 
 const cliEntry = fileURLToPath(new URL('../dist/index.js', import.meta.url));
@@ -58,6 +58,14 @@ describe('interactive `jutell` in a new project asks the map question', () => {
         } else {
           await expect(fs.stat(path.join(dir, 'JuTellMap.md'))).rejects.toThrow();
           expect(messages).toContain(MAP_LATER);
+          // 'no' is remembered: running `jutell` again does not ask, and says `jutell map` works any time.
+          const again: string[] = [];
+          const notes: string[] = [];
+          const io2: CliIo = { ...io, write: (m) => notes.push(m), error: (m) => notes.push(m), ask: async (question) => { again.push(question); return true; } };
+          expect((await defaultCommand(resolveScope('project', dir), options, io2)).cancelled).toBe(false);
+          expect(again.filter((q) => q === MAP_QUESTION)).toHaveLength(0);
+          expect(notes).toContain(MAP_DECLINED_NOTE);
+          await expect(fs.stat(path.join(dir, 'JuTellMap.md'))).rejects.toThrow();
         }
       }
     } finally {

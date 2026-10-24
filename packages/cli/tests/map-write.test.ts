@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import { resolveScope } from '../src/config/paths.js';
-import { MAP_COPY_FILE, MAP_GUIDE, MAP_FILE, MAP_LATER, MAP_QUESTION, MAP_STATE_FILE, mapWriteMessage, offerMap, parseMap, sha256, writeMap } from '../src/map/write.js';
+import { MAP_COPY_FILE, MAP_DECLINED_FILE, MAP_DECLINED_NOTE, MAP_GUIDE, MAP_FILE, MAP_LATER, MAP_QUESTION, MAP_STATE_FILE, mapWriteMessage, offerMap, parseMap, sha256, writeMap } from '../src/map/write.js';
 import { MAP_HTML_FILE, renderMapHtml } from '../src/map/html.js';
 import { parseYesNo } from '../src/output/format.js';
 import type { CliIo } from '../src/types.js';
@@ -263,6 +263,32 @@ describe('install question (W2)', () => {
     expect(await offerMap(paths, {} as never, io, true)).toEqual({ asked: true, created: false });
     await expect(fs.stat(path.join(dir, MAP_FILE))).rejects.toThrow();
     expect(written).toEqual([MAP_LATER]);
+  });
+
+  it('"n" is remembered: the next interactive run does not ask again and points to `jutell map`', async () => {
+    const { dir, paths } = await project();
+    expect(MAP_LATER).toContain('언제든 `jutell map`');
+    await offerMap(paths, {} as never, fakeIo('n').io, true);
+    await expect(fs.stat(path.join(dir, '.jutell-local', MAP_DECLINED_FILE))).resolves.toBeTruthy();
+    const again = fakeIo('');
+    expect(await offerMap(paths, {} as never, again.io, true)).toEqual({ asked: false, created: false });
+    expect(again.asked).toEqual([]);
+    expect(again.written).toEqual([MAP_DECLINED_NOTE]);
+    expect(MAP_DECLINED_NOTE).toContain('언제든 `jutell map`');
+    await expect(fs.stat(path.join(dir, MAP_FILE))).rejects.toThrow();
+  });
+
+  it.skipIf(process.platform === 'win32')('a linked decline marker is not trusted or written through', async () => {
+    const { dir, paths } = await project();
+    const root = path.dirname(dir);
+    await fs.mkdir(path.join(dir, '.jutell-local'), { recursive: true });
+    const outside = path.join(root, 'outside-declined.json');
+    await fs.writeFile(outside, 'keep');
+    await fs.symlink(outside, path.join(dir, '.jutell-local', MAP_DECLINED_FILE));
+    const first = fakeIo('n');
+    await offerMap(paths, {} as never, first.io, true);
+    expect(first.asked).toEqual([MAP_QUESTION]);
+    expect(await read(outside)).toBe('keep');
   });
 
   it('--yes → creates without asking, plus .jutell-local/map.html (same as `jutell map`)', async () => {

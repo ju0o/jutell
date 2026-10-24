@@ -5,13 +5,14 @@ import { ESTIMATED_LABEL, FEATURE_DICTIONARY, UNCLASSIFIED } from '../../map/cla
 export type MapSection = { key: string; name: string; files: string[] };
 
 export type MatchItem =
-  | { status: 'changed'; features: string[]; files: string[] }
-  | { status: 'unchanged'; features: string[] }
+  // `before`: feature files that were already changed before the work (W7). Shown, but never counted as a change.
+  | { status: 'changed'; features: string[]; files: string[]; before?: string[] }
+  | { status: 'unchanged'; features: string[]; before?: string[] }
   | { status: 'unplaced' };
 
 export type ReceiptMatch =
   | { map: false }
-  | { map: true; items: MatchItem[]; extra: string[] };
+  | { map: true; items: MatchItem[]; extra: string[]; extraBefore?: string[] };
 
 const OPEN = /^<!-- jutell:auto (.+) -->$/;
 
@@ -54,18 +55,24 @@ export function featuresFor(request: string, sections: MapSection[]): MapSection
   return sections.filter((section) => candidates(section).some((word) => mentions(request, word)));
 }
 
-export function matchRequests(asked: string[], changed: string[], sections: MapSection[]): ReceiptMatch {
+export function matchRequests(asked: string[], changed: string[], sections: MapSection[], beforeWork: string[] = []): ReceiptMatch {
   const changedSet = new Set(changed);
+  const beforeSet = new Set(beforeWork.filter((file) => changedSet.has(file)));
   const claimed = new Set<string>();
   const items = asked.map((request): MatchItem => {
     const matched = featuresFor(request, sections);
     if (!matched.length) return { status: 'unplaced' };
     const featureFiles = new Set(matched.flatMap((section) => section.files));
     for (const file of featureFiles) claimed.add(file);
-    const files = changed.filter((file) => featureFiles.has(file));
+    const inFeature = changed.filter((file) => featureFiles.has(file));
+    const files = inFeature.filter((file) => !beforeSet.has(file));
+    const before = inFeature.filter((file) => beforeSet.has(file));
     const features = matched.map((section) => section.name);
-    return files.length ? { status: 'changed', features, files } : { status: 'unchanged', features };
+    const withBefore = before.length ? { before } : {};
+    return files.length ? { status: 'changed', features, files, ...withBefore } : { status: 'unchanged', features, ...withBefore };
   });
-  const extra = [...changedSet].filter((file) => !claimed.has(file));
-  return { map: true, items, extra };
+  const outside = [...changedSet].filter((file) => !claimed.has(file));
+  const extra = outside.filter((file) => !beforeSet.has(file));
+  const extraBefore = outside.filter((file) => beforeSet.has(file));
+  return { map: true, items, extra, ...(extraBefore.length ? { extraBefore } : {}) };
 }

@@ -14,7 +14,7 @@ const roots: string[] = [];
 afterAll(async () => { await Promise.all(roots.map((root) => fs.rm(root, { recursive: true, force: true }))); });
 const git = (cwd: string, ...args: string[]) => execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...args], { cwd, stdio: 'ignore' });
 
-/** A committed project with a committed map: 할 일 목록 (test-app/todo.html), 로그인 (src/auth/login.ts), scripts (unclassified). */
+/** A committed project with a committed map: 할 일 (test-app/todo.html), 로그인 (src/auth/login.ts), scripts (unclassified). */
 async function project(options: { map?: boolean; name?: string } = {}) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-match-'));
   roots.push(root);
@@ -48,7 +48,7 @@ describe('request matching (W6, plan.md §2)', () => {
     await edit('test-app/todo.html');
     const text = await receipt({ ...base, asked: ['할 일 페이지 제목 바꾸기'], done: ['제목을 바꿨어요'] });
     expect(text).toContain('[요청 대조]  요청 1개 중 1개 바뀐 곳 있음');
-    expect(text).toContain(' 1. 할 일 페이지 제목 바꾸기\n    → 바뀐 곳 있음: test-app/todo.html  [Git 기준 · 지도: 할 일 목록]');
+    expect(text).toContain(' 1. 할 일 페이지 제목 바꾸기\n    → 바뀐 곳 있음: test-app/todo.html  [Git 기준 · 지도: 할 일]');
     expect(text).not.toContain('요청에 없던 곳');
     expect(text.split('\n').at(-1)).toBe('한 줄 요약: 요청 1개 중 1개를 처리했어요.');
   });
@@ -81,7 +81,7 @@ describe('request matching (W6, plan.md §2)', () => {
   it('⑤ done is written but 0 files changed → ⚠ 말과 실제가 달라요 (with and without asked)', async () => {
     const { receipt } = await project();
     const text = await receipt({ ...base, asked: ['할 일 페이지 제목 바꾸기'], done: ['제목을 바꿨어요'] });
-    expect(text).toContain(" → 바뀐 곳 없음: '할 일 목록' 파일이 바뀌지 않았어요".trim());
+    expect(text).toContain(" → 바뀐 곳 없음: '할 일' 파일이 바뀌지 않았어요".trim());
     expect(text).toContain(' ⚠ 말과 실제가 달라요: 한 일은 적혀 있는데 바뀐 파일이 없어요  [Git 기준]');
     const noAsked = await receipt({ ...base, done: ['제목을 바꿨어요'] });
     expect(noAsked).toContain(' ⚠ 말과 실제가 달라요: 한 일은 적혀 있는데 바뀐 파일이 없어요  [Git 기준]');
@@ -168,5 +168,69 @@ describe('match.ts (deterministic matching)', () => {
     const result = matchRequests(['로그인 고치기'], ['src/auth/a.ts', 'run.js'], sections);
     expect(result).toEqual({ map: true, items: [{ status: 'changed', features: ['로그인'], files: ['src/auth/a.ts'] }], extra: ['run.js'] });
     expect(matchRequests(['로그인 고치기'], ['src/auth/a.ts', 'run.js'], sections)).toEqual(result);
+  });
+});
+
+// Supervisor (a): files already changed before the work stay in the comparison, marked, but are not a change or a warning.
+describe('files changed before the work in the comparison (W7 × W6)', () => {
+  it('a before-work file is shown as (작업 전부터) and does not count as 바뀐 곳 있음 or ⚠ 요청에 없던 곳', async () => {
+    const { receipt, edit } = await project();
+    await edit('test-app/todo.html');
+    await edit('scripts/migrate-2024.js');
+    await receipt({ ...base, asked: ['할 일 페이지 제목 바꾸기'], done: ['첫 작업'] });
+    // Second receipt: nothing new was touched; both files are from before.
+    const text = await receipt({ ...base, asked: ['할 일 페이지 제목 바꾸기'], done: ['두 번째 작업'] });
+    expect(text).toContain('[요청 대조]  요청 1개 중 1개 바뀐 곳 없음');
+    expect(text).toContain('    (작업 전부터) 바뀌어 있던 파일: test-app/todo.html  [Git 기준]');
+    expect(text).toContain(' (작업 전부터) 바뀌어 있던 요청 밖 파일: scripts/migrate-2024.js  [Git 기준]');
+    expect(text).not.toContain('바뀐 곳 있음');
+    expect(text).not.toContain('⚠ 요청에 없던 곳');
+    expect(text.split('\n').at(-1)).toBe('한 줄 요약: 요청 1개 중 0개를 처리했어요.');
+  });
+
+  it('a file edited again after the previous receipt counts as a change again', async () => {
+    const { receipt, edit } = await project();
+    await edit('test-app/todo.html');
+    await edit('scripts/migrate-2024.js');
+    await receipt({ ...base, asked: ['할 일'], done: ['첫 작업'] });
+    await edit('test-app/todo.html');
+    await edit('scripts/migrate-2024.js');
+    const text = await receipt({ ...base, asked: ['할 일'], done: ['두 번째 작업'] });
+    expect(text).toContain('[요청 대조]  요청 1개 중 1개 바뀐 곳 있음');
+    expect(text).toContain(' ⚠ 요청에 없던 곳도 바뀜: scripts/migrate-2024.js  [Git 기준]');
+    expect(text).not.toContain('(작업 전부터)');
+  });
+
+  it('matchRequests keeps before-work files apart (unit)', () => {
+    const sections = [{ key: '할 일', name: '할 일', files: ['a.html', 'b.html'] }];
+    expect(matchRequests(['할 일'], ['a.html', 'b.html', 'x.js', 'y.js'], sections, ['b.html', 'y.js'])).toEqual({
+      map: true,
+      items: [{ status: 'changed', features: ['할 일'], files: ['a.html'], before: ['b.html'] }],
+      extra: ['x.js'],
+      extraBefore: ['y.js'],
+    });
+    expect(matchRequests(['할 일'], ['b.html'], sections, ['b.html'])).toEqual({
+      map: true,
+      items: [{ status: 'unchanged', features: ['할 일'], before: ['b.html'] }],
+      extra: [],
+    });
+  });
+});
+
+// Supervisor (c): the blank-line notices JuTell writes itself in [확인] are not labelled as written by the AI.
+describe('[확인] blank lines made by JuTell carry no [AI가 적음]', () => {
+  it('"한 일 목록이 비어 있었어요" / "확인한 내용을 받지 못했어요" have no AI label; AI lines keep theirs', async () => {
+    const { receipt } = await project();
+    const text = await receipt({ asked: [], done: [], checked: [], unchecked: [], next: [] });
+    expect(text).toContain('\n ✖ 확인 못 한 것: 한 일 목록이 비어 있었어요\n');
+    expect(text).toContain('\n ✖ 확인 못 한 것: 확인한 내용을 받지 못했어요\n');
+    const withAi = await receipt({ ...base, asked: [], done: ['했어요'] });
+    expect(withAi).toContain(' ✖ 확인 못 한 것: 브라우저 화면 (안 열어 봄)  [AI가 적음]');
+  });
+
+  it('an AI cannot mark its own line as JuTell\'s (jutell flag from input is ignored)', async () => {
+    const { receipt } = await project();
+    const text = await receipt({ asked: [], done: ['했어요'], checks: [{ what: '가짜', result: '안 해봄', reason: '이유', jutell: true }], next: [] });
+    expect(text).not.toMatch(/가짜 \(이유\)\n/);
   });
 });

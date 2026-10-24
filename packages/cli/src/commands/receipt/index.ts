@@ -7,7 +7,7 @@ import type { CliIo, ScopePaths } from '../../types.js';
 import { normalizeReceipt, receiptMarkdown, renderReceipt } from './render.js';
 import { refreshMapForReceipt, RECEIPT_MAP_TIMEOUT_MS } from '../map.js';
 import { MAP_FILE } from '../../map/write.js';
-import { beforeWorkNote } from './before.js';
+import { checkBeforeWork } from './before.js';
 import { matchRequests, readMapSections } from './match.js';
 
 const RECEIPT_INPUT_EXAMPLE = `표준 입력으로 전달하는 방식을 권장합니다:
@@ -336,13 +336,13 @@ export async function receiptCommand(
   if (inputTooLong) {
     receipt.checks = [
       ...receipt.checks.slice(0, 3),
-      { what: parseFailed ? '입력이 너무 커서 읽지 못했어요' : '입력이 너무 길어 앞부분만 읽었어요', result: '안 해봄', reason: '' },
+      { what: parseFailed ? '입력이 너무 커서 읽지 못했어요' : '입력이 너무 길어 앞부분만 읽었어요', result: '안 해봄', reason: '', jutell: true },
     ];
   }
   if (unsafeInput) {
     receipt.checks = [
       ...receipt.checks.slice(0, 3),
-      { what: `receipt.json 확인 못 함 (${unsafeInput})`, result: '안 해봄', reason: '' },
+      { what: `receipt.json 확인 못 함 (${unsafeInput})`, result: '안 해봄', reason: '', jutell: true },
     ];
   }
   // Refresh the map first, so the git listing below sees its final state.
@@ -351,17 +351,20 @@ export async function receiptCommand(
   // JuTell's own map change appears only as the ⓘ line, not in [바뀐 파일].
   receipt.files = mapStep.jutellOwned ? changedFiles.files.filter((file) => file !== MAP_FILE) : changedFiles.files;
   if (mapStep.note) receipt.mapNote = mapStep.note;
-  if ((receipt.asked?.length ?? 0) > 0 && !changedFiles.unknownReason) {
-    const markdown = await fs.readFile(path.join(paths.targetRoot, MAP_FILE), { encoding: 'utf8', flag: fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) }).catch(() => undefined);
-    receipt.match = markdown === undefined ? { map: false } : matchRequests(receipt.asked ?? [], receipt.files, readMapSections(markdown));
-  }
   receipt.filesUnknownReason = changedFiles.unknownReason;
   receipt.filesChecked = true;
+  let beforeWork: string[] = [];
   if (!changedFiles.unknownReason) {
     // Make sure `.jutell-local` exists (same link checks as the receipt) so the state can be saved.
     await prepareSafeReportsDirectory(paths).catch(() => undefined);
-    const note = await beforeWorkNote(paths, receipt.files ?? []).catch(() => undefined);
-    if (note) receipt.beforeNote = note;
+    const result = await checkBeforeWork(paths, receipt.files ?? []).catch(() => undefined);
+    if (result?.note) receipt.beforeNote = result.note;
+    beforeWork = result?.before ?? [];
+  }
+  if ((receipt.asked?.length ?? 0) > 0 && !changedFiles.unknownReason) {
+    const markdown = await fs.readFile(path.join(paths.targetRoot, MAP_FILE), { encoding: 'utf8', flag: fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) }).catch(() => undefined);
+    // Files changed before the work stay in the comparison, marked, but never count as '바뀐 곳 있음' or '⚠ 요청에 없던 곳'.
+    receipt.match = markdown === undefined ? { map: false } : matchRequests(receipt.asked ?? [], receipt.files, readMapSections(markdown), beforeWork);
   }
   const time = receiptTimestamp(now);
   const output = await saveReceipt(paths, receipt, time.display, time.filename);
