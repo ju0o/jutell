@@ -142,7 +142,7 @@ async function useGuiCommand(app: GuiApp, paths: ScopePaths, options: CliOptions
     const outcome = await useGuiApp(app, wantsGlobal, project.targetRoot);
     if (outcome.error) throw new Error(outcome.error);
     await recordSkillFiles(project, [...changed, ...skillResult.replaced]);
-    writeLines(io, outcome.message);
+    writeLines(io, [...outcome.message, PROJECT_RULE_FILES_NOTE]);
     return { cancelled: false };
   } catch (error) {
     await rollback(snapshots, changed, project);
@@ -150,6 +150,9 @@ async function useGuiCommand(app: GuiApp, paths: ScopePaths, options: CliOptions
     throw error;
   }
 }
+
+// dogfood (cycle-3 main): `use cursor` also creates these, so say so on screen (README lists the same four).
+export const PROJECT_RULE_FILES_NOTE = '이 프로젝트에 JuTell 규칙 파일도 준비했어요: AGENTS.md, .agents/skills/, .jutell.json, .jutell-local/ (모든 AI 연결이 함께 써요. 빼려면 jutell uninstall --yes)';
 
 function guiOnlyWithUse(name: string | undefined) {
   const app = findGuiApp(name);

@@ -204,11 +204,12 @@ You need a coding agent first — JuTell connects to one you already installed.
 
 | App | Connect / remove | File |
 |---|---|---|
-| Cursor | `jutell use cursor` / `jutell disconnect cursor` (`--global` for every folder) | `.cursor/mcp.json`, `~/.cursor/mcp.json` |
+| Cursor | `jutell use cursor` / `jutell disconnect cursor` (`--global` for every folder) | `.cursor/mcp.json`, `~/.cursor/mcp.json` (Windows: not confirmed) |
 | VS Code | `jutell use vscode` / `jutell disconnect vscode` (`--global`: Linux only) | `.vscode/mcp.json`, Linux `~/.config/Code/User/mcp.json` |
 | Claude Desktop | `jutell use claude-desktop` / `jutell disconnect claude-desktop` (macOS, Windows) | `claude_desktop_config.json` in the app's settings folder |
 | Windsurf | Status only (`jutell status`); JuTell never writes it | — |
 
+`use` also creates JuTell rule files in the project: `AGENTS.md`, `.agents/skills/`, `.jutell.json`, `.jutell-local/` (shared with other AI connections; `jutell uninstall --yes` removes them).
 Paths that are not confirmed for an OS are never guessed: JuTell explains instead of writing.
 Per-OS paths, restart steps and real output: [README.md](https://github.com/ju0o/jutell#connect-a-gui-app-cursor--vs-code--claude-desktop--windsurf).
 

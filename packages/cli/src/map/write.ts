@@ -1,3 +1,4 @@
+import { MAP_GUIDE, UNCLASSIFIED_HELP } from './guide.js';
 import { createHash } from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { constants as fsConstants, promises as fs } from 'node:fs';
@@ -22,9 +23,8 @@ export const LEGACY_UNCLASSIFIED_KEY = '분류 안 됨';
 
 const TITLE = '# JuTell 지도 — 이 프로젝트는 어떻게 생겼나요?';
 /** Plain line at the top of a new map, before the first marker (a person can read it in a text editor). */
-export const MAP_GUIDE = '표와 목록은 JuTell이 자동으로 다시 채워요. 설명 글은 마음대로 고쳐도 되지만, 숨은 칸 표시(HTML 주석)는 지우지 마세요.';
+export { MAP_GUIDE } from './guide.js';
 const HEADER_PREFIX = '마지막 갱신:';
-const UNCLASSIFIED_HELP = '설명: 아래 줄을 원하는 기능 칸으로 옮기면, 다음부터 그 칸에 둡니다.';
 const OPEN = /^<!-- jutell:auto (.+) -->$/;
 const CLOSE = '<!-- /jutell:auto -->';
 

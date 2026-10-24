@@ -1,3 +1,4 @@
+import { UNCLASSIFIED_HELP } from './guide.js';
 import { createHash } from 'node:crypto';
 import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
@@ -14,7 +15,6 @@ const INDEX_VERSION = 1;
 const INDEX_MARKER = 'jutell-map-index';
 const MAP_SOURCE_FILE = 'JuTellMap.md';
 const UNCLASSIFIED_KEY = '분류 안 됨';
-const UNCLASSIFIED_HELP = '설명: 아래 줄을 원하는 기능 칸으로 옮기면, 다음부터 그 칸에 둡니다.';
 const DETAIL_ID = /^f-[a-f0-9]{12}$/;
 
 export type MapSectionEntry = {

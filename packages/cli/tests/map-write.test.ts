@@ -170,11 +170,14 @@ describe('map write (W2)', () => {
     expect(await read(file)).not.toContain(stamp(LATER));
   });
 
-  it('map.html shows the guide line (no literal HTML comment), while real marker comments stay hidden', async () => {
+  it('map.html drops the JuTellMap.md-only guide lines (cycle-3 dogfood), and marker comments stay hidden', async () => {
     const { dir, paths } = await project();
     await writeMap(paths, NOW);
-    const html = renderMapHtml(await read(path.join(dir, MAP_FILE)));
-    expect(html).toContain('표와 목록은 JuTell이 자동으로');
+    const markdown = await read(path.join(dir, MAP_FILE));
+    expect(markdown).toContain('숨은 칸 표시(HTML 주석)는 지우지 마세요');
+    const html = renderMapHtml(markdown);
+    expect(html).not.toContain('숨은 칸 표시');
+    expect(html).not.toContain('원하는 기능 칸으로 옮기면');
     expect(html).not.toContain('&lt;!--');
     expect(html).not.toContain('jutell:auto');
   });
