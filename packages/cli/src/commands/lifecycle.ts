@@ -1,10 +1,11 @@
+import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { assets, codexScopedPaths, packageRoot, safeLocation } from '../config/paths.js';
 import { readBridgeConfig, readCodexRegistration, snapshot, restore } from '../config/managed.js';
 import { ensureBridgeConfig, setMcpDisabled, setMcpEnabled } from '../installer/config.js';
 import { installSkill, recordSkillFiles, removeAddedSkillFiles, removeManagedSkillFiles, skillConflictMessage, skillRefreshMessage } from '../installer/skill.js';
 import { agentsFile, ensureJuTellAgentsBlock, removeJuTellAgentsBlock } from '../installer/agents.js';
-import { registerMcp, removeMcp } from '../config/managed.js';
+import { managedCodexServerFile, registerMcp, removeMcp } from '../config/managed.js';
 import { removeOpenCodeMcp, readOpenCodeRegistration, setOpenCodeEnabled } from '../installer/opencode.js';
 import { removeClaudeMcp } from '../installer/claude.js';
 import { scopeLabel } from '../output/format.js';
@@ -130,6 +131,14 @@ export async function disableCommand(paths: ScopePaths, options: CliOptions, io:
   return { cancelled: false };
 }
 
+async function runsFromProject(codexPaths: ScopePaths, projectRoot: string) {
+  const server = await managedCodexServerFile(codexPaths).catch(() => undefined);
+  if (!server) return false;
+  const real = async (file: string) => (await fs.realpath(file).catch(() => path.resolve(file))).replaceAll('\\', '/');
+  const [serverPath, root] = await Promise.all([real(path.dirname(server)), real(projectRoot)]);
+  return serverPath.startsWith(`${root}/`);
+}
+
 export async function uninstallCommand(paths: ScopePaths, options: CliOptions, io: CliIo) {
   const removeData = options.removeData;
   const dataMessage = removeData ? '설정과 Beta Journal도 삭제합니다.' : '설정과 Beta Journal은 보존합니다.';
@@ -139,7 +148,10 @@ export async function uninstallCommand(paths: ScopePaths, options: CliOptions, i
   // must not silently break that shared connection for other projects, so a
   // project-scoped uninstall leaves it in place unless the user asked for
   // --global.
-  const codexSkipped = paths.scope !== 'global';
+  // Exception: when the shared entry runs THIS project's local install (node_modules inside the project),
+  // it cannot work for other projects after removal, so JuTell's own entry is removed too.
+  const codexLocal = paths.scope === 'project' && await runsFromProject(codexScopedPaths(paths), paths.targetRoot);
+  const codexSkipped = paths.scope !== 'global' && !codexLocal;
   if (!codexSkipped) {
     const removal = await removeMcp(codexScopedPaths(paths), packageRoot());
     if (removal.commentedTables.length > 0) {
@@ -159,6 +171,7 @@ export async function uninstallCommand(paths: ScopePaths, options: CliOptions, i
     await fs.rm(paths.dataRoot, { recursive: true, force: true });
   }
   io.write(`제거했습니다. ${removeData ? '설정과 Beta Journal도 삭제했습니다.' : '설정과 Beta Journal은 보존했습니다.'}`);
+  if (codexLocal) io.write('Codex 전역 설정에 남아 있던 이 프로젝트용 JuTell 연결(이 폴더의 node_modules를 가리킴)도 지웠어요. 다른 설정은 그대로예요.');
   if (codexSkipped) io.write('Codex MCP 연결(전역 설정)은 다른 프로젝트와 공유되어 제거하지 않았습니다. 모든 프로젝트에서 제거하려면 jutell uninstall --global 을 실행하세요.');
   return { cancelled: false };
 }

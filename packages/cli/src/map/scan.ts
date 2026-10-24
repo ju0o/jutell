@@ -7,8 +7,22 @@ const GIT_TIMEOUT_MS = 5000;
 const GIT_MAX_BUFFER = 16 * 1024 * 1024;
 /** Upper bound on files collected when walking a folder that is not a git repository. */
 export const WALK_MAX_FILES = 20000;
-/** Folders never walked outside git (git repositories use .gitignore instead). */
-export const WALK_EXCLUDED_DIRS = new Set(['node_modules', 'dist', 'build', 'out', 'coverage', 'target', 'vendor', '__pycache__']);
+/**
+ * Standard dependency/output folders. Never walked outside git, and in git their UNTRACKED files are left out
+ * of both the map and the receipt (a project without .gitignore must not list node_modules), tracked or not.
+ */
+export const WALK_EXCLUDED_DIRS = new Set([
+  'node_modules', 'bower_components', 'dist', 'build', 'out', 'coverage', 'target', 'vendor', '__pycache__',
+  '.git', '.next', '.nuxt', '.svelte-kit', '.turbo', '.parcel-cache', '.cache', '.gradle', '.venv', 'venv',
+]);
+
+/** git pathspecs that leave the folders above out of ls-files/status (one rule for the map and the receipt). */
+export const EXCLUDED_PATHSPECS = ['--', '.', ...[...WALK_EXCLUDED_DIRS].map((dir) => `:(exclude,glob)**/${dir}/**`)];
+
+/** True when a folder segment of the project-relative path is a standard dependency/output folder. */
+export function inExcludedFolder(relative: string): boolean {
+  return relative.split('/').slice(0, -1).some((part) => WALK_EXCLUDED_DIRS.has(part));
+}
 
 // C0/C1 controls, bidi controls and zero-width characters (same set as receipt/render.ts).
 const controlCharacters = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069\u200e\u200f\u061c\u200b-\u200d\u2060\ufeff]/g;
@@ -59,7 +73,7 @@ function runGit(cwd: string, args: string[]): Promise<string> {
 async function gitFiles(root: string): Promise<string[] | undefined> {
   let stdout: string;
   try {
-    stdout = await runGit(root, ['--no-optional-locks', 'ls-files', '-z', '--cached', '--others', '--exclude-standard']);
+    stdout = await runGit(root, ['--no-optional-locks', 'ls-files', '-z', '--cached', '--others', '--exclude-standard', ...EXCLUDED_PATHSPECS]);
   } catch (error) {
     const failure = error as NodeJS.ErrnoException & { killed?: boolean };
     // No git, or not a repository: fall back to walking the folder.

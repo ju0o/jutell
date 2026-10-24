@@ -179,6 +179,15 @@ describe('map write (W2)', () => {
     expect(await read(indexFile)).toBe('{"mine":true}');
   });
 
+  it('no .gitignore: node_modules, dist, build… stay out of the map (git and plain folder alike)', async () => {
+    const files = ['src/app.ts', 'node_modules/left-pad/index.js', 'dist/app.js', 'build/out.js', 'web/node_modules/x/y.js', 'coverage/lcov.info'];
+    for (const useGit of [true, false]) {
+      const { dir } = await project(useGit ? 'git' : 'plain', files);
+      if (useGit) execFileSync('git', ['init', '-q'], { cwd: dir });
+      expect((await scanProject(dir)).files).toEqual(['src/app.ts']);
+    }
+  });
+
   it('reports a partial detail write and rejects a stale card if a later write fails', async () => {
     const { dir, paths } = await project();
     await writeMap(paths, NOW);
