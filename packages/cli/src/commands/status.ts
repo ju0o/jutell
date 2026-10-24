@@ -153,23 +153,41 @@ async function writeCheck(paths: ScopePaths) {
   try { await fs.mkdir(directory, { recursive: true }); await fs.writeFile(file, 'ok', 'utf8'); await fs.rm(file, { force: true }); return true; } catch { await fs.rm(file, { force: true }); return false; }
 }
 
-// Codex runs commands through the user's login shell, so jutell must be on that shell's PATH.
-// When it isn't, give one line that really works: the npm global bin folder, computed from `npm prefix -g`.
-// Only a receipt needs `jutell` from Codex's shell: with receiptReport off a miss is just 주의 (B7).
-export async function loginShellJutellCheck(receiptReport = true, env: NodeJS.ProcessEnv = process.env): Promise<CheckResult> {
+// Codex runs commands through the user's login shell. Accept either the old
+// globally exposed command or this project's local npm bin, without changing PATH.
+// Only a receipt needs the CLI from Codex's shell: with receiptReport off a miss is 주의 (B7).
+export async function loginShellJutellCheck(
+  receiptReport = true,
+  env: NodeJS.ProcessEnv = process.env,
+  projectRoot = process.cwd(),
+): Promise<CheckResult> {
   const name = 'Codex에서 jutell 명령 찾기';
   const loginShell = env.SHELL && path.isAbsolute(env.SHELL) ? env.SHELL : 'bash';
-  const run = (file: string, args: string[]) => new Promise<string | undefined>((resolve) => {
-    execFile(file, args, { timeout: 5000, env }, (error, stdout) => resolve(error ? undefined : stdout.trim()));
+  const run = (file: string, args: string[], runEnv = env, cwd = projectRoot) => new Promise<string | undefined>((resolve) => {
+    execFile(file, args, { timeout: 10000, env: runEnv, cwd }, (error, stdout) => resolve(error ? undefined : stdout.trim()));
   });
   if (await run(loginShell, ['-lc', 'command -v jutell'])) {
     return { name, status: '정상', detail: 'Codex가 명령을 실행하는 셸에서 jutell을 찾았습니다.' };
   }
+  // npm exec resolves the project's local bin without adding it to a global PATH.
+  // Pass the root as a quoted environment value so spaces and shell metacharacters
+  // in the path do not become shell syntax; execute from that same project root.
+  const localEnv = { ...env, JUTELL_PROJECT_ROOT: path.resolve(projectRoot) };
+  const local = await run(
+    loginShell,
+    ['-lc', 'npm exec --offline --no --prefix "$JUTELL_PROJECT_ROOT" -- jutell --version'],
+    localEnv,
+    path.resolve(projectRoot),
+  );
+  if (local) {
+    return { name, status: '정상', detail: 'Codex가 프로젝트에 설치된 JuTell을 npm으로 찾았습니다.' };
+  }
   const prefix = await run('npm', ['prefix', '-g']);
   const profile = path.basename(loginShell) === 'zsh' ? '~/.zprofile' : '~/.profile';
-  const fix = prefix
-    ? `${profile} 파일 맨 아래에 이 한 줄을 넣고 터미널과 Codex를 다시 여세요: export PATH="${path.join(prefix, 'bin')}:$PATH"`
-    : `jutell이 들어 있는 폴더를 ${profile}의 PATH에 넣고 터미널과 Codex를 다시 여세요.`;
+  const globalFix = prefix
+    ? `전역 설치를 쓰면 ${profile} 파일 맨 아래에 이 한 줄을 넣고 터미널과 Codex를 다시 여세요: export PATH="${path.join(prefix, 'bin')}:$PATH"`
+    : `전역 설치를 쓰면 jutell이 들어 있는 폴더를 ${profile}의 PATH에 넣고 터미널과 Codex를 다시 여세요.`;
+  const fix = `프로젝트 로컬 설치를 쓰려면 프로젝트 루트에서 npm install --save-dev jutell 후 npm exec --offline --no --prefix "<프로젝트 루트>" -- jutell doctor 를 실행하세요. ${globalFix}`;
   return {
     name,
     status: receiptReport ? '오류' : '주의',
@@ -240,7 +258,7 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   if (mapCheck) checks.push(mapCheck);
   checks.push({ name: '쓰기 권한', status: await writeCheck(paths) ? '정상' : '오류', detail: '로컬 상태 폴더에 임시 파일을 만들고 삭제했습니다.' });
   const backupExists = await exists(`${codexPaths.codexConfigFile}.previous`);
-  if (process.platform !== 'win32') checks.push(await loginShellJutellCheck(config.config.features.receiptReport !== false));
+  if (process.platform !== 'win32') checks.push(await loginShellJutellCheck(config.config.features.receiptReport !== false, process.env, paths.targetRoot));
   checks.push({ name: '설정 백업 상태', status: !await exists(codexPaths.codexConfigFile) || backupExists ? '정상' : '주의', detail: !await exists(codexPaths.codexConfigFile) ? '아직 Provider 설정을 변경하지 않았습니다.' : backupExists ? '이전 설정 백업을 확인했습니다. JuTell이 처음 바꾸기 전 원본은 config.toml.jutell-original에 그대로 남아 있습니다.' : '기존 Provider 설정 백업이 없습니다.' });
   const externalCode = /(?:https?:\/\/(?!127\.0\.0\.1)|https?\.request|net\.connect)/i.test(mcpText);
   checks.push({ name: '외부 전송 코드', status: externalCode ? '오류' : '정상', detail: externalCode ? 'MCP 빌드에서 외부 네트워크 관련 코드를 찾았습니다.' : 'MCP 빌드에 외부 전송 패턴이 없습니다.' });

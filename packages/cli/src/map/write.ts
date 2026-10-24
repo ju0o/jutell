@@ -1,10 +1,12 @@
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
 import { ensureDataRoot } from '../config/managed.js';
 import type { CliIo, CliOptions, ScopePaths } from '../types.js';
 import { classifyFiles, ESTIMATED_LABEL, UNCLASSIFIED, type Classified } from './classify.js';
-import { scanProject } from './scan.js';
+import { scanProject, type MapScan } from './scan.js';
+import { writeMapSelectionFiles, type MapSelectionWriteResult } from './selection.js';
 
 export const MAP_FILE = 'JuTellMap.md';
 export const MAP_STATE_FILE = 'map-state.json';
@@ -21,9 +23,9 @@ const OPEN = /^<!-- jutell:auto (.+) -->$/;
 const CLOSE = '<!-- /jutell:auto -->';
 
 export type MapWriteResult =
-  | { status: 'created'; file: string; files: number; unclassified: number }
-  | { status: 'updated'; file: string; added: string[]; removed: string[]; newSections: string[] }
-  | { status: 'unchanged'; file: string }
+  | { status: 'created'; file: string; files: number; unclassified: number; selection?: MapSelectionWriteResult }
+  | { status: 'updated'; file: string; added: string[]; removed: string[]; newSections: string[]; selection?: MapSelectionWriteResult }
+  | { status: 'unchanged'; file: string; selection?: MapSelectionWriteResult }
   | { status: 'broken'; file: string; copy: string; reason: string }
   | { status: 'link'; file: string };
 
@@ -42,12 +44,14 @@ function linePath(line: string): string | undefined {
   return cut > 2 ? line.slice(2, cut) : undefined;
 }
 
-function pad(value: number) { return String(value).padStart(2, '0'); }
 function stamp(now: Date) {
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  return `${now.toISOString().slice(0, 16).replace('T', ' ')} UTC`;
 }
-function headerLine(now: Date, files: number, unclassified: number) {
-  return `${HEADER_PREFIX} ${stamp(now)} · 파일 ${files}개 · 분류 안 된 파일 ${unclassified}개`;
+function headerLine(now: Date, files: number, unclassified: number, scan?: Pick<MapScan, 'source' | 'truncated'>) {
+  const source = scan?.source === 'git' ? 'Git 파일 목록' : scan?.source === 'walk' ? '폴더 탐색' : undefined;
+  const completeness = scan?.source === 'walk' ? (scan.truncated ? '20,000개 상한 초과로 일부 생략' : '20,000개 상한 내') : undefined;
+  const provenance = [source && `목록 기준 ${source}`, completeness].filter(Boolean).join(' · ');
+  return `${HEADER_PREFIX} ${stamp(now)} · 파일 ${files}개 · 분류 안 된 파일 ${unclassified}개${provenance ? ` · ${provenance}` : ''}`;
 }
 
 function sectionLines(key: string, estimated: boolean, items: Classified[]): string[] {
@@ -89,10 +93,10 @@ export function parseMap(text: string): Parsed | string {
 }
 
 /** Full map text for a project without one. */
-export function renderNewMap(items: Classified[], now: Date): string {
+export function renderNewMap(items: Classified[], now: Date, scan?: Pick<MapScan, 'source' | 'truncated'>): string {
   const groups = group(items, new Map());
   const keys = [...groups.keys()].filter((key) => key !== UNCLASSIFIED_KEY);
-  const out = [TITLE, NOTE, headerLine(now, items.length, groups.get(UNCLASSIFIED_KEY)?.length ?? 0)];
+  const out = [TITLE, NOTE, headerLine(now, items.length, groups.get(UNCLASSIFIED_KEY)?.length ?? 0, scan)];
   for (const key of [...keys, UNCLASSIFIED_KEY]) {
     const list = groups.get(key) ?? [];
     out.push('', ...sectionLines(key, list[0]?.estimated ?? false, list));
@@ -116,7 +120,7 @@ function group(items: Classified[], placement: Map<string, string>) {
  * Lines a person wrote ("설명:", headings, moved file lines) stay byte for byte.
  * A file moved into another auto block stays in that block; a file moved outside every block is left out of the blocks.
  */
-export function updateMap(existing: string, items: Classified[], now: Date): { text: string; changed: boolean; added: string[]; removed: string[]; newSections: string[] } | string {
+export function updateMap(existing: string, items: Classified[], now: Date, scan?: Pick<MapScan, 'source' | 'truncated'>): { text: string; changed: boolean; added: string[]; removed: string[]; newSections: string[] } | string {
   const parsed = parseMap(existing);
   if (typeof parsed === 'string') return parsed;
   const { lines, eol, blocks, placed, pinned } = parsed;
@@ -158,7 +162,7 @@ export function updateMap(existing: string, items: Classified[], now: Date): { t
   if (result.join(eol) === lines.join(eol)) return { text: existing, changed: false, ...diff };
   const unclassified = items.filter((item) => !pinned.has(item.path) && (placement.get(item.path) ?? keyOf(item)) === UNCLASSIFIED_KEY).length;
   const header = result.findIndex((line) => line.startsWith(HEADER_PREFIX));
-  if (header >= 0) result[header] = headerLine(now, items.length, unclassified);
+  if (header >= 0) result[header] = headerLine(now, items.length, unclassified, scan);
   return { text: result.join(eol), changed: true, ...diff };
 }
 
@@ -187,6 +191,23 @@ export function mapFile(paths: ScopePaths) {
   return path.join(paths.targetRoot, MAP_FILE);
 }
 
+function currentCommit(root: string): string | null {
+  try {
+    const commit = execFileSync('git', ['rev-parse', '--verify', 'HEAD'], {
+      cwd: root,
+      encoding: 'utf8',
+      timeout: 1000,
+      stdio: ['ignore', 'pipe', 'ignore'],
+      env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' },
+    }).trim();
+    return /^[a-f0-9]{40,64}$/i.test(commit) ? commit : null;
+  } catch { return null; }
+}
+
+async function updateSelection(paths: ScopePaths, markdown: string, scan: MapScan, now: Date) {
+  return writeMapSelectionFiles(paths, markdown, scan, now, currentCommit(paths.targetRoot), writeViaTemp);
+}
+
 export async function mapExists(paths: ScopePaths) {
   return (await fs.lstat(mapFile(paths)).catch(() => undefined)) !== undefined;
 }
@@ -199,24 +220,29 @@ export async function writeMap(paths: ScopePaths, now = new Date()): Promise<Map
   const scan = await scanProject(paths.targetRoot);
   const items = classifyFiles(scan.files.filter((relative) => relative !== MAP_FILE));
   if (!stats) {
-    const text = renderNewMap(items, now);
+    const text = renderNewMap(items, now, scan);
     await writeViaTemp(file, text);
     await recordState(paths, text, now);
-    return { status: 'created', file, files: items.length, unclassified: items.filter((item) => item.feature === UNCLASSIFIED).length };
+    const selection = await updateSelection(paths, text, scan, now);
+    return { status: 'created', file, files: items.length, unclassified: items.filter((item) => item.feature === UNCLASSIFIED).length, selection };
   }
   const existing = await fs.readFile(file, { encoding: 'utf8', flag: fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) });
-  const updated = updateMap(existing, items, now);
+  const updated = updateMap(existing, items, now, scan);
   if (typeof updated === 'string') {
     await ensureDataRoot(paths);
     const copy = path.join(paths.dataRoot, MAP_COPY_FILE);
     if ((await fs.lstat(copy).catch(() => undefined))?.isSymbolicLink()) throw new Error('지도 사본 위치가 링크라서 쓰지 않았어요');
-    await writeViaTemp(copy, renderNewMap(items, now));
+    await writeViaTemp(copy, renderNewMap(items, now, scan));
     return { status: 'broken', file, copy, reason: updated };
   }
-  if (!updated.changed) return { status: 'unchanged', file };
+  if (!updated.changed) {
+    const selection = await updateSelection(paths, existing, scan, now);
+    return { status: 'unchanged', file, selection };
+  }
   await writeViaTemp(file, updated.text);
   await recordState(paths, updated.text, now);
-  return { status: 'updated', file, added: updated.added, removed: updated.removed, newSections: updated.newSections };
+  const selection = await updateSelection(paths, updated.text, scan, now);
+  return { status: 'updated', file, added: updated.added, removed: updated.removed, newSections: updated.newSections, selection };
 }
 
 /** One plain line about a map write, for the terminal. */

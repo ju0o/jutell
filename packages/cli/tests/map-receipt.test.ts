@@ -7,6 +7,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { resolveScope } from '../src/config/paths.js';
 import { refreshMapForReceipt } from '../src/commands/map.js';
 import { receiptCommand } from '../src/commands/receipt/index.js';
+import { MAP_DETAILS_DIR, MAP_INDEX_FILE } from '../src/map/selection.js';
 import { writeMap } from '../src/map/write.js';
 import type { CliIo } from '../src/types.js';
 
@@ -56,6 +57,32 @@ describe('receipt refreshes the map (W5)', () => {
     expect(files).toContain('src/auth/session.ts');
     expect(files).not.toContain('JuTellMap.md');
     expect(await fs.readFile(path.join(dir, '.jutell-local', 'map.html'), 'utf8')).toContain('session.ts');
+  });
+
+  it('preflights every detail collision and refreshes HTML even when compact selection files are blocked', async () => {
+    const { dir, paths } = await project();
+    await fs.mkdir(path.join(dir, 'src', 'reports'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'src', 'reports', 'report.ts'), 'x');
+    await writeMap(paths);
+    const dataRoot = path.join(dir, '.jutell-local');
+    const indexFile = path.join(dataRoot, MAP_INDEX_FILE);
+    const indexBefore = await fs.readFile(indexFile, 'utf8');
+    const index = JSON.parse(indexBefore) as { sections: Array<{ id: string; name: string }> };
+    const lastSection = index.sections[index.sections.length - 1]!;
+    const collision = path.join(dataRoot, MAP_DETAILS_DIR, `${lastSection.id}.md`);
+    await fs.writeFile(collision, '사용자 소유 파일');
+    const login = index.sections.find((item) => item.name === '로그인')!;
+    const loginDetail = path.join(dataRoot, MAP_DETAILS_DIR, `${login.id}.md`);
+    const loginBefore = await fs.readFile(loginDetail, 'utf8');
+    await fs.writeFile(path.join(dir, 'src', 'auth', 'session.ts'), 'x');
+
+    const result = await refreshMapForReceipt(paths);
+    expect(result.note).toContain('ⓘ 기능 인덱스 갱신 못 함');
+    expect(await fs.readFile(indexFile, 'utf8')).toBe(indexBefore);
+    expect(await fs.readFile(loginDetail, 'utf8')).toBe(loginBefore);
+    expect(await fs.readFile(collision, 'utf8')).toBe('사용자 소유 파일');
+    expect(await fs.readFile(path.join(dir, 'JuTellMap.md'), 'utf8')).toContain('src/auth/session.ts');
+    expect(await fs.readFile(path.join(dataRoot, 'map.html'), 'utf8')).toContain('session.ts');
   });
 
   it('without a map: no map line and no map is created', async () => {

@@ -22,6 +22,20 @@ npm pack
 npm install -g ./jutell-2.1.0-dev.tgz
 ```
 
+### 프로젝트에 로컬 설치해서 사용하기
+
+전역 명령으로 설치하지 않고 특정 프로젝트에서만 JuTell을 쓰려면 프로젝트 폴더에서 로컬 의존성으로 설치합니다. 프로젝트별 CLI를 쓰기 위한 경우 개발 의존성으로 추가할 수 있습니다.
+
+```bash
+npm install --save-dev jutell
+npm exec -- jutell --version
+npm exec -- jutell status
+```
+
+`npm exec -- jutell`은 현재 프로젝트의 `node_modules`에 설치된 JuTell을 실행합니다. 직접 실행하려면 macOS/Linux에서는 `./node_modules/.bin/jutell`, Windows에서는 `.\node_modules\.bin\jutell.cmd`를 사용할 수 있습니다. 프로젝트 파일을 설정할 때는 해당 프로젝트 폴더에서 `npm exec -- jutell setup`을 실행하세요. 전역 설치와 별도로 동작합니다.
+
+Doctor는 전역 `jutell` 명령과 프로젝트 로컬 설치를 모두 찾습니다. Codex 작업에서 영수증을 만들 때도, 로컬 설치라면 `npm exec --offline --no --prefix "<프로젝트 루트>" -- jutell receipt`를 사용할 수 있습니다. 로컬 npm 설치는 `--prefix`로 지정한 프로젝트에 영수증을 저장합니다. 경로는 실제 프로젝트 경로로 바꾸고 따옴표를 유지하세요. 전역 `PATH`는 변경하지 않습니다.
+
 ## Ubuntu/Linux 설치 권한 오류(EACCES) 해결
 
 `npm install -g jutell` 실행 중 아래와 비슷한 오류가 나면 이 섹션을 확인하세요.

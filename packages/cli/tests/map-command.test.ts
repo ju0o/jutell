@@ -7,7 +7,8 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { resolveScope } from '../src/config/paths.js';
 import { mapFreshnessCheck } from '../src/commands/map.js';
 import { escapeHtml, renderMapHtml } from '../src/map/html.js';
-import { writeMap } from '../src/map/write.js';
+import { MAP_DETAILS_DIR, MAP_INDEX_FILE } from '../src/map/selection.js';
+import { MAP_FILE, sha256, writeMap } from '../src/map/write.js';
 
 const cliEntry = fileURLToPath(new URL('../dist/index.js', import.meta.url));
 const roots: string[] = [];
@@ -37,16 +38,29 @@ describe('map HTML (W3)', () => {
     expect(html).not.toMatch(/<script|<img|<b>|onerror=alert\(1\)>/);
     expect(html).toContain('<li>src/&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;.ts — 기능</li>');
     expect(html).toContain('<li>a&amp;b&#39;c.ts — 화면</li>');
-    expect(html).toContain('<summary>&lt;b&gt;기능&lt;/b&gt;</summary>');
+    expect(html).toContain('<summary>&lt;b&gt;기능&lt;/b&gt;<span class="count">파일 2개 · 화면 1 · 코드 1 · 테스트 0 · 기타 0</span></summary>');
     expect(html).not.toContain('jutell:auto');
     expect(escapeHtml(`<>&"'`)).toBe('&lt;&gt;&amp;&quot;&#39;');
   });
 
-  it('makes no external requests: no scripts, links, src/href, url(); CSP default-src none', () => {
+  it('uses a collapsed index with no scripts or external requests; CSP default-src none', () => {
     const html = renderMapHtml('# 지도\n## 로그인\n- https://evil.example/x.js — 기능\n');
     expect(html).toContain(`content="default-src 'none'; style-src 'unsafe-inline'"`);
-    expect(html).not.toMatch(/<script|<link|<iframe|<img|\ssrc=|\shref=|url\(|@import/i);
-    expect(html).toContain('<details open><summary>로그인</summary>');
+    expect(html).not.toMatch(/<script|<link|<iframe|<img|\ssrc=|href="https?:|url\(|@import/i);
+    expect(html).not.toMatch(/<a\s|\shref=/i);
+    expect(html).toContain('<h2>파일 분류 인덱스');
+    expect(html).toContain('<details><summary>로그인<span class="count">파일 1개 · 화면 0 · 코드 1 · 테스트 0 · 기타 0</span></summary>');
+    expect(html).toContain('데이터 연결</strong> · 미확인');
+    expect(html).toContain('실행 결과 미확인');
+  });
+
+  it('keeps file paths behind the index and labels grouping and verification limits', () => {
+    const html = renderMapHtml('# 지도\n## 로그인 [지도 기준 추정]\n- src/auth/Login.tsx — 화면\n- src/auth/login.test.ts — 테스트\n');
+    expect(html.indexOf('파일 분류 인덱스')).toBeLessThan(html.indexOf('src/auth/Login.tsx'));
+    expect(html).toContain('화면 1 · 코드 0 · 테스트 1');
+    expect(html).toContain('기능 이름과 역할은 지도 기준 추정');
+    expect(html).toContain('데이터 연결</strong> · 미확인');
+    expect(html).toContain('테스트 경로</strong> · 지도에 적힌 경로; 현재 파일 존재/실행 결과 미확인');
   });
 });
 
@@ -69,19 +83,144 @@ describe('jutell map (W3)', () => {
     const third = run('map');
     expect(third.stdout).toContain('프로젝트 지도(JuTellMap.md)를 갱신했어요: 새 파일 2개, 빠진 파일 1개, 새 칸 1개(reports).');
     expect(await fs.readFile(path.join(dir, '.jutell-local', 'map.html'), 'utf8')).toContain('session.ts');
+    const index = JSON.parse(await fs.readFile(path.join(dir, '.jutell-local', MAP_INDEX_FILE), 'utf8')) as { sections: Array<{ name: string; id: string }> };
+    const login = index.sections.find((section) => section.name === '로그인');
+    expect(login).toBeDefined();
+    expect(await fs.readFile(path.join(dir, '.jutell-local', MAP_DETAILS_DIR, `${login!.id}.md`), 'utf8')).toContain('session.ts');
   });
 
   it('rejects unknown options and shows help', async () => {
     const { run } = await project();
     expect(run('map', '--nope').status).not.toBe(0);
     expect(run('map', '--help').stdout).toContain('jutell map');
-    expect(run('--help').stdout).toContain('jutell map            프로젝트 지도');
+    expect(run('map', '--help').stdout).toContain('jutell map --show <ID>');
   });
 
   it('works in a Korean path with spaces', async () => {
     const { dir, run } = await project('한글 폴더/내 프로젝트', ['src/로그인/화면.tsx']);
     expect(run('map').status).toBe(0);
     expect(await fs.readFile(path.join(dir, '.jutell-local', 'map.html'), 'utf8')).toContain('src/로그인/화면.tsx');
+  });
+
+  it('keeps the full JuTellMap.md and reads one selected detail from a small index', async () => {
+    const { dir, run } = await project('proj', [
+      'src/auth/LoginForm.tsx', 'src/auth/session.ts', 'src/auth/odd`file.ts', 'tests/auth.test.ts',
+      'src/payments/Checkout.tsx', 'src/payments/charge.ts', 'tests/payments.test.ts',
+      'src/reports/summary.ts', 'src/reports/export.ts',
+    ]);
+    expect(run('map').status).toBe(0);
+    let userEditedMap = await fs.readFile(path.join(dir, MAP_FILE), 'utf8');
+    userEditedMap = userEditedMap.replace('<!-- jutell:auto 로그인 -->', '설명: # 링크 [x](javascript:alert(1))\u001b[31m\n<!-- jutell:auto 로그인 -->');
+    await fs.writeFile(path.join(dir, MAP_FILE), userEditedMap);
+    await writeMap(resolveScope('project', dir));
+    const fullMapFile = path.join(dir, MAP_FILE);
+    const fullMap = await fs.readFile(fullMapFile, 'utf8');
+    expect(fullMap).toContain('src/payments/Checkout.tsx');
+
+    const indexFile = path.join(dir, '.jutell-local', MAP_INDEX_FILE);
+    const indexText = await fs.readFile(indexFile, 'utf8');
+    const index = JSON.parse(indexText) as { sourceMap: { path: string; sha256: string; commit: string | null }; sections: Array<{ id: string; name: string; detail: string; pathCount: number }> };
+    const login = index.sections.find((section) => section.name === '로그인');
+    const payments = index.sections.find((section) => section.name === '결제');
+    expect(login).toBeDefined();
+    expect(payments).toBeDefined();
+    expect(login!.pathCount).toBe(4);
+    expect(index.sections.some((section) => section.name === '아직 분류 안 된 파일')).toBe(false);
+    expect(index.sourceMap).toEqual({ path: MAP_FILE, sha256: sha256(fullMap), commit: null });
+    expect(indexText).not.toContain('src/auth/LoginForm.tsx');
+
+    const detailFile = path.join(dir, '.jutell-local', MAP_DETAILS_DIR, `${login!.id}.md`);
+    const detail = await fs.readFile(detailFile, 'utf8');
+    expect(detail).toContain('src/auth/LoginForm.tsx');
+    expect(detail).toContain('- `` src/auth/odd`file.ts `` — 기능');
+    expect(detail).toContain('\\# 링크 \\[x\\]\\(javascript:alert\\(1\\)\\)\\\\u001b\\[31m');
+    expect(detail).toContain('생성 시점의 파일 목록에서 확인');
+    expect(detail).toContain('데이터 연결');
+    expect(detail).toContain('테스트 경로의 존재는 통과 결과가 아닙니다');
+
+    const unselectedDetail = path.join(dir, '.jutell-local', MAP_DETAILS_DIR, `${payments!.id}.md`);
+    await fs.rm(unselectedDetail);
+    const movedMap = path.join(dir, `${MAP_FILE}.temporarily-hidden`);
+    await fs.rename(fullMapFile, movedMap);
+    const list = run('map', '--list');
+    const shown = run('map', '--show', login!.id);
+    await fs.rename(movedMap, fullMapFile);
+    expect(list.status).toBe(0);
+    expect(list.stdout).toContain(login!.id);
+    expect(list.stdout).toContain('파일 4개');
+    expect(list.stdout).toContain('jutell map --show <ID>');
+    expect(list.stdout).toContain('파일 목록: Git 파일 목록');
+    expect(list.stdout).not.toContain('src/auth/LoginForm.tsx');
+    expect(shown.status).toBe(0);
+    expect(shown.stdout).toContain('src/auth/LoginForm.tsx');
+    expect(shown.stdout).toContain(`인덱스에 기록한 지도: ${MAP_FILE} · SHA-256 ${sha256(fullMap)}`);
+    expect(shown.stdout).toContain('라이브 파일과 지도를 다시 확인하지 않았습니다.');
+    expect(shown.stdout).not.toContain('src/payments/Checkout.tsx');
+    await expect(fs.stat(unselectedDetail)).rejects.toThrow();
+    expect(await fs.readFile(fullMapFile, 'utf8')).toContain('src/payments/Checkout.tsx');
+    await fs.writeFile(detailFile, `${detail.split('\n', 1)[0]}\nraw \u001b[31mcontrol\u202e\rreturn`);
+    const terminalSafe = run('map', '--show', login!.id);
+    expect(terminalSafe.status).toBe(0);
+    expect(terminalSafe.stdout).toContain('\\u001b[31mcontrol\\u202e\\u000dreturn');
+    expect(terminalSafe.stdout).not.toContain('\u001b');
+    expect(terminalSafe.stdout).not.toContain('\r');
+    await fs.writeFile(detailFile, '사용자가 만든 같은 이름의 파일');
+    const rejected = run('map', '--show', login!.id);
+    expect(rejected.status).not.toBe(0);
+    expect(rejected.stderr).toContain('현재 인덱스 출처와 맞지 않아요');
+  });
+
+  it('refreshes only the feature detail whose evidence changed', async () => {
+    const { dir, run } = await project('proj', ['src/auth/LoginForm.tsx', 'src/payments/Checkout.tsx']);
+    expect(run('map').status).toBe(0);
+    const dataDir = path.join(dir, '.jutell-local');
+    const indexFile = path.join(dataDir, MAP_INDEX_FILE);
+    const before = JSON.parse(await fs.readFile(indexFile, 'utf8')) as {
+      generatedAt: string;
+      sourceMap: { sha256: string };
+      sections: Array<{ id: string; name: string }>;
+    };
+    const login = before.sections.find((section) => section.name === '로그인')!;
+    const payments = before.sections.find((section) => section.name === '결제')!;
+    const loginFile = path.join(dataDir, MAP_DETAILS_DIR, `${login.id}.md`);
+    const paymentsFile = path.join(dataDir, MAP_DETAILS_DIR, `${payments.id}.md`);
+    const loginBefore = await fs.readFile(loginFile, 'utf8');
+    const paymentsBefore = await fs.readFile(paymentsFile, 'utf8');
+
+    await fs.writeFile(path.join(dir, 'src', 'auth', 'session.ts'), 'x');
+    expect(run('map').status).toBe(0);
+
+    const afterMap = await fs.readFile(path.join(dir, MAP_FILE), 'utf8');
+    const after = JSON.parse(await fs.readFile(indexFile, 'utf8')) as typeof before;
+    expect(after.sourceMap.sha256).toBe(sha256(afterMap));
+    expect(after.generatedAt).not.toBe(before.generatedAt);
+    expect(await fs.readFile(loginFile, 'utf8')).not.toBe(loginBefore);
+    expect(await fs.readFile(loginFile, 'utf8')).toContain('src/auth/session.ts');
+    expect(await fs.readFile(paymentsFile, 'utf8')).toBe(paymentsBefore);
+  });
+
+  it('does not follow symlinked map data directories during selected reads', async () => {
+    const { dir, run } = await project();
+    expect(run('map').status).toBe(0);
+    const dataRoot = path.join(dir, '.jutell-local');
+    const savedData = path.join(dir, '.jutell-local-saved');
+    await fs.rename(dataRoot, savedData);
+    await fs.symlink(savedData, dataRoot);
+    const list = run('map', '--list');
+    expect(list.status).not.toBe(0);
+    expect(list.stderr).toContain('.jutell-local 경로가 일반 폴더가 아니어서 인덱스를 읽지 않았어요');
+    await fs.rm(dataRoot);
+    await fs.rename(savedData, dataRoot);
+
+    const index = JSON.parse(await fs.readFile(path.join(dataRoot, MAP_INDEX_FILE), 'utf8')) as { sections: Array<{ id: string; name: string }> };
+    const login = index.sections.find((section) => section.name === '로그인')!;
+    const detailsDir = path.join(dataRoot, MAP_DETAILS_DIR);
+    const savedDetails = path.join(dataRoot, `${MAP_DETAILS_DIR}-saved`);
+    await fs.rename(detailsDir, savedDetails);
+    await fs.symlink(savedDetails, detailsDir);
+    const shown = run('map', '--show', login.id);
+    expect(shown.status).not.toBe(0);
+    expect(shown.stderr).toContain('기능 상세 폴더가 일반 폴더가 아니어서 읽지 않았어요');
   });
 });
 

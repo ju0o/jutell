@@ -64,7 +64,10 @@ describe('map scanner (W1)', () => {
   it('not a git repo: stops at the file count cap and says so', async () => {
     const root = await project();
     const many = Array.from({ length: WALK_MAX_FILES + 5 }, (_, i) => `f${i}.txt`);
-    await Promise.all(many.map((file) => fs.writeFile(path.join(root, file), '')));
+    // Keep the fixture below the environment's open-file limit while still exercising the map cap.
+    for (let index = 0; index < many.length; index += 128) {
+      await Promise.all(many.slice(index, index + 128).map((file) => fs.writeFile(path.join(root, file), '')));
+    }
     const scan = await scanProject(root);
     expect(scan.truncated).toBe(true);
     expect(scan.files).toHaveLength(WALK_MAX_FILES);
@@ -115,15 +118,19 @@ describe('map scanner (W1)', () => {
 });
 
 describe('map classification (W1, plan.md §1)', () => {
-  it('① dictionary match → dictionary feature name, not estimated', () => {
-    expect(classifyFile('src/auth/LoginForm.tsx')).toEqual({ path: 'src/auth/LoginForm.tsx', feature: '로그인', estimated: false, role: '화면' });
-    expect(classifyFile('web/checkout.ts').feature).toBe('결제');
+  it('① dictionary match → dictionary feature name, labelled as an estimate', () => {
+    expect(classifyFile('src/auth/LoginForm.tsx')).toEqual({ path: 'src/auth/LoginForm.tsx', feature: '로그인', estimated: true, role: '화면' });
+    expect(classifyFile('web/checkout.ts')).toMatchObject({ feature: '결제', estimated: true });
   });
 
   it('② meaningful folder → first non-generic folder name, labelled as an estimate', () => {
-    expect(classifyFile('src/payments/x.ts')).toMatchObject({ feature: 'payments', estimated: true });
+    expect(classifyFile('src/payments/x.ts')).toMatchObject({ feature: '결제', estimated: true });
     expect(classifyFile('packages/cli/src/x.ts')).toMatchObject({ feature: 'cli', estimated: true });
     expect(ESTIMATED_LABEL).toBe('[지도 기준 추정]');
+  });
+
+  it('test folders do not become feature names when the file name identifies a feature', () => {
+    expect(classifyFile('tests/payments.test.ts')).toEqual({ path: 'tests/payments.test.ts', feature: '결제', estimated: true, role: '테스트' });
   });
 
   it('③ only generic folders → not yet classified', () => {
@@ -137,14 +144,14 @@ describe('map classification (W1, plan.md §1)', () => {
   });
 
   it('mixed case: generic folders and dictionary words match case-insensitively; folder names keep their case', () => {
-    expect(classifyFile('Src/Auth/x.ts').feature).toBe('로그인');
-    expect(classifyFile('SRC/Lib/Payments/X.ts')).toMatchObject({ feature: 'Payments', estimated: true });
+    expect(classifyFile('Src/Auth/x.ts')).toMatchObject({ feature: '로그인', estimated: true });
+    expect(classifyFile('SRC/Lib/Payments/X.ts')).toMatchObject({ feature: '결제', estimated: true });
     expect(classifyFile('Scripts/Run.js').feature).toBe(UNCLASSIFIED);
-    expect(classifyFile('src/userLoginPanel.ts').feature).toBe('로그인');
+    expect(classifyFile('src/userLoginPanel.ts')).toMatchObject({ feature: '로그인', estimated: true });
   });
 
   it('generic folder list is exactly the decided one', () => {
-    expect([...GENERIC_FOLDERS].sort()).toEqual(['app', 'apps', 'bin', 'common', 'helpers', 'internal', 'lib', 'misc', 'packages', 'scripts', 'shared', 'src', 'tools', 'util', 'utils']);
+    expect([...GENERIC_FOLDERS].sort()).toEqual(['__tests__', 'app', 'apps', 'bin', 'common', 'e2e', 'helpers', 'internal', 'lib', 'misc', 'packages', 'scripts', 'shared', 'spec', 'specs', 'src', 'test', 'tests', 'tools', 'util', 'utils']);
   });
 
   it('roles from extension and folder: 화면·기능·테스트·설정·문서', () => {
