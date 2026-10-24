@@ -568,6 +568,24 @@ export function userKeysInManagedBlock(content: string): string[] {
   const block = (content.match(markerPair(BEGIN_MARKER, END_MARKER)) ?? [])[0];
   if (!block) return [];
   const found: string[] = [];
+  // Parse the block as TOML first, so multi-line arrays and inline tables are read whole.
+  try {
+    const parsed = parse(block.split(/\r?\n/).filter((line) => !/^\s*#/.test(line)).join('\n')) as Record<string, unknown>;
+    const servers = parsed.mcp_servers as Record<string, unknown> | undefined;
+    const entry = servers?.[CANONICAL_MCP_KEY];
+    if (entry && typeof entry === 'object') {
+      const base = `mcp_servers.${CANONICAL_MCP_KEY}`;
+      for (const [key, value] of Object.entries(entry as Record<string, unknown>)) {
+        if (key === 'tools' && value && typeof value === 'object' && !Array.isArray(value)) {
+          for (const [tool, settings] of Object.entries(value as Record<string, unknown>)) {
+            if (!settings || typeof settings !== 'object' || Array.isArray(settings)) { found.push(`${base}.tools.${tool}`); continue; }
+            for (const name of Object.keys(settings as Record<string, unknown>)) if (name !== 'approval_mode') found.push(`${base}.tools.${tool}.${name}`);
+          }
+        } else if (!JUTELL_BLOCK_KEYS.has(key)) found.push(`${base}.${key}`);
+      }
+    }
+    return found;
+  } catch { /* not valid TOML on its own: fall back to reading line by line */ }
   let table = '';
   for (const line of block.split(/\r?\n/)) {
     const header = line.match(/^\s*\[([^\[\]]+)\]\s*(?:#.*)?$/);
@@ -586,7 +604,7 @@ export function userKeysInManagedBlock(content: string): string[] {
 export async function codexUninstallBlocker(paths: ScopePaths): Promise<string | undefined> {
   const stats = await fs.lstat(paths.codexConfigFile).catch(() => undefined);
   if (!stats) return undefined;
-  if (stats.isSymbolicLink()) return `Codex 전역 설정 파일(${paths.codexConfigFile})이 다른 파일을 가리키는 링크라서 건드리지 않았어요. 링크를 그대로 두려고 JuTell 연결은 직접 지워 주세요.`;
+  if (stats.isSymbolicLink()) return `Codex 전역 설정 파일(${paths.codexConfigFile})이 다른 파일을 가리키는 링크라서 건드리지 않았어요. 링크가 깨지지 않게 그대로 두었으니, 그 안의 JuTell 연결(# JUTELL_CLI_MCP_BEGIN ~ END 부분)은 직접 지워 주세요.`;
   const content = await readText(paths.codexConfigFile) ?? '';
   try { parse(content); } catch {
     return `Codex 전역 설정 파일(${paths.codexConfigFile})의 형식이 깨져 있어서 JuTell 연결은 지우지 못했어요. 파일을 고친 뒤 다시 실행하세요. 나머지 제거는 계속했어요.`;

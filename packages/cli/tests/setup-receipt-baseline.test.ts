@@ -6,7 +6,7 @@ import { PassThrough } from 'node:stream';
 import { afterEach, describe, expect, it } from 'vitest';
 import { resolveScope } from '../src/config/paths.js';
 import { setupCommand } from '../src/commands/lifecycle.js';
-import { receiptCommand } from '../src/commands/receipt/index.js';
+import { receiptCommand, recordReceiptBaseline } from '../src/commands/receipt/index.js';
 import type { CliIo } from '../src/types.js';
 
 const saved = { CODEX_HOME: process.env.CODEX_HOME, HOME: process.env.HOME };
@@ -46,5 +46,28 @@ describe('setup records the receipt baseline', () => {
     expect(text).toMatch(/package-lock\.json.*\(작업 전부터\)|\(작업 전부터\).*package-lock\.json/);
     expect(text).not.toMatch(/요청에 없던 곳도 바뀜:[^\n]*package/);
     expect(text).not.toContain('첫 영수증이라');
+  });
+
+  it('a second `jutell` run mid-task does not move the baseline (the AI\'s edits stay real changes)', async () => {
+    const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-base2-')));
+    roots.push(root);
+    const project = path.join(root, 'proj');
+    await fs.mkdir(path.join(project, 'src'), { recursive: true });
+    await fs.writeFile(path.join(project, 'src', 'login.ts'), 'v1\n');
+    const git = (...args: string[]) => execFileSync('git', args, { cwd: project });
+    git('init', '-q'); git('add', '.'); git('-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', 'base');
+    await fs.writeFile(path.join(project, 'notes.txt'), 'old\n');
+    const paths = resolveScope('project', project);
+    await recordReceiptBaseline(paths);
+    await fs.writeFile(path.join(project, 'src', 'login.ts'), 'v2\n');
+    await recordReceiptBaseline(paths); // e.g. the person runs `jutell` again during the task
+    const out: string[] = [];
+    const io = { write: (m: string) => out.push(m), error: (m: string) => out.push(m), ask: async () => true } as unknown as CliIo;
+    const stdin = new PassThrough();
+    stdin.end(JSON.stringify({ asked: ['로그인 고치기'], done: ['로그인 고침'] }));
+    expect(await receiptCommand(paths, ['--file', '-'], io, stdin)).toBe(0);
+    const text = out.join('\n');
+    expect(text).toMatch(/notes\.txt.*\(작업 전부터\)/);
+    expect(text).not.toMatch(/login\.ts.*\(작업 전부터\)/);
   });
 });
