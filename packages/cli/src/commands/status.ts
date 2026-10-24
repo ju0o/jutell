@@ -5,7 +5,7 @@ import net from 'node:net';
 import path from 'node:path';
 import { assets, codexScopedPaths, packageRoot, safeLocation, resolveScope as resolveGuiScope } from '../config/paths.js';
 import { claudeDetected, codexDetected, nodeMajorVersion, operatingSystem } from '../process/system.js';
-import { exists, parseSkillVersion, readBridgeConfig, readCodexRegistration, readText, unreadableWarning, withReadOnlyReads, readVersionInfo, FEATURE_IDS } from '../config/managed.js';
+import { exists, parseSkillVersion, readBridgeConfig, readCodexRegistration, readText, unreadableDetail, unreadableWarning, withReadOnlyReads, readVersionInfo, FEATURE_IDS } from '../config/managed.js';
 import { setupCommand } from './lifecycle.js';
 import { hasJuTellAgentsBlock, receiptCommandFor, writtenReceiptCommands } from '../installer/agents.js';
 import { differingSkillFiles } from '../installer/skill.js';
@@ -152,9 +152,14 @@ export async function statusCommand(paths: ScopePaths, options: CliOptions, io: 
   const claudeDetectedLabel = status.claudeDetected ? '감지됨' : status.claude.registered ? '설정 있음(명령 미감지)' : '미감지';
   const claudeScopeNote = status.installationScope === 'global' ? '사용자 전역(user)' : '현재 프로젝트(local)';
   io.write(`JuTell 상태\n\nCLI: ${status.cliVersion}\nSkill: ${status.skillInstalled ? '설치됨' : '설치되지 않음'}\nAGENTS.md: ${status.agentsManaged ? 'JuTell 블록 있음' : 'JuTell 블록 없음'}\nJuTell 연결 정책: ${status.mcpEnabled ? '켜짐' : '꺼짐'}\nCodex MCP (전역, Codex는 프로젝트 설정을 읽지 않음): ${codexLabel}${status.codexDetected ? ` (명령 ${codexDetectedLabel})` : ''}\nCodex (CLI·앱·IDE 확장 공용 설정): ChatGPT 데스크톱 앱과 IDE 확장도 위 Codex 설정을 같이 씁니다. 바꾼 뒤 앱은 설정 → MCP servers → Restart, IDE는 Restart extension\nOpenCode MCP: ${opencodeLabel}${status.opencode.enabled ? ' (새 세션 자동 시작 켜짐)' : ''}${status.opencodeDetected ? '' : ` (명령 ${opencodeDetectedLabel})`}\nClaude Code MCP (${claudeScopeNote}): ${claudeLabel}${status.claudeDetected ? '' : ` (명령 ${claudeDetectedLabel})`}\nMCP 서버 응답: ${actual}\n현재 Agent 세션 적용: 직접 확인 필요\nProfile: ${status.profile}\n활성 Feature: ${status.activeFeatureCount}개\n설치 범위 (설정·Skill·AGENTS.md): ${status.installationScope === 'global' ? '사용자 전역' : '현재 프로젝트'}\n로컬 관리자: ${status.localAdmin}\n로컬 사용량 카운터: ${status.usageCountersEnabled ? '켜짐' : '꺼짐'}\nTelemetry: ${status.telemetry}\n외부 전송: ${status.externalTransmission}\n설정 위치: ${status.configLocation}`);
-  for (const app of status.apps) {
-    const check = guiStatusCheck(app);
-    io.write(`${check.label}: ${check.status === '정상' ? '' : `${check.status} — `}${check.detail}`);
+  // dogfood (cycle-3 main): GUI app lines sit together under one heading so they are easy to find.
+  if (status.apps.length) {
+    io.write('\nGUI 앱 연결 (jutell use <앱>으로 연결):');
+    for (const app of status.apps) {
+      const check = guiStatusCheck(app);
+      io.write(`  - ${check.label}: ${check.status === '정상' ? '' : `${check.status} — `}${check.detail}`);
+    }
+    io.write('');
   }
   for (const warning of status.warnings) io.write(`주의: ${warning}`);
   const duplicate = vscodeDuplicateNote(status.apps);
@@ -230,7 +235,7 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   const { result, unreadable } = await withReadOnlyReads(() => collectDoctorResults(paths));
   for (const { file, code } of unreadable) {
     const shown = displayPath(paths, file);
-    result.push({ name: `읽을 수 없는 파일: ${shown}`, status: '주의', detail: unreadableWarning(shown, code) });
+    result.push({ name: `읽을 수 없는 파일: ${shown}`, status: '주의', detail: unreadableDetail(code) });
   }
   return result;
 }

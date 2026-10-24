@@ -1,6 +1,8 @@
 // .jutell-local/map.html: a compact path index with optional detail cards.
 // No scripts or external requests; every map byte is escaped.
 
+import { MARKDOWN_ONLY_LINES } from './guide.js';
+
 export const MAP_HTML_FILE = 'map.html';
 
 export function escapeHtml(value: string) {
@@ -59,6 +61,7 @@ function parseSections(markdown: string) {
   for (const raw of lines) {
     const line = raw.trimEnd();
     if (!line.trim()) continue;
+    if (MARKDOWN_ONLY_LINES.has(line.trim())) continue;
     if (line.startsWith('# ')) { title = line.slice(2); continue; }
     if (line.startsWith('## ')) {
       current = { title: line.slice(3), files: [], notes: [] };

@@ -70,6 +70,20 @@ const ALLOWED_EXCEPTIONS = [
     scope: 'line 필드가 가리키는 줄의 parentEscape 탐지에만 적용 (같은 파일의 다른 줄은 계속 검사)',
   },
   {
+    file: 'packages/cli/src/commands/status.ts',
+    kind: 'parentEscape',
+    line: 'const relative = path.relative(paths.targetRoot, file);',
+    reason: '경고에 보여 줄 파일 이름을 프로젝트 기준으로 줄이는 코드(결과가 ..로 시작하면 원래 경로를 그대로 보여 줌). 경로 탈출이 아님',
+    scope: 'line 필드가 가리키는 줄의 parentEscape 탐지에만 적용 (같은 파일의 다른 줄은 계속 검사)',
+  },
+  {
+    file: 'packages/cli/tests/readonly-unreadable.test.ts',
+    kind: 'parentEscape',
+    line: "path.resolve(import.meta.dirname, '..', 'dist', 'index.js')",
+    reason: '테스트가 빌드된 CLI(packages/cli/dist)를 찾는 경로. 저장소 밖으로 나가지 않음',
+    scope: 'line 필드가 가리키는 줄의 parentEscape 탐지에만 적용 (같은 파일의 다른 줄은 계속 검사)',
+  },
+  {
     file: 'apps/mcp-server/src/config/project-root.ts',
     kind: 'parentEscape',
     reason: '데이터 폴더가 프로젝트 루트 안에 있는지 확인하는 방어 코드(path.relative 결과가 ..로 시작하면 거부). 경로 탈출이 아니라 탈출 차단',

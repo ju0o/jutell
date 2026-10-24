@@ -218,7 +218,16 @@ function desiredEntry(existing: Record<string, unknown> | undefined, entry: Json
     if (key === 'args' && Array.isArray(value) && Array.isArray(existing.args)) {
       // Values the person added to args (e.g. `--flag`) stay, after JuTell's server path.
       const server = serverPathOf(existing);
-      merged.args = [...value, ...existing.args.filter((arg) => arg !== server && !value.includes(arg))];
+      // Each JuTell value cancels one matching old value only, so a person's value that happens to be equal stays (PR-G).
+      const left: unknown[] = [...value];
+      let serverSeen = false;
+      const kept = existing.args.filter((arg) => {
+        if (!serverSeen && arg === server) { serverSeen = true; const at = left.indexOf(arg); if (at >= 0) left.splice(at, 1); return false; }
+        const at = left.indexOf(arg);
+        if (at >= 0) { left.splice(at, 1); return false; }
+        return true;
+      });
+      merged.args = [...value, ...kept];
       continue;
     }
     merged[key] = key === 'env' && isPlainObject(value) && isPlainObject(existing.env) ? { ...existing.env, ...value } : value;

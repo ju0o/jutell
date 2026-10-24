@@ -460,19 +460,25 @@ JuTell은 여러분 컴퓨터에 이미 있는 파일·Git·명령 결과를 바
 ### GUI 앱 연결하기 (Cursor · VS Code · Claude Desktop · Windsurf)
 
 `jutell`만 실행하면 이 앱들은 건드리지 않아요. `jutell use <앱>`을 직접 입력했을 때만 연결합니다.
-JuTell은 자기 `jutell` 항목만 바꾸고, 파일 백업을 남기고, 다른 서버와 주석은 그대로 둡니다.
+JuTell은 앱 설정 파일에서 자기 `jutell` 항목만 바꾸고, 바꾸기 전 파일을 백업해 두고, 다른 도구 연결(다른 MCP 서버 항목)과
+주석(메모 줄)은 그대로 둡니다. `use`는 앱 파일과 함께 이 프로젝트에 **JuTell 규칙 파일**도 만들어요:
+`AGENTS.md`(AI가 읽는 규칙), `.agents/skills/`(Skill), `.jutell.json`(설정), `.jutell-local/`(작업 기록).
+Codex 등 다른 AI 연결과 함께 쓰는 파일이에요. `jutell uninstall --yes`는 `AGENTS.md`의 JuTell 내용과 Skill을 빼고
+`.jutell.json`·`.jutell-local/`은 남겨요. 이것까지 지우려면 `--remove-data`를 붙이세요.
 
 | 앱 | 연결 | 바뀌는 파일 | 연결한 뒤 | 빼기 |
 |---|---|---|---|---|
-| **Cursor** (이 프로젝트) | `jutell use cursor` | `<프로젝트>/.cursor/mcp.json` (모든 OS) | Cursor 다시 시작 | `jutell disconnect cursor` |
-| **Cursor** (모든 폴더) | `jutell use cursor --global` | Linux·macOS: `~/.cursor/mcp.json`. Windows: 확인 안 됨 (JuTell은 홈 폴더 아래 `~/.cursor/mcp.json`을 씀) | Cursor 다시 시작 | `jutell disconnect cursor --global` |
-| **VS Code** (이 프로젝트) | `jutell use vscode` | `<프로젝트>/.vscode/mcp.json` (모든 OS) | MCP: List Servers → jutell → Restart Server | `jutell disconnect vscode` |
-| **VS Code** (사용자 프로필) | `jutell use vscode --global` | Linux: `~/.config/Code/User/mcp.json` (`$XDG_CONFIG_HOME`이 있으면 그 아래). macOS·Windows: 확인 안 됨. 방법만 알려 주고 바꾸지 않아요 | MCP: List Servers → jutell → Restart Server | `jutell disconnect vscode --global` |
-| **Claude Desktop** | `jutell use claude-desktop` | macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`. Windows: `%APPDATA%\Claude\claude_desktop_config.json`. Linux: 확인 안 됨. 넣을 항목만 보여 주고 바꾸지 않아요 | Claude Desktop을 완전히 종료한 뒤 다시 열기 | `jutell disconnect claude-desktop` |
-| **Windsurf** | 상태 보기만 | JuTell은 읽기만 하고 쓰지 않아요 | — | `jutell` 항목을 직접 지우세요 |
+| **Cursor** (이 프로젝트) | `jutell use cursor` | `<프로젝트>/.cursor/mcp.json` (모든 OS) + JuTell 규칙 파일 | Cursor 다시 시작 | `jutell disconnect cursor` |
+| **Cursor** (모든 폴더) | `jutell use cursor --global` | Linux·macOS: `~/.cursor/mcp.json`. Windows: 확인 안 됨 — Cursor 문서에 Windows 위치가 없어요. JuTell은 홈 폴더 아래 `.cursor\mcp.json`에 쓰니, 연결 뒤 Cursor에 jutell이 보이는지 확인하세요 + JuTell 규칙 파일 | Cursor 다시 시작 | `jutell disconnect cursor --global` |
+| **VS Code** (이 프로젝트) | `jutell use vscode` | `<프로젝트>/.vscode/mcp.json` (모든 OS) + JuTell 규칙 파일 | 명령 팔레트(Ctrl+Shift+P, macOS는 ⇧⌘P)에서 MCP: List Servers → jutell → Restart Server | `jutell disconnect vscode` |
+| **VS Code** (사용자 프로필) | `jutell use vscode --global` | Linux: `~/.config/Code/User/mcp.json` (설정 폴더 위치를 바꾸는 환경 변수 `$XDG_CONFIG_HOME`을 직접 정해 두었다면 그 폴더 아래. 대부분은 해당 없어요). macOS·Windows: 확인 안 됨. 방법만 알려 주고 바꾸지 않아요 + JuTell 규칙 파일 | 명령 팔레트(Ctrl+Shift+P, macOS는 ⇧⌘P)에서 MCP: List Servers → jutell → Restart Server | `jutell disconnect vscode --global` |
+| **Claude Desktop** | `jutell use claude-desktop` | macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`. Windows: `%APPDATA%\Claude\claude_desktop_config.json`. Linux: 확인 안 됨. 넣을 항목만 보여 주고 바꾸지 않아요 + JuTell 규칙 파일 | Claude Desktop을 완전히 종료한 뒤 다시 열기 | `jutell disconnect claude-desktop` |
+| **Windsurf** | 상태 보기만 | JuTell은 읽기만 하고 쓰지 않아요 | — | Windsurf의 MCP 설정에서 `jutell` 항목을 직접 지우세요 |
 
-`--global`로 연결한 앱은 모든 폴더에서 이 프로젝트의 지도·영수증을 씁니다. 다른 프로젝트에서는
-그 프로젝트에서 같은 `--global` 명령을 다시 실행하세요. `jutell status`에서 모든 앱 파일을 볼 수 있고,
+`--global`은 위험한 설정이 아니에요. 다른 폴더의 파일은 바꾸지 않아요. 다만 그 앱을 어느 폴더에서 열든 JuTell은
+**마지막으로 `--global`을 실행한 프로젝트**의 지도·영수증을 읽고 써요. 다른 프로젝트에서 쓰려면 그 프로젝트에서 같은
+`--global` 명령을 다시 실행하세요. 연결이 그쪽으로 옮겨 가고, 앞 프로젝트의 지도·영수증은 지워지지 않고 남아요.
+한 프로젝트만 쓴다면 `--global` 없이 연결하는 편이 헷갈리지 않아요. `jutell status`에서 모든 앱 파일을 볼 수 있고,
 `jutell uninstall --yes`도 이 프로젝트의 앱 파일에서 JuTell을 뺍니다.
 
 실제 출력 (Linux, 임시 폴더를 `~/my-project`로 표시):
@@ -481,6 +487,7 @@ JuTell은 자기 `jutell` 항목만 바꾸고, 파일 백업을 남기고, 다�
 $ jutell use cursor
 Cursor (이 프로젝트) 연결이 끝났어요. 설정 파일: ~/my-project/.cursor/mcp.json
 바뀐 연결은 Cursor를 다시 시작하면 적용돼요.
+이 프로젝트에 JuTell 규칙 파일도 준비했어요: AGENTS.md, .agents/skills/, .jutell.json, .jutell-local/ (모든 AI 연결이 함께 써요. jutell uninstall --yes는 AGENTS.md의 JuTell 내용과 Skill을 빼고 .jutell.json·.jutell-local/은 남겨요. 이것까지 지우려면 --remove-data를 붙이세요)
 
 $ jutell use windsurf
 Windsurf은(는) 아직 읽기만 지원해요. 설정 파일을 바꾸지 않았어요. 연결 상태는 `jutell status`에서 볼 수 있어요.

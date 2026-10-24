@@ -5,7 +5,7 @@ import { disconnectGuiApp, guiWriteTargets, useGuiApp, writeLines } from '../ins
 import { readCodexRegistration, registerMcp, snapshot, restore } from '../config/managed.js';
 import { ensureBridgeConfig, setMcpEnabled } from '../installer/config.js';
 import { installSkill, recordSkillFiles, removeAddedSkillFiles, skillConflictMessage, skillRefreshMessage } from '../installer/skill.js';
-import { agentsFile, claudeMdFile, ensureJuTellAgentsBlock } from '../installer/agents.js';
+import { agentsFile, claudeMdFile, ensureJuTellAgentsBlock, hasJuTellAgentsBlock } from '../installer/agents.js';
 import { opencodeDetected, readOpenCodeRegistration, registerOpenCodeMcp, setOpenCodeEnabled } from '../installer/opencode.js';
 import { readClaudeRegistration, registerClaudeMcp, removeClaudeMcp } from '../installer/claude.js';
 import { findProvider, supportedProviderNames, type AgentProvider, type AgentProviderId } from '../installer/providers.js';
@@ -132,6 +132,9 @@ async function useGuiCommand(app: GuiApp, paths: ScopePaths, options: CliOptions
   const targets = guiWriteTargets(app, wantsGlobal, project.targetRoot);
   const dirExisted = targets ? await fs.lstat(targets.dir).then(() => true, () => false) : true;
   const snapshots = await Promise.all([project.configFile, agentsFile(project.targetRoot), ...(targets?.files ?? [])].map((file) => snapshot(file)));
+  // F3: say "준비했어요" only when this run created some of the rule files.
+  const present = (file: string) => fs.lstat(file).then(() => true, () => false);
+  const hadRules = await present(project.configFile) && await present(project.dataRoot) && await hasJuTellAgentsBlock(project.targetRoot).catch(() => false);
   let changed: string[] = [];
   try {
     await ensureBridgeConfig(project, options.profile);
@@ -142,7 +145,7 @@ async function useGuiCommand(app: GuiApp, paths: ScopePaths, options: CliOptions
     const outcome = await useGuiApp(app, wantsGlobal, project.targetRoot);
     if (outcome.error) throw new Error(outcome.error);
     await recordSkillFiles(project, [...changed, ...skillResult.replaced]);
-    writeLines(io, outcome.message);
+    writeLines(io, [...outcome.message, hadRules && changed.length === 0 ? PROJECT_RULE_FILES_KEPT_NOTE : PROJECT_RULE_FILES_NOTE]);
     return { cancelled: false };
   } catch (error) {
     await rollback(snapshots, changed, project);
@@ -150,6 +153,12 @@ async function useGuiCommand(app: GuiApp, paths: ScopePaths, options: CliOptions
     throw error;
   }
 }
+
+// dogfood (cycle-3 main): `use cursor` also creates these, so say so on screen (README lists the same four).
+// #46 B1: uninstall --yes keeps .jutell.json and .jutell-local/; only --remove-data deletes them (README parity test).
+export const RULE_FILES_REMOVAL_KO = 'jutell uninstall --yes는 AGENTS.md의 JuTell 내용과 Skill을 빼고 .jutell.json·.jutell-local/은 남겨요. 이것까지 지우려면 --remove-data를 붙이세요';
+export const PROJECT_RULE_FILES_NOTE = `이 프로젝트에 JuTell 규칙 파일도 준비했어요: AGENTS.md, .agents/skills/, .jutell.json, .jutell-local/ (모든 AI 연결이 함께 써요. ${RULE_FILES_REMOVAL_KO})`;
+export const PROJECT_RULE_FILES_KEPT_NOTE = `이 프로젝트의 JuTell 규칙 파일(AGENTS.md, .agents/skills/, .jutell.json, .jutell-local/)은 이미 있어서 그대로 함께 써요. (${RULE_FILES_REMOVAL_KO})`;
 
 function guiOnlyWithUse(name: string | undefined) {
   const app = findGuiApp(name);

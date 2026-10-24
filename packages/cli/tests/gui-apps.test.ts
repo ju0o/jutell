@@ -151,7 +151,7 @@ describe('jutell use / disconnect <GUI app> (built dist)', () => {
     const { run } = await sandbox();
     const out = run(['disconnect', 'claude-desktop', '--yes']);
     expect(out.status, out.stderr).toBe(0);
-    expect(out.stdout).toContain('Claude Desktop 설정 파일 위치가 이 운영체제에서는 문서로 확인 안 됨');
+    expect(out.stdout).toContain('Claude Desktop 설정 파일 위치가 이 운영체제에서는 공식 문서에 없어서');
     expect(out.stdout).not.toContain('VS Code');
   });
 
