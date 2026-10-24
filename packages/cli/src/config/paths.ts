@@ -116,6 +116,13 @@ export function safeLocation(scope: InstallScope, kind: 'config' | 'codex') {
  * while Codex never actually sees the server. `.jutell.json`, the Skill,
  * and the AGENTS.md block are unaffected and keep following the
  * requested scope; only the Codex MCP file location is forced.
+ *
+ * Official docs (https://developers.openai.com/codex/mcp, checked 2026-10-24):
+ * "you can also scope MCP servers to a project with `.codex/config.toml`
+ * (trusted projects only)" and "The ChatGPT desktop app, Codex CLI, and IDE
+ * extension share this configuration." JuTell still never writes the
+ * project file: it only works in trusted projects, so the global file is the
+ * one place every Codex client (CLI, app, IDE extension) reliably reads.
  */
 export function codexScopedPaths(paths: ScopePaths): ScopePaths {
   return { ...paths, scope: 'global', codexConfigFile: path.join(codexHome(), 'config.toml') };
