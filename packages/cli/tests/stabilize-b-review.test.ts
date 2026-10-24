@@ -75,9 +75,9 @@ describe('#35 review follow-ups', () => {
     expect(check?.detail).toContain('AGENTS.md');
   }, 60_000);
 
-  it('the receipt failure rule lives in the AGENTS.md/CLAUDE.md block, not in SKILL.md', async () => {
+  it('the receipt failure rule is self-contained in SKILL.md (not a pointer to AGENTS.md), so block-less agents keep it', async () => {
     const skill = await fs.readFile(path.join(__dirname, '..', 'assets', 'skill', 'SKILL.md'), 'utf8');
-    expect(skill).not.toMatch(/^14\./m);
+    expect(skill).toMatch(/^14\. 영수증 명령이 실패하면/m);
     expect(skill).not.toContain('AGENTS.md의 실패 문장');
     expect(Buffer.byteLength(skill)).toBeLessThanOrEqual(6144);
   });
