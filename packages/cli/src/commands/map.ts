@@ -5,6 +5,7 @@ import { friendlyError } from '../output/friendly.js';
 import { addGitExclude, gitExcludeMessage, removeGitExclude } from '../map/git-exclude.js';
 import { formatMapSelectionContext, formatMapSelectionIndex, readMapSelectionDetail, mapSelectionProblems, readMapSelectionIndex, sanitizeMapSelectionText } from '../map/selection.js';
 import { scanProject } from '../map/scan.js';
+import { subjectParticle } from '../map/stamp.js';
 import { MAP_STATE_FILE, mapFile, mapHtmlMessage, mapListFiles, mapWriteMessage, parseMap, readMapState, sha256, writeMap, writeMapHtml } from '../map/write.js';
 import type { CliIo, ScopePaths } from '../types.js';
 import { MAP_HTML_FILE } from '../map/html.js';
@@ -41,9 +42,9 @@ export async function mapCommand(paths: ScopePaths, args: string[], io: CliIo) {
       const { index } = await readMapSelectionIndex(paths);
       const word = id.toLowerCase();
       const found = index.sections.filter((section) => section.name.toLowerCase().includes(word));
-      if (!found.length) throw new Error(`'${id}'이(가) 들어간 기능 이름이 없어요. \`jutell map --list\`로 목록을 확인하세요.`);
+      if (!found.length) throw new Error(`'${id}'${subjectParticle(id)} 들어간 기능 이름이 없어요. \`jutell map --list\`로 목록을 확인하세요.`);
       if (found.length > 1) {
-        io.write([`'${id}'이(가) 들어간 기능이 ${found.length}개예요. 하나를 골라 ID로 다시 보세요.`, ...found.map((section) => `- ${sanitizeMapSelectionText(section.name)} · ID ${section.id}`)].join('\n'));
+        io.write([`'${id}'${subjectParticle(id)} 들어간 기능이 ${found.length}개예요. 하나를 골라 ID로 다시 보세요.`, ...found.map((section) => `- ${sanitizeMapSelectionText(section.name)} · ID ${section.id}`)].join('\n'));
         return 0;
       }
       id = found[0].id;

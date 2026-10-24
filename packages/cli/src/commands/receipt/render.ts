@@ -52,7 +52,8 @@ export const AI_RESULTS_NOTE = ` ⓘ 위 테스트·명령 결과는 AI가 알�
 // A run record: a command name as a whole word (not 'test-app' or 'npm-debug.log'), or a run word plus a
 // result word ('테스트 통과'). A line that says it was NOT run ('실행하지 않음') never counts.
 const RUN_COMMAND = /(?<![\w./-])(?:npm|npx|pnpm|yarn|tsc|vitest|jest|pytest|eslint|cargo|make)(?![\w./-])/i;
-const RUN_NOUN = /테스트|빌드|검사|린트|명령|(?<![\w./-])(?:tests?|build|lint)(?![\w./-])/i;
+// A noun that names a folder or file ('tests 폴더', '테스트 파일') is not a run.
+const RUN_NOUN = /(?:테스트|빌드|검사|린트|명령|(?<![\w./-])(?:tests?|build|lint)(?![\w./-]))(?!\s*(?:폴더|디렉터리|디렉토리|파일|folder|dir|file))/i;
 const RUN_RESULT = /실행했|실행함|실행 결과|돌려|돌렸|돌림|통과|실패|성공|(?<![\w-])(?:passed|failed|ran)(?![\w-])/i;
 const NOT_RUN = /않|안 ?함|안 ?했|안 ?돌|못 ?함|못 ?했|못 ?돌|생략|건너|미실행|(?<![\w-])(?:not|didn't|skipped)(?![\w-])/i;
 export function mentionsRunRecord(text: string): boolean {
