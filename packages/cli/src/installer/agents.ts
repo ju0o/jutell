@@ -105,7 +105,9 @@ async function removeManagedBlock(file: string) {
   const current = await readText(file);
   if (!current || !markerPattern().test(current)) return { changed: false };
   const next = current.replace(markerPattern(), '').replace(/\n{3,}/g, '\n\n').trimEnd();
-  await writeTextSafely(file, next ? `${next}\n` : '');
+  // A file that held only JuTell's block is JuTell-made; leaving a 0-byte file behind confused users.
+  if (!next) { await fs.rm(file, { force: true }); return { changed: true, removedFile: true }; }
+  await writeTextSafely(file, `${next}\n`);
   return { changed: true };
 }
 

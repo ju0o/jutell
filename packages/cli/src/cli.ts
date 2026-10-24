@@ -75,9 +75,11 @@ export async function run(argv: string[] = process.argv.slice(2), io: CliIo = cr
     return exitCode;
   } catch (error) {
     if (error instanceof NeedsConfirmationError) {
+      // Say exactly what to type: on/off/enable/disable/uninstall only change things with --yes.
+      const example = commandName ? ` (예: jutell ${commandName} --yes)` : '';
       io.error(commandName === 'uninstall'
-        ? '확인 없이는 제거하지 않았어요. --yes를 붙이세요'
-        : '확인 없이는 진행하지 않았어요. --yes를 붙이세요');
+        ? `확인 없이는 제거하지 않았어요. --yes를 붙이세요${example}. 지우기 전에 남는 것과 지우는 것은 jutell --help에서 볼 수 있어요.`
+        : `확인 없이는 진행하지 않았어요. --yes를 붙이세요${example}. on·off·enable·disable·uninstall은 --yes가 있어야 바뀌어요.`);
       return 1;
     }
     io.error(`오류: ${safeError(error, argv.includes('--verbose'))}`);

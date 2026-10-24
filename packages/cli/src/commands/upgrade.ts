@@ -103,7 +103,7 @@ export async function upgradeCommand(paths: ScopePaths, options: CliOptions, io:
         opencodeRefreshed ? 'OpenCode' : null,
         claudeRefreshed ? 'Claude Code' : null,
       ].filter(Boolean).join(', ');
-      parts.push(`- MCP: ${refreshed} canonical jutell 블록을 현재 패키지 경로로 새로고침했습니다. 관련 없는 설정은 보존했습니다.`);
+      parts.push(`- MCP: ${refreshed} 설정에 JuTell이 넣은 연결(jutell 이름) 부분을 지금 설치된 JuTell 위치로 고쳤습니다. 관련 없는 설정은 보존했습니다.`);
     } else {
       parts.push('- MCP: 등록된 Provider가 없어 MCP를 새로고침하지 않았습니다. jutell use <provider>로 연결하세요.');
     }

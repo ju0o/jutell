@@ -191,11 +191,28 @@ export async function uninstallCommand(paths: ScopePaths, options: CliOptions, i
     await fs.rm(paths.configFile, { force: true });
     await fs.rm(paths.dataRoot, { recursive: true, force: true });
   }
-  io.write(`제거했습니다. ${removeData ? '설정과 Beta Journal도 삭제했습니다.' : '설정과 Beta Journal은 보존했습니다.'}`);
+  if (paths.scope === 'project') await removeEmptyFolders([path.dirname(paths.skillRoot), path.dirname(path.dirname(paths.skillRoot))]);
+  io.write(`제거했습니다. ${removeData ? '설정과 Beta Journal(JuTell이 남긴 하루 작업 기록)도 삭제했습니다.' : '설정과 Beta Journal(JuTell이 남긴 하루 작업 기록)은 보존했습니다.'}`);
+  if (paths.scope === 'project') io.write(leftoverNote(removeData));
   for (const note of codexNotes) io.write(note);
   if (codexLocal && codexRemoved) io.write('Codex 전역 설정에 남아 있던 이 프로젝트용 JuTell 연결(이 폴더의 node_modules를 가리킴)도 지웠어요. 다른 설정은 그대로예요.');
-  if (codexSkipped) io.write('Codex MCP 연결(전역 설정)은 다른 프로젝트와 공유되어 제거하지 않았습니다. 모든 프로젝트에서 제거하려면 jutell uninstall --global 을 실행하세요.');
+  if (codexSkipped) io.write('Codex와 JuTell을 잇는 연결(MCP)은 이 컴퓨터의 모든 프로젝트가 함께 쓰는 Codex 설정 파일에 있어서, 다른 프로젝트와 공유되어 제거하지 않았습니다. 모든 프로젝트에서 지우려면 jutell uninstall --global --yes 를 실행하세요.');
   return { cancelled: false };
+}
+
+/** Folders JuTell made for its Skill (.agents/skills, .agents) are removed only when nothing else is inside. */
+async function removeEmptyFolders(dirs: string[]) {
+  for (const dir of dirs) {
+    try { await fs.rmdir(dir); } catch { return; }
+  }
+}
+
+function leftoverNote(removeData: boolean) {
+  const kept = removeData
+    ? 'JuTellMap.md(프로젝트 지도)'
+    : '.jutell.json(설정), .jutell-local/(작업 기록·영수증·지도 상세), JuTellMap.md(프로젝트 지도)';
+  const how = removeData ? '필요 없으면 직접 지우세요.' : '모두 지우려면 jutell uninstall --remove-data --yes 를 실행한 뒤 JuTellMap.md를 직접 지우세요.';
+  return `남겨 둔 것: ${kept}. 다시 설치하면 그대로 이어서 씁니다. ${how}`;
 }
 
 export async function onCommand(paths: ScopePaths, options: CliOptions, io: CliIo) {

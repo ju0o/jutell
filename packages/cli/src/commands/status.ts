@@ -7,7 +7,7 @@ import { assets, codexScopedPaths, packageRoot, safeLocation } from '../config/p
 import { claudeDetected, codexDetected, nodeMajorVersion, operatingSystem } from '../process/system.js';
 import { exists, parseSkillVersion, readBridgeConfig, readCodexRegistration, readText, readVersionInfo, FEATURE_IDS } from '../config/managed.js';
 import { setupCommand } from './lifecycle.js';
-import { hasJuTellAgentsBlock } from '../installer/agents.js';
+import { hasJuTellAgentsBlock, receiptCommandFor } from '../installer/agents.js';
 import { differingSkillFiles } from '../installer/skill.js';
 import { opencodeDetected, readOpenCodeRegistration } from '../installer/opencode.js';
 import { readClaudeRegistration } from '../installer/claude.js';
@@ -227,8 +227,8 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   const differingList = `${differing.slice(0, 5).join(', ')}${differing.length > 5 ? ` 외 ${differing.length - 5}개` : ''}`;
   checks.push({ name: 'Skill 버전', status: skillMatch ? '정상' : skillVersion ? '주의' : '직접 확인 필요', detail: skillMatch ? `스킬 버전 ${sourceVersion ?? '(버전 기록 없음)'} (설치 사본 일치).` : skillVersion ? `설치된 안내 파일이 이 버전과 달라요: ${differingList}. 프로젝트 폴더에서 \`jutell\`을 실행하면 새 버전으로 바꿔요(예전 것은 .jutell-local/backups에 보관).` : '설치된 Skill에 버전 기록이 없습니다.' });
   checks.push({ name: '현재 Agent 세션 적용', status: '직접 확인 필요', detail: '실제로 Skill과 규칙을 읽었는지 여부는 해당 Agent 세션에서 직접 확인해야 합니다.' });
-  checks.push({ name: 'MCP 빌드 파일', status: await exists(mcpEntry) ? '정상' : '오류', detail: await exists(mcpEntry) ? '패키지에 포함되어 있습니다.' : 'MCP 빌드 파일이 없습니다.' });
-  checks.push({ name: 'Codex MCP', status: registration.conflict ? '오류' : registration.registered ? '정상' : '주의', detail: registration.conflict ? '관리되지 않는 동일 이름 설정이 있습니다.' : registration.registered ? `JuTell 관리 블록을 확인했습니다. 새 세션 자동 시작: ${registration.enabled ? '켜짐' : '꺼짐'}.` : '등록되지 않았습니다.' });
+  checks.push({ name: 'MCP 빌드 파일', status: await exists(mcpEntry) ? '정상' : '오류', detail: await exists(mcpEntry) ? 'AI가 JuTell 도구를 부를 때 실행되는 파일(MCP 서버)이 패키지에 들어 있습니다.' : 'AI가 JuTell 도구를 부를 때 실행되는 파일(MCP 서버)이 없습니다. npm install -g jutell로 다시 설치해 보세요.' });
+  checks.push({ name: 'Codex MCP', status: registration.conflict ? '오류' : registration.registered ? '정상' : '주의', detail: registration.conflict ? '관리되지 않는 동일 이름 설정이 있습니다.' : registration.registered ? `Codex 설정 파일에서 JuTell이 넣은 연결 부분을 확인했습니다. 새 세션 자동 시작: ${registration.enabled ? '켜짐' : '꺼짐'}.` : '등록되지 않았습니다.' });
   const userOnlyApprovalOverride = isUserOnlyApprovalOverride(registration);
   const hasInvalidUserApprovalOverride = userOnlyApprovalOverride && registration.userApprovalOverrides?.some(({ mode }) => !CODEX_APPROVAL_MODES.includes(mode as (typeof CODEX_APPROVAL_MODES)[number]));
   const approvalCheckStatus = !registration.canonicalJuTellRegistered ? '직접 확인 필요' : registration.approvalConflict ? (hasInvalidUserApprovalOverride ? '오류' : userOnlyApprovalOverride ? '주의' : '오류') : '정상';
@@ -240,7 +240,7 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
         ? '자동 실행에서는 모든 jutell 도구가 승인됩니다. 대화형 Codex에서도 jutell 도구 호출이 차단됩니다.'
         : '자동 실행에서 모든 jutell 도구가 승인됩니다.';
   checks.push({ name: '자동 실행(codex exec)에서 jutell 도구 호출', status: approvalCheckStatus, detail: approvalCheckDetail });
-  checks.push({ name: 'OpenCode MCP', status: opencode.conflict ? '오류' : opencode.registered ? (opencode.enabled ? '정상' : '주의') : '주의', detail: opencode.conflict ? '관리되지 않는 동일 이름 항목이 있습니다.' : opencode.registered ? `JuTell 관리 블록을 확인했습니다. 새 세션 자동 시작: ${opencode.enabled ? '켜짐' : '꺼짐'}.` : 'OpenCode MCP가 등록되지 않았습니다.' });
+  checks.push({ name: 'OpenCode MCP', status: opencode.conflict ? '오류' : opencode.registered ? (opencode.enabled ? '정상' : '주의') : '주의', detail: opencode.conflict ? '관리되지 않는 동일 이름 항목이 있습니다.' : opencode.registered ? `OpenCode 설정에서 JuTell이 넣은 연결 부분을 확인했습니다. 새 세션 자동 시작: ${opencode.enabled ? '켜짐' : '꺼짐'}.` : 'OpenCode MCP가 등록되지 않았습니다.' });
   checks.push({ name: 'Claude Code MCP', status: claude.registered ? '정상' : '주의', detail: claude.registered ? `${claude.claudeScope} 범위(${claude.claudeScope === 'user' ? '사용자 전역' : '현재 프로젝트'})에 등록되어 있습니다.` : 'Claude Code MCP가 등록되지 않았습니다.' });
   checks.push({ name: config.source === 'legacy' ? '.beginner-bridge.json' : '.jutell.json', status: config.valid ? '정상' : '오류', detail: config.exists ? (config.valid ? (config.source === 'legacy' ? '이전 설정 파일을 읽었습니다. 새 .jutell.json이 없으면 사용합니다.' : '설정 형식을 확인했습니다.') : '설정이 올바르지 않아 기본값을 사용합니다.') : '없으면 기본 설정을 사용합니다.' });
   const featuresValid = Object.keys(config.config.features).every((id) => FEATURE_IDS.includes(id));
@@ -261,16 +261,23 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
   if (process.platform !== 'win32') checks.push(await loginShellJutellCheck(config.config.features.receiptReport !== false, process.env, paths.targetRoot));
   checks.push({ name: '설정 백업 상태', status: !await exists(codexPaths.codexConfigFile) || backupExists ? '정상' : '주의', detail: !await exists(codexPaths.codexConfigFile) ? '아직 Provider 설정을 변경하지 않았습니다.' : backupExists ? '이전 설정 백업을 확인했습니다. JuTell이 처음 바꾸기 전 원본은 config.toml.jutell-original에 그대로 남아 있습니다.' : '기존 Provider 설정 백업이 없습니다.' });
   const externalCode = /(?:https?:\/\/(?!127\.0\.0\.1)|https?\.request|net\.connect)/i.test(mcpText);
-  checks.push({ name: '외부 전송 코드', status: externalCode ? '오류' : '정상', detail: externalCode ? 'MCP 빌드에서 외부 네트워크 관련 코드를 찾았습니다.' : 'MCP 빌드에 외부 전송 패턴이 없습니다.' });
+  checks.push({ name: '외부 전송 코드', status: externalCode ? '오류' : '정상', detail: externalCode ? 'JuTell 도구 파일에서 인터넷으로 보내는 코드를 찾았습니다.' : 'JuTell 도구 파일에 인터넷으로 보내는 코드가 없습니다. 작업 내용은 이 컴퓨터 밖으로 나가지 않습니다.' });
   const hasRegisteredMcp = registration.registered || opencode.registered || claude.registered;
   const probe = hasRegisteredMcp ? await probeMcpServer(mcpEntry) : undefined;
   checks.push({
     name: 'MCP 서버 실제 연결 (Stdio)',
     status: probe ? probe.ok ? '정상' : '오류' : '직접 확인 필요',
     detail: probe
-      ? probe.ok ? `${probe.serverName || 'JuTell'} 서버가 응답하고 ${probe.toolCount}개 도구를 제공합니다.` : `서버 응답 실패: ${probe.error ?? '알 수 없는 오류'}`
+      ? probe.ok ? `JuTell 도구를 실제로 켜 보니 응답했고 ${probe.toolCount}개 도구를 AI에게 줄 수 있습니다(Stdio는 AI 앱이 JuTell과 직접 주고받는 방식).` : `서버 응답 실패: ${probe.error ?? '알 수 없는 오류'}`
       : '아직 MCP를 등록하지 않아 실제 연결을 확인할 수 없습니다. 프로젝트 폴더에서 `jutell`을 실행하세요.',
   });
+  if (paths.scope === 'project') {
+    // Item 12: a project-local npm install has no `jutell` on PATH, so show the exact receipt command the AI is told to use.
+    const command = await receiptCommandFor(paths.targetRoot);
+    checks.push({ name: '영수증 명령', status: '정상', detail: command === 'jutell receipt'
+      ? 'AI는 작업이 끝나면 `jutell receipt`로 영수증을 만듭니다.'
+      : `이 프로젝트 안(node_modules)에 설치된 JuTell이라 AI는 \`${command}\`로 영수증을 만듭니다(AGENTS.md에 적혀 있음). 터미널에서 직접 쓸 때도 이 명령을 쓰세요.` });
+  }
   return checks;
 }
 
