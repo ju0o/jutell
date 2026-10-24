@@ -59,6 +59,7 @@ async function summaryCommand(paths: ScopePaths, io: CliIo) {
     const state = item.provider.status === 'planned' ? '준비 중' : item.conflict ? '설정 충돌' : item.registered ? (item.enabled ? '연결됨 · 활성' : '연결됨 · 비활성') : '연결 안 됨';
     io.write(`${item.provider.label.padEnd(12)} ${state}`);
   }
+  io.write('(Codex 줄은 CLI·앱·IDE 확장 공용 설정입니다.)');
   io.write(`\n현재 권장 Agent: ${active.length ? active.join(', ') : '없음'}`);
   io.write(`JuTell 자동 적용: ${config.config.mcp?.enabled ? '켜짐' : '꺼짐'}`);
   if (config.config.mcp?.enabled && active.length === 0) io.write('주의: 연결 정책은 켜져 있지만 자동 시작할 활성 Provider 항목이 없습니다. jutell use <agent> 를 실행하거나 provider enable 을 사용해 주세요.');
@@ -74,6 +75,8 @@ async function statusCommand(paths: ScopePaths, io: CliIo) {
 ${providerLabel('codex')}
   감지: ${codexDetected() ? '예' : '직접 확인 필요'}
   설정 파일: 사용자 전역 Codex 설정 (Codex는 프로젝트 설정을 읽지 않음)
+  적용 대상: Codex (CLI·앱·IDE 확장 공용 설정)
+  다시 읽기: 앱은 설정 → MCP servers → Restart / IDE는 Restart extension
   MCP 등록: ${codex.registered ? '등록됨' : codex.conflict ? '충돌 확인 필요' : '등록되지 않음'}
   활성화: ${codex.registered ? (codex.enabled ? '예' : '아니오') : '등록되지 않음'}
 

@@ -93,7 +93,7 @@ async function registerProviderEnabled(paths: ScopePaths, provider: AgentProvide
     io.write('\n이전 beginner_bridge 항목을 그대로 두고 새 jutell 항목을 추가했습니다.\n이전 항목은 자동으로 삭제하지 않습니다. 정리하려면 jutell migrate --clean 을 실행하세요.');
   }
   if (provider.id === 'codex') {
-    io.write('\nCodex는 JuTell 도구 연결을 이 컴퓨터의 모든 프로젝트가 함께 쓰는 Codex 설정 파일(~/.codex/config.toml)에서만 읽습니다.\nJuTell 프로젝트 규칙(AGENTS.md, Skill, 설정)은 이 프로젝트에 그대로 두고,\nCodex와 JuTell 도구를 잇는 연결만 그 Codex 설정 파일에 넣었습니다.');
+    io.write('\nCodex는 JuTell 도구 연결을 이 컴퓨터의 모든 프로젝트가 함께 쓰는 Codex 설정 파일(~/.codex/config.toml)에서만 읽습니다.\nJuTell 프로젝트 규칙(AGENTS.md, Skill, 설정)은 이 프로젝트에 그대로 두고,\nCodex와 JuTell 도구를 잇는 연결만 그 Codex 설정 파일에 넣었습니다.\nChatGPT 데스크톱 앱과 IDE 확장도 이 설정을 같이 씁니다. 앱: 설정 → MCP servers → Restart / IDE: Restart extension');
   }
 }
 

@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { resolveProjectRoot } from './project-root.js';
 
 export type Profile = 'minimal' | 'balanced' | 'learning' | 'detailed';
 export type VoicePreset = 'default' | 'plain' | 'learning' | 'jutell';
@@ -66,7 +67,7 @@ async function readText(file: string) {
   try { return await fs.readFile(file, 'utf8'); } catch { return ''; }
 }
 
-export async function readBridgeContext(projectRoot = process.cwd()) {
+export async function readBridgeContext(projectRoot = resolveProjectRoot()) {
   const preferredConfig = await readText(path.join(projectRoot, '.jutell.json'));
   const configText = preferredConfig || await readText(path.join(projectRoot, '.beginner-bridge.json'));
   let parsed: unknown;

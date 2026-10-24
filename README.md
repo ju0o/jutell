@@ -158,7 +158,7 @@ jutell
 ```
 
 JuTell creates or updates `AGENTS.md`, `.agents/`, `.jutell.json`, and `.jutell-local/` in that
-folder. When you connect Codex, it also adds connection settings to `~/.codex/config.toml`.
+folder. When you connect Codex, it also adds connection settings to `~/.codex/config.toml`. The ChatGPT desktop app (Codex app) and the Codex IDE extension share that same file, so connecting Codex once covers all three; after it, restart the app (Settings → MCP servers → Restart) or the IDE extension (Restart extension).
 
 Run `jutell receipt` to print a one-page work receipt and save it at
 `<project>/.jutell-local/reports/YYYY-MM-DD-HHmmss.md` (`-2`, `-3`, etc. handle name collisions).

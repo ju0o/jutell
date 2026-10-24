@@ -2,6 +2,7 @@ import { promises as fs, existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { readBridgeContext } from '../config/bridge-config.js';
+import { resolveProjectRoot, safeDataDir } from '../config/project-root.js';
 
 export type ToolCounter = {
   calls: number;
@@ -75,11 +76,12 @@ async function writeCounters(file: string, value: UsageCounters): Promise<boolea
 
 const writeQueue: Promise<void>[] = [];
 
-export async function recordToolCall(toolName: string, responseCharacters: number, projectRoot = process.cwd()): Promise<void> {
+export async function recordToolCall(toolName: string, responseCharacters: number, projectRoot = resolveProjectRoot()): Promise<void> {
   try {
     const context = await readBridgeContext(projectRoot);
     if (!context.config.usageMeasurement.localCountersEnabled) return;
     const file = await resolveCountersFile(projectRoot);
+    if (!await safeDataDir(projectRoot, path.dirname(file))) throw new Error('data folder is a link or outside the project; not written');
     const run = (writeQueue.at(-1) ?? Promise.resolve()).then(async () => {
       const current = await readCounters(file);
       if (current.state === 'corrupt') throw new Error('corrupt counters file kept untouched');
