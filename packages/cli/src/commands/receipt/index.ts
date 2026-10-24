@@ -399,5 +399,5 @@ export async function recordReceiptBaseline(paths: ScopePaths): Promise<void> {
   if (changed.unknownReason) return;
   // No safe .jutell-local (e.g. it is a link out of the project): record nothing.
   if (!(await prepareSafeReportsDirectory(paths).then(() => true, () => false))) return;
-  await checkBeforeWork(paths, changed.files).catch(() => undefined);
+  await checkBeforeWork(paths, changed.files, undefined, 'setup').catch(() => undefined);
 }
