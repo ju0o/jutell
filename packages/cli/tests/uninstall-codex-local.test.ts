@@ -50,4 +50,39 @@ describe('project uninstall and the shared Codex entry (temp CODEX_HOME)', () =>
     expect(await fs.readFile(config, 'utf8')).toBe(before);
     expect(out.join('\n')).toContain('공유되어 제거하지 않았습니다');
   });
+  it('broken global TOML: warns, skips only the Codex step and finishes the rest of uninstall', async () => {
+    const { paths, config, out, io } = await setup((project) => path.join(project, 'node_modules', 'jutell'));
+    await fs.appendFile(config, '\n[broken\n');
+    const before = await fs.readFile(config, 'utf8');
+    await fs.mkdir(path.join(paths.targetRoot, '.jutell-local'), { recursive: true });
+    await uninstallCommand(paths, { yes: true, removeData: true } as never, io);
+    expect(await fs.readFile(config, 'utf8')).toBe(before);
+    expect(out.join('\n')).toContain('형식이 깨져 있어서');
+    expect(out.join('\n')).toContain('제거했습니다');
+    expect(out.join('\n')).not.toContain('이 프로젝트용 JuTell 연결');
+    await expect(fs.stat(path.join(paths.targetRoot, '.jutell-local'))).rejects.toThrow();
+  });
+
+  it('symlinked config.toml: leaves the link (and its target) untouched and says so', async () => {
+    const { paths, config, out, io } = await setup((project) => path.join(project, 'node_modules', 'jutell'));
+    const real = `${config}.real`;
+    await fs.rename(config, real);
+    await fs.symlink(real, config);
+    const before = await fs.readFile(real, 'utf8');
+    await uninstallCommand(paths, { yes: true, removeData: false } as never, io);
+    expect((await fs.lstat(config)).isSymbolicLink()).toBe(true);
+    expect(await fs.readFile(real, 'utf8')).toBe(before);
+    expect(out.join('\n')).toContain('링크라서 건드리지 않았어요');
+    expect(out.join('\n')).toContain('제거했습니다');
+  });
+
+  it('warns when the user typed their own keys inside JuTell\'s managed block', async () => {
+    const { paths, config, out, io } = await setup((project) => path.join(project, 'node_modules', 'jutell'));
+    const text = await fs.readFile(config, 'utf8');
+    await fs.writeFile(config, text.replace('required = false', 'required = false\nstartup_timeout_sec = 30'));
+    await uninstallCommand(paths, { yes: true, removeData: false } as never, io);
+    expect(out.join('\n')).toContain('mcp_servers.jutell.startup_timeout_sec');
+    expect(out.join('\n')).toContain('백업');
+    expect(await fs.readFile(config, 'utf8')).toContain('[mcp_servers.other]');
+  });
 });

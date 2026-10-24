@@ -16,7 +16,7 @@ export const WALK_EXCLUDED_DIRS = new Set([
   '.git', '.next', '.nuxt', '.svelte-kit', '.turbo', '.parcel-cache', '.cache', '.gradle', '.venv', 'venv',
 ]);
 
-/** git pathspecs that leave the folders above out of ls-files/status (one rule for the map and the receipt). */
+/** git pathspecs that leave UNTRACKED files in the folders above out of ls-files/status (one rule for the map and the receipt; tracked files always stay). */
 export const EXCLUDED_PATHSPECS = ['--', '.', ...[...WALK_EXCLUDED_DIRS].map((dir) => `:(exclude,glob)**/${dir}/**`)];
 
 /** True when a folder segment of the project-relative path is a standard dependency/output folder. */
@@ -73,7 +73,13 @@ function runGit(cwd: string, args: string[]): Promise<string> {
 async function gitFiles(root: string): Promise<string[] | undefined> {
   let stdout: string;
   try {
-    stdout = await runGit(root, ['--no-optional-locks', 'ls-files', '-z', '--cached', '--others', '--exclude-standard', ...EXCLUDED_PATHSPECS]);
+    // Tracked files always count, even under build/ or vendor/ (someone chose to commit them).
+    // The standard exclude list only leaves out untracked files there (node_modules, build output…).
+    const [tracked, untracked] = await Promise.all([
+      runGit(root, ['--no-optional-locks', 'ls-files', '-z', '--cached']),
+      runGit(root, ['--no-optional-locks', 'ls-files', '-z', '--others', '--exclude-standard', ...EXCLUDED_PATHSPECS]),
+    ]);
+    stdout = `${tracked}\0${untracked}`;
   } catch (error) {
     const failure = error as NodeJS.ErrnoException & { killed?: boolean };
     // No git, or not a repository: fall back to walking the folder.
@@ -82,7 +88,7 @@ async function gitFiles(root: string): Promise<string[] | undefined> {
     if (failure.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') throw new MapScanError('파일 목록이 너무 커요');
     throw new MapScanError('Git 파일 목록을 읽지 못했어요');
   }
-  const listed = stdout.split('\0').filter(Boolean);
+  const listed = [...new Set(stdout.split('\0').filter(Boolean))];
   // Links are not followed: drop entries that are links, folders (submodules) or already deleted.
   const kept: string[] = [];
   const batch = 256;

@@ -188,6 +188,15 @@ describe('map write (W2)', () => {
     }
   });
 
+  it('tracked files under build/ or vendor/ stay in the map; only untracked ones there are left out', async () => {
+    const { dir } = await project('tracked', ['src/app.ts', 'build/config.js', 'vendor/lib.js']);
+    execFileSync('git', ['init', '-q'], { cwd: dir });
+    execFileSync('git', ['add', '.'], { cwd: dir });
+    await fs.mkdir(path.join(dir, 'build', 'gen'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'build', 'gen', 'out.js'), 'x');
+    expect((await scanProject(dir)).files).toEqual(['build/config.js', 'src/app.ts', 'vendor/lib.js']);
+  });
+
   it('reports a partial detail write and rejects a stale card if a later write fails', async () => {
     const { dir, paths } = await project();
     await writeMap(paths, NOW);

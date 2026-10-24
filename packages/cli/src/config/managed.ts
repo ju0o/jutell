@@ -565,6 +565,39 @@ export async function managedCodexServerFile(paths: ScopePaths): Promise<string 
   try { return JSON.parse(match[1]) as string; } catch { return undefined; }
 }
 
+const JUTELL_BLOCK_KEYS = new Set(['command', 'args', 'cwd', 'enabled', 'required', 'default_tools_approval_mode']);
+
+/** Keys a person typed into JuTell's own managed block (they go away with the block; a backup is kept). */
+export function userKeysInManagedBlock(content: string): string[] {
+  const block = (content.match(markerPair(BEGIN_MARKER, END_MARKER)) ?? [])[0];
+  if (!block) return [];
+  const found: string[] = [];
+  let table = '';
+  for (const line of block.split(/\r?\n/)) {
+    const header = line.match(/^\s*\[([^\[\]]+)\]\s*(?:#.*)?$/);
+    if (header) { table = header[1].trim(); continue; }
+    const key = line.match(/^\s*([A-Za-z0-9_\-"'.]+)\s*=/)?.[1];
+    if (!key) continue;
+    if (table === `mcp_servers.${CANONICAL_MCP_KEY}` && JUTELL_BLOCK_KEYS.has(key)) continue;
+    if (table.startsWith(`mcp_servers.${CANONICAL_MCP_KEY}.tools.`) && key === 'approval_mode') continue;
+    if (!table.startsWith(`mcp_servers.${CANONICAL_MCP_KEY}`)) continue; // other tables are kept as they are
+    found.push(`${table}.${key}`);
+  }
+  return found;
+}
+
+/** Why uninstall must leave the Codex global settings file alone, if it must. */
+export async function codexUninstallBlocker(paths: ScopePaths): Promise<string | undefined> {
+  const stats = await fs.lstat(paths.codexConfigFile).catch(() => undefined);
+  if (!stats) return undefined;
+  if (stats.isSymbolicLink()) return `Codex 전역 설정 파일(${paths.codexConfigFile})이 다른 파일을 가리키는 링크라서 건드리지 않았어요. 링크를 그대로 두려고 JuTell 연결은 직접 지워 주세요.`;
+  const content = await readText(paths.codexConfigFile) ?? '';
+  try { parse(content); } catch {
+    return `Codex 전역 설정 파일(${paths.codexConfigFile})의 형식이 깨져 있어서 JuTell 연결은 지우지 못했어요. 파일을 고친 뒤 다시 실행하세요. 나머지 제거는 계속했어요.`;
+  }
+  return undefined;
+}
+
 export async function removeMcp(paths: ScopePaths, packageRoot: string) {
   const current = await readCodexRegistration(paths, packageRoot, false);
   if (current.conflict) throw new Error('관리되지 않는 같은 이름의 MCP 항목은 자동으로 제거하지 않습니다.');

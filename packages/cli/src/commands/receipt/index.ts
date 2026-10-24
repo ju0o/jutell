@@ -168,8 +168,9 @@ function pathsFromStatus(stdout: string, projectPrefix: string): string[] {
     if (file === '.jutell-local' || file.startsWith('.jutell-local/') || file === '.jutell.json') continue;
     if (file.startsWith('.agents/skills/beginner-bridge/') || file.startsWith('.claude/skills/beginner-bridge/')) continue;
     if (status === '??' && (file === 'AGENTS.md' || file === 'CLAUDE.md')) continue;
-    // Same rule as the map scan: files in node_modules, dist, build… are not the user's work.
-    if (inExcludedFolder(file)) continue;
+    // Same rule as the map scan: untracked files in node_modules, dist, build… are not the user's work.
+    // A tracked file there (committed on purpose) still counts.
+    if (status === '??' && inExcludedFolder(file)) continue;
     files.push(file);
   }
   return files;
@@ -242,10 +243,13 @@ async function readChangedFiles(cwd: string): Promise<ChangedFiles> {
   try {
     const prefixOutput = await runGit(cwd, ['--no-optional-locks', 'rev-parse', '--show-prefix']);
     const projectPrefix = prefixOutput.replace(/\r?\n$/, '').replaceAll('\\', '/');
-    const status = await runGit(cwd, [
-      '--no-optional-locks', 'status', '--porcelain=v1', '-z', '--untracked-files=all', ...EXCLUDED_PATHSPECS,
+    // Tracked changes everywhere; untracked files only outside the standard exclude folders.
+    const [tracked, untracked] = await Promise.all([
+      runGit(cwd, ['--no-optional-locks', 'status', '--porcelain=v1', '-z', '--untracked-files=no']),
+      runGit(cwd, ['--no-optional-locks', 'status', '--porcelain=v1', '-z', '--untracked-files=all', ...EXCLUDED_PATHSPECS]),
     ]);
-    return { files: pathsFromStatus(status, projectPrefix) };
+    const onlyUntracked = untracked.split('\0').filter((field) => field.startsWith('?? ')).join('\0');
+    return { files: [...new Set([...pathsFromStatus(tracked, projectPrefix), ...pathsFromStatus(onlyUntracked, projectPrefix)])] };
   } catch (error) {
     return { files: [], unknownReason: gitFailureReason(error) };
   }
