@@ -34,7 +34,6 @@ Codex 작업 결과를 비개발자가 이해할 수 있는 하나의 보고서�
 
 12. 끝날 때 ① `get_beginner_report_rules` 호출(보이면 필수) ② `.jutell-local/receipt.json`을 파일 편집 도구로 쓴다. ③ AGENTS.md/CLAUDE.md에 적힌 영수증 명령(없으면 `jutell receipt`)을 한 번 실행한다. 출력을 답 맨 위에 붙여 나머지 보고를 대신한다.
 13. `asked`는 요청을 짧게 요약한 말로 쓰고 원문을 붙여 넣지 않는다. `unchecked`는 빼지 말고, 없으면 없다고 쓴다.
-14. 실패하면 재시도 없이 AGENTS.md의 실패 문장만 쓴다. 영수증 뒤엔 아무것도 쓰지 않는다.
 
 ## 참고 문서 (필요할 때만 읽기)
 
