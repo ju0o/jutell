@@ -48,7 +48,9 @@ describe('M2.6 Codex Experience Parity guidance', () => {
     expect(text).not.toMatch(/echo '|\| jutell receipt|--file -|npx/);
     expect(text).toContain('"summary"');
     expect(text).toContain('영수증을 저장하지 못했어요. 터미널에서 jutell doctor를 실행하면 해결 방법을 알려 줘요.');
-    expect(text).toContain('(로컬 설치면 `npm exec --offline --no --prefix "<프로젝트 루트>" -- jutell receipt`)');
+    // One default command; the local npm form appears only as the fallback when `jutell` is missing.
+    expect(text).toContain('(명령이 없을 때만 `npm exec --offline --no --prefix "<프로젝트 루트>" -- jutell receipt`)');
+    expect(text).not.toContain('로컬 설치면');
     // Item 4: the rule call is step ① of the one end procedure (① call ② receipt.json ③ jutell receipt).
     const step = (text2: string, mark: string) => text2.indexOf(mark);
     const line = text.split('\n').find((item) => item.startsWith('- 영수증(끝날 때 순서): ① `get_beginner_report_rules` 호출(생략 금지) ② 파일 쓰기 도구로')) ?? '';
@@ -57,7 +59,8 @@ describe('M2.6 Codex Experience Parity guidance', () => {
     expect(step(line, '②')).toBeLessThan(step(line, '③ 인자 없이 `jutell receipt`'));
     expect(text).not.toContain('그다음에 영수증');
     const skill = await fs.readFile(skillFile, 'utf8');
-    expect(skill).toContain('12. 끝날 때 ① `get_beginner_report_rules` 호출(생략 금지) ② `.jutell-local/receipt.json`을 파일 편집 도구로 쓴다. ③ 전역은 `jutell receipt`');
+    expect(skill).toContain('12. 끝날 때 ① `get_beginner_report_rules` 호출(생략 금지) ② `.jutell-local/receipt.json`을 파일 편집 도구로 쓴다. ③ `jutell receipt`를 한 번 실행한다. 명령이 없을 때(exit 127)만 `npm exec');
+    expect(skill).not.toMatch(/전역은|로컬은/);
     expect(text).toContain('영수증이 최종 답입니다. 영수증 아래에는 아무것도 쓰지 않고');
     expect(text).toContain('(셸·heredoc 금지)');
     expect(text).toContain('테스트·실행 결과·화면 확인을 필요로 하면 실행하고');
@@ -181,7 +184,7 @@ describe('slim SKILL.md (skill-slim)', () => {
       'checked(직접 확인한 것)에는 실제로 실행하거나 읽은 것만 쓴다',
       '실행·테스트·화면 결과가 요청되면 관련 확인을 실행한다',
       '다음 행동 제안은 최대 3개',
-      '`.jutell-local/receipt.json`을 파일 편집 도구로 쓴다. ③ 전역은 `jutell receipt`, 로컬은 프로젝트 루트를 따옴표로 넣어',
+      '`.jutell-local/receipt.json`을 파일 편집 도구로 쓴다. ③ `jutell receipt`를 한 번 실행한다. 명령이 없을 때(exit 127)만',
       '금지 명령과 비밀정보 출력 명령은 실행하지 않는다',
       '최종 답 전에 `get_beginner_report_rules`를 한 번 호출',
       // Dogfooder fixes

@@ -1,3 +1,4 @@
+import { EXCLUDED_PATHSPECS, inExcludedFolder } from '../../map/scan.js';
 import { execFile } from 'node:child_process';
 import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
@@ -168,6 +169,8 @@ function pathsFromStatus(stdout: string, projectPrefix: string): string[] {
     if (file === '.jutell-local' || file.startsWith('.jutell-local/') || file === '.jutell.json') continue;
     if (file.startsWith('.agents/skills/beginner-bridge/') || file.startsWith('.claude/skills/beginner-bridge/')) continue;
     if (status === '??' && (file === 'AGENTS.md' || file === 'CLAUDE.md')) continue;
+    // Same rule as the map scan: files in node_modules, dist, build… are not the user's work.
+    if (inExcludedFolder(file)) continue;
     files.push(file);
   }
   return files;
@@ -241,7 +244,7 @@ async function readChangedFiles(cwd: string): Promise<ChangedFiles> {
     const prefixOutput = await runGit(cwd, ['--no-optional-locks', 'rev-parse', '--show-prefix']);
     const projectPrefix = prefixOutput.replace(/\r?\n$/, '').replaceAll('\\', '/');
     const status = await runGit(cwd, [
-      '--no-optional-locks', 'status', '--porcelain=v1', '-z', '--untracked-files=all', '--', '.',
+      '--no-optional-locks', 'status', '--porcelain=v1', '-z', '--untracked-files=all', ...EXCLUDED_PATHSPECS,
     ]);
     return { files: pathsFromStatus(status, projectPrefix) };
   } catch (error) {

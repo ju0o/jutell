@@ -443,6 +443,22 @@ describe('receipt command', () => {
     expect(changedFiles).not.toContain('AGENTS.md');
   });
 
+  it('no .gitignore: node_modules, dist, build… are not counted as changed files (same list as the map)', async () => {
+    await setup();
+    await execFileAsync('git', ['init', '-q'], { cwd: paths.targetRoot });
+    for (const file of ['node_modules/left-pad/index.js', 'dist/app.js', 'build/out.js', 'web/node_modules/x/y.js', '.next/cache.json', 'src/app.ts']) {
+      await fs.mkdir(path.dirname(path.join(paths.targetRoot, file)), { recursive: true });
+      await fs.writeFile(path.join(paths.targetRoot, file), 'x\n', 'utf8');
+    }
+    const stdin = new PassThrough();
+    stdin.end(JSON.stringify({ done: ['한 일'] }));
+    expect(await receiptCommand(paths, ['--file', '-'], io, stdin)).toBe(0);
+    const start = output[0].indexOf('[바뀐 파일]');
+    const changedFiles = output[0].slice(start, output[0].indexOf('[확인]', start));
+    expect(changedFiles).toContain('src/app.ts');
+    for (const hidden of ['node_modules', 'dist/', 'build/', '.next']) expect(changedFiles).not.toContain(hidden);
+  });
+
   it('does not accept inline JSON or incomplete --file arguments', async () => {
     await setup();
 

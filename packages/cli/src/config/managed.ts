@@ -552,6 +552,15 @@ export function commentOutOrphanTables(text: string, prefix: string, marker = '#
   return { text: finalText, commentedTables };
 }
 
+/** MCP server file in JuTell's own managed Codex block (undefined when there is no managed block). */
+export async function managedCodexServerFile(paths: ScopePaths): Promise<string | undefined> {
+  const content = await readText(paths.codexConfigFile) ?? '';
+  const block = managedBlocks(content).find((item) => hasMcpKey(item, CANONICAL_MCP_KEY));
+  const match = block?.match(/^args = \[("(?:[^"\\]|\\.)*")\]/m);
+  if (!match) return undefined;
+  try { return JSON.parse(match[1]) as string; } catch { return undefined; }
+}
+
 export async function removeMcp(paths: ScopePaths, packageRoot: string) {
   const current = await readCodexRegistration(paths, packageRoot, false);
   if (current.conflict) throw new Error('관리되지 않는 같은 이름의 MCP 항목은 자동으로 제거하지 않습니다.');
