@@ -241,6 +241,7 @@ export async function defaultCommand(paths: ScopePaths, options: CliOptions, io:
  */
 export const CODEX_CANNOT_RUN_JUTELL = '⚠ Codex가 jutell 명령을 찾지 못해 작업 영수증을 만들 수 없어요. 고치는 법은 `jutell doctor`에 있어요.';
 export const READY_WITH_WARNING = 'JuTell 준비됨, 하나 확인 필요';
+export const AGENT_READY_WITH_WARNING = '⚠ AI Agent 연결됨, 영수증 명령은 아직 못 찾음 (위 경고 참고)';
 async function codexCannotRunJutell(paths: ScopePaths): Promise<boolean> {
   if (process.platform === 'win32' || paths.scope !== 'project' || !codexDetected()) return false;
   const { config } = await readBridgeConfig(paths).catch(() => ({ config: undefined }));
@@ -253,5 +254,8 @@ async function writeReady(paths: ScopePaths, io: CliIo, message: string): Promis
   for (const line of readyOutput(message, await codexCannotRunJutell(paths))) io.write(line);
 }
 export function readyOutput(message: string, codexWarning: boolean): string[] {
-  return codexWarning ? [CODEX_CANNOT_RUN_JUTELL, message.replace('JuTell 준비 완료', READY_WITH_WARNING)] : [message];
+  // With a warning no line may claim the Agent side is fully ready (Reviewer #37 follow-up).
+  return codexWarning
+    ? [CODEX_CANNOT_RUN_JUTELL, message.replace('JuTell 준비 완료', READY_WITH_WARNING).replace('✓ AI Agent 연결 준비 완료', AGENT_READY_WITH_WARNING)]
+    : [message];
 }

@@ -200,13 +200,14 @@ function readMatch(value: unknown, askedCount: number): ReceiptMatch | undefined
   }
   const extraBefore = readFileNames(value.extraBefore ?? []);
   const extra = readFileNames(value.extra ?? []);
+  const sensitiveNamed = readFileNames(value.sensitiveNamed ?? []);
   const areas = isRecord(value.extraAreas)
     ? Object.fromEntries(extra.flatMap((file) => {
       const id = (value.extraAreas as Record<string, unknown>)[file];
       return typeof id === 'string' && /^f-[a-f0-9]{12}$/.test(id) ? [[file, id]] : [];
     }))
     : {};
-  return { map: true, items, extra, ...(extraBefore.length ? { extraBefore } : {}), ...(Object.keys(areas).length ? { extraAreas: areas } : {}) };
+  return { map: true, items, extra, ...(sensitiveNamed.length ? { sensitiveNamed } : {}), ...(extraBefore.length ? { extraBefore } : {}), ...(Object.keys(areas).length ? { extraAreas: areas } : {}) };
 }
 
 function readBefore(value: unknown): { before?: string[] } {
@@ -246,6 +247,7 @@ function matchLines(receipt: ReceiptInput, asked: string[], askedMore: number, s
   lines.push(...more);
   // Each file the map lists carries its area ID, so the user can find it in the map (`jutell map --show`).
   // Map area ids ([f-…]) mean nothing to the person reading: file names only (dogfood #37).
+  if (match.sensitiveNamed?.length) lines.push(` ⚠ 민감 파일 바뀜: ${shortList(match.sensitiveNamed)} (요청에 적혀 있음 · AI가 적음)`);
   if (match.extra.length) lines.push(` ⚠ 요청에 없던 곳도 바뀜: ${shortList(match.extra)}  ${LABEL_GIT}`);
   if (match.extraBefore?.length) lines.push(` ${BEFORE_WORK_MARK} 바뀌어 있던 요청 밖 파일: ${shortList(match.extraBefore)}  ${LABEL_GIT}`);
   return [...lines, ...tail];

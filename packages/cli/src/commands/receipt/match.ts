@@ -15,7 +15,7 @@ export type MatchItem =
 export type ReceiptMatch =
   | { map: false }
   // `extraAreas`: map area ID (`f-…`, as in `jutell map --show`) of each extra file the map lists.
-  | { map: true; items: MatchItem[]; extra: string[]; extraBefore?: string[]; extraAreas?: Record<string, string> };
+  | { map: true; items: MatchItem[]; extra: string[]; sensitiveNamed?: string[]; extraBefore?: string[]; extraAreas?: Record<string, string> };
 
 const OPEN = /^<!-- jutell:auto (.+) -->$/;
 
@@ -110,8 +110,8 @@ const folder = (file: string) => (file.includes('/') ? file.slice(0, file.lastIn
  * - with one request and no place yet, map words from the AI's work list/summary, labelled as an estimate
  *   (AI text never ties a file by name, so it can never remove a warning);
  * - a matched request also takes changed files in the same folder as a file it already has;
- * - sensitive files (isSensitiveFile) stay '⚠' unless the user's own request names the file itself (full name),
- *   or names a dependency of the project (then package.json and the lockfiles); AI text never links them.
+ * - sensitive files (isSensitiveFile) ALWAYS stay '⚠': `asked` is AI-written, so naming a file there never links it
+ *   (Reviewer B1 #37). A named one moves to its own '⚠ 민감 파일 바뀜 … (요청에 적혀 있음 · AI가 적음)' line.
  */
 export function matchRequests(asked: string[], changed: string[], sections: MapSection[], beforeWork: string[] = [], context: string[] = [], dependencies: string[] = []): ReceiptMatch {
   const changedSet = new Set(changed);
@@ -125,7 +125,6 @@ export function matchRequests(asked: string[], changed: string[], sections: MapS
     let matched = featuresFor(request, sections);
     const named = filesNamedIn(request, changed).filter((file) => !sensitive.has(file));
     const ownSensitive = sensitiveNamedIn(request, [...sensitive], dependencies);
-    named.push(...ownSensitive);
     for (const file of ownSensitive) linked.add(file);
     let fromContext = false;
     if (!matched.length && !named.length && asked.length === 1) {
@@ -134,11 +133,11 @@ export function matchRequests(asked: string[], changed: string[], sections: MapS
     }
     if (!matched.length && !named.length) return { status: 'unplaced' };
     const featureFiles = new Set([...matched.flatMap((section) => section.files), ...named]);
-    const own = changed.filter((file) => featureFiles.has(file) && (!sensitive.has(file) || ownSensitive.includes(file)));
+    const own = changed.filter((file) => featureFiles.has(file) && !sensitive.has(file));
     // Same folder as a file this request already has (not the project root, not sensitive files).
     const folders = new Set(own.filter((file) => !sensitive.has(file)).map(folder).filter(Boolean));
     const near = changed.filter((file) => !featureFiles.has(file) && !sensitive.has(file) && !beforeSet.has(file) && folders.has(folder(file)));
-    for (const file of [...featureFiles, ...near]) if (!sensitive.has(file) || ownSensitive.includes(file)) claimed.add(file);
+    for (const file of [...featureFiles, ...near]) if (!sensitive.has(file)) claimed.add(file);
     const inFeature = [...own, ...near];
     const files = inFeature.filter((file) => !beforeSet.has(file));
     const before = inFeature.filter((file) => beforeSet.has(file));
@@ -147,7 +146,8 @@ export function matchRequests(asked: string[], changed: string[], sections: MapS
     const via = fromContext ? { via: 'context' as const } : features.length ? {} : { via: 'file' as const };
     return files.length ? { status: 'changed', features, files, ...withBefore, ...via } : features.length ? { status: 'unchanged', features, ...withBefore } : { status: 'unplaced' };
   });
-  const extra = changed.filter((file) => (sensitive.has(file) && !linked.has(file)) || (!claimed.has(file) && !beforeSet.has(file)));
+  const extra = changed.filter((file) => (sensitive.has(file) && !linked.has(file)) || (!sensitive.has(file) && !claimed.has(file) && !beforeSet.has(file)));
+  const sensitiveNamed = [...linked];
   const extraBefore = [...changedSet].filter((file) => !claimed.has(file) && beforeSet.has(file));
-  return { map: true, items, extra, ...(extraBefore.length ? { extraBefore } : {}) };
+  return { map: true, items, extra, ...(sensitiveNamed.length ? { sensitiveNamed } : {}), ...(extraBefore.length ? { extraBefore } : {}) };
 }

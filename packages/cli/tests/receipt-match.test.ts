@@ -140,25 +140,29 @@ describe('request matching (W6, plan.md §2)', () => {
     const { matchRequests } = await import('../src/commands/receipt/match.js');
     const result = matchRequests(['할 일 제목 바꿔줘', 'package.json 고치기'], ['test-app/todo.html', ...Object.keys(extra)],
       [{ name: '할 일', key: 'todo', files: ['test-app/todo.html', 'package.json'] }] as never, [], ['package.json과 ci.yml도 정리했어요']);
-    // The user's own request names package.json -> only that file is linked; the map listing it and AI text never are.
+    // Reviewer B1 (#37): `asked` is AI-written, so a request naming package.json never links it; it only moves
+    // to its own '민감 파일 바뀜 (요청에 적혀 있음)' warning. The map listing it and AI text never link it either.
     expect(result.map && result.extra.sort()).toEqual(Object.keys(extra).filter((f) => f !== 'package.json').sort());
-    expect(result.map && result.items[1]).toMatchObject({ status: 'changed', files: ['package.json'], via: 'file' });
+    expect(result.map && result.sensitiveNamed).toEqual(['package.json']);
+    expect(result.map && result.items[1]).toMatchObject({ status: 'unplaced' });
     const sections = [{ name: '할 일', key: 'todo', files: ['test-app/todo.html'] }] as never;
     const all = ['test-app/todo.html', ...Object.keys(extra)];
     // A dependency the user named -> package.json and the lockfile; the same name only in AI text -> still ⚠.
     const dep = matchRequests(['left-pad 올려줘'], all, sections, [], [], ['left-pad']);
-    expect(dep.map && dep.extra).not.toContain('package.json');
-    expect(dep.map && dep.extra).not.toContain('package-lock.json');
+    expect(dep.map && dep.sensitiveNamed?.sort()).toEqual(['package-lock.json', 'package.json']);
+    expect(dep.map && dep.items[0]).toMatchObject({ status: 'unplaced' });
     const aiOnly = matchRequests(['할 일 제목 바꿔줘'], all, sections, [], ['left-pad와 package.json도 올렸어요'], ['left-pad']);
     expect(aiOnly.map && aiOnly.extra.sort()).toEqual(Object.keys(extra).sort());
   });
 
-  it('dogfood #37: a request that names package.json does not get a ⚠ for it', async () => {
+  it('Reviewer B1 #37: a request that names package.json still gets a ⚠ (one line, 요청에 적혀 있음 · AI가 적음)', async () => {
     const { dir, receipt, edit } = await project();
     await edit('test-app/todo.html');
     await fs.writeFile(path.join(dir, 'package.json'), '{"dependencies":{"left-pad":"1"}}');
     const text = await receipt({ ...base, asked: ['package.json 설정 설명 고치기'], done: ['package.json을 고쳤어요'] });
-    expect(text).toContain('→ 바뀐 곳 있음: package.json  [Git 기준 · 파일 이름으로 찾음]');
+    expect(text).toContain(' ⚠ 민감 파일 바뀜: package.json (요청에 적혀 있음 · AI가 적음)');
+    expect(text.match(/package\.json \(요청에 적혀 있음/g)).toHaveLength(1);
+    expect(text).not.toContain('→ 바뀐 곳 있음: package.json');
     expect(text).not.toMatch(/⚠ 요청에 없던 곳도 바뀜: .*package\.json/);
   });
 
