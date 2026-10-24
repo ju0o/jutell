@@ -123,7 +123,12 @@ async function removeIfJuTellCreated(file: string, rootKey: string) {
   const marker = await readMaybe(createdMarker(file));
   if (marker === undefined) return false;
   const left = onlyServers(await readMaybe(file), rootKey);
-  if (!left || Object.keys(left).length) return false;
+  if (!left || Object.keys(left).length) {
+    // The file is kept (the person's content is in it): JuTell no longer owns it, so drop only the marker.
+    // If it later becomes empty, it is the person's file and is never deleted.
+    await fs.rm(createdMarker(file), { force: true });
+    return false;
+  }
   let createdDir = false;
   try { createdDir = JSON.parse(marker).createdDir === true; } catch { /* keep the folder */ }
   for (const target of [file, `${file}.previous`, `${file}.jutell-original`, createdMarker(file)]) await fs.rm(target, { force: true });

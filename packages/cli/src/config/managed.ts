@@ -98,7 +98,12 @@ export async function exists(file: string) {
 }
 
 export async function readText(file: string) {
-  try { return await fs.readFile(file, 'utf8'); } catch { return undefined; }
+  // Only a missing file is "missing". Any other error (EACCES, EISDIR, …) is rethrown, so a
+  // snapshot of an unreadable file never becomes "did not exist" and rollback never deletes it.
+  try { return await fs.readFile(file, 'utf8'); } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+    throw error;
+  }
 }
 
 export async function snapshot(file: string): Promise<FileSnapshot> {

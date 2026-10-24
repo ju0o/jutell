@@ -41,12 +41,14 @@ const FOUNDATION_REQUIRED = [
 // - kind: PATTERNS 키 또는 'path'
 // - reason: 예외 이유
 // - scope: 허용 범위 (kind 탐지로 한정)
+// - line(선택): 이 문자열을 포함하는 줄만 예외. 그 줄을 뺀 나머지에서 같은 kind가 다시 탐지되면 WARN 유지
 const ALLOWED_EXCEPTIONS = [
   {
     file: 'packages/cli/src/installer/json-mcp.ts',
     kind: 'winPath',
-    reason: '(k) Windows 경로 정규화 설명 주석의 placeholder(C:\\Users\\…). 운영자 절대 경로가 아님',
-    scope: '해당 파일의 winPath 탐지에만 적용',
+    line: '/** (k) Windows paths:',
+    reason: '(k) Windows 경로 정규화 설명 주석(드라이브 문자 + 백슬래시 placeholder). 운영자 절대 경로가 아님',
+    scope: 'line 필드가 가리키는 주석 줄의 winPath 탐지에만 적용 (같은 파일의 다른 줄은 계속 검사)',
   },
   {
     file: 'packages/cli/tests/json-mcp.test.ts',
@@ -59,6 +61,12 @@ const ALLOWED_EXCEPTIONS = [
     kind: 'winPath',
     reason: 'OS별 앱 설정 경로 fixture(가상 사용자 홍 길동, W4). 운영자 절대 경로가 아님',
     scope: '해당 파일의 winPath 탐지에만 적용',
+  },
+  {
+    file: 'apps/mcp-server/src/config/project-root.ts',
+    kind: 'parentEscape',
+    reason: '데이터 폴더가 프로젝트 루트 안에 있는지 확인하는 방어 코드(path.relative 결과가 ..로 시작하면 거부). 경로 탈출이 아니라 탈출 차단',
+    scope: '해당 파일의 parentEscape 탐지에만 적용',
   },
   {
     file: 'docs/PROVIDER_OPENCODE.md',
@@ -158,8 +166,14 @@ const ALLOWED_EXCEPTIONS = [
   },
 ];
 
-function isAllowed(file, kind) {
-  return ALLOWED_EXCEPTIONS.some((entry) => entry.file === file && entry.kind === kind);
+function isAllowed(file, kind, content) {
+  return ALLOWED_EXCEPTIONS.some((entry) => {
+    if (entry.file !== file || entry.kind !== kind) return false;
+    if (entry.line === undefined) return true;
+    // 줄 단위 예외: 지정한 줄을 제외한 나머지에서 같은 kind가 없을 때만 허용
+    const rest = content.split('\n').filter((text) => !text.includes(entry.line)).join('\n');
+    return !PATTERNS[kind].test(rest);
+  });
 }
 
 for (const entry of ALLOWED_EXCEPTIONS) {
@@ -283,7 +297,7 @@ for (const file of allTracked) {
   } catch { continue; }
   const content = readFileSync(abs, 'utf8');
   for (const kind of scanText(file, content)) {
-    if (isAllowed(file, kind)) {
+    if (isAllowed(file, kind, content)) {
       allowedSkips += 1;
       continue;
     }

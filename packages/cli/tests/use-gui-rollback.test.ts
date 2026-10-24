@@ -50,4 +50,36 @@ describe('jutell use <GUI app> rollback', () => {
     expect(await fs.readFile(file, 'utf8')).toBe(original);
     expect((await fs.readdir(path.dirname(file))).sort()).toEqual(['mcp.json']);
   });
+
+  // #43 B1: an unreadable file is not a missing file — rollback must never delete it.
+  const noChmod = process.platform === 'win32' || process.getuid?.() === 0;
+  it.skipIf(noChmod)('a chmod 000 app file survives a failed use (readText only treats ENOENT as missing)', async () => {
+    const { project, io } = await sandbox();
+    const file = path.join(project, '.vscode', 'mcp.json');
+    const original = '{ "servers": { "other": { "command": "x" } } }\n';
+    await fs.mkdir(path.dirname(file));
+    await fs.writeFile(file, original);
+    await fs.chmod(file, 0o000);
+    try {
+      await expect(useCommand(resolveScope('project', project), { yes: true } as never, io, ['use', 'vscode'])).rejects.toThrow();
+      expect(await fs.lstat(file).then(() => true, () => false)).toBe(true);
+    } finally {
+      await fs.chmod(file, 0o644);
+    }
+    expect(await fs.readFile(file, 'utf8')).toBe(original);
+  });
+
+  it.skipIf(noChmod)('snapshot() rethrows a read error other than ENOENT', async () => {
+    const { project } = await sandbox();
+    const { snapshot } = await import('../src/config/managed.js');
+    const file = path.join(project, 'locked.json');
+    await fs.writeFile(file, '{}');
+    await fs.chmod(file, 0o000);
+    try {
+      await expect(snapshot(file)).rejects.toMatchObject({ code: 'EACCES' });
+    } finally {
+      await fs.chmod(file, 0o644);
+    }
+    expect(await snapshot(path.join(project, 'nope.json'))).toEqual({ file: path.join(project, 'nope.json'), existed: false });
+  });
 });

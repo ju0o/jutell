@@ -130,6 +130,23 @@ describe('jutell use / disconnect <GUI app> (built dist)', () => {
     for (const file of [cursor, ...(desktop ? [desktop] : [])]) expect(await exists(file), file).toBe(false);
   }, 60000);
 
+  it('(l) a JuTell-created file that is kept (the person added a server) loses only the marker; when it later becomes empty it is never deleted', async () => {
+    const { project, run } = await sandbox();
+    const file = path.join(project, '.cursor', 'mcp.json');
+    expect(run(['use', 'cursor']).status).toBe(0);
+    const withMine = JSON.parse(await readFile(file, 'utf8'));
+    withMine.mcpServers.mine = { command: 'x' };
+    await writeFile(file, JSON.stringify(withMine, null, 2));
+    expect(run(['disconnect', 'cursor']).status).toBe(0);
+    expect(await exists(file)).toBe(true);
+    expect(await exists(`${file}.jutell-created`)).toBe(false);
+    // The person empties it; JuTell connects and disconnects again: the file stays.
+    await writeFile(file, '{ "mcpServers": {} }\n');
+    expect(run(['use', 'cursor']).status).toBe(0);
+    expect(run(['disconnect', 'cursor']).status).toBe(0);
+    expect(await exists(file)).toBe(true);
+  });
+
   it.skipIf(!linux)('vscode --global (Q10, Linux): writes $XDG_CONFIG_HOME/Code/User/mcp.json and uninstall --global removes it cleanly', async () => {
     const { home, project, run, json } = await sandbox();
     const file = path.join(home, '.config', 'Code', 'User', 'mcp.json');
