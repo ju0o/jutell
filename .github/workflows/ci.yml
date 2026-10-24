@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+# Cycle 3 W11: a newer push to the same branch/PR cancels the older run.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -17,10 +22,15 @@ jobs:
       matrix:
         node: ["20", "22"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: |
+            apps/mcp-server/package-lock.json
+            apps/local-admin/package-lock.json
+            packages/cli/package-lock.json
 
       # Not an npm workspace - each package installs, builds and tests on its own.
       - name: apps/mcp-server
@@ -28,6 +38,7 @@ jobs:
         run: npm ci && npm run build && npm test
 
       - name: apps/local-admin
+        if: ${{ !cancelled() }}
         working-directory: apps/local-admin
         run: npm ci && npm run build && npm test
 
@@ -44,16 +55,18 @@ jobs:
 
       # ~4 s: npm pack -> install the tarball into a temp project -> jutell --help / doctor.
       - name: packages/cli pack + install smoke
+        if: ${{ !cancelled() }}
         working-directory: packages/cli
         run: node scripts/pack-install-smoke.mjs
 
       - name: packages/cli known-flaky tests (non-blocking)
-        if: matrix.node == '22'
+        if: ${{ !cancelled() && matrix.node == '22' }}
         continue-on-error: true
         working-directory: packages/cli
         run: npx vitest run tests/cli.test.ts tests/default-command.test.ts
 
       - name: Public repository safety check
+        if: ${{ !cancelled() }}
         run: npm run check:public
 
   # Cycle 2 W0: Windows and macOS run the same steps so their results are visible,
@@ -72,16 +85,22 @@ jobs:
       run:
         shell: bash
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: |
+            apps/mcp-server/package-lock.json
+            apps/local-admin/package-lock.json
+            packages/cli/package-lock.json
 
       - name: apps/mcp-server
         working-directory: apps/mcp-server
         run: npm ci && npm run build && npm test
 
       - name: apps/local-admin
+        if: ${{ !cancelled() }}
         working-directory: apps/local-admin
         run: npm ci && npm run build && npm test
 
@@ -93,5 +112,34 @@ jobs:
         working-directory: packages/cli
         run: npx vitest run --exclude tests/cli.test.ts --exclude tests/default-command.test.ts
 
+      # W8 (#30 follow-up 7): run the built CLI from real PowerShell, with a temp home whose
+      # path has Korean letters and spaces, and a temp %APPDATA%: use -> status -> uninstall.
+      - name: packages/cli PowerShell e2e (Windows)
+        if: ${{ !cancelled() && runner.os == 'Windows' }}
+        shell: pwsh
+        working-directory: packages/cli
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:RUNNER_TEMP '홍 길동 e2e'
+          $proj = Join-Path $root 'proj'
+          New-Item -ItemType Directory -Force -Path $proj | Out-Null
+          git -C $proj init -q
+          $home2 = Join-Path $root 'home'
+          $env:HOME = $home2; $env:USERPROFILE = $home2; $env:JUTELL_HOME = $home2; $env:BEGINNER_BRIDGE_HOME = $home2
+          $env:APPDATA = Join-Path $home2 'AppData\Roaming'
+          $env:CODEX_HOME = Join-Path $home2 '.codex'
+          $env:CLAUDE_CONFIG_DIR = Join-Path $home2 '.claude'
+          $cli = Join-Path (Get-Location) 'dist\index.js'
+          Push-Location $proj
+          node $cli --help | Out-Null; if ($LASTEXITCODE) { throw 'help failed' }
+          node $cli use claude-desktop; if ($LASTEXITCODE) { throw 'use failed' }
+          $desktop = Join-Path $env:APPDATA 'Claude\claude_desktop_config.json'
+          if (-not (Test-Path -LiteralPath $desktop)) { throw "missing $desktop" }
+          node $cli status; if ($LASTEXITCODE) { throw 'status failed' }
+          node $cli uninstall --global --yes; if ($LASTEXITCODE) { throw 'uninstall failed' }
+          if (Test-Path -LiteralPath $desktop) { throw "left behind: $desktop" }
+          Pop-Location
+
       - name: Public repository safety check
+        if: ${{ !cancelled() }}
         run: npm run check:public
