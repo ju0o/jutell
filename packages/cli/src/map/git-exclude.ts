@@ -1,14 +1,35 @@
 import { execFile } from 'node:child_process';
 import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
-import { MAP_FILE, writeViaTemp } from './write.js';
+// No imports from the rest of the CLI: the local admin server uses this same file (map.gitExclude switch).
+const MAP_FILE = 'JuTellMap.md';
+
+async function writeViaTemp(file: string, content: string) {
+  const temporary = path.join(path.dirname(file), `.${path.basename(file)}.jutell-tmp-${process.pid}`);
+  const flags = fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_WRONLY | (fsConstants.O_NOFOLLOW ?? 0);
+  const existingMode = await fs.lstat(file).then((stat) => stat.mode & 0o777, () => undefined);
+  const handle = await fs.open(temporary, flags, existingMode ?? 0o644);
+  try { await handle.writeFile(content, 'utf8'); } finally { await handle.close(); }
+  try { await fs.rename(temporary, file); } catch (error) { await fs.rm(temporary, { force: true }); throw error; }
+}
 
 /** The two lines JuTell adds to the repository's info/exclude, always together and only once. */
 export const EXCLUDE_COMMENT = `# jutell: ${MAP_FILE}를 이 컴퓨터에서만 git에서 뺌 (jutell map --git-include로 되돌림)`;
 export const EXCLUDE_LINE = `/${MAP_FILE}`;
 
+/** Escapes gitignore glob characters (and a backslash) in a path piece. */
+export function escapeGlob(value: string) {
+  return value.replace(/[\\*?[\]]/g, (char) => `\\${char}`);
+}
+
+/** Exclude line for a project at `prefix` (from `git rev-parse --show-prefix`) inside its repository. */
+export function excludeLineFor(prefix: string) {
+  return `/${escapeGlob(prefix)}${MAP_FILE}`;
+}
+
 export type GitExcludeResult =
-  | { status: 'added' | 'already' | 'removed' | 'absent'; file: string }
+  /** ignored: `git check-ignore -q JuTellMap.md` after the change, reported as is. */
+  | { status: 'added' | 'already' | 'removed' | 'absent'; file: string; ignored: boolean }
   | { status: 'not-git' }
   | { status: 'committed' }
   | { status: 'link'; file: string };
@@ -32,6 +53,15 @@ export async function excludeFile(root: string): Promise<string | undefined> {
   }
 }
 
+/** Project folder inside its repository, e.g. "sub/proj/" ("" at the top). */
+async function showPrefix(root: string) {
+  try { return (await git(root, ['rev-parse', '--show-prefix'])).replace(/\r?\n$/, ''); } catch { return ''; }
+}
+
+async function mapIgnored(root: string) {
+  try { await git(root, ['check-ignore', '-q', '--', MAP_FILE]); return true; } catch { return false; }
+}
+
 async function mapCommitted(root: string) {
   try { await git(root, ['ls-files', '--error-unmatch', '--', MAP_FILE]); return true; } catch { return false; }
 }
@@ -48,9 +78,9 @@ function lines(text: string) {
   return { eol, list: text.split(/\r?\n/) };
 }
 
-function hasPair(text: string) {
+function hasPair(text: string, line: string) {
   const { list } = lines(text);
-  return list.some((line, index) => line === EXCLUDE_COMMENT && list[index + 1] === EXCLUDE_LINE);
+  return list.some((entry, index) => entry === EXCLUDE_COMMENT && list[index + 1] === line);
 }
 
 /** Appends the two lines once. Existing bytes are kept; never writes through a link; creates the file if missing. */
@@ -58,42 +88,46 @@ export async function addGitExclude(root: string): Promise<GitExcludeResult> {
   const file = await excludeFile(root);
   if (!file) return { status: 'not-git' };
   if (await mapCommitted(root)) return { status: 'committed' };
+  const line = excludeLineFor(await showPrefix(root));
   const current = await readExclude(file);
   if (current === 'link') return { status: 'link', file };
-  if (current && hasPair(current.text)) return { status: 'already', file };
+  if (current && hasPair(current.text, line)) return { status: 'already', file, ignored: await mapIgnored(root) };
   const text = current?.text ?? '';
   const eol = text ? lines(text).eol : '\n';
   const separator = text && !text.endsWith('\n') ? eol : '';
   await fs.mkdir(path.dirname(file), { recursive: true });
   if ((await fs.lstat(path.dirname(file))).isSymbolicLink()) return { status: 'link', file };
-  await writeViaTemp(file, `${text}${separator}${EXCLUDE_COMMENT}${eol}${EXCLUDE_LINE}${eol}`);
-  return { status: 'added', file };
+  await writeViaTemp(file, `${text}${separator}${EXCLUDE_COMMENT}${eol}${line}${eol}`);
+  return { status: 'added', file, ignored: await mapIgnored(root) };
 }
 
 /** Removes only JuTell's two lines (each comment line together with the line right after it). Everything else stays byte for byte. */
 export async function removeGitExclude(root: string): Promise<GitExcludeResult> {
   const file = await excludeFile(root);
   if (!file) return { status: 'not-git' };
+  const line = excludeLineFor(await showPrefix(root));
   const current = await readExclude(file);
   if (current === 'link') return { status: 'link', file };
-  if (!current || !hasPair(current.text)) return { status: 'absent', file };
+  if (!current || !hasPair(current.text, line)) return { status: 'absent', file, ignored: await mapIgnored(root) };
   // Work on raw pieces so CRLF/LF mixes and a missing final newline survive.
   const pieces = current.text.split(/(?<=\n)/);
   const strip = (piece: string) => piece.replace(/\r?\n$/, '');
   const kept: string[] = [];
   for (let index = 0; index < pieces.length; index += 1) {
-    if (strip(pieces[index]) === EXCLUDE_COMMENT && pieces[index + 1] !== undefined && strip(pieces[index + 1]) === EXCLUDE_LINE) { index += 1; continue; }
+    if (strip(pieces[index]) === EXCLUDE_COMMENT && pieces[index + 1] !== undefined && strip(pieces[index + 1]) === line) { index += 1; continue; }
     kept.push(pieces[index]);
   }
   await writeViaTemp(file, kept.join(''));
-  return { status: 'removed', file };
+  return { status: 'removed', file, ignored: await mapIgnored(root) };
 }
 
 export function gitExcludeMessage(result: GitExcludeResult): string {
   switch (result.status) {
-    case 'added': return `${MAP_FILE}를 이 컴퓨터에서만 git에서 뺐어요(.git/info/exclude). 되돌리려면 \`jutell map --git-include\`.`;
-    case 'already': return `${MAP_FILE}는 이미 git에서 빠져 있어요.`;
-    case 'removed': return `${MAP_FILE}를 다시 git에 보이게 했어요.`;
+    case 'added': return result.ignored
+      ? `${MAP_FILE}를 이 컴퓨터에서만 git에서 뺐어요(.git/info/exclude). 되돌리려면 \`jutell map --git-include\`.`
+      : `.git/info/exclude에 줄을 넣었지만 git이 아직 ${MAP_FILE}를 빼지 않아요(git check-ignore로 확인). 직접 확인해 주세요.`;
+    case 'already': return result.ignored ? `${MAP_FILE}는 이미 git에서 빠져 있어요.` : `JuTell 줄은 이미 있지만 git이 ${MAP_FILE}를 빼지 않아요(git check-ignore로 확인). 직접 확인해 주세요.`;
+    case 'removed': return result.ignored ? `JuTell 줄은 지웠지만 ${MAP_FILE}는 다른 규칙(.gitignore 등) 때문에 여전히 git에서 빠져 있어요.` : `${MAP_FILE}를 다시 git에 보이게 했어요.`;
     case 'absent': return `JuTell이 넣은 git 제외 줄이 없어서 바꿀 것이 없어요.`;
     case 'not-git': return 'git 저장소가 아니라 할 일이 없어요.';
     case 'committed': return `${MAP_FILE}가 이미 커밋돼 있어서 아무것도 바꾸지 않았어요. git에서 빼려면 \`git rm --cached ${MAP_FILE}\`를 직접 실행하세요.`;

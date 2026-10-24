@@ -198,7 +198,8 @@ export async function defaultCommand(paths: ScopePaths, options: CliOptions, io:
     if (options.yes || stdin.isTTY !== true || process.stdout.isTTY !== true) {
       await enableCommand(paths, { ...options, yes: true, oneCommand: true }, io);
       io.write(readyMessage(await getStatus(paths)));
-      if (options.yes) await offerMap(paths, options, io, false);
+      // A new project: --yes makes the map, a person at a terminal is asked (supervisor decision 2).
+      if (options.yes || stdin.isTTY === true) await offerMap(paths, options, io, stdin.isTTY === true);
       io.write('관리자 화면은 `jutell dashboard`로 열 수 있어요.');
       return { cancelled: false };
     }
@@ -208,6 +209,7 @@ export async function defaultCommand(paths: ScopePaths, options: CliOptions, io:
       await enableCommand(paths, { ...options, yes: true, oneCommand: true }, io);
     }
     io.write(readyMessage(await getStatus(paths)));
+    await offerMap(paths, options, io, true);
     return dashboardCommand(paths, options, io);
   }
 
@@ -216,7 +218,7 @@ export async function defaultCommand(paths: ScopePaths, options: CliOptions, io:
   // dashboard auto-launch, just a status line and a pointer to --help.
   io.write(alreadyConfiguredMessage(statuses));
   // `jutell --yes` makes the map in every project, also when the agents were connected earlier
-  // (e.g. from another project). offerMap never overwrites an existing map.
-  if (options.yes) await offerMap(paths, options, io, false);
+  // (e.g. from another project); at a terminal the person is asked. offerMap never overwrites an existing map.
+  if (options.yes || stdin.isTTY === true) await offerMap(paths, options, io, stdin.isTTY === true);
   return { cancelled: false };
 }

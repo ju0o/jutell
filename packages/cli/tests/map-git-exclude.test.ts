@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import { normalizeConfig } from '../src/config/managed.js';
-import { addGitExclude, EXCLUDE_COMMENT, EXCLUDE_LINE, excludeFile, removeGitExclude } from '../src/map/git-exclude.js';
+import { addGitExclude, EXCLUDE_COMMENT, EXCLUDE_LINE, excludeFile, excludeLineFor, gitExcludeMessage, removeGitExclude } from '../src/map/git-exclude.js';
 
 const cliEntry = fileURLToPath(new URL('../dist/index.js', import.meta.url));
 const roots: string[] = [];
@@ -127,6 +127,34 @@ describe('map git exclude (W4)', () => {
     expect((await addGitExclude(inner)).status).toBe('added');
     expect(ignored(inner)).toBe(true);
     expect(ignored(dir)).toBe(false);
+  });
+
+  // Reviewer C2: a project in a subfolder of a bigger repository gets /<prefix>JuTellMap.md (glob characters escaped).
+  it('project in a subfolder of a parent repo: prefixed, escaped line; check-ignore reported; remove/uninstall use the same line', async () => {
+    const { dir: parent, root } = await repo('parent');
+    const sub = path.join(parent, 'apps', 'we[ird]*?');
+    await fs.mkdir(sub, { recursive: true });
+    await fs.writeFile(path.join(sub, 'JuTellMap.md'), '# 지도\n');
+    expect(excludeLineFor('apps/we[ird]*?/')).toBe('/apps/we\\[ird\\]\\*\\?/JuTellMap.md');
+    const added = await addGitExclude(sub);
+    expect(added).toMatchObject({ status: 'added', ignored: true });
+    const exclude = path.join(parent, '.git', 'info', 'exclude');
+    expect(await fs.readFile(exclude, 'utf8')).toContain(`${EXCLUDE_COMMENT}\n/apps/we\\[ird\\]\\*\\?/JuTellMap.md\n`);
+    expect(ignored(sub)).toBe(true);
+    expect(ignored(parent)).toBe(false); // the parent's own map is not hidden
+    expect((await addGitExclude(sub)).status).toBe('already');
+    expect(await removeGitExclude(sub)).toMatchObject({ status: 'removed', ignored: false });
+    expect(ignored(sub)).toBe(false);
+    void root;
+  });
+
+  it('reports as is when the line is in but git still does not ignore the map', async () => {
+    const { dir, exclude } = await repo();
+    await fs.writeFile(exclude, '');
+    await fs.writeFile(path.join(dir, '.gitignore'), '!JuTellMap.md\n');
+    const result = await addGitExclude(dir);
+    expect(result).toMatchObject({ status: 'added', ignored: false });
+    expect(gitExcludeMessage(result)).toContain('git check-ignore');
   });
 
   it('CLI: --git-exclude/--git-include record map.gitExclude in .jutell.json; uninstall removes only the two lines', async () => {

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { addGitExclude, gitExcludeMessage, removeGitExclude } from '../../../packages/cli/src/map/git-exclude.js';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
@@ -289,15 +290,27 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
     if (method === 'PUT' && url.pathname === '/api/config') {
       const result = validateConfig(await body(req));
       if (!result.ok) return error(res, 400, result.error);
-      const saved = await saveConfig(paths, result.value);
-      return json(res, 200, { ...saved, ...(await readOverview(paths)) });
+      // map.gitExclude takes effect right away: the same code as `jutell map --git-exclude/--git-include`.
+      const before = (await readConfig(paths)).config.map?.gitExclude ?? false;
+      const wanted = result.value.map?.gitExclude ?? false;
+      let next = result.value;
+      let gitExclude: { status: string; ignored?: boolean; message: string } | undefined;
+      if (wanted !== before) {
+        const applied = await (wanted ? addGitExclude(projectRoot) : removeGitExclude(projectRoot)).catch((caught: Error) => ({ status: 'error' as const, message: caught.message }));
+        const ok = ['added', 'already', 'removed', 'absent'].includes(applied.status);
+        gitExclude = { status: applied.status, ...('ignored' in applied ? { ignored: applied.ignored } : {}), message: applied.status === 'error' ? `git 제외 줄을 바꾸지 못했어요(${applied.message}).` : gitExcludeMessage(applied) };
+        // Not applied (not git, committed map, link, error): keep the old value so the switch matches .git/info/exclude.
+        if (!ok) next = { ...result.value, map: { gitExclude: before } };
+      }
+      const saved = await saveConfig(paths, next);
+      return json(res, 200, { ...saved, ...(gitExclude ? { gitExclude } : {}), ...(await readOverview(paths)) });
     }
     if (method === 'POST' && url.pathname === '/api/config/reset') {
       const input = await body(req);
       if (!input || typeof input !== 'object' || (input as { confirm?: unknown }).confirm !== true) {
         return error(res, 400, '기본값 복원 확인이 필요합니다.');
       }
-      // map.gitExclude mirrors .git/info/exclude (changed only by `jutell map --git-exclude/--git-include`), so a reset keeps it.
+      // map.gitExclude mirrors .git/info/exclude (changed by `jutell map --git-exclude/--git-include` or the switch above), so a reset keeps it.
       const current = await readConfig(paths);
       const saved = await saveConfig(paths, { ...structuredClone(DEFAULT_CONFIG), ...(current.config.map ? { map: { ...current.config.map } } : {}) });
       return json(res, 200, { ...saved, ...(await readOverview(paths)) });

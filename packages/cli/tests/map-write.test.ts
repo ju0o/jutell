@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import { resolveScope } from '../src/config/paths.js';
-import { MAP_COPY_FILE, MAP_GUIDE, MAP_FILE, MAP_LATER, MAP_QUESTION, MAP_STATE_FILE, offerMap, parseMap, sha256, writeMap } from '../src/map/write.js';
+import { MAP_COPY_FILE, MAP_GUIDE, MAP_FILE, MAP_LATER, MAP_QUESTION, MAP_STATE_FILE, mapWriteMessage, offerMap, parseMap, sha256, writeMap } from '../src/map/write.js';
 import { MAP_HTML_FILE, renderMapHtml } from '../src/map/html.js';
 import { parseYesNo } from '../src/output/format.js';
 import type { CliIo } from '../src/types.js';
@@ -201,6 +201,32 @@ describe('map write (W2)', () => {
     for (const bad of ['<!-- /jutell:auto -->\n', '<!-- jutell:auto a -->\n', '<!-- jutell:auto a -->\n<!-- /jutell:auto -->\n<!-- jutell:auto a -->\n<!-- /jutell:auto -->\n']) {
       expect(typeof parseMap(bad)).toBe('string');
     }
+  });
+
+  // Reviewer C1: never write the copy through a .jutell-local link.
+  it.skipIf(process.platform === 'win32')('a broken map with .jutell-local as a link: no copy, a notice instead', async () => {
+    const { dir, paths } = await project();
+    await writeMap(paths, NOW);
+    const file = path.join(dir, MAP_FILE);
+    await fs.writeFile(file, '<!-- /jutell:auto -->\n');
+    const elsewhere = path.join(path.dirname(dir), 'elsewhere');
+    await fs.mkdir(elsewhere);
+    await fs.rm(path.join(dir, '.jutell-local'), { recursive: true, force: true });
+    await fs.symlink(elsewhere, path.join(dir, '.jutell-local'));
+    const result = await writeMap(paths, LATER);
+    expect(result).toMatchObject({ status: 'broken', copy: undefined });
+    expect(await fs.readdir(elsewhere)).toEqual([]);
+    expect(mapWriteMessage(result, paths)).toContain('사본을 못 만들었어요');
+  });
+
+  // Reviewer C3: map-state.json that is not a plain file is left alone and never fails a map write.
+  it('map-state.json as a folder: create/update still succeed and the folder is untouched', async () => {
+    const { dir, paths } = await project();
+    await fs.mkdir(path.join(dir, '.jutell-local', MAP_STATE_FILE), { recursive: true });
+    expect((await writeMap(paths, NOW)).status).toBe('created');
+    await fs.writeFile(path.join(dir, 'src', 'payments', 'new-pay.ts'), 'x');
+    expect((await writeMap(paths, LATER)).status).toBe('updated');
+    expect((await fs.lstat(path.join(dir, '.jutell-local', MAP_STATE_FILE))).isDirectory()).toBe(true);
   });
 
   it('works in a Korean path with spaces', async () => {

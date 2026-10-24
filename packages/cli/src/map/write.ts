@@ -28,7 +28,8 @@ export type MapWriteResult =
   | { status: 'created'; file: string; files: number; unclassified: number }
   | { status: 'updated'; file: string; added: string[]; removed: string[]; newSections: string[] }
   | { status: 'unchanged'; file: string }
-  | { status: 'broken'; file: string; copy: string; reason: string }
+  /** copy is undefined when .jutell-local is not a real folder (a link etc.), so no copy was written. */
+  | { status: 'broken'; file: string; copy: string | undefined; reason: string }
   | { status: 'link'; file: string };
 
 function keyOf(item: Classified) {
@@ -204,7 +205,8 @@ async function recordState(paths: ScopePaths, hash: string, files: string[], now
   await ensureDataRoot(paths);
   if (!(await fs.lstat(paths.dataRoot)).isDirectory()) return;
   const stateFile = path.join(paths.dataRoot, MAP_STATE_FILE);
-  if ((await fs.lstat(stateFile).catch(() => undefined))?.isSymbolicLink()) return;
+  const stats = await fs.lstat(stateFile).catch(() => undefined);
+  if (stats && !stats.isFile()) return; // a link, folder or anything but a plain file: leave it alone
   await writeViaTemp(stateFile, `${JSON.stringify({ version: 2, file: MAP_FILE, hash, writtenAt: now.toISOString(), files } satisfies MapState, null, 2)}\n`);
 }
 
@@ -227,13 +229,15 @@ export async function writeMap(paths: ScopePaths, now = new Date()): Promise<Map
   if (!stats) {
     const text = renderNewMap(items, now);
     await writeViaTemp(file, text);
-    await recordState(paths, sha256(text), listed, now);
+    await recordState(paths, sha256(text), listed, now).catch(() => undefined);
     return { status: 'created', file, files: items.length, unclassified: items.filter((item) => item.feature === UNCLASSIFIED).length };
   }
   const existing = await fs.readFile(file, { encoding: 'utf8', flag: fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) });
   const updated = updateMap(existing, items, now);
   if (typeof updated === 'string') {
-    await ensureDataRoot(paths);
+    await ensureDataRoot(paths).catch(() => undefined);
+    // Only into a real folder: never through a .jutell-local link.
+    if (!(await fs.lstat(paths.dataRoot).catch(() => undefined))?.isDirectory()) return { status: 'broken', file, copy: undefined, reason: updated };
     const copy = path.join(paths.dataRoot, MAP_COPY_FILE);
     if ((await fs.lstat(copy).catch(() => undefined))?.isSymbolicLink()) throw new Error('지도 사본 위치가 링크라서 쓰지 않았어요');
     await writeViaTemp(copy, renderNewMap(items, now));
@@ -247,7 +251,8 @@ export async function writeMap(paths: ScopePaths, now = new Date()): Promise<Map
     return { status: 'unchanged', file };
   }
   await writeViaTemp(file, updated.text);
-  await recordState(paths, sha256(updated.text), listed, now);
+  // The map is already renamed into place: a state write failure must not turn the result into an error.
+  await recordState(paths, sha256(updated.text), listed, now).catch(() => undefined);
   return { status: 'updated', file, added: updated.added, removed: updated.removed, newSections: updated.newSections };
 }
 
@@ -285,7 +290,7 @@ export function mapWriteMessage(result: MapWriteResult, paths: ScopePaths): stri
   if (result.status === 'unchanged') return `프로젝트 지도(${MAP_FILE})는 바뀐 것이 없어요.`;
   if (result.status === 'link') return `${MAP_FILE}이 링크라서 쓰지 않았어요.`;
   if (result.status !== 'broken') return '';
-  return `${MAP_FILE}의 자동 칸 표시가 망가져 있어서(${result.reason}) 고치지 않았어요. 새 지도는 ${shown(result.copy)}에 만들었어요.`;
+  return `${MAP_FILE}의 자동 칸 표시가 망가져 있어서(${result.reason}) 고치지 않았어요. ${result.copy ? `새 지도는 ${shown(result.copy)}에 만들었어요.` : '.jutell-local이 진짜 폴더가 아니라(링크 등) 새 지도 사본을 못 만들었어요.'}`;
 }
 
 export const MAP_QUESTION = '프로젝트 지도(JuTellMap.md)를 만들까요? 파일이 어디 있는지 기능별로 정리해요.';
