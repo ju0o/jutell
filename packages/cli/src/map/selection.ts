@@ -195,6 +195,57 @@ function parseExistingIndex(value: string | undefined): MapSelectionIndex | unde
   } catch { return undefined; }
 }
 
+/** Detail files JuTell wrote (marker on line 1, a plain single-link file) whose ID is not in `keep`. */
+async function orphanDetails(detailsDir: string, keep: ReadonlySet<string>): Promise<string[]> {
+  const names = await fs.readdir(detailsDir).catch(() => [] as string[]);
+  const found: string[] = [];
+  for (const name of names) {
+    const id = name.endsWith('.md') ? name.slice(0, -3) : '';
+    if (!DETAIL_ID.test(id) || keep.has(id)) continue;
+    const file = path.join(detailsDir, name);
+    const stats = await fs.lstat(file).catch(() => undefined);
+    if (!stats?.isFile() || stats.nlink !== 1) continue;
+    if ((await safeReadRegular(file))?.startsWith(`${MAP_DETAIL_MARKER} `)) found.push(file);
+  }
+  return found;
+}
+
+async function removeOrphanDetails(detailsDir: string, keep: ReadonlySet<string>) {
+  const files = await orphanDetails(detailsDir, keep);
+  for (const file of files) await fs.unlink(file).catch(() => undefined);
+  return files.length;
+}
+
+/** Section count when the index already describes this exact map text and commit (nothing to rewrite), else undefined. */
+export async function selectionUpToDate(paths: ScopePaths, markdown: string, commit: string | null): Promise<number | undefined> {
+  if (!(await isRegularDirectory(paths.dataRoot))) return undefined;
+  const index = parseExistingIndex(await safeReadRegular(path.join(paths.dataRoot, MAP_INDEX_FILE)));
+  return index !== undefined && index.sourceMap.sha256 === sha256(markdown) && index.sourceMap.commit === commit ? index.sections.length : undefined;
+}
+
+/**
+ * Plain-language problems between the map and its small index, for doctor/status.
+ * Reads only; never writes. Empty when everything matches.
+ */
+export async function mapSelectionProblems(paths: ScopePaths, markdown: string): Promise<string[]> {
+  const root = await fs.lstat(paths.dataRoot).catch(() => undefined);
+  if (root?.isSymbolicLink()) return ['.jutell-local이 링크라서 기능 목록을 만들지 않아요. 링크를 지우고 `jutell map`을 실행하면 다시 만들어요.'];
+  if (!root?.isDirectory()) return ['기능 목록이 아직 없어요. `jutell map`으로 만들 수 있어요.'];
+  const text = await safeReadRegular(path.join(paths.dataRoot, MAP_INDEX_FILE));
+  if (text === undefined) return ['기능 목록이 아직 없어요. `jutell map`으로 만들 수 있어요.'];
+  const index = parseExistingIndex(text);
+  if (!index) return ['기능 목록 파일이 JuTell 형식이 아니에요. 그대로 두었어요.'];
+  const problems: string[] = [];
+  if (index.sourceMap.sha256 !== sha256(markdown)) problems.push('기능 목록이 지금 지도와 달라요(지도가 바뀐 뒤 목록을 다시 만들지 않음)');
+  const detailsDir = path.join(paths.dataRoot, MAP_DETAILS_DIR);
+  const missing: string[] = [];
+  for (const entry of index.sections) if ((await safeReadRegular(path.join(detailsDir, `${entry.id}.md`))) === undefined) missing.push(entry.name);
+  if (missing.length) problems.push(`상세 파일이 없는 기능 ${missing.length}개(${missing.slice(0, 3).join(', ')}${missing.length > 3 ? ' 등' : ''})`);
+  const orphans = await orphanDetails(detailsDir, new Set(index.sections.map((section) => section.id)));
+  if (orphans.length) problems.push(`지도에 없는 기능의 오래된 상세 파일 ${orphans.length}개`);
+  return problems;
+}
+
 async function safeReadRegular(file: string): Promise<string | undefined> {
   const stats = await fs.lstat(file).catch(() => undefined);
   if (!stats || !stats.isFile() || stats.isSymbolicLink()) return undefined;
@@ -214,7 +265,6 @@ async function safeDirectory(dir: string) {
   return Boolean(created?.isDirectory() && !created.isSymbolicLink());
 }
 
-/** Writes one short JSON index and one Markdown detail per section, without deleting old detail files. */
 export async function writeMapSelectionFiles(
   paths: ScopePaths,
   markdown: string,
@@ -227,6 +277,8 @@ export async function writeMapSelectionFiles(
   const detailsDir = path.join(paths.dataRoot, MAP_DETAILS_DIR);
   const changedDetails: string[] = [];
   try {
+    // A .jutell-local link (even a broken one) is never followed or recreated.
+    if ((await fs.lstat(paths.dataRoot).catch(() => undefined))?.isSymbolicLink()) return { status: 'skipped', indexFile, sectionCount: 0, reason: '.jutell-local 경로가 일반 폴더가 아님' };
     await ensureDataRoot(paths);
     const rootStats = await fs.lstat(paths.dataRoot);
     if (!rootStats.isDirectory() || rootStats.isSymbolicLink()) return { status: 'skipped', indexFile, sectionCount: 0, reason: '.jutell-local 경로가 일반 폴더가 아님' };
@@ -279,6 +331,8 @@ export async function writeMapSelectionFiles(
     }
 
     if (oldIndexText !== indexContent) { await writeAtomically(indexFile, indexContent); changed = true; }
+    // Details of features that are no longer in the map are removed (only JuTell's own files).
+    await removeOrphanDetails(detailsDir, new Set(index.sections.map((section) => section.id))).catch(() => 0);
     return { status: changed ? 'written' : 'unchanged', indexFile, sectionCount: index.sections.length };
   } catch (error) {
     const message = (error as Error).message || '파일 작성 오류';

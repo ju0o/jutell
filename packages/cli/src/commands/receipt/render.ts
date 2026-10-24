@@ -47,6 +47,7 @@ export const LABEL_ESTIMATE = ESTIMATED_LABEL;
 export const LABEL_MATCH = '[Git 기준 · 지도 대조]';
 export const LABEL_JUTELL = '[JuTell이 적음]';
 /** Shown only when a check or a done item mentions a test or a command (item 2). */
+export const HANJA_NOTE = ` ⓘ AI가 적은 글에 한자가 섞여 있어요. 뜻이 헷갈리면 AI에게 쉬운 우리말로 다시 써 달라고 하세요  ${LABEL_JUTELL}`;
 export const AI_RESULTS_NOTE = ` ⓘ 위 테스트·명령 결과는 AI가 알려 준 내용이에요. JuTell이 직접 돌려 보지는 않았어요  ${LABEL_JUTELL}`;
 // A run record: a command name as a whole word (not 'test-app' or 'npm-debug.log'), or a run word plus a
 // result word ('테스트 통과'). A line that says it was NOT run ('실행하지 않음') never counts.
@@ -402,6 +403,8 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
   const mentionsRun = [...receipt.done, ...receipt.checks.flatMap((check) => check.result === '확인함' ? [`${check.what} ${check.how}`] : [])]
     .some((text) => mentionsRunRecord(text));
   const asked = receipt.asked ?? [];
+  // Chinese characters (Hanja) in what the AI wrote are hard for beginners: say so once.
+  const hasHanja = /\p{Script=Han}/u.test([...asked, ...receipt.done, ...receipt.checks.flatMap((check) => [check.what, check.result === '확인함' ? check.how : check.reason]), ...receipt.next.continue, ...receipt.next.nice, ...receipt.next.stop, aiSummary ?? ''].join('\n'));
   const askedMoreSource = typeof input === 'object' && input !== null ? (input as { askedMore?: unknown }).askedMore : undefined;
   const askedMore = typeof askedMoreSource === 'number' && Number.isInteger(askedMoreSource) && askedMoreSource > 0 ? askedMoreSource : 0;
   const files = receipt.files ?? [];
@@ -443,6 +446,7 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
     // '확인 못 한 것' is never left out: with nothing unchecked it says so explicitly.
     ...(receipt.checks.some((check) => check.result !== '확인함') ? [] : [` ✖ 확인 못 한 것: 없음  ${LABEL_AI}`]),
     ...(mentionsRun ? [AI_RESULTS_NOTE] : []),
+    ...(hasHanja ? [HANJA_NOTE] : []),
     '------------------------------',
     ...(nextGroups.every((group) => group.length === 0)
       ? [RECEIPT_SECTIONS[4], `${NOTHING_NEXT_LINE}  ${LABEL_JUTELL}`]

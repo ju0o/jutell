@@ -3,10 +3,11 @@ import path from 'node:path';
 import { ensureDataRoot, readBridgeConfig, writeBridgeConfig } from '../config/managed.js';
 import { friendlyError } from '../output/friendly.js';
 import { addGitExclude, gitExcludeMessage, removeGitExclude } from '../map/git-exclude.js';
-import { formatMapSelectionContext, formatMapSelectionIndex, readMapSelectionDetail, readMapSelectionIndex, sanitizeMapSelectionText } from '../map/selection.js';
+import { formatMapSelectionContext, formatMapSelectionIndex, readMapSelectionDetail, mapSelectionProblems, readMapSelectionIndex, sanitizeMapSelectionText } from '../map/selection.js';
 import { scanProject } from '../map/scan.js';
 import { MAP_STATE_FILE, mapFile, mapHtmlMessage, mapListFiles, mapWriteMessage, parseMap, readMapState, sha256, writeMap, writeMapHtml } from '../map/write.js';
 import type { CliIo, ScopePaths } from '../types.js';
+import { MAP_HTML_FILE } from '../map/html.js';
 
 export const MAP_HELP = `jutell map             전체 지도, 작은 인덱스, 기능 상세 파일과 .jutell-local/map.html을 만들거나 갱신합니다.
 jutell map --list      작은 기계 인덱스에서 기능 이름과 ID만 읽습니다.
@@ -67,6 +68,10 @@ export async function mapCommand(paths: ScopePaths, args: string[], io: CliIo) {
   const result = await writeMap(paths);
   io.write(mapWriteMessage(result, paths));
   if (result.status === 'broken' || result.status === 'link') return 0;
+  if ((await fs.lstat(paths.dataRoot).catch(() => undefined))?.isSymbolicLink()) {
+    io.write('.jutell-local이 링크라서 기능 목록과 보기 쉬운 화면(map.html)은 만들지 않았어요. 링크를 지우면 다음 `jutell map`에서 만들어요.');
+    return 0;
+  }
   if (result.selection?.status === 'skipped') io.write(`기계용 기능 인덱스와 상세를 갱신하지 못했어요 (${result.selection.reason ?? '파일을 쓸 수 없음'}). 전체 지도는 JuTellMap.md에서 확인하세요.`);
   else if (result.selection) io.write(`기계 인덱스와 기능 상세 ${result.selection.sectionCount}개: .jutell-local/map-index.json`);
   const html = await writeMapHtml(paths);
@@ -103,13 +108,20 @@ export async function mapFreshnessCheck(paths: ScopePaths) {
   try {
     const stale = await staleMapFiles(paths);
     if (!stale.exists) return { name, status: '정상' as const, detail: '지도가 없어요. `jutell map`으로 만들 수 있어요.' };
-    if (!stale.added.length && !stale.removed.length) return { name, status: '정상' as const, detail: '지도가 최신이에요.' };
+    // The small feature list (map-index.json and map-details) must describe the same map.
+    const markdown = await fs.readFile(mapFile(paths), 'utf8').catch(() => undefined);
+    const selection = markdown === undefined ? [] : await mapSelectionProblems(paths, markdown).catch(() => []);
+    if (!stale.added.length && !stale.removed.length) {
+      return selection.length
+        ? { name, status: '주의' as const, detail: `지도는 최신이지만 기능 목록이 맞지 않아요: ${selection.join(' · ')}. \`jutell map\`으로 다시 맞추세요.` }
+        : { name, status: '정상' as const, detail: '지도가 최신이에요.' };
+    }
     const list = (files: string[]) => `${files.slice(0, 3).join(', ')}${files.length > 3 ? ' 등' : ''}`;
     const parts = [
       stale.added.length ? `새 파일 ${stale.added.length}개(${list(stale.added)})` : '',
       stale.removed.length ? `없어진 파일 ${stale.removed.length}개(${list(stale.removed)})` : '',
     ].filter(Boolean);
-    return { name, status: '주의' as const, detail: `지도 오래됨: 지도에 없는 ${parts.join(', ')}. \`jutell map\`으로 갱신하세요.` };
+    return { name, status: '주의' as const, detail: `지도 오래됨: 지도에 없는 ${parts.join(', ')}${selection.length ? ` · 기능 목록: ${selection.join(' · ')}` : ''}. \`jutell map\`으로 갱신하세요.` };
   } catch {
     return { name, status: '직접 확인 필요' as const, detail: '지도를 확인하지 못했어요.' };
   }
@@ -145,12 +157,15 @@ export async function refreshMapForReceipt(paths: ScopePaths, timeoutMs = RECEIP
   const controller = new AbortController();
   const timeout = new Promise<'timeout'>((resolve) => { timer = setTimeout(() => { controller.abort(); resolve('timeout'); }, timeoutMs); });
   try {
-    const result = await Promise.race([writeMap(paths, new Date(), controller.signal), timeout]);
+    const result = await Promise.race([writeMap(paths, new Date(), controller.signal, true), timeout]);
     if (result === 'timeout') return { jutellOwned, note: 'ⓘ 지도 갱신 못 함(시간 초과로 건너뜀)' };
     if (result.status === 'link') return { jutellOwned: false, note: 'ⓘ 지도 갱신 못 함(지도가 링크예요)' };
     if (result.status === 'broken') return { jutellOwned, note: 'ⓘ 지도 갱신 못 함(자동 칸 표시가 망가져 있어요. `jutell map`으로 확인하세요)' };
-    await writeMapHtml(paths).catch(() => undefined);
-    if (result.selection?.status === 'skipped') return { jutellOwned, note: `ⓘ 기능 인덱스 갱신 못 함(${result.selection.reason ?? '파일을 쓸 수 없음'})` };
+    // Nothing changed and the page exists: skip re-rendering it.
+    const htmlThere = await fs.lstat(path.join(paths.dataRoot, MAP_HTML_FILE)).then((entry) => entry.isFile(), () => false);
+    if (!(result.status === 'unchanged' && result.selection?.status === 'unchanged' && htmlThere)) await writeMapHtml(paths).catch(() => undefined);
+    // A linked .jutell-local is reported by doctor/status, not again on every receipt.
+    if (result.selection?.status === 'skipped' && !/일반 폴더가 아님/.test(result.selection.reason ?? '')) return { jutellOwned, note: `ⓘ 기능 인덱스 갱신 못 함(${result.selection.reason ?? '파일을 쓸 수 없음'})` };
     if (result.status !== 'updated') return result.selection?.status === 'written'
       ? { jutellOwned, note: 'ⓘ 기능 인덱스와 상세 파일을 만들었어요  [JuTell이 고침]' }
       : { jutellOwned };

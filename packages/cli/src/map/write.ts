@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
 import { ensureDataRoot } from '../config/managed.js';
@@ -8,7 +8,7 @@ import type { CliIo, CliOptions, ScopePaths } from '../types.js';
 import { MAP_HTML_FILE, renderMapHtml } from './html.js';
 import { classifyFiles, ESTIMATED_LABEL, UNCLASSIFIED, type Classified } from './classify.js';
 import { scanProject, type MapScan } from './scan.js';
-import { writeMapSelectionFiles, type MapSelectionWriteResult } from './selection.js';
+import { selectionUpToDate, writeMapSelectionFiles, type MapSelectionWriteResult } from './selection.js';
 
 export const MAP_FILE = 'JuTellMap.md';
 export const MAP_STATE_FILE = 'map-state.json';
@@ -217,21 +217,24 @@ export function mapFile(paths: ScopePaths) {
   return path.join(paths.targetRoot, MAP_FILE);
 }
 
-function currentCommit(root: string): string | null {
-  try {
-    const commit = execFileSync('git', ['rev-parse', '--verify', 'HEAD'], {
+/** HEAD commit, or null. Async so a receipt's time limit can still fire while git runs. */
+function currentCommit(root: string, signal?: AbortSignal): Promise<string | null> {
+  return new Promise((resolve) => {
+    execFile('git', ['rev-parse', '--verify', 'HEAD'], {
       cwd: root,
       encoding: 'utf8',
       timeout: 1000,
-      stdio: ['ignore', 'pipe', 'ignore'],
+      signal,
       env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' },
-    }).trim();
-    return /^[a-f0-9]{40,64}$/i.test(commit) ? commit : null;
-  } catch { return null; }
+    }, (error, stdout) => {
+      const commit = String(stdout ?? '').trim();
+      resolve(!error && /^[a-f0-9]{40,64}$/i.test(commit) ? commit : null);
+    });
+  });
 }
 
-async function updateSelection(paths: ScopePaths, markdown: string, scan: MapScan, now: Date) {
-  return writeMapSelectionFiles(paths, markdown, scan, now, currentCommit(paths.targetRoot), writeViaTemp);
+async function updateSelection(paths: ScopePaths, markdown: string, scan: MapScan, now: Date, signal?: AbortSignal) {
+  return writeMapSelectionFiles(paths, markdown, scan, now, await currentCommit(paths.targetRoot, signal), writeViaTemp);
 }
 
 export async function mapExists(paths: ScopePaths) {
@@ -239,7 +242,8 @@ export async function mapExists(paths: ScopePaths) {
 }
 
 /** Creates JuTellMap.md or refreshes its auto blocks. Writes nothing when nothing changed. */
-export async function writeMap(paths: ScopePaths, now = new Date(), signal?: AbortSignal): Promise<MapWriteResult> {
+/** `skipWhenCurrent` (receipt): when the map, file list, commit and index already match, rewrite nothing. `jutell map` always re-checks every file. */
+export async function writeMap(paths: ScopePaths, now = new Date(), signal?: AbortSignal, skipWhenCurrent = false): Promise<MapWriteResult> {
   // `signal` (receipt time limit): once aborted, nothing more is written; the call throws instead.
   const check = () => signal?.throwIfAborted();
   const file = mapFile(paths);
@@ -255,7 +259,7 @@ export async function writeMap(paths: ScopePaths, now = new Date(), signal?: Abo
     await recordState(paths, sha256(text), listed, now).catch(() => undefined);
     await forgetMapDeclined(paths).catch(() => undefined);
     check();
-    const selection = await updateSelection(paths, text, scan, now);
+    const selection = await updateSelection(paths, text, scan, now, signal);
     return { status: 'created', file, files: items.length, unclassified: items.filter((item) => item.feature === UNCLASSIFIED).length, selection };
   }
   const existing = await fs.readFile(file, { encoding: 'utf8', flag: fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) });
@@ -276,7 +280,11 @@ export async function writeMap(paths: ScopePaths, now = new Date(), signal?: Abo
     const sameList = Array.isArray(state?.files) && state.files.length === listed.length && state.files.every((entry, index) => entry === listed[index]);
     if (!sameList) await recordState(paths, typeof state?.hash === 'string' ? state.hash : '', listed, now).catch(() => undefined);
     check();
-    const selection = await updateSelection(paths, existing, scan, now);
+    // Same files, same map, same commit, index already matching: nothing to rewrite.
+    const upToDate = sameList && skipWhenCurrent ? await selectionUpToDate(paths, existing, await currentCommit(paths.targetRoot, signal)) : undefined;
+    if (upToDate !== undefined) return { status: 'unchanged', file, selection: { status: 'unchanged', indexFile: path.join(paths.dataRoot, 'map-index.json'), sectionCount: upToDate } };
+    check();
+    const selection = await updateSelection(paths, existing, scan, now, signal);
     return { status: 'unchanged', file, selection };
   }
   check();
@@ -284,7 +292,7 @@ export async function writeMap(paths: ScopePaths, now = new Date(), signal?: Abo
   // The map is already renamed into place: a state write failure must not turn the result into an error.
   await recordState(paths, sha256(updated.text), listed, now).catch(() => undefined);
   check();
-  const selection = await updateSelection(paths, updated.text, scan, now);
+  const selection = await updateSelection(paths, updated.text, scan, now, signal);
   return { status: 'updated', file, added: updated.added, removed: updated.removed, newSections: updated.newSections, selection };
 }
 

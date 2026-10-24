@@ -53,13 +53,13 @@ describe('M2.6 Codex Experience Parity guidance', () => {
     expect(text).not.toContain('로컬 설치면');
     // Item 4: the rule call is step ① of the one end procedure (① call ② receipt.json ③ jutell receipt).
     const step = (text2: string, mark: string) => text2.indexOf(mark);
-    const line = text.split('\n').find((item) => item.startsWith('- 영수증(끝날 때 순서): ① `get_beginner_report_rules` 호출(생략 금지) ② 파일 쓰기 도구로')) ?? '';
+    const line = text.split('\n').find((item) => item.startsWith('- 영수증(끝날 때 순서): ① `get_beginner_report_rules` 호출(보이면 필수) ② 파일 쓰기 도구로')) ?? '';
     expect(line).not.toBe('');
     expect(step(line, '①')).toBeLessThan(step(line, '②'));
     expect(step(line, '②')).toBeLessThan(step(line, '③ 인자 없이 `jutell receipt`'));
     expect(text).not.toContain('그다음에 영수증');
     const skill = await fs.readFile(skillFile, 'utf8');
-    expect(skill).toContain('12. 끝날 때 ① `get_beginner_report_rules` 호출(생략 금지) ② `.jutell-local/receipt.json`을 파일 편집 도구로 쓴다. ③ `jutell receipt`를 한 번 실행한다. 명령이 없을 때(exit 127)만 `npm exec');
+    expect(skill).toContain('12. 끝날 때 ① `get_beginner_report_rules` 호출(보이면 필수) ② `.jutell-local/receipt.json`을 파일 편집 도구로 쓴다. ③ `jutell receipt`를 한 번 실행한다. 명령이 없을 때(exit 127)만 `npm exec');
     expect(skill).not.toMatch(/전역은|로컬은/);
     expect(text).toContain('영수증이 최종 답입니다. 영수증 아래에는 아무것도 쓰지 않고');
     expect(text).toContain('(셸·heredoc 금지)');
