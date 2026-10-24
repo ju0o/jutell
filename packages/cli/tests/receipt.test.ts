@@ -36,15 +36,15 @@ describe('receipt renderer', () => {
       '  JuTell 작업 영수증',
       '  2026-10-18 16:40',
       '==============================',
-      '[이번에 한 작업]',
+      '[이번에 한 작업]  [AI가 적음]',
       ' 1. 브라우저 탭 이름: 할 일 목록 → 오늘 할 일',
       ' 2. 화면 맨 위 큰 글씨: 할 일 목록 → 오늘 할 일',
       '',
       '[확인]',
-      ' ✔ 직접 확인한 것: 파일에서 두 제목이 바뀐 것 (파일 내용을 읽음)',
-      ' ✖ 확인 못 한 것: 브라우저로 열어보기 (이 환경에서 화면을 못 열어서)',
+      ' ✔ 직접 확인한 것: 파일에서 두 제목이 바뀐 것 (파일 내용을 읽음)  [AI가 적음]',
+      ' ✖ 확인 못 한 것: 브라우저로 열어보기 (이 환경에서 화면을 못 열어서)  [AI가 적음]',
       '------------------------------',
-      '[다음 추천]',
+      '[다음 추천]  [AI가 적음]',
       ' ○ 추천',
       '   - 페이지를 한 번 열어 제목만 봐 주세요',
       ' ■ 여기서 멈춰도 됨',
@@ -52,14 +52,14 @@ describe('receipt renderer', () => {
       '------------------------------',
       ' 저장됨: .jutell-local/reports/2026-10-18-164012.md',
       '==============================',
-      '한 줄 요약: 브라우저 탭 이름: 할 일 목록 → 오늘 할 일 외 1건',
+      '한 줄 요약: 브라우저 탭 이름: 할 일 목록 → 오늘 할 일 외 1건  [AI가 적음]',
     ].join('\n'));
   });
 
   it('uses the summary field as the very last line, after the save path and separator', () => {
     const output = renderReceipt(normalizeReceipt({ done: ['제목 변경'], checked: ['파일 확인'], summary: '제목을 바꿨고 끝났어요' }), timestamp, '.jutell-local/reports/x.md');
     const lines = output.split('\n');
-    expect(lines.at(-1)).toBe('한 줄 요약: 제목을 바꿨고 끝났어요');
+    expect(lines.at(-1)).toBe('한 줄 요약: 제목을 바꿨고 끝났어요  [AI가 적음]');
     expect(lines.at(-2)).toBe('==============================');
     expect(lines.at(-3)).toBe(' 저장됨: .jutell-local/reports/x.md');
   });
@@ -90,8 +90,8 @@ describe('receipt renderer', () => {
     expect(output).toContain(' 1. [경로]');
     expect(output).toContain(' ✔ 직접 확인한 것: 파일 확인 ([경로])');
     expect(output).not.toContain('- 없음');
-    expect(output).toContain(' 여기서 멈춰도 됩니다 – 요청한 작업이 끝났어요');
-    expect(output.split('\n').at(-1)).toBe('한 줄 요약: [경로]');
+    expect(output).toContain(' 여기서 멈춰도 됩니다 – 따로 추천할 다음 작업이 없어요');
+    expect(output.split('\n').at(-1)).toBe('한 줄 요약: [경로]  [AI가 적음]');
     expect(output).not.toContain('/home/jo/sample.ts');
     expect(output).not.toContain('C:\\Users');
   });
@@ -118,20 +118,20 @@ describe('receipt renderer', () => {
       next: { continue: [], nice: [], stop: [] },
     }, timestamp);
     const headings = [
-      '[이번에 한 작업]',
+      '[이번에 한 작업]  [AI가 적음]',
       '[확인]',
       '[다음 추천]',
-      ' 여기서 멈춰도 됩니다 – 요청한 작업이 끝났어요',
+      ' 여기서 멈춰도 됩니다 – 따로 추천할 다음 작업이 없어요  [JuTell이 적음]',
     ];
     const lines = output.split('\n');
 
-    expect(RECEIPT_SECTIONS).toEqual(['[요청한 것]', '[이번에 한 작업]', '[바뀐 파일]', '[확인]', '[다음 추천]']);
+    expect(RECEIPT_SECTIONS).toEqual(['[요청 대조]', '[이번에 한 작업]', '[바뀐 파일]', '[확인]', '[다음 추천]']);
     expect(NEXT_GROUPS).toEqual([' ▶ 계속', ' ○ 추천', ' ■ 여기서 멈춰도 됨']);
     expect(lines.filter((line) => headings.includes(line))).toEqual(headings);
-    expect(output).not.toContain('[요청한 것]');
+    expect(output).not.toContain('[요청 대조]');
     expect(output).not.toContain('[바뀐 파일]');
     expect(output).not.toMatch(/- 없음/);
-    expect(lines.at(-1)).toBe('한 줄 요약: 요청한 작업을 마쳤어요.');
+    expect(lines.at(-1)).toBe('한 줄 요약: 요청한 작업을 마쳤어요.  [JuTell이 적음]');
   });
 
   it('rejects unsupported results, missing detail, and status fields', () => {
@@ -376,7 +376,7 @@ describe('receipt command', () => {
     const sectionPositions = RECEIPT_SECTIONS.filter((section) => section !== '[바뀐 파일]').map((section) => output[0].indexOf(section));
     expect(output[0]).toContain(' ○ 추천\n   - 다음 추천');
     expect(output[0]).not.toContain(' ▶ 계속');
-    expect(output[0].split('\n').at(-1)).toBe('한 줄 요약: 한 일');
+    expect(output[0].split('\n').at(-1)).toBe('한 줄 요약: 한 일  [AI가 적음]');
     expect(sectionPositions.every((position) => position >= 0)).toBe(true);
     expect(sectionPositions).toEqual([...sectionPositions].sort((a, b) => a - b));
     expect(output[0]).toContain('요청한 것');
@@ -610,7 +610,7 @@ describe('receipt command', () => {
 
     expect(await receiptCommand(paths, ['--file', '-'], io, stdin)).toBe(0);
     expect(output[0]).not.toMatch(/[\u202a-\u202e\u2066-\u2069\u200e\u200f\u061c\u200b-\u200d\u2060\ufeff]/);
-    expect(output[0]).toContain(' 5. 요청5\n 외 2개');
+    expect(output[0]).toContain(' 5. 요청5  [AI가 적음]\n 외 2개');
     expect(output[0]).not.toContain('요청6');
     expect(output[0]).toContain('한일');
   });

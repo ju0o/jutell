@@ -16,7 +16,7 @@ Codex 작업 결과를 비개발자가 이해할 수 있는 하나의 보고서�
 ## 매번 지키는 규칙
 
 1. 설정: `.jutell.json`(없으면 `.beginner-bridge.json`, 둘 다 없으면 `balanced`)의 Profile·features·limits를 적용한다. 오류가 있으면 `balanced`로 진행하고 짧게만 알린다.
-2. MCP: canonical `jutell`을 우선하고 legacy `beginner_bridge`는 호환용으로만 쓴다. 최종 답 직전에 `get_beginner_report_rules`를 한 번 호출한다(Skill을 읽었어도 생략하지 않음, MCP가 안 보이면 이 Skill로 계속). 실제로 호출해 응답을 받았을 때만 MCP를 썼다고 말한다. 도구가 보이면 바로 호출하고, 안 보이면 검색하지 말고 Skill로 계속한다(Codex: `mcp__jutell__get_beginner_report_rules`, `apply_patch`). `jutell receipt`는 셸 명령이다.
+2. MCP: canonical `jutell`을 우선하고 legacy `beginner_bridge`는 호환용으로만 쓴다. 최종 답 직전에 `get_beginner_report_rules`를 한 번 호출한다. 실제로 호출해 응답을 받았을 때만 MCP를 썼다고 말한다. 도구가 보이면 바로 호출하고, 안 보이면 검색하지 말고 Skill로 계속한다(Codex: `mcp__jutell__get_beginner_report_rules`, `apply_patch`). `jutell receipt`는 셸 명령이다.
 3. 요청 이해(Intent Bridge): 코드나 문서를 바꾸기 전에, 추측하면 결과가 크게 달라지는 불확실함이 있는지 본다. 저장소에서 확인할 수 있는 사실은 묻지 않고 직접 확인한다. 실제 사용자 결정이 남을 때만, 요청당 한 번, 질문 하나만 쉬운 말로 묻는다. `requestClarificationGuide`가 꺼져 있으면 바로 진행한다. 형식·판단 기준: `references/intent-bridge.md`.
 4. 범위: 요청한 것과 그것을 안전하게 끝내는 데 필요한 관련 수정만 한다. 건드리지 말라고 한 것은 바꾸지 않는다. 요청에 이름이 나오지 않은 TODO·할 일·작업 목록 파일(예: TODO.md, tasks)은 찾지도(목록 보기·검색 포함) 읽지도 않는다. 요청에 적힌 파일, 바꿀 파일, 그리고 확인(규칙 3·5)에 직접 필요한 파일만 연다. 범위 밖 개선은 하지 않고 다음 추천으로만 알린다.
 5. 검증(규칙 10): 요청 모양에 맞춰 확인한다. ① 원하는 결과가 실제로 일어났는지 ② 건드리지 말 것·유지할 것·사용자가 말한 완료 조건 ③ 직접 관련된 회귀. 작은 문구 수정은 바꾼 곳 확인으로 충분하고, 요청이 테스트·실행 결과·화면 확인을 필요로 하면 관련 테스트를 실행한다. 이미 확보한 근거가 있으면 같은 확인을 반복하지 않는다.
@@ -32,7 +32,7 @@ Codex 작업 결과를 비개발자가 이해할 수 있는 하나의 보고서�
 
 ## 영수증 절차 (`receiptReport`가 켜져 있을 때)
 
-12. 끝날 때 AGENTS.md대로 `.jutell-local/receipt.json`을 파일 편집 도구로(셸 금지) 쓰고, 인자 없이 `jutell receipt`를 한 번 실행해 출력을 답 맨 위에 붙인다. 변경 요약·다음 행동 제안·보고서 상태를 이것으로 대신한다.
+12. 끝날 때 ① `get_beginner_report_rules` 호출(생략 금지) ② AGENTS.md대로 `.jutell-local/receipt.json`을 파일 편집 도구로(셸 금지) 쓰고, 인자 없이 `jutell receipt`를 한 번 실행해 출력을 답 맨 위에 붙인다. 변경 요약·다음 행동 제안·보고서 상태를 이것으로 대신한다.
 13. `asked`는 요청을 짧게 요약한 말로 쓰고 원문을 붙여 넣지 않는다. `unchecked`는 빼지 말고, 없으면 없다고 쓴다.
 14. 실패하면 재시도 없이 AGENTS.md의 실패 문장만 쓴다. 영수증 뒤엔 아무것도 쓰지 않는다.
 
@@ -45,6 +45,4 @@ Codex 작업 결과를 비개발자가 이해할 수 있는 하나의 보고서�
 * `references/glossary-ko.md` — 용어 설명
 * `references/explained-diff-format.md` — 설명형 변경 요약
 * `references/feature-registry.md` — Feature ID와 강제 보고 예외
-* `docs/` 아래 제품 범위·보고 사양·설정 문서
-
-V0.1 시나리오를 실제로 실행하지 않았다면 V0.1 통과를 선언하지 않는다.
+* `JuTellMap.md`(프로젝트 맨 위) — 고칠 파일을 모를 때만 먼저 읽는다
