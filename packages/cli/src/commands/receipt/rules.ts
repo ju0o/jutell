@@ -7,20 +7,24 @@ import { RECEIPT_STATE_FILE } from './before.js';
 export const RULES_STAMP_FILE = 'rules-fetched.json';
 
 /**
- * Printed to stderr (for the AI, not part of the saved receipt) when the rules were not fetched for this
- * work: one short line, so the normal case (rules fetched) costs no tokens at all.
- */
-export const RULES_REMINDER = 'JuTell: 이번 작업에서 보고 규칙(get_beginner_report_rules)을 받지 않아 영수증에 기본 규칙을 대신 적용했어요. 최종 답에는 아래 영수증을 고치지 말고 그대로 붙이세요.';
-
-/**
  * Did the AI fetch the report rules for this work? The stamp must be newer than the last receipt
  * (receipt-state.json is rewritten by every receipt and by setup), so an old fetch does not count.
  */
-export async function rulesFetchedForThisWork(paths: ScopePaths): Promise<boolean> {
-  const stat = (name: string) => fs.lstat(path.join(paths.dataRoot, name)).then((s) => (s.isFile() ? s : undefined), () => undefined);
-  const [stamp, state] = await Promise.all([stat(RULES_STAMP_FILE), stat(RECEIPT_STATE_FILE)]);
-  if (!stamp) return false;
-  return !state || stamp.mtimeMs >= state.mtimeMs;
+export async function rulesFetchedForThisWork(paths: ScopePaths, now = Date.now()): Promise<boolean> {
+  try {
+    const stampFile = path.join(paths.dataRoot, RULES_STAMP_FILE);
+    const stamp = await fs.lstat(stampFile);
+    if (!stamp.isFile() || stamp.size > 200) return false;
+    // The content must be the server's own {"at": ISO time} (an empty `touch`ed file does not count).
+    const parsed: unknown = JSON.parse(await fs.readFile(stampFile, 'utf8'));
+    const at = typeof parsed === 'object' && parsed !== null && typeof (parsed as { at?: unknown }).at === 'string'
+      ? Date.parse((parsed as { at: string }).at) : NaN;
+    if (!Number.isFinite(at) || at > now + 60_000) return false;
+    const state = await fs.lstat(path.join(paths.dataRoot, RECEIPT_STATE_FILE)).catch(() => undefined);
+    return !state || at >= Math.floor(state.mtimeMs) - 1000;
+  } catch {
+    return false;
+  }
 }
 
 const INTERNAL_PROGRESS = /get_beginner_report_rules|보고 규칙을 (?:받|불러|확인|적용)|JuTell (?:MCP|규칙)|MCP (?:도구|툴)/;

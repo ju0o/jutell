@@ -384,7 +384,7 @@ JuTell 준비 완료.
 | Agent를 찾지 못함 | 지원되는 Coding Agent를 설치하고 열어 본 뒤 `jutell`을 다시 실행하세요. |
 | 연결에 실패함 | `jutell doctor`를 실행하고 안내를 따르세요. |
 | 한 Agent를 다시 연결하고 싶음 | `jutell`을 다시 실행하거나, 아래 고급 수동 연결 명령을 사용하세요. |
-| JuTell을 끄고 싶음 | `jutell off --yes`를 실행하세요. 설정과 로컬 작업 기록은 남습니다. |
+| JuTell을 끄고 싶음 | `jutell off --yes`를 실행하세요. MCP 연결을 끄고, 설정과 `.jutell-local`의 기록(작업 영수증·지도·Beta Journal 하루 작업 기록)은 남겨요. |
 | JuTell을 지우고 싶음 | `jutell uninstall --yes`를 실행하세요. `--remove-data`를 직접 추가하지 않는 한 로컬 데이터는 남습니다. |
 | 무엇이 잘못됐는지 모르겠음 | `jutell doctor`를 실행하세요. 줄마다 `정상`·`주의`·`오류`가 붙고, `오류` 줄에 고치는 방법이 바로 적혀 있습니다. |
 | 영수증이 안 생김 / "jutell 명령을 찾을 수 없음"(command not found) | `jutell doctor`의 "Codex에서 jutell 명령 찾기" 줄을 보세요. 전역 설치(`-g`)라면 안내대로 PATH 한 줄을 넣고 터미널과 Agent를 다시 여세요. 프로젝트에만 설치했다면 `npm exec --offline --no -- jutell receipt`처럼 앞에 `npm exec --offline --no --`를 붙이면 됩니다. npm workspaces의 멤버 폴더라면 `npm exec --offline --no --prefix . -- jutell receipt`처럼 `--prefix .`를 붙여 그 멤버 폴더에서 실행하세요(작업 공간 루트에서 실행하면 루트가 대상이 됩니다). 나중에 설치 방식을 바꿨다면(프로젝트 안 ↔ 컴퓨터 전체) doctor가 `주의`로 알려 주고, 프로젝트 폴더에서 `jutell --yes`를 한 번 더 실행하면 AGENTS.md/CLAUDE.md의 영수증 명령이 지금 설치에 맞게 고쳐집니다("…영수증 명령을 지금 설치에 맞게 고쳤어요"). |
@@ -452,7 +452,7 @@ JuTell은 여러분 컴퓨터에 이미 있는 파일·Git·명령 결과를 바
 | `jutell` | 설치된 지원 Agent를 찾아 연결할지 물어봅니다. |
 | `jutell status` | 설치·연결·Profile·Feature 상태를 보여줍니다. |
 | `jutell doctor` | 설치 문제를 점검합니다. |
-| `jutell on` / `jutell off --yes` | JuTell 연결을 켜거나 끕니다(`off`는 먼저 물어보고, `--yes`는 묻지 않아요). |
+| `jutell on` / `jutell off --yes` | JuTell 연결을 켜거나 끕니다(`off`는 터미널에서는 먼저 묻고, 물을 수 없으면 `--yes` 없이는 진행하지 않아요). |
 | `jutell setup` | Skill·기본 설정·MCP 연결을 다시 준비합니다. |
 | `jutell provider` | Agent별 연결 상태를 자세히 보여줍니다. |
 | `jutell upgrade` | 설치된 Skill/설정/MCP를 최신 버전으로 새로고침합니다. |

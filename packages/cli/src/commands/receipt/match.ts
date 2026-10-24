@@ -6,9 +6,9 @@ export type MapSection = { key: string; name: string; files: string[] };
 
 export type MatchItem =
   // `before`: feature files that were already changed before the work (W7). Shown, but never counted as a change.
-  // `via`: how the files were tied to the request when the map area alone could not ('file' = the request or
-  // the work list names the file; 'only' = the only request, so every changed file belongs to it).
-  | { status: 'changed'; features: string[]; files: string[]; before?: string[]; via?: 'file' | 'only' }
+  // `via`: how the files were tied when the request's own map words did not ('file' = the user's request
+  // names the file; 'context' = map area guessed from the AI's work list/summary, shown as an estimate).
+  | { status: 'changed'; features: string[]; files: string[]; before?: string[]; via?: 'file' | 'context' }
   | { status: 'unchanged'; features: string[]; before?: string[] }
   | { status: 'unplaced' };
 
@@ -81,41 +81,73 @@ export function filesNamedIn(text: string, changed: string[]): string[] {
 }
 
 /**
- * Matches each request to the changed files. The AI's own `asked` wording is not the only input
- * (dogfood #37: '페이지의 탭 이름과 큰 제목을 바꾸기' left out '할 일', so the requested todo.html became
- * '요청에 없던 곳'): `context` (the work list and summary) and the file names are used too, and with a
- * single request every changed file belongs to it.
+ * Files that are always '⚠ 요청에 없던 곳' when the work changed them, whatever any matching says (review
+ * #37 rule 1): secrets, dependencies and lockfiles, CI, agent instructions/settings, container builds.
  */
-export function matchRequests(asked: string[], changed: string[], sections: MapSection[], beforeWork: string[] = [], context: string[] = []): ReceiptMatch {
+const SENSITIVE = /(^|\/)(\.env[^/]*|[^/]*\.(pem|key|p12|pfx)|[^/]*secrets?[^/]*|package\.json|package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?|AGENTS\.md|CLAUDE\.md|\.jutell\.json|\.beginner-bridge\.json|Dockerfile[^/]*|docker-compose[^/]*)$|(^|\/)(\.github\/workflows|\.gitlab-ci\.yml|\.circleci|\.codex|\.claude)(\/|$)/i;
+export function isSensitiveFile(file: string): boolean {
+  return SENSITIVE.test(file);
+}
+
+const LOCKFILE = /(^|\/)(package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb?)$/i;
+/** Sensitive files the user's request names directly: the full file name/path, or a dependency (package.json + lockfiles). */
+export function sensitiveNamedIn(request: string, files: string[], dependencies: string[]): string[] {
+  const lower = request.toLowerCase();
+  const namesDependency = dependencies.some((name) => name.length >= 2 && mentions(lower, name.toLowerCase()));
+  return files.filter((file) => {
+    const full = file.toLowerCase();
+    const base = full.split('/').pop() ?? full;
+    if (lower.includes(full) || mentions(lower, base)) return true;
+    return namesDependency && (base === 'package.json' || LOCKFILE.test(full));
+  });
+}
+
+const folder = (file: string) => (file.includes('/') ? file.slice(0, file.lastIndexOf('/')) : '');
+
+/**
+ * Matches each request to the changed files (review #37 rules 1-4):
+ * - map words in the user's request, then file names the user's request mentions;
+ * - with one request and no place yet, map words from the AI's work list/summary, labelled as an estimate
+ *   (AI text never ties a file by name, so it can never remove a warning);
+ * - a matched request also takes changed files in the same folder as a file it already has;
+ * - sensitive files (isSensitiveFile) stay '⚠' unless the user's own request names the file itself (full name),
+ *   or names a dependency of the project (then package.json and the lockfiles); AI text never links them.
+ */
+export function matchRequests(asked: string[], changed: string[], sections: MapSection[], beforeWork: string[] = [], context: string[] = [], dependencies: string[] = []): ReceiptMatch {
   const changedSet = new Set(changed);
   const beforeSet = new Set(beforeWork.filter((file) => changedSet.has(file)));
+  const sensitive = new Set(changed.filter((file) => isSensitiveFile(file) && !beforeSet.has(file)));
   const claimed = new Set<string>();
-  const contextText = context.join('\n');
+  const linked = new Set<string>();
+  // File names/paths are cut out of the AI text first: AI text never ties a file by its name (rule 4).
+  const contextText = context.join('\n').replace(/[\w./@-]*(\/|\.[a-z0-9]{1,8}\b)[\w./@-]*/gi, ' ');
   const items = asked.map((request): MatchItem => {
     let matched = featuresFor(request, sections);
-    const named = filesNamedIn(request, changed);
-    // Only one request: the work list describes that same request, so its words count too.
+    const named = filesNamedIn(request, changed).filter((file) => !sensitive.has(file));
+    const ownSensitive = sensitiveNamedIn(request, [...sensitive], dependencies);
+    named.push(...ownSensitive);
+    for (const file of ownSensitive) linked.add(file);
+    let fromContext = false;
     if (!matched.length && !named.length && asked.length === 1) {
       matched = featuresFor(contextText, sections);
-      named.push(...filesNamedIn(contextText, changed));
+      fromContext = matched.length > 0;
     }
     if (!matched.length && !named.length) return { status: 'unplaced' };
     const featureFiles = new Set([...matched.flatMap((section) => section.files), ...named]);
-    for (const file of featureFiles) claimed.add(file);
-    const inFeature = changed.filter((file) => featureFiles.has(file));
+    const own = changed.filter((file) => featureFiles.has(file) && (!sensitive.has(file) || ownSensitive.includes(file)));
+    // Same folder as a file this request already has (not the project root, not sensitive files).
+    const folders = new Set(own.filter((file) => !sensitive.has(file)).map(folder).filter(Boolean));
+    const near = changed.filter((file) => !featureFiles.has(file) && !sensitive.has(file) && !beforeSet.has(file) && folders.has(folder(file)));
+    for (const file of [...featureFiles, ...near]) if (!sensitive.has(file) || ownSensitive.includes(file)) claimed.add(file);
+    const inFeature = [...own, ...near];
     const files = inFeature.filter((file) => !beforeSet.has(file));
     const before = inFeature.filter((file) => beforeSet.has(file));
     const features = matched.map((section) => section.name);
     const withBefore = before.length ? { before } : {};
-    const via = features.length ? {} : { via: 'file' as const };
+    const via = fromContext ? { via: 'context' as const } : features.length ? {} : { via: 'file' as const };
     return files.length ? { status: 'changed', features, files, ...withBefore, ...via } : features.length ? { status: 'unchanged', features, ...withBefore } : { status: 'unplaced' };
   });
-  let outside = [...changedSet].filter((file) => !claimed.has(file) && !beforeSet.has(file));
-  // A single request that found no place: the changed files are its work, not '요청에 없던 곳'.
-  if (asked.length === 1 && items[0].status === 'unplaced' && outside.length) {
-    items[0] = { status: 'changed', features: [], files: outside, via: 'only' };
-    outside = [];
-  }
+  const extra = changed.filter((file) => (sensitive.has(file) && !linked.has(file)) || (!claimed.has(file) && !beforeSet.has(file)));
   const extraBefore = [...changedSet].filter((file) => !claimed.has(file) && beforeSet.has(file));
-  return { map: true, items, extra: outside, ...(extraBefore.length ? { extraBefore } : {}) };
+  return { map: true, items, extra, ...(extraBefore.length ? { extraBefore } : {}) };
 }

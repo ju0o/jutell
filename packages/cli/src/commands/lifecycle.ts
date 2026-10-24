@@ -129,7 +129,7 @@ export async function disableCommand(paths: ScopePaths, options: CliOptions, io:
   if (disableSkill) await removeManagedSkillFiles(assets().skill, paths.skillRoot, paths);
   if (disableSkill && paths.scope === 'project') await removeJuTellAgentsBlock(paths.targetRoot);
   io.write(`비활성화했습니다. Skill: ${disableSkill ? '비활성화됨' : '유지됨'}, MCP: ${disableMcp ? '비활성화됨' : '유지됨'}.`);
-  io.write('설정과 Beta Journal 데이터는 보존했습니다.');
+  io.write('설정과 .jutell-local의 기록(작업 영수증·지도·Beta Journal: JuTell이 남긴 하루 작업 기록)은 그대로 두었어요.');
   if (codexSkipped) io.write('Codex MCP 연결(전역 설정)은 다른 프로젝트와 공유되어 그대로 두었습니다. 모든 프로젝트에서 끄려면 jutell disable --global 을 실행하세요.');
   return { cancelled: false };
 }

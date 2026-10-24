@@ -196,7 +196,7 @@ You need a coding agent first — JuTell connects to one you already installed.
 | `jutell status` | Installation, connection, profile, and feature status. |
 | `jutell doctor` | Checks for setup problems. |
 | `jutell use codex` / `claude` / `opencode` | Connect one agent by hand (repair path). |
-| `jutell on` / `jutell off --yes` | Turn the connection on or off (`--yes` skips the question). |
+| `jutell on` / `jutell off --yes` | Turn the connection on or off (without `--yes` it asks at a terminal, or stops when it cannot ask). |
 | `jutell upgrade` | Refresh the installed Skill/config/MCP. |
 | `jutell uninstall` | Remove JuTell's managed setup. |
 

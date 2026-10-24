@@ -14,7 +14,7 @@ describe('receipt applies the report rules when they were not fetched for this w
     await fs.mkdir(paths.dataRoot, { recursive: true });
     const touch = async (name: string, seconds: number) => {
       const file = path.join(paths.dataRoot, name);
-      await fs.writeFile(file, '{}');
+      await fs.writeFile(file, name === RULES_STAMP_FILE ? JSON.stringify({ at: new Date(seconds * 1000).toISOString() }) : '{}');
       await fs.utimes(file, seconds, seconds);
     };
     return { paths, touch };
@@ -29,6 +29,14 @@ describe('receipt applies the report rules when they were not fetched for this w
     expect(await rulesFetchedForThisWork(paths)).toBe(false); // fetched only for an earlier task
     await touch(RULES_STAMP_FILE, 3000);
     expect(await rulesFetchedForThisWork(paths)).toBe(true);
+    // A forged stamp (empty `touch`, wrong content, a folder) never counts.
+    await fs.writeFile(path.join(paths.dataRoot, RULES_STAMP_FILE), '');
+    expect(await rulesFetchedForThisWork(paths)).toBe(false);
+    await fs.writeFile(path.join(paths.dataRoot, RULES_STAMP_FILE), '{"at":"nope"}');
+    expect(await rulesFetchedForThisWork(paths)).toBe(false);
+    await fs.rm(path.join(paths.dataRoot, RULES_STAMP_FILE));
+    await fs.mkdir(path.join(paths.dataRoot, RULES_STAMP_FILE));
+    expect(await rulesFetchedForThisWork(paths)).toBe(false);
   });
 
   it('removes JuTell\'s own steps from the work list in place', () => {

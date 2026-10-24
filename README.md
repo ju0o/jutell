@@ -381,7 +381,7 @@ closer look. Its normal output avoids showing full paths or secret values.
 | No agent was found | Install and open a supported coding agent first, then run `jutell` again. |
 | Connection failed | Run `jutell doctor`, then follow its message. |
 | You want to reconnect one agent | Run `jutell` again, or use the manual connection commands in Advanced. |
-| You want to turn JuTell off | Run `jutell off --yes`. Your settings and local journal stay. |
+| You want to turn JuTell off | Run `jutell off --yes`. It turns off the MCP connection; your settings and the records in `.jutell-local` (receipts, map, Beta Journal) stay. |
 | You want to remove JuTell | Run `jutell uninstall --yes`. It keeps local data unless you explicitly add `--remove-data`. |
 | `EACCES` / permission denied installing on Ubuntu/Linux | See [Ubuntu/Linux install permission error](docs/CLI_INSTALLATION.md). Avoid `sudo npm install -g jutell`. |
 
@@ -432,7 +432,7 @@ actual output.
 | `jutell` | Finds installed supported agents and offers to connect them. |
 | `jutell status` | Shows installation, connection, profile, and feature status. |
 | `jutell doctor` | Checks setup problems. |
-| `jutell on` / `jutell off --yes` | Turns JuTell's connection on or off (`off` asks first; `--yes` skips the question). |
+| `jutell on` / `jutell off --yes` | Turns JuTell's connection on or off (`off` asks at a terminal and stops without `--yes` when it cannot ask). |
 | `jutell setup` | Prepares the Skill, default config, and MCP connection again. |
 | `jutell provider` | Shows detailed agent connection status. |
 | `jutell upgrade` | Refreshes JuTell's installed Skill/config/MCP to the current version. |

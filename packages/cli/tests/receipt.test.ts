@@ -1,4 +1,3 @@
-import { RULES_REMINDER } from '../src/commands/receipt/rules.js';
 import { PassThrough } from 'node:stream';
 import { execFile } from 'node:child_process';
 import os from 'node:os';
@@ -119,7 +118,7 @@ describe('receipt renderer', () => {
       next: { continue: [], nice: [], stop: [] },
     }, timestamp);
     const headings = [
-      '[이번에 한 작업]  [AI가 적음]',
+      '[이번에 한 작업]  [JuTell이 적음]',
       '[확인]  [AI가 적음]',
       '[다음 추천]',
       ' 여기서 멈춰도 됩니다 – 따로 추천할 다음 작업이 없어요  [JuTell이 적음]',
@@ -353,8 +352,8 @@ describe('receipt command', () => {
     await fs.writeFile(defaultInput, JSON.stringify({ ...sample, status: '확인 완료' }), 'utf8');
 
     expect(await runInProject(['receipt'])).toBe(0);
-    // No MCP rules stamp: JuTell applies the rules itself and tells the AI on stderr (#37 BLOCKER B).
-    expect(errors).toEqual([RULES_REMINDER]);
+    // No MCP rules stamp: JuTell applies the rules itself, silently (#37 BLOCKER B + dogfood).
+    expect(errors).toEqual([]);
     expect(output[0]).toContain('[이번에 한 작업]');
 
     await expect(fs.access(defaultInput)).rejects.toMatchObject({ code: 'ENOENT' });

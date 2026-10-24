@@ -195,7 +195,7 @@ function readMatch(value: unknown, askedCount: number): ReceiptMatch | undefined
     if (!isRecord(item)) return undefined;
     if (item.status === 'unplaced') items.push({ status: 'unplaced' });
     else if (item.status === 'unchanged') items.push({ status: 'unchanged', features: readNames(item.features), ...readBefore(item.before) });
-    else if (item.status === 'changed') items.push({ status: 'changed', features: readNames(item.features), files: readFileNames(item.files), ...readBefore(item.before), ...(item.via === 'file' || item.via === 'only' ? { via: item.via } : {}) });
+    else if (item.status === 'changed') items.push({ status: 'changed', features: readNames(item.features), files: readFileNames(item.files), ...readBefore(item.before), ...(item.via === 'file' || item.via === 'context' ? { via: item.via } : {}) });
     else return undefined;
   }
   const extraBefore = readFileNames(value.extraBefore ?? []);
@@ -238,15 +238,15 @@ function matchLines(receipt: ReceiptInput, asked: string[], askedMore: number, s
   const lines = [`${MATCH_SECTION}  요청 ${asked.length}개 중 ${parts.join(' · ')}  ${LABEL_MATCH}`];
   match.items.forEach((item, index) => {
     lines.push(` ${index + 1}. ${asked[index]}  ${LABEL_AI}`);
-    if (item.status === 'changed') lines.push(`    → 바뀐 곳 있음: ${shortList(item.files)}  [Git 기준 · ${item.features.length ? `지도: ${item.features.join(', ')}` : item.via === 'only' ? '요청이 하나뿐이라 바뀐 파일 전부' : '파일 이름으로 찾음'}]`);
+    if (item.status === 'changed') lines.push(`    → 바뀐 곳 있음: ${shortList(item.files)}  ${item.via === 'context' ? '[추정 · AI 설명 기준]' : `[Git 기준 · ${item.features.length ? `지도: ${item.features.join(', ')}` : '파일 이름으로 찾음'}]`}`);
     else if (item.status === 'unchanged') lines.push(`    → 바뀐 곳 없음: '${item.features.join(', ')}' 파일이 바뀌지 않았어요  [Git 기준 · 지도: ${item.features.join(', ')}]`);
     else lines.push(`    → 장소를 못 찾았어요(지도에 맞는 기능이 없어요)  ${LABEL_ESTIMATE}`);
     if (item.status !== 'unplaced' && item.before?.length) lines.push(`    ${BEFORE_WORK_MARK} 바뀌어 있던 파일: ${shortList(item.before)}  ${LABEL_GIT}`);
   });
   lines.push(...more);
   // Each file the map lists carries its area ID, so the user can find it in the map (`jutell map --show`).
-  const withArea = (file: string) => (match.extraAreas?.[file] ? `${file} [${match.extraAreas[file]}]` : file);
-  if (match.extra.length) lines.push(` ⚠ 요청에 없던 곳도 바뀜: ${shortList(match.extra.map(withArea))}  ${LABEL_GIT}`);
+  // Map area ids ([f-…]) mean nothing to the person reading: file names only (dogfood #37).
+  if (match.extra.length) lines.push(` ⚠ 요청에 없던 곳도 바뀜: ${shortList(match.extra)}  ${LABEL_GIT}`);
   if (match.extraBefore?.length) lines.push(` ${BEFORE_WORK_MARK} 바뀌어 있던 요청 밖 파일: ${shortList(match.extraBefore)}  ${LABEL_GIT}`);
   return [...lines, ...tail];
 }
@@ -437,7 +437,7 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
     `  ${time}`,
     '==============================',
     ...(asked.length > 0 ? matchLines(receipt, asked, askedMore, saysButNoFiles) : []),
-    `${RECEIPT_SECTIONS[1]}  ${LABEL_AI}`,
+    `${RECEIPT_SECTIONS[1]}  ${receipt.done.length ? LABEL_AI : LABEL_JUTELL}`,
     ...renderList(receipt.done, (item, index) => ` ${index + 1}. ${item}`, ' 없음'),
     ...(asked.length === 0 && saysButNoFiles ? [`${SAYS_BUT_NO_FILES}  ${LABEL_GIT}`] : []),
     '',

