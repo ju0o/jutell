@@ -267,7 +267,7 @@ export async function writeMapHtml(paths: ScopePaths): Promise<'written' | 'unch
 }
 
 export function mapHtmlMessage(html: 'written' | 'unchanged' | 'skipped') {
-  return html === 'skipped' ? '' : `보기 쉬운 화면: ${path.join('.jutell-local', MAP_HTML_FILE)}${html === 'unchanged' ? ' (바뀐 것 없음)' : ''}`;
+  return html === 'skipped' ? '' : `보기 쉬운 화면: .jutell-local/${MAP_HTML_FILE}${html === 'unchanged' ? ' (바뀐 것 없음)' : ''}`;
 }
 
 /** One plain line about a map write, for the terminal. */

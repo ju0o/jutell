@@ -13,7 +13,8 @@ afterAll(async () => { await Promise.all(roots.map((root) => fs.rm(root, { recur
 
 // Dogfood PR #31: with Codex already connected (shared CODEX_HOME), `jutell --yes` in a second project made no map.
 describe('`jutell --yes` makes the map in every project (dogfood fix)', () => {
-  it('creates JuTellMap.md + .jutell-local/map.html in a new project even when Codex is already connected; never overwrites', async () => {
+  // A shell-script fake codex cannot run on Windows (same limit as noninteractive-default.test.ts).
+  it.skipIf(process.platform === 'win32')('creates JuTellMap.md + .jutell-local/map.html in a new project even when Codex is already connected; never overwrites', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-mapyes-'));
     roots.push(root);
     const home = path.join(root, 'home');
