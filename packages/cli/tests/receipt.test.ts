@@ -459,6 +459,29 @@ describe('receipt command', () => {
     for (const hidden of ['node_modules', 'dist/', 'build/', '.next']) expect(changedFiles).not.toContain(hidden);
   });
 
+  it('a committed build/ or vendor/ file that changed is still a changed file (exclusions are for untracked files only)', async () => {
+    await setup();
+    const git = (...args: string[]) => execFileAsync('git', args, { cwd: paths.targetRoot });
+    await git('init', '-q');
+    for (const file of ['build/config.js', 'vendor/lib.js', 'src/app.ts']) {
+      await fs.mkdir(path.dirname(path.join(paths.targetRoot, file)), { recursive: true });
+      await fs.writeFile(path.join(paths.targetRoot, file), 'v1\n', 'utf8');
+    }
+    await git('add', '.');
+    await git('-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', 'base');
+    await fs.writeFile(path.join(paths.targetRoot, 'build/config.js'), 'v2\n', 'utf8');
+    await fs.writeFile(path.join(paths.targetRoot, 'vendor/lib.js'), 'v2\n', 'utf8');
+    await fs.writeFile(path.join(paths.targetRoot, 'build/new-output.js'), 'x\n', 'utf8');
+    const stdin = new PassThrough();
+    stdin.end(JSON.stringify({ done: ['설정 수정'] }));
+    expect(await receiptCommand(paths, ['--file', '-'], io, stdin)).toBe(0);
+    const start = output[0].indexOf('[바뀐 파일]');
+    const changedFiles = output[0].slice(start, output[0].indexOf('[확인]', start));
+    expect(changedFiles).toContain('build/config.js');
+    expect(changedFiles).toContain('vendor/lib.js');
+    expect(changedFiles).not.toContain('build/new-output.js');
+  });
+
   it('does not accept inline JSON or incomplete --file arguments', async () => {
     await setup();
 

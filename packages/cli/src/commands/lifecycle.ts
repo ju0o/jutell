@@ -5,7 +5,7 @@ import { readBridgeConfig, readCodexRegistration, snapshot, restore } from '../c
 import { ensureBridgeConfig, setMcpDisabled, setMcpEnabled } from '../installer/config.js';
 import { installSkill, recordSkillFiles, removeAddedSkillFiles, removeManagedSkillFiles, skillConflictMessage, skillRefreshMessage } from '../installer/skill.js';
 import { agentsFile, ensureJuTellAgentsBlock, removeJuTellAgentsBlock } from '../installer/agents.js';
-import { managedCodexServerFile, registerMcp, removeMcp } from '../config/managed.js';
+import { codexUninstallBlocker, managedCodexServerFile, readText, registerMcp, removeMcp, userKeysInManagedBlock } from '../config/managed.js';
 import { removeOpenCodeMcp, readOpenCodeRegistration, setOpenCodeEnabled } from '../installer/opencode.js';
 import { removeClaudeMcp } from '../installer/claude.js';
 import { scopeLabel } from '../output/format.js';
@@ -152,10 +152,25 @@ export async function uninstallCommand(paths: ScopePaths, options: CliOptions, i
   // it cannot work for other projects after removal, so JuTell's own entry is removed too.
   const codexLocal = paths.scope === 'project' && await runsFromProject(codexScopedPaths(paths), paths.targetRoot);
   const codexSkipped = paths.scope !== 'global' && !codexLocal;
+  const codexNotes: string[] = [];
+  let codexRemoved = false;
   if (!codexSkipped) {
-    const removal = await removeMcp(codexScopedPaths(paths), packageRoot());
-    if (removal.commentedTables.length > 0) {
-      io.write(`직접 넣은 jutell 설정(${removal.commentedTables.join(', ')})은 지우지 않고 주석으로 남겼어요. 바로 전 백업: ${removal.backupPath}, 처음 원본: ${codexScopedPaths(paths).codexConfigFile}.jutell-original`);
+    const codexPaths = codexScopedPaths(paths);
+    // A broken or linked global file only skips the Codex step; the rest of uninstall goes on.
+    const blocker = await codexUninstallBlocker(codexPaths);
+    if (blocker) codexNotes.push(blocker);
+    else {
+      try {
+        const userKeys = userKeysInManagedBlock(await readText(codexPaths.codexConfigFile) ?? '');
+        const removal = await removeMcp(codexPaths, packageRoot());
+        codexRemoved = true;
+        if (userKeys.length > 0) codexNotes.push(`주의: JuTell이 관리하는 구역 안에 직접 넣은 값(${userKeys.join(', ')})이 있어 구역과 함께 지워졌어요. 필요하면 백업(${removal.backupPath})에서 다시 옮겨 주세요.`);
+        if (removal.commentedTables.length > 0) {
+          codexNotes.push(`직접 넣은 jutell 설정(${removal.commentedTables.join(', ')})은 지우지 않고 주석으로 남겼어요. 바로 전 백업: ${removal.backupPath}, 처음 원본: ${codexPaths.codexConfigFile}.jutell-original`);
+        }
+      } catch (error) {
+        codexNotes.push(`Codex 전역 설정의 JuTell 연결은 지우지 못했어요(${(error as Error).message}). 나머지 제거는 계속했어요.`);
+      }
     }
   }
   await removeManagedSkillFiles(assets().skill, paths.skillRoot, paths);
@@ -172,7 +187,8 @@ export async function uninstallCommand(paths: ScopePaths, options: CliOptions, i
     await fs.rm(paths.dataRoot, { recursive: true, force: true });
   }
   io.write(`제거했습니다. ${removeData ? '설정과 Beta Journal도 삭제했습니다.' : '설정과 Beta Journal은 보존했습니다.'}`);
-  if (codexLocal) io.write('Codex 전역 설정에 남아 있던 이 프로젝트용 JuTell 연결(이 폴더의 node_modules를 가리킴)도 지웠어요. 다른 설정은 그대로예요.');
+  for (const note of codexNotes) io.write(note);
+  if (codexLocal && codexRemoved) io.write('Codex 전역 설정에 남아 있던 이 프로젝트용 JuTell 연결(이 폴더의 node_modules를 가리킴)도 지웠어요. 다른 설정은 그대로예요.');
   if (codexSkipped) io.write('Codex MCP 연결(전역 설정)은 다른 프로젝트와 공유되어 제거하지 않았습니다. 모든 프로젝트에서 제거하려면 jutell uninstall --global 을 실행하세요.');
   return { cancelled: false };
 }
