@@ -72,3 +72,13 @@ describe('stabilize-b: --yes in help, uninstall leftovers, plain wording', () =>
     expect(checks.find((c) => c.name === '영수증 명령')?.detail).toContain('jutell receipt');
   });
 });
+
+describe('doctor display names', () => {
+  it('shows plain labels but keeps the stable names', async () => {
+    const dir = await project();
+    const checks = await getDoctorResults(resolveScope('project', dir));
+    const build = checks.find((c) => c.name === 'MCP 빌드 파일');
+    expect(build?.label).toBe('JuTell 도구 파일');
+    expect(checks.find((c) => c.name === 'MCP 서버 실제 연결 (Stdio)')?.label).toBe('JuTell 도구 실제로 켜 보기');
+  });
+});

@@ -311,7 +311,7 @@ describe('Distribution CLI V0.1', () => {
     const useCodex = await runCli(['use', 'codex'], project, env);
     expect(useCodex.stdout).toContain('Codex 연결이 끝났습니다');
     expect(useCodex.stdout).toContain('기존 다른 Agent 연결은 유지했습니다.');
-    expect(useCodex.stdout).toContain('Codex는 MCP 서버 목록을 사용자 전역 설정에서만 읽습니다');
+    expect(useCodex.stdout).toContain('Codex는 JuTell 도구 연결을 이 컴퓨터의 모든 프로젝트가 함께 쓰는 Codex 설정 파일(~/.codex/config.toml)에서만 읽습니다');
     const codexText = await fs.readFile(path.join(home, '.codex', 'config.toml'), 'utf8');
     expect(codexText).toContain('[mcp_servers.jutell]');
     expect(codexText).toContain('enabled = true');
