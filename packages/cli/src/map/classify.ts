@@ -1,13 +1,14 @@
 // Puts each file into a feature section and gives it a role, without AI (plan.md §1).
 
 export const UNCLASSIFIED = '아직 분류 안 된 파일';
-export const ESTIMATED_LABEL = '[지도 기준 추정]';
+export const ESTIMATED_LABEL = '[지도로 짐작]';
 
 /** Word dictionary: a whole word in a folder or file name (case-insensitive) → feature name. */
 export const FEATURE_DICTIONARY: ReadonlyArray<{ feature: string; words: readonly string[] }> = [
   { feature: '로그인', words: ['auth', 'login', 'logout', 'signin', 'signup', 'signout', 'session', 'oauth', 'password'] },
   { feature: '결제', words: ['pay', 'payment', 'checkout', 'billing', 'invoice', 'stripe'] },
-  { feature: '할 일 목록', words: ['todo', 'todos', 'task', 'tasks'] },
+  // Feature names are kinds of features, never a page title ("할 일 목록" read like the page title and drifted when it changed).
+  { feature: '할 일', words: ['todo', 'todos', 'task', 'tasks'] },
   { feature: '검색', words: ['search'] },
   { feature: '알림', words: ['notification', 'notifications', 'notify', 'alert', 'alerts'] },
   { feature: '프로필', words: ['profile', 'profiles', 'avatar'] },

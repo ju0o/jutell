@@ -28,7 +28,6 @@ async function project(name = 'proj', files = ['src/auth/login.ts', 'src/payment
   const run = (...args: string[]) => spawnSync(process.execPath, [cliEntry, ...args], { cwd: dir, env, encoding: 'utf8', timeout: 30000 });
   return { dir, run, paths: resolveScope('project', dir) };
 }
-const past = new Date(2020, 0, 1);
 
 describe('map HTML (W3)', () => {
   it('escapes every md byte: file names with HTML/quotes cannot inject markup', () => {
@@ -85,30 +84,60 @@ describe('jutell map (W3)', () => {
   });
 });
 
-describe('"지도 오래됨" in doctor and status (W3)', () => {
-  it('marks 주의 when a file is newer than the map; 정상 when fresh or absent; never 오류', async () => {
+describe('"지도 오래됨" in doctor and status: one rule, the file LIST (dogfood fix)', () => {
+  it('정상 when absent or fresh; a content-only change (even a newer file) gives no warning', async () => {
     const { dir, paths } = await project();
     expect((await mapFreshnessCheck(paths))?.status).toBe('정상');
     await writeMap(paths);
-    await fs.utimes(path.join(dir, 'src', 'auth', 'login.ts'), past, past);
-    await fs.utimes(path.join(dir, 'src', 'payments', 'refund.ts'), past, past);
-    await fs.utimes(path.join(dir, 'index.js'), past, past);
     expect(await mapFreshnessCheck(paths)).toMatchObject({ status: '정상', detail: '지도가 최신이에요.' });
+    await fs.writeFile(path.join(dir, 'index.js'), 'changed content');
     const future = new Date(Date.now() + 60_000);
     await fs.utimes(path.join(dir, 'index.js'), future, future);
-    expect(await mapFreshnessCheck(paths)).toMatchObject({ status: '주의' });
-    expect((await mapFreshnessCheck(paths))?.detail).toContain('지도 오래됨: 지도보다 새로 바뀐 파일 1개(index.js)');
+    expect(await mapFreshnessCheck(paths)).toMatchObject({ status: '정상', detail: '지도가 최신이에요.' });
+  });
+
+  it('an added file gives a warning', async () => {
+    const { dir, paths } = await project();
+    await writeMap(paths);
+    await fs.writeFile(path.join(dir, 'src', 'auth', 'session.ts'), 'x');
+    expect(await mapFreshnessCheck(paths)).toMatchObject({ status: '주의', detail: '지도 오래됨: 지도에 없는 새 파일 1개(src/auth/session.ts). `jutell map`으로 갱신하세요.' });
+  });
+
+  it('a deleted file gives a warning (a move shows both)', async () => {
+    const { dir, paths } = await project();
+    await writeMap(paths);
+    await fs.rm(path.join(dir, 'index.js'));
+    expect((await mapFreshnessCheck(paths))?.detail).toBe('지도 오래됨: 지도에 없는 없어진 파일 1개(index.js). `jutell map`으로 갱신하세요.');
+    await fs.rename(path.join(dir, 'src', 'payments', 'refund.ts'), path.join(dir, 'src', 'payments', 'refund2.ts'));
+    const detail = (await mapFreshnessCheck(paths))?.detail ?? '';
+    expect(detail).toContain('새 파일 1개(src/payments/refund2.ts)');
+    expect(detail).toContain('없어진 파일 2개');
+  });
+
+  it('records the file list in map-state.json (version 2); an old version-1 state falls back to the map lines', async () => {
+    const { dir, paths } = await project();
+    await writeMap(paths);
+    const stateFile = path.join(dir, '.jutell-local', 'map-state.json');
+    const state = JSON.parse(await fs.readFile(stateFile, 'utf8'));
+    expect(state).toMatchObject({ version: 2, files: ['index.js', 'src/auth/login.ts', 'src/payments/refund.ts'] });
+    await fs.writeFile(stateFile, JSON.stringify({ version: 1, file: 'JuTellMap.md', hash: state.hash, writtenAt: state.writtenAt }));
+    expect((await mapFreshnessCheck(paths))?.status).toBe('정상');
+    await fs.writeFile(path.join(dir, 'new.js'), 'x');
+    expect((await mapFreshnessCheck(paths))?.detail).toContain('새 파일 1개(new.js)');
+    // `jutell map` with nothing changed in the map still upgrades the state with the list, keeping the old hash.
+    await fs.rm(path.join(dir, 'new.js'));
+    expect(await writeMap(paths)).toMatchObject({ status: 'unchanged' });
+    expect(JSON.parse(await fs.readFile(stateFile, 'utf8'))).toMatchObject({ version: 2, hash: state.hash, files: state.files });
   });
 
   it('built doctor shows the 주의 line but its exit code does not change because of it; status prints it too', async () => {
     const { dir, run } = await project();
     run('map');
-    for (const file of ['src/auth/login.ts', 'src/payments/refund.ts', 'index.js']) await fs.utimes(path.join(dir, file), past, past);
+    await fs.writeFile(path.join(dir, 'index.js'), 'edited');
     const fresh = run('doctor', '--json');
     const freshCheck = (JSON.parse(fresh.stdout) as Array<{ name: string; status: string }>).find((check) => check.name === '프로젝트 지도');
     expect(freshCheck?.status).toBe('정상');
-    const future = new Date(Date.now() + 60_000);
-    await fs.utimes(path.join(dir, 'index.js'), future, future);
+    await fs.writeFile(path.join(dir, 'extra.js'), 'x');
     const stale = run('doctor', '--json');
     const staleCheck = (JSON.parse(stale.stdout) as Array<{ name: string; status: string }>).find((check) => check.name === '프로젝트 지도');
     expect(staleCheck?.status).toBe('주의');

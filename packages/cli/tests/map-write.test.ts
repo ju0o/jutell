@@ -5,7 +5,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import { resolveScope } from '../src/config/paths.js';
-import { MAP_COPY_FILE, MAP_FILE, MAP_LATER, MAP_QUESTION, MAP_STATE_FILE, offerMap, parseMap, sha256, writeMap } from '../src/map/write.js';
+import { MAP_COPY_FILE, MAP_GUIDE, MAP_FILE, MAP_LATER, MAP_QUESTION, MAP_STATE_FILE, offerMap, parseMap, sha256, writeMap } from '../src/map/write.js';
+import { MAP_HTML_FILE, renderMapHtml } from '../src/map/html.js';
 import { parseYesNo } from '../src/output/format.js';
 import type { CliIo } from '../src/types.js';
 
@@ -40,6 +41,53 @@ function humanLines(text: string) {
   return out;
 }
 
+describe('map readability (dogfood fix)', () => {
+  it('a new map starts with one plain Korean line before the first marker', async () => {
+    const { dir, paths } = await project();
+    await writeMap(paths, NOW);
+    const lines = (await read(path.join(dir, MAP_FILE))).split('\n');
+    expect(MAP_GUIDE).toBe('<!-- --> 로 된 줄은 JuTell이 자동으로 고치는 자리 표시예요. 지우지 말고, 설명은 마음대로 고쳐도 돼요.');
+    expect(lines.indexOf(MAP_GUIDE)).toBe(1);
+    expect(lines.indexOf(MAP_GUIDE)).toBeLessThan(lines.findIndex((line) => line.startsWith('<!-- jutell:auto')));
+  });
+
+  it('an existing map (old note, old "분류 안 됨" marker, "할 일 목록" section) keeps every human byte on refresh; the guide line is not forced in', async () => {
+    const { dir, paths } = await project('old', ['test-app/todo.html', 'AGENTS.md']);
+    const old = [
+      '# JuTell 지도 — 이 프로젝트는 어떻게 생겼나요?',
+      '<!-- 이 파일은 jutell이 자동으로 고칩니다. "설명:" 줄과 직접 옮긴 파일 줄은 그대로 남습니다. -->',
+      '마지막 갱신: 2026-10-19 01:06 · 파일 2개 · 분류 안 된 파일 1개',
+      '',
+      '## 할 일 목록 (내가 고친 제목)', '<!-- jutell:auto 할 일 목록 -->', '- test-app/todo.html — 화면', '<!-- /jutell:auto -->',
+      '',
+      '## 아직 분류 안 된 파일', '설명: 내 설명', '<!-- jutell:auto 분류 안 됨 -->', '- AGENTS.md — 문서', '<!-- /jutell:auto -->',
+      '',
+    ].join('\n');
+    await fs.writeFile(path.join(dir, MAP_FILE), old);
+    expect(await writeMap(paths, LATER)).toMatchObject({ status: 'unchanged' });
+    expect(await read(path.join(dir, MAP_FILE))).toBe(old);
+    await fs.writeFile(path.join(dir, 'README.md'), 'x');
+    await fs.writeFile(path.join(dir, 'test-app', 'todo.css'), 'x');
+    expect(await writeMap(paths, LATER)).toMatchObject({ status: 'updated', added: ['README.md', 'test-app/todo.css'], newSections: [] });
+    const after = await read(path.join(dir, MAP_FILE));
+    expect(humanLines(after)).toEqual(humanLines(old));
+    expect(after).toContain('<!-- jutell:auto 분류 안 됨 -->\n- AGENTS.md — 문서\n- README.md — 문서\n<!-- /jutell:auto -->');
+    expect(after).toContain('<!-- jutell:auto 할 일 목록 -->\n- test-app/todo.css — 화면\n- test-app/todo.html — 화면\n<!-- /jutell:auto -->');
+    expect(after).not.toContain('아직 분류 안 된 파일 -->');
+    expect(after).not.toContain(MAP_GUIDE);
+  });
+
+  it('section names do not drift: marker = heading words; todo files go to the generic "할 일" (not a page title)', async () => {
+    const { dir, paths } = await project('todo', ['test-app/todo.html', 'AGENTS.md']);
+    await writeMap(paths, NOW);
+    const text = await read(path.join(dir, MAP_FILE));
+    expect(text).toContain('## 할 일\n<!-- jutell:auto 할 일 -->');
+    expect(text).toContain('## 아직 분류 안 된 파일\n설명: 아래 줄을 원하는 기능 칸으로 옮기면, 다음부터 그 칸에 둡니다.\n<!-- jutell:auto 아직 분류 안 된 파일 -->');
+    expect(text).not.toContain('할 일 목록');
+    expect(text).not.toContain('[지도 기준 추정]');
+  });
+});
+
 describe('map write (W2)', () => {
   it('creates JuTellMap.md in the plan §1 format and records its hash in .jutell-local/map-state.json', async () => {
     const { dir, paths } = await project();
@@ -47,20 +95,20 @@ describe('map write (W2)', () => {
     const text = await read(path.join(dir, MAP_FILE));
     expect(text).toBe([
       '# JuTell 지도 — 이 프로젝트는 어떻게 생겼나요?',
-      '<!-- 이 파일은 jutell이 자동으로 고칩니다. "설명:" 줄과 직접 옮긴 파일 줄은 그대로 남습니다. -->',
+      MAP_GUIDE,
       '마지막 갱신: 2026-10-20 14:03 · 파일 5개 · 분류 안 된 파일 2개',
       '',
       '## 로그인', '<!-- jutell:auto 로그인 -->', '- src/auth/LoginForm.tsx — 화면', '<!-- /jutell:auto -->',
       '',
       '## 결제', '<!-- jutell:auto 결제 -->', '- src/payments/pay-ui.ts — 기능', '<!-- /jutell:auto -->',
       '',
-      '## payments [지도 기준 추정]', '<!-- jutell:auto payments -->', '- src/payments/refund.ts — 기능', '<!-- /jutell:auto -->',
+      '## payments [지도로 짐작]', '<!-- jutell:auto payments -->', '- src/payments/refund.ts — 기능', '<!-- /jutell:auto -->',
       '',
-      '## 아직 분류 안 된 파일', '설명: 아래 줄을 원하는 기능 칸으로 옮기면, 다음부터 그 칸에 둡니다.', '<!-- jutell:auto 분류 안 됨 -->', '- index.js — 기능', '- scripts/migrate-2024.js — 기능', '<!-- /jutell:auto -->',
+      '## 아직 분류 안 된 파일', '설명: 아래 줄을 원하는 기능 칸으로 옮기면, 다음부터 그 칸에 둡니다.', '<!-- jutell:auto 아직 분류 안 된 파일 -->', '- index.js — 기능', '- scripts/migrate-2024.js — 기능', '<!-- /jutell:auto -->',
       '',
     ].join('\n'));
     const state = JSON.parse(await read(path.join(dir, '.jutell-local', MAP_STATE_FILE)));
-    expect(state).toMatchObject({ version: 1, file: MAP_FILE, hash: sha256(text) });
+    expect(state).toMatchObject({ version: 2, file: MAP_FILE, hash: sha256(text), files: ['index.js', 'scripts/migrate-2024.js', 'src/auth/LoginForm.tsx', 'src/payments/pay-ui.ts', 'src/payments/refund.ts'] });
     expect(await read(path.join(dir, '.jutell-local', '.gitignore'))).toBe('*\n');
   });
 
@@ -71,7 +119,7 @@ describe('map write (W2)', () => {
     let text = await read(file);
     text = text
       .replace('## 로그인\n', '## 로그인\n설명: 회원이 들어오고 나가는 기능이에요.        ← 사람이 쓴 줄\n')
-      .replace('## payments [지도 기준 추정]', '## 환불 (내가 지은 이름)')
+      .replace('## payments [지도로 짐작]', '## 환불 (내가 지은 이름)')
       // moved out of every auto block into the 로그인 section: pinned there
       .replace('- index.js — 기능\n', '')
       .replace('설명: 회원이 들어오고 나가는 기능이에요.        ← 사람이 쓴 줄\n', '설명: 회원이 들어오고 나가는 기능이에요.        ← 사람이 쓴 줄\n- index.js — 기능 (여기가 맞아요)\n')
@@ -89,7 +137,7 @@ describe('map write (W2)', () => {
     expect(after).toContain('<!-- jutell:auto 결제 -->\n- scripts/migrate-2024.js — 기능\n- src/payments/pay-ui.ts — 기능\n<!-- /jutell:auto -->');
     expect(after).toContain('<!-- jutell:auto 로그인 -->\n- src/auth/LoginForm.tsx — 화면\n- src/auth/session.ts — 기능\n<!-- /jutell:auto -->');
     expect(after).toContain('## 환불 (내가 지은 이름)\n<!-- jutell:auto payments -->\n- src/payments/refund.ts — 기능');
-    expect(after).not.toContain('[지도 기준 추정]');
+    expect(after).not.toContain('[지도로 짐작]');
     expect(after).toContain('마지막 갱신: 2026-10-21 09:00 · 파일 6개 · 분류 안 된 파일 0개');
   });
 
@@ -104,8 +152,8 @@ describe('map write (W2)', () => {
     await writeMap(paths, LATER);
     const after = await read(file);
     expect(after.split('\r\n').join('').includes('\n')).toBe(false);
-    expect(after.indexOf('## reports [지도 기준 추정]')).toBeGreaterThan(after.indexOf('## payments'));
-    expect(after.indexOf('## reports [지도 기준 추정]')).toBeLessThan(after.indexOf('## 아직 분류 안 된 파일'));
+    expect(after.indexOf('## reports [지도로 짐작]')).toBeGreaterThan(after.indexOf('## payments'));
+    expect(after.indexOf('## reports [지도로 짐작]')).toBeLessThan(after.indexOf('## 아직 분류 안 된 파일'));
   });
 
   it('writes nothing when nothing changed (mtime and bytes stay the same)', async () => {
@@ -191,12 +239,14 @@ describe('install question (W2)', () => {
     expect(written).toEqual([MAP_LATER]);
   });
 
-  it('--yes → creates without asking', async () => {
+  it('--yes → creates without asking, plus .jutell-local/map.html (same as `jutell map`)', async () => {
     const { dir, paths } = await project();
-    const { io, asked } = fakeIo();
+    const { io, asked, written } = fakeIo();
     expect(await offerMap(paths, { yes: true } as never, io, false)).toEqual({ asked: false, created: true });
     expect(asked).toEqual([]);
     await expect(fs.stat(path.join(dir, MAP_FILE))).resolves.toBeTruthy();
+    expect(await read(path.join(dir, '.jutell-local', MAP_HTML_FILE))).toBe(renderMapHtml(await read(path.join(dir, MAP_FILE))));
+    expect(written).toContain('보기 쉬운 화면: .jutell-local/map.html');
   });
 
   it('existing map → does not ask and does not touch it', async () => {

@@ -3,6 +3,7 @@ import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
 import { ensureDataRoot } from '../config/managed.js';
 import type { CliIo, CliOptions, ScopePaths } from '../types.js';
+import { MAP_HTML_FILE, renderMapHtml } from './html.js';
 import { classifyFiles, ESTIMATED_LABEL, UNCLASSIFIED, type Classified } from './classify.js';
 import { scanProject } from './scan.js';
 
@@ -10,11 +11,14 @@ export const MAP_FILE = 'JuTellMap.md';
 export const MAP_STATE_FILE = 'map-state.json';
 /** Fresh copy written when the existing map is broken (never overwritten). */
 export const MAP_COPY_FILE = 'JuTellMap.new.md';
-/** Marker key of the "not yet classified" section. */
-export const UNCLASSIFIED_KEY = '분류 안 됨';
+/** Marker key of the "not yet classified" section: the same words as its heading, so the two never drift. */
+export const UNCLASSIFIED_KEY = UNCLASSIFIED;
+/** Marker key used by maps written before Cycle 2 dogfood fixes; still read as the "not yet classified" section. */
+export const LEGACY_UNCLASSIFIED_KEY = '분류 안 됨';
 
 const TITLE = '# JuTell 지도 — 이 프로젝트는 어떻게 생겼나요?';
-const NOTE = '<!-- 이 파일은 jutell이 자동으로 고칩니다. "설명:" 줄과 직접 옮긴 파일 줄은 그대로 남습니다. -->';
+/** Plain line at the top of a new map, before the first marker (a person can read it in a text editor). */
+export const MAP_GUIDE = '<!-- --> 로 된 줄은 JuTell이 자동으로 고치는 자리 표시예요. 지우지 말고, 설명은 마음대로 고쳐도 돼요.';
 const HEADER_PREFIX = '마지막 갱신:';
 const UNCLASSIFIED_HELP = '설명: 아래 줄을 원하는 기능 칸으로 옮기면, 다음부터 그 칸에 둡니다.';
 const OPEN = /^<!-- jutell:auto (.+) -->$/;
@@ -69,9 +73,10 @@ export function parseMap(text: string): Parsed | string {
     const line = lines[index].trim();
     const opened = OPEN.exec(line);
     if (opened) {
+      const key = opened[1] === LEGACY_UNCLASSIFIED_KEY ? UNCLASSIFIED_KEY : opened[1];
       if (current) return `${index + 1}번째 줄: 자동 칸이 닫히기 전에 새 자동 칸이 열렸어요`;
-      if (blocks.has(opened[1])) return `${index + 1}번째 줄: 같은 이름의 자동 칸이 두 번 있어요(${opened[1]})`;
-      current = { key: opened[1], open: index };
+      if (blocks.has(key)) return `${index + 1}번째 줄: 같은 이름의 자동 칸이 두 번 있어요(${opened[1]})`;
+      current = { key, open: index };
     } else if (line === CLOSE) {
       if (!current) return `${index + 1}번째 줄: 열리지 않은 자동 칸을 닫았어요`;
       blocks.set(current.key, { open: current.open, close: index });
@@ -92,7 +97,7 @@ export function parseMap(text: string): Parsed | string {
 export function renderNewMap(items: Classified[], now: Date): string {
   const groups = group(items, new Map());
   const keys = [...groups.keys()].filter((key) => key !== UNCLASSIFIED_KEY);
-  const out = [TITLE, NOTE, headerLine(now, items.length, groups.get(UNCLASSIFIED_KEY)?.length ?? 0)];
+  const out = [TITLE, MAP_GUIDE, headerLine(now, items.length, groups.get(UNCLASSIFIED_KEY)?.length ?? 0)];
   for (const key of [...keys, UNCLASSIFIED_KEY]) {
     const list = groups.get(key) ?? [];
     out.push('', ...sectionLines(key, list[0]?.estimated ?? false, list));
@@ -100,10 +105,15 @@ export function renderNewMap(items: Classified[], now: Date): string {
   return `${out.join('\n')}\n`;
 }
 
-function group(items: Classified[], placement: Map<string, string>) {
+/** Feature names renamed in the dictionary → their old name. An existing map's old section keeps getting its files. */
+const LEGACY_FEATURE_KEYS: Record<string, string> = { '할 일': '할 일 목록' };
+
+function group(items: Classified[], placement: Map<string, string>, blocks?: Map<string, unknown>) {
   const groups = new Map<string, Classified[]>();
   for (const item of items) {
-    const key = placement.get(item.path) ?? keyOf(item);
+    let key = placement.get(item.path) ?? keyOf(item);
+    const legacy = LEGACY_FEATURE_KEYS[key];
+    if (blocks && legacy && !blocks.has(key) && blocks.has(legacy)) key = legacy;
     const list = groups.get(key) ?? [];
     list.push(item);
     groups.set(key, list);
@@ -121,7 +131,7 @@ export function updateMap(existing: string, items: Classified[], now: Date): { t
   if (typeof parsed === 'string') return parsed;
   const { lines, eol, blocks, placed, pinned } = parsed;
   const placement = new Map([...placed].filter(([, key]) => blocks.has(key)));
-  const groups = group(items.filter((item) => !pinned.has(item.path)), placement);
+  const groups = group(items.filter((item) => !pinned.has(item.path)), placement, blocks);
   const out: string[] = [];
   let index = 0;
   const ordered = [...blocks.entries()].sort((a, b) => a[1].open - b[1].open);
@@ -175,12 +185,27 @@ export async function writeViaTemp(file: string, content: string) {
   try { await fs.rename(temporary, file); } catch (error) { await fs.rm(temporary, { force: true }); throw error; }
 }
 
-async function recordState(paths: ScopePaths, text: string, now: Date) {
+/**
+ * .jutell-local/map-state.json. version 2 adds `files`: the project file list the map was last synced with.
+ * Staleness (doctor/status) and the receipt refresh both use this one list. Version 1 files (no `files`) still read.
+ */
+export type MapState = { version: number; file: string; hash: string; writtenAt: string; files?: string[] };
+
+export async function readMapState(paths: ScopePaths): Promise<Partial<MapState> | undefined> {
+  return fs.readFile(path.join(paths.dataRoot, MAP_STATE_FILE), 'utf8').then((raw) => JSON.parse(raw) as Partial<MapState>).catch(() => undefined);
+}
+
+/** Project files a map lists: every scanned file except the map itself. */
+export function mapListFiles(files: readonly string[]) {
+  return files.filter((relative) => relative !== MAP_FILE);
+}
+
+async function recordState(paths: ScopePaths, hash: string, files: string[], now: Date) {
   await ensureDataRoot(paths);
   if (!(await fs.lstat(paths.dataRoot)).isDirectory()) return;
   const stateFile = path.join(paths.dataRoot, MAP_STATE_FILE);
   if ((await fs.lstat(stateFile).catch(() => undefined))?.isSymbolicLink()) return;
-  await writeViaTemp(stateFile, `${JSON.stringify({ version: 1, file: MAP_FILE, hash: sha256(text), writtenAt: now.toISOString() }, null, 2)}\n`);
+  await writeViaTemp(stateFile, `${JSON.stringify({ version: 2, file: MAP_FILE, hash, writtenAt: now.toISOString(), files } satisfies MapState, null, 2)}\n`);
 }
 
 export function mapFile(paths: ScopePaths) {
@@ -197,11 +222,12 @@ export async function writeMap(paths: ScopePaths, now = new Date()): Promise<Map
   const stats = await fs.lstat(file).catch(() => undefined);
   if (stats && !stats.isFile()) return { status: 'link', file };
   const scan = await scanProject(paths.targetRoot);
-  const items = classifyFiles(scan.files.filter((relative) => relative !== MAP_FILE));
+  const listed = mapListFiles(scan.files);
+  const items = classifyFiles(listed);
   if (!stats) {
     const text = renderNewMap(items, now);
     await writeViaTemp(file, text);
-    await recordState(paths, text, now);
+    await recordState(paths, sha256(text), listed, now);
     return { status: 'created', file, files: items.length, unclassified: items.filter((item) => item.feature === UNCLASSIFIED).length };
   }
   const existing = await fs.readFile(file, { encoding: 'utf8', flag: fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) });
@@ -213,10 +239,35 @@ export async function writeMap(paths: ScopePaths, now = new Date()): Promise<Map
     await writeViaTemp(copy, renderNewMap(items, now));
     return { status: 'broken', file, copy, reason: updated };
   }
-  if (!updated.changed) return { status: 'unchanged', file };
+  if (!updated.changed) {
+    // Same list as the map: remember it (keeping the old hash, so a person's edit is still seen as theirs).
+    const state = await readMapState(paths);
+    const sameList = Array.isArray(state?.files) && state.files.length === listed.length && state.files.every((entry, index) => entry === listed[index]);
+    if (!sameList) await recordState(paths, typeof state?.hash === 'string' ? state.hash : '', listed, now).catch(() => undefined);
+    return { status: 'unchanged', file };
+  }
   await writeViaTemp(file, updated.text);
-  await recordState(paths, updated.text, now);
+  await recordState(paths, sha256(updated.text), listed, now);
   return { status: 'updated', file, added: updated.added, removed: updated.removed, newSections: updated.newSections };
+}
+
+/** Writes .jutell-local/map.html from the current JuTellMap.md (only when it differs). */
+export async function writeMapHtml(paths: ScopePaths): Promise<'written' | 'unchanged' | 'skipped'> {
+  const markdown = await fs.readFile(mapFile(paths), 'utf8').catch(() => undefined);
+  if (markdown === undefined) return 'skipped';
+  await ensureDataRoot(paths);
+  if (!(await fs.lstat(paths.dataRoot)).isDirectory()) return 'skipped';
+  const target = path.join(paths.dataRoot, MAP_HTML_FILE);
+  const stats = await fs.lstat(target).catch(() => undefined);
+  if (stats && !stats.isFile()) return 'skipped';
+  const html = renderMapHtml(markdown);
+  if (stats && (await fs.readFile(target, 'utf8')) === html) return 'unchanged';
+  await writeViaTemp(target, html);
+  return 'written';
+}
+
+export function mapHtmlMessage(html: 'written' | 'unchanged' | 'skipped') {
+  return html === 'skipped' ? '' : `보기 쉬운 화면: ${path.join('.jutell-local', MAP_HTML_FILE)}${html === 'unchanged' ? ' (바뀐 것 없음)' : ''}`;
 }
 
 /** One plain line about a map write, for the terminal. */
@@ -257,6 +308,11 @@ export async function offerMap(paths: ScopePaths, options: CliOptions, io: CliIo
   try {
     const result = await writeMap(paths);
     io.write(mapWriteMessage(result, paths));
+    // Same result as `jutell map`: the map and its easy-to-read page.
+    if (result.status === 'created') {
+      const html = await writeMapHtml(paths).catch(() => 'skipped' as const);
+      if (html !== 'skipped') io.write(mapHtmlMessage(html));
+    }
     return { asked, created: result.status === 'created' };
   } catch (error) {
     io.write(`프로젝트 지도를 만들지 못했어요(${(error as Error).message}). 나중에 \`jutell map\`으로 다시 시도할 수 있어요.`);

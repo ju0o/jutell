@@ -5,7 +5,7 @@ import path from 'node:path';
 import { PassThrough } from 'node:stream';
 import { afterAll, describe, expect, it } from 'vitest';
 import { resolveScope } from '../src/config/paths.js';
-import { refreshMapForReceipt } from '../src/commands/map.js';
+import { mapFreshnessCheck, refreshMapForReceipt } from '../src/commands/map.js';
 import { receiptCommand } from '../src/commands/receipt/index.js';
 import { writeMap } from '../src/map/write.js';
 import type { CliIo } from '../src/types.js';
@@ -56,13 +56,23 @@ describe('receipt refreshes the map (W5)', () => {
     expect(files).toContain('src/auth/session.ts');
     expect(files).not.toContain('JuTellMap.md');
     expect(await fs.readFile(path.join(dir, '.jutell-local', 'map.html'), 'utf8')).toContain('session.ts');
+    expect(await mapFreshnessCheck(paths)).toMatchObject({ status: '정상', detail: '지도가 최신이에요.' });
+  });
+
+  it('dogfood case: a content-only edit, then a receipt → no map line, and doctor says the map is fresh', async () => {
+    const { dir, paths, receipt } = await project();
+    await writeMap(paths);
+    await fs.writeFile(path.join(dir, 'src', 'auth', 'login.ts'), 'edited by the AI');
+    const text = await receipt();
+    expect(text).not.toContain('ⓘ 지도');
+    expect(await mapFreshnessCheck(paths)).toMatchObject({ status: '정상', detail: '지도가 최신이에요.' });
   });
 
   it('without a map: no map line and no map is created', async () => {
     const { dir, receipt } = await project();
     await fs.writeFile(path.join(dir, 'a.ts'), 'x');
     const text = await receipt();
-    expect(text).not.toContain('지도');
+    expect(text).not.toContain('ⓘ 지도');
     await expect(fs.stat(path.join(dir, 'JuTellMap.md'))).rejects.toThrow();
   });
 

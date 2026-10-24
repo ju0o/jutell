@@ -2,9 +2,8 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { ensureDataRoot, readBridgeConfig, writeBridgeConfig } from '../config/managed.js';
 import { addGitExclude, gitExcludeMessage, removeGitExclude } from '../map/git-exclude.js';
-import { MAP_HTML_FILE, renderMapHtml } from '../map/html.js';
 import { scanProject } from '../map/scan.js';
-import { MAP_FILE, MAP_STATE_FILE, mapFile, mapWriteMessage, sha256, writeMap, writeViaTemp } from '../map/write.js';
+import { MAP_STATE_FILE, mapFile, mapHtmlMessage, mapListFiles, mapWriteMessage, parseMap, readMapState, sha256, writeMap, writeMapHtml } from '../map/write.js';
 import type { CliIo, ScopePaths } from '../types.js';
 
 export const MAP_HELP = `jutell map             프로젝트 지도(JuTellMap.md)와 .jutell-local/map.html을 만들거나 갱신합니다.
@@ -19,20 +18,7 @@ async function recordGitExclude(paths: ScopePaths, value: boolean) {
   await writeBridgeConfig(paths, { ...current.config, map: { gitExclude: value } });
 }
 
-/** Writes .jutell-local/map.html from the current JuTellMap.md (only when it differs). */
-export async function writeMapHtml(paths: ScopePaths): Promise<'written' | 'unchanged' | 'skipped'> {
-  const markdown = await fs.readFile(mapFile(paths), 'utf8').catch(() => undefined);
-  if (markdown === undefined) return 'skipped';
-  await ensureDataRoot(paths);
-  if (!(await fs.lstat(paths.dataRoot)).isDirectory()) return 'skipped';
-  const file = path.join(paths.dataRoot, MAP_HTML_FILE);
-  const stats = await fs.lstat(file).catch(() => undefined);
-  if (stats && !stats.isFile()) return 'skipped';
-  const html = renderMapHtml(markdown);
-  if (stats && (await fs.readFile(file, 'utf8')) === html) return 'unchanged';
-  await writeViaTemp(file, html);
-  return 'written';
-}
+export { writeMapHtml };
 
 export async function mapCommand(paths: ScopePaths, args: string[], io: CliIo) {
   if (args.includes('--help') || args.includes('-h')) { io.write(MAP_HELP); return 0; }
@@ -51,34 +37,46 @@ export async function mapCommand(paths: ScopePaths, args: string[], io: CliIo) {
   io.write(mapWriteMessage(result, paths));
   if (result.status === 'broken' || result.status === 'link') return 0;
   const html = await writeMapHtml(paths);
-  if (html !== 'skipped') io.write(`보기 쉬운 화면: ${path.join('.jutell-local', MAP_HTML_FILE)}${html === 'unchanged' ? ' (바뀐 것 없음)' : ''}`);
+  if (html !== 'skipped') io.write(mapHtmlMessage(html));
   return 0;
 }
 
-/** Files changed after JuTellMap.md was last written (by modification time). */
-export async function staleMapFiles(paths: ScopePaths): Promise<{ exists: boolean; newer: string[] }> {
+/**
+ * Files added or deleted since the map was last synced (ONE rule, shared with the receipt refresh):
+ * the current file list vs. the list in map-state.json. Content-only edits never make the map stale.
+ * Old state files without a list fall back to the file lines in JuTellMap.md.
+ */
+export async function staleMapFiles(paths: ScopePaths): Promise<{ exists: boolean; added: string[]; removed: string[] }> {
   const stats = await fs.lstat(mapFile(paths)).catch(() => undefined);
-  if (!stats) return { exists: false, newer: [] };
-  const scan = await scanProject(paths.targetRoot);
-  const newer: string[] = [];
-  for (const file of scan.files) {
-    if (file === MAP_FILE) continue;
-    const fileStats = await fs.lstat(path.join(paths.targetRoot, file)).catch(() => undefined);
-    if (fileStats && fileStats.mtimeMs > stats.mtimeMs) newer.push(file);
+  if (!stats) return { exists: false, added: [], removed: [] };
+  const current = mapListFiles((await scanProject(paths.targetRoot)).files);
+  const state = await readMapState(paths);
+  let recorded: string[];
+  if (Array.isArray(state?.files)) recorded = state.files.filter((entry): entry is string => typeof entry === 'string');
+  else {
+    const parsed = parseMap(await fs.readFile(mapFile(paths), 'utf8'));
+    if (typeof parsed === 'string') throw new Error(parsed);
+    recorded = [...parsed.placed.keys(), ...parsed.pinned];
   }
-  return { exists: true, newer };
+  const before = new Set(recorded);
+  const now = new Set(current);
+  return { exists: true, added: current.filter((file) => !before.has(file)), removed: recorded.filter((file) => !now.has(file)) };
 }
 
-/** doctor/status line: "주의" when the map is older than project files; never an error (exit code stays 0). */
+/** doctor/status line: "주의" when files were added or deleted since the map was synced; never an error (exit code stays 0). */
 export async function mapFreshnessCheck(paths: ScopePaths) {
   const name = '프로젝트 지도';
   if (paths.scope !== 'project') return undefined;
   try {
     const stale = await staleMapFiles(paths);
     if (!stale.exists) return { name, status: '정상' as const, detail: '지도가 없어요. `jutell map`으로 만들 수 있어요.' };
-    if (!stale.newer.length) return { name, status: '정상' as const, detail: '지도가 최신이에요.' };
-    const shown = stale.newer.slice(0, 3).join(', ');
-    return { name, status: '주의' as const, detail: `지도 오래됨: 지도보다 새로 바뀐 파일 ${stale.newer.length}개(${shown}${stale.newer.length > 3 ? ' 등' : ''}). \`jutell map\`으로 갱신하세요.` };
+    if (!stale.added.length && !stale.removed.length) return { name, status: '정상' as const, detail: '지도가 최신이에요.' };
+    const list = (files: string[]) => `${files.slice(0, 3).join(', ')}${files.length > 3 ? ' 등' : ''}`;
+    const parts = [
+      stale.added.length ? `새 파일 ${stale.added.length}개(${list(stale.added)})` : '',
+      stale.removed.length ? `없어진 파일 ${stale.removed.length}개(${list(stale.removed)})` : '',
+    ].filter(Boolean);
+    return { name, status: '주의' as const, detail: `지도 오래됨: 지도에 없는 ${parts.join(', ')}. \`jutell map\`으로 갱신하세요.` };
   } catch {
     return { name, status: '직접 확인 필요' as const, detail: '지도를 확인하지 못했어요.' };
   }

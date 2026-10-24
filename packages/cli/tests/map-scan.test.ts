@@ -123,7 +123,7 @@ describe('map classification (W1, plan.md §1)', () => {
   it('② meaningful folder → first non-generic folder name, labelled as an estimate', () => {
     expect(classifyFile('src/payments/x.ts')).toMatchObject({ feature: 'payments', estimated: true });
     expect(classifyFile('packages/cli/src/x.ts')).toMatchObject({ feature: 'cli', estimated: true });
-    expect(ESTIMATED_LABEL).toBe('[지도 기준 추정]');
+    expect(ESTIMATED_LABEL).toBe('[지도로 짐작]');
   });
 
   it('③ only generic folders → not yet classified', () => {
@@ -148,7 +148,7 @@ describe('map classification (W1, plan.md §1)', () => {
   });
 
   it('roles from extension and folder: 화면·기능·테스트·설정·문서', () => {
-    expect(classifyFile('test-app/todo.html')).toMatchObject({ feature: '할 일 목록', role: '화면' });
+    expect(classifyFile('test-app/todo.html')).toMatchObject({ feature: '할 일', role: '화면' });
     expect(classifyFile('src/auth/session.ts').role).toBe('기능');
     expect(classifyFile('tests/auth.test.ts').role).toBe('테스트');
     expect(classifyFile('package.json').role).toBe('설정');

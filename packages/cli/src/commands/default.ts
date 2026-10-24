@@ -198,6 +198,7 @@ export async function defaultCommand(paths: ScopePaths, options: CliOptions, io:
     if (options.yes || stdin.isTTY !== true || process.stdout.isTTY !== true) {
       await enableCommand(paths, { ...options, yes: true, oneCommand: true }, io);
       io.write(readyMessage(await getStatus(paths)));
+      if (options.yes) await offerMap(paths, options, io, false);
       io.write('관리자 화면은 `jutell dashboard`로 열 수 있어요.');
       return { cancelled: false };
     }
@@ -214,5 +215,8 @@ export async function defaultCommand(paths: ScopePaths, options: CliOptions, io:
   // this is a repeat run, not onboarding. Keep it minimal: no wizard, no
   // dashboard auto-launch, just a status line and a pointer to --help.
   io.write(alreadyConfiguredMessage(statuses));
+  // `jutell --yes` makes the map in every project, also when the agents were connected earlier
+  // (e.g. from another project). offerMap never overwrites an existing map.
+  if (options.yes) await offerMap(paths, options, io, false);
   return { cancelled: false };
 }
