@@ -158,6 +158,13 @@ describe('request matching (W6, plan.md §2)', () => {
     expect(mentionsRunRecord('npm-debug.log 삭제')).toBe(false);
     expect(mentionsRunRecord('테스트는 실행하지 않음')).toBe(false);
     expect(mentionsRunRecord('빌드 폴더 이름 바꿈')).toBe(false);
+    expect(mentionsRunRecord('테스트 안 돌림')).toBe(false);
+    expect(mentionsRunRecord('Tests were not run')).toBe(false);
+    expect(mentionsRunRecord('test-app/todo.html 고침, 통과')).toBe(false);
+    expect(mentionsRunRecord('tests 폴더 만들기 성공')).toBe(false);
+    expect(mentionsRunRecord('build 폴더 정리 성공')).toBe(false);
+    expect(mentionsRunRecord('테스트 파일 추가 성공')).toBe(false);
+    expect(mentionsRunRecord('tests passed')).toBe(true);
     expect(mentionsRunRecord('npm test 통과')).toBe(true);
     expect(mentionsRunRecord('테스트를 돌려 통과')).toBe(true);
     expect(mentionsRunRecord('빌드 성공 (tsc)')).toBe(true);

@@ -5,6 +5,7 @@ import { ensureDataRoot } from '../config/managed.js';
 import type { ScopePaths } from '../types.js';
 import { ESTIMATED_LABEL, UNCLASSIFIED } from './classify.js';
 import type { MapScan } from './scan.js';
+import { stamp } from './stamp.js';
 
 export const MAP_INDEX_FILE = 'map-index.json';
 export const MAP_DETAILS_DIR = 'map-details';
@@ -132,6 +133,12 @@ export function mapAreaIds(markdown: string): Map<string, string> {
   return ids;
 }
 
+/** Shown times use the same local-time-with-zone format as the map header. */
+function localStamp(iso: string) {
+  const date = new Date(iso);
+  return Number.isFinite(date.getTime()) ? stamp(date) : iso;
+}
+
 function buildIndex(markdown: string, scan: MapScan, commit: string | null, generatedAt: string, oldIndex?: MapSelectionIndex): MapSelectionIndex {
   const sections = selectionSections(markdown);
   const presentPaths = new Set(scan.files);
@@ -179,7 +186,7 @@ function renderDetail(section: MapSection, entry: MapSectionEntry, index: MapSel
     markerLine(entry),
     `# ${escapeMarkdownText(entry.name)}`,
     '',
-    `- 정리한 시각: ${entry.generatedAt ?? index.generatedAt}${entry.estimated ? ` · 이름과 분류는 파일 이름으로 짐작함 ${ESTIMATED_LABEL}` : ''}`,
+    `- 정리한 시각: ${localStamp(entry.generatedAt ?? index.generatedAt)}${entry.estimated ? ` · 이름과 분류는 파일 이름으로 짐작함 ${ESTIMATED_LABEL}` : ''}`,
     '- 모르는 것: 파일끼리 데이터가 어떻게 이어지는지, 실제로 잘 동작하는지, 테스트가 통과하는지 (지도는 앱이나 테스트를 실행하지 않아요)',
     '',
     ...(listed.length ? listed : ['지도에 적힌 파일이 없어요.', '']),
@@ -405,7 +412,7 @@ export function formatMapSelectionIndex(index: MapSelectionIndex) {
   const rows = index.sections.map((section) => `- ${visibleText(section.name)} · ${section.pathCount === undefined ? '파일 수 모름' : `파일 ${section.pathCount}개`}${section.estimated ? ` ${ESTIMATED_LABEL}` : ''} · ID ${section.id}`);
   const scan = `${index.scan.source === 'git' ? 'Git 파일 목록' : '폴더 탐색'} · ${index.scan.fileCount}개${index.scan.truncated ? ' · 너무 많아 일부 빠졌을 수 있음' : ''}`;
   return [
-    `기능 목록 · 정리한 시각 ${index.generatedAt}${index.sourceMap.commit ? ` · 커밋 ${index.sourceMap.commit.slice(0, 7)}` : ''}`,
+    `기능 목록 · 정리한 시각 ${localStamp(index.generatedAt)}${index.sourceMap.commit ? ` · 커밋 ${index.sourceMap.commit.slice(0, 7)}` : ''}`,
     `파일 목록: ${scan}`,
     ...rows,
     '파일끼리의 연결, 실제 동작, 테스트 통과는 이 목록으로 알 수 없어요.',
