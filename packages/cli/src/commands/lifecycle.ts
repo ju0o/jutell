@@ -139,7 +139,9 @@ async function runsFromProject(codexPaths: ScopePaths, projectRoot: string) {
   if (!server) return false;
   const real = async (file: string) => (await fs.realpath(file).catch(() => path.resolve(file))).replaceAll('\\', '/');
   const [serverPath, root] = await Promise.all([real(path.dirname(server)), real(projectRoot)]);
-  return serverPath.startsWith(`${root}/`);
+  // Only JuTell's own local install counts (<project>/node_modules/jutell/assets/mcp-server);
+  // other in-project paths such as vendor/…/jutell or a checkout of JuTell itself do not.
+  return serverPath === `${root}/node_modules/jutell/assets/mcp-server`;
 }
 
 export async function uninstallCommand(paths: ScopePaths, options: CliOptions, io: CliIo) {

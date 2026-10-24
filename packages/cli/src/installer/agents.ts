@@ -1,10 +1,12 @@
 import { readText, writeTextSafely } from '../config/managed.js';
 import path from 'node:path';
+import { promises as fs } from 'node:fs';
+import { packageRoot } from '../config/paths.js';
 
 export const JUTELL_AGENTS_BEGIN = '<!-- BEGIN JUTELL MANAGED BLOCK -->';
 export const JUTELL_AGENTS_END = '<!-- END JUTELL MANAGED BLOCK -->';
 
-const RECEIPT_LINES = `- 영수증(끝날 때 순서): ① \`get_beginner_report_rules\` 호출(보이면 필수) ② 파일 쓰기 도구로 \`.jutell-local/receipt.json\`에 \`{"asked":["요청 요약"],"done":["한 일"],"checked":["직접 확인한 것"],"unchecked":["확인 못 한 것 (이유)"],"next":["해도 되고 안 해도 되는 추천"],"summary":"한 줄 요약"}\`을 쓰고(셸·heredoc 금지), ③ 인자 없이 \`jutell receipt\`를 한 번 실행해 출력을 답 맨 위에 붙입니다(명령이 없을 때만 \`npm exec --offline --no --prefix "<프로젝트 루트>" -- jutell receipt\`). 바뀐 파일은 영수증이 세므로 저장소 상태·브랜치·변경 비교는 보지 않습니다. 요청이 테스트·실행 결과·화면 확인을 필요로 하면 실행하고, 실행하거나 읽지 않은 것(예: 다른 파일을 안 건드렸는지)은 checked가 아닌 unchecked에 씁니다. 직접 보지 않았으면 화면은 unchecked에 씁니다(파일을 읽은 것은 화면 확인이 아닙니다). 그래도 명령이 없거나 "알 수 없는 명령"이 나오면 재시도 없이 "영수증을 저장하지 못했어요. 터미널에서 jutell doctor를 실행하면 해결 방법을 알려 줘요." 한 줄만 씁니다.
+const receiptLinesFor = (command: string) => `- 영수증(끝날 때 순서): ① \`get_beginner_report_rules\` 호출(보이면 필수) ② 파일 쓰기 도구로 \`.jutell-local/receipt.json\`에 \`{"asked":["요청 요약"],"done":["한 일"],"checked":["직접 확인한 것"],"unchecked":["확인 못 한 것 (이유)"],"next":["해도 되고 안 해도 되는 추천"],"summary":"한 줄 요약"}\`을 쓰고(셸·heredoc 금지), ③ 프로젝트 루트에서 인자 없이 \`${command}\`를 한 번 실행해 출력을 답 맨 위에 붙입니다. 바뀐 파일은 영수증이 세므로 저장소 상태·브랜치·변경 비교는 보지 않습니다. 요청이 테스트·실행 결과·화면 확인을 필요로 하면 실행하고, 실행하거나 읽지 않은 것(예: 다른 파일을 안 건드렸는지)은 checked가 아닌 unchecked에 씁니다. 직접 보지 않았으면 화면은 unchecked에 씁니다(파일을 읽은 것은 화면 확인이 아닙니다). 그래도 명령이 없거나 "알 수 없는 명령"이 나오면 재시도 없이 "영수증을 저장하지 못했어요. 터미널에서 jutell doctor를 실행하면 해결 방법을 알려 줘요." 한 줄만 씁니다.
 - 영수증이 최종 답입니다. 영수증 아래에는 아무것도 쓰지 않고, 붙이지 못했을 때만 \`직접 확인한 것:\`/\`확인 못 한 것:\` 두 줄을 씁니다. "설명형 변경 요약" 같은 내부 소제목은 쓰지 않습니다.
 `;
 const NO_RECEIPT_LINES = `- 최종 답에는 \`직접 확인한 것:\`과 \`확인 못 한 것:\` 두 줄(없으면 "없음")을 씁니다. "설명형 변경 요약" 같은 내부 소제목은 쓰지 않습니다.
@@ -25,8 +27,8 @@ const toolLine = (target: GuidanceTarget, receiptReport: boolean) => {
     : `Codex: 도구 목록(ALL_TOOLS) 검색 없이 파일 편집 ${code('apply_patch')}, 보고 규칙 ${rules}, 셸 ${code('exec_command')}.`;
   return `- 도구가 보이면 바로 호출하고, 안 보이면 검색하지 말고 Skill로 계속합니다. ${names}${receiptReport ? ` ${code('jutell receipt')}는 도구가 아닌 셸 명령입니다.` : ''}\n`;
 };
-const managedBlockFor = (receiptReport: boolean, target: GuidanceTarget = 'agents') => {
-  const receiptLines = `${toolLine(target, receiptReport)}${receiptReport ? RECEIPT_LINES : NO_RECEIPT_LINES}`;
+const managedBlockFor = (receiptReport: boolean, target: GuidanceTarget = 'agents', command = 'jutell receipt') => {
+  const receiptLines = `${toolLine(target, receiptReport)}${receiptReport ? receiptLinesFor(command) : NO_RECEIPT_LINES}`;
   return `${JUTELL_AGENTS_BEGIN}
 ## JuTell
 
@@ -73,6 +75,17 @@ export function claudeMdFile(projectRoot: string) {
   return path.join(projectRoot, 'CLAUDE.md');
 }
 
+/**
+ * The exact receipt command for THIS project, written into its AGENTS.md/CLAUDE.md (SKILL.md stays the
+ * same file in every install). A local install (<project>/node_modules/jutell) is not on the agent's PATH,
+ * so the block names `npm exec` directly instead of making the AI try `jutell receipt` first.
+ */
+export async function receiptCommandFor(projectRoot: string, root = packageRoot()) {
+  const real = async (file: string) => (await fs.realpath(file).catch(() => path.resolve(file))).replaceAll('\\', '/');
+  const [pkg, project] = await Promise.all([real(root), real(projectRoot)]);
+  return pkg === `${project}/node_modules/jutell` ? 'npm exec --offline --no -- jutell receipt' : 'jutell receipt';
+}
+
 async function hasManagedBlock(file: string) {
   const content = await readText(file);
   return Boolean(content && markerPattern().test(content));
@@ -80,7 +93,7 @@ async function hasManagedBlock(file: string) {
 
 async function ensureManagedBlock(file: string, target: GuidanceTarget = 'agents') {
   const current = await readText(file) ?? '';
-  const managedBlock = managedBlockFor(await receiptReportEnabled(path.dirname(file)), target);
+  const managedBlock = managedBlockFor(await receiptReportEnabled(path.dirname(file)), target, await receiptCommandFor(path.dirname(file)));
   const next = markerPattern().test(current)
     ? current.replace(markerPattern(), managedBlock).replace(/\n{3,}/g, '\n\n').trimEnd() + '\n'
     : `${current.trimEnd()}${current.trimEnd() ? '\n\n' : ''}${managedBlock}\n`;

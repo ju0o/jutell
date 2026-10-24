@@ -225,7 +225,7 @@ function matchLines(receipt: ReceiptInput, asked: string[], askedMore: number, s
     if (item.status !== 'unplaced' && item.before?.length) lines.push(`    ${BEFORE_WORK_MARK} 바뀌어 있던 파일: ${shortList(item.before)}  ${LABEL_GIT}`);
   });
   lines.push(...more);
-  // Each file the map lists carries its area ID (`jutell map --show <ID>` opens it).
+  // Each file the map lists carries its area ID, so the user can find it in the map (`jutell map --show`).
   const withArea = (file: string) => (match.extraAreas?.[file] ? `${file} [${match.extraAreas[file]}]` : file);
   if (match.extra.length) lines.push(` ⚠ 요청에 없던 곳도 바뀜: ${shortList(match.extra.map(withArea))}  ${LABEL_GIT}`);
   if (match.extraBefore?.length) lines.push(` ${BEFORE_WORK_MARK} 바뀌어 있던 요청 밖 파일: ${shortList(match.extraBefore)}  ${LABEL_GIT}`);

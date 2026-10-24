@@ -43,6 +43,14 @@ describe('project uninstall and the shared Codex entry (temp CODEX_HOME)', () =>
     expect(out.join('\n')).not.toContain('공유되어 제거하지 않았습니다');
   });
 
+  it('an in-project path that is not node_modules/jutell (e.g. vendor/…/jutell) is NOT treated as this project\'s local install', async () => {
+    const { paths, config, out, io } = await setup((project) => path.join(project, 'vendor', 'tools', 'jutell'));
+    const before = await fs.readFile(config, 'utf8');
+    await uninstallCommand(paths, { yes: true, removeData: false } as never, io);
+    expect(await fs.readFile(config, 'utf8')).toBe(before);
+    expect(out.join('\n')).toContain('공유되어 제거하지 않았습니다');
+  });
+
   it('keeps a global-install entry (shared by other projects) and tells the user', async () => {
     const { paths, config, out, io } = await setup((_project, root) => path.join(root, 'global', 'lib', 'node_modules', 'jutell'));
     const before = await fs.readFile(config, 'utf8');
