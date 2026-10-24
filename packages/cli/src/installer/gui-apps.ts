@@ -78,6 +78,13 @@ function fileFor(app: GuiApp, scope: GuiScope, projectRoot: string) {
   return guiAppFiles(projectRoot).find((file) => file.app === app.id && file.scope === scope && file.writable)!;
 }
 
+/** Files `jutell use <app>` may create or change, so a failed use can put them back (use.ts rollback). */
+export function guiWriteTargets(app: GuiApp, wantsGlobal: boolean, projectRoot: string) {
+  if (app.mode === 'status-only') return undefined;
+  const file = fileFor(app, guiScopeFor(app, wantsGlobal), projectRoot)?.file;
+  return file ? { file, dir: path.dirname(file), files: [file, `${file}.previous`, `${file}.jutell-original`, createdMarker(file)] } : undefined;
+}
+
 export function guiScopeFor(app: GuiApp, wantsGlobal: boolean): GuiScope {
   return app.scopes.includes('project') && !wantsGlobal ? 'project' : 'global';
 }
@@ -116,7 +123,12 @@ async function removeIfJuTellCreated(file: string, rootKey: string) {
   const marker = await readMaybe(createdMarker(file));
   if (marker === undefined) return false;
   const left = onlyServers(await readMaybe(file), rootKey);
-  if (!left || Object.keys(left).length) return false;
+  if (!left || Object.keys(left).length) {
+    // The file is kept (the person's content is in it): JuTell no longer owns it, so drop only the marker.
+    // If it later becomes empty, it is the person's file and is never deleted.
+    await fs.rm(createdMarker(file), { force: true });
+    return false;
+  }
   let createdDir = false;
   try { createdDir = JSON.parse(marker).createdDir === true; } catch { /* keep the folder */ }
   for (const target of [file, `${file}.previous`, `${file}.jutell-original`, createdMarker(file)]) await fs.rm(target, { force: true });
