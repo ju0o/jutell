@@ -78,6 +78,13 @@ function fileFor(app: GuiApp, scope: GuiScope, projectRoot: string) {
   return guiAppFiles(projectRoot).find((file) => file.app === app.id && file.scope === scope && file.writable)!;
 }
 
+/** Files `jutell use <app>` may create or change, so a failed use can put them back (use.ts rollback). */
+export function guiWriteTargets(app: GuiApp, wantsGlobal: boolean, projectRoot: string) {
+  if (app.mode === 'status-only') return undefined;
+  const file = fileFor(app, guiScopeFor(app, wantsGlobal), projectRoot)?.file;
+  return file ? { file, dir: path.dirname(file), files: [file, `${file}.previous`, `${file}.jutell-original`, createdMarker(file)] } : undefined;
+}
+
 export function guiScopeFor(app: GuiApp, wantsGlobal: boolean): GuiScope {
   return app.scopes.includes('project') && !wantsGlobal ? 'project' : 'global';
 }
