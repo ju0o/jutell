@@ -93,6 +93,27 @@ describe('jutell use / disconnect <GUI app> (built dist)', () => {
     expect(await readFile(file, 'utf8')).toBe(mine);
   });
 
+  it('(l) uninstall deletes an emptied file only when JuTell certainly created it, and a folder only when JuTell made it and it is empty', async () => {
+    const { project, run } = await sandbox();
+    // JuTell created file and folder: both go.
+    expect(run(['use', 'cursor']).status).toBe(0);
+    expect(await exists(path.join(project, '.cursor', 'mcp.json.jutell-created'))).toBe(true);
+    expect(run(['disconnect', 'cursor']).status).toBe(0);
+    expect(await exists(path.join(project, '.cursor'))).toBe(false);
+    // The person's (empty) folder stays even though JuTell created the file inside it.
+    await mkdir(path.join(project, '.vscode'));
+    expect(run(['use', 'vscode']).status).toBe(0);
+    expect(run(['uninstall', '--yes']).status).toBe(0);
+    expect(await exists(path.join(project, '.vscode', 'mcp.json'))).toBe(false);
+    expect(await exists(path.join(project, '.vscode'))).toBe(true);
+    // The person's own file (no JuTell marker) is never deleted, even when left empty.
+    await mkdir(path.join(project, '.cursor'));
+    await writeFile(path.join(project, '.cursor', 'mcp.json'), '{ "mcpServers": {} }\n');
+    expect(run(['use', 'cursor']).status).toBe(0);
+    expect(run(['disconnect', 'cursor']).status).toBe(0);
+    expect(await readFile(path.join(project, '.cursor', 'mcp.json'), 'utf8')).toBe('{ "mcpServers": {} }\n');
+  });
+
   it.skipIf(!linux)('vscode --global (Q10, Linux): writes $XDG_CONFIG_HOME/Code/User/mcp.json and uninstall --global removes it cleanly', async () => {
     const { home, project, run, json } = await sandbox();
     const file = path.join(home, '.config', 'Code', 'User', 'mcp.json');
@@ -104,7 +125,7 @@ describe('jutell use / disconnect <GUI app> (built dist)', () => {
     noApprovalKeys(entry);
     const removed = run(['uninstall', '--global', '--yes']);
     expect(removed.status, removed.stderr).toBe(0);
-    for (const leftover of [file, `${file}.previous`, `${file}.jutell-original`]) expect(await exists(leftover)).toBe(false);
+    for (const leftover of [file, `${file}.previous`, `${file}.jutell-original`, `${file}.jutell-created`]) expect(await exists(leftover)).toBe(false);
   });
 
   it.skipIf(!linux)('vscode --global next to the person\'s own servers: uninstall takes out only JuTell', async () => {

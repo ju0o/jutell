@@ -4,7 +4,6 @@ import { buildGuiEntry, findGuiApp, globalPinWarning, guiAppFiles, serverEntryPa
 import { normalizeConfigPath, readJsonMcp, registerJsonMcp, removeJsonMcp, type JsonMcpState, type JsonMcpWriteResult } from './json-mcp.js';
 import { UNVERIFIED_PATH_NOTE } from '../config/paths.js';
 import { isPlainObject, parseJsoncObject, stripJsoncComments } from '../config/jsonc.js';
-import { isJuTellEntry } from './json-mcp.js';
 import type { CliIo } from '../types.js';
 
 export type GuiFileStatus = {
@@ -107,13 +106,22 @@ function onlyServers(text: string | undefined, rootKey: string) {
  * and nothing else is left, take out the file and JuTell's backups. Anything the person wrote stays.
  * Returns true when the file is gone.
  */
-async function removeIfJuTellCreated(file: string, rootKey: string, project: boolean) {
+/** Sidecar next to an app file that JuTell itself created (decision (l)). */
+export function createdMarker(file: string) {
+  return `${file}.jutell-created`;
+}
+
+async function removeIfJuTellCreated(file: string, rootKey: string) {
+  // (l) only when certain: JuTell's own marker says it created the file, and nothing (not even a comment) is left.
+  const marker = await readMaybe(createdMarker(file));
+  if (marker === undefined) return false;
   const left = onlyServers(await readMaybe(file), rootKey);
   if (!left || Object.keys(left).length) return false;
-  const original = onlyServers(await readMaybe(`${file}.jutell-original`), rootKey);
-  if (!original || Object.keys(original).join() !== 'jutell' || !isJuTellEntry(original.jutell)) return false;
-  for (const target of [file, `${file}.previous`, `${file}.jutell-original`]) await fs.rm(target, { force: true });
-  if (project) await fs.rmdir(path.dirname(file)).catch(() => undefined);
+  let createdDir = false;
+  try { createdDir = JSON.parse(marker).createdDir === true; } catch { /* keep the folder */ }
+  for (const target of [file, `${file}.previous`, `${file}.jutell-original`, createdMarker(file)]) await fs.rm(target, { force: true });
+  // Folders: only the one JuTell made, and only when empty (rmdir refuses otherwise).
+  if (createdDir) await fs.rmdir(path.dirname(file)).catch(() => undefined);
   return true;
 }
 
@@ -131,7 +139,11 @@ export async function useGuiApp(app: GuiApp, wantsGlobal: boolean, projectRoot: 
     if (app.id === 'vscode') return { written: false, message: [vscodeProfileGuidance(entry)] };
     return { written: false, message: [`${app.label} 설정 파일 위치가 이 운영체제에서는 ${UNVERIFIED_PATH_NOTE}이라 바꾸지 않았어요. 넣을 항목:`, JSON.stringify({ [target.rootKey]: { jutell: entry } }, null, 2)] };
   }
+  const fileExisted = await fs.lstat(target.file).then(() => true, () => false);
+  const dirExisted = await fs.lstat(path.dirname(target.file)).then(() => true, () => false);
   const result = await registerJsonMcp({ rootKey: target.rootKey }, target.file, entry, scope === 'project' ? { projectRoot } : {});
+  // (l) record for certain that JuTell created this file (and maybe its folder).
+  if (!fileExisted && result.status === 'written') await fs.writeFile(createdMarker(target.file), `${JSON.stringify({ createdDir: !dirExisted })}\n`).catch(() => undefined);
   return describeWrite(app, target, result, projectRoot);
 }
 
@@ -156,7 +168,7 @@ export async function disconnectGuiApp(app: GuiApp, wantsGlobal: boolean, projec
   const result = await removeJsonMcp({ rootKey: target.rootKey }, target.file, scope === 'project' ? { projectRoot } : {});
   if (result.status === 'absent') return { written: false, message: [`${target.label}에 JuTell 연결이 없어요.`] };
   if (result.status === 'written') {
-    if (await removeIfJuTellCreated(target.file, target.rootKey, scope === 'project')) return { written: true, message: [`${target.label}: JuTell이 만든 설정 파일이라 통째로 지웠어요 (${target.file}).`, app.restartHint] };
+    if (await removeIfJuTellCreated(target.file, target.rootKey)) return { written: true, message: [`${target.label}: JuTell이 만든 설정 파일이라 통째로 지웠어요 (${target.file}).`, app.restartHint] };
     return { written: true, message: [result.message, ...(result.backup && !result.userKeys?.length ? [`이전 파일 백업: ${result.backup}`] : []), app.restartHint] };
   }
   return { written: false, message: [], error: result.message };
@@ -208,7 +220,7 @@ export async function uninstallGuiEntries(projectRoot: string, global: boolean):
     }
     const result = await removeJsonMcp({ rootKey: file.rootKey }, file.file, file.scope === 'project' ? { projectRoot } : {});
     if (result.status === 'absent') continue;
-    if (result.status === 'written' && await removeIfJuTellCreated(file.file, file.rootKey, file.scope === 'project')) notes.push(`${file.label}: JuTell이 만든 설정 파일이라 통째로 지웠어요 (${file.file}).`);
+    if (result.status === 'written' && await removeIfJuTellCreated(file.file, file.rootKey)) notes.push(`${file.label}: JuTell이 만든 설정 파일이라 통째로 지웠어요 (${file.file}).`);
     else if (result.status === 'written') notes.push(`${file.label}: JuTell 연결만 지웠어요.${result.backup ? ` 백업: ${result.backup}` : ''}`);
     else if (result.status === 'link') notes.push(`${file.label}: 파일이 링크라서 직접 지우지 않았어요. 원본 파일에서 "jutell" 항목을 지우세요.`);
     else if (result.status === 'conflict') notes.push(`${file.label}: JuTell이 만들지 않은 "jutell" 항목이라 건너뛰었어요.`);
