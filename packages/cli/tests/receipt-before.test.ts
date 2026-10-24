@@ -74,7 +74,7 @@ describe('files changed before the work (W7)', () => {
     const raw = await fs.readFile(state, 'utf8');
     expect(raw).not.toContain('SECRET-CONTENT');
     const value = JSON.parse(raw);
-    expect(Object.keys(value).sort()).toEqual(['files', 'version']);
+    expect(Object.keys(value).sort()).toEqual(['files', 'source', 'version']);
     expect(Object.keys(value.files)).toContain('src/a.ts');
     for (const hash of Object.values(value.files)) expect(hash).toMatch(/^[0-9a-f]{64}$/);
   });

@@ -6,7 +6,7 @@ import { packageRoot } from '../config/paths.js';
 export const JUTELL_AGENTS_BEGIN = '<!-- BEGIN JUTELL MANAGED BLOCK -->';
 export const JUTELL_AGENTS_END = '<!-- END JUTELL MANAGED BLOCK -->';
 
-const receiptLinesFor = (command: string) => `- 영수증(끝날 때 순서): ① \`get_beginner_report_rules\` 호출(보이면 필수) ② 파일 쓰기 도구로 \`.jutell-local/receipt.json\`에 \`{"asked":["요청 요약"],"done":["한 일"],"checked":["직접 확인한 것"],"unchecked":["확인 못 한 것 (이유)"],"next":["해도 되고 안 해도 되는 추천"],"summary":"한 줄 요약"}\`을 쓰고(셸·heredoc 금지), ③ 프로젝트 루트에서 인자 없이 \`${command}\`를 한 번 실행해 출력을 답 맨 위에 붙입니다. 바뀐 파일은 영수증이 세므로 저장소 상태·브랜치·변경 비교는 보지 않습니다. 요청이 테스트·실행 결과·화면 확인을 필요로 하면 실행하고, 실행하거나 읽지 않은 것(예: 다른 파일을 안 건드렸는지)은 checked가 아닌 unchecked에 씁니다. 직접 보지 않았으면 화면은 unchecked에 씁니다(파일을 읽은 것은 화면 확인이 아닙니다). 그래도 명령이 없거나 "알 수 없는 명령"이 나오면 재시도 없이 "영수증을 저장하지 못했어요. 터미널에서 jutell doctor를 실행하면 해결 방법을 알려 줘요." 한 줄만 씁니다.
+const receiptLinesFor = (command: string) => `- 영수증(끝날 때 순서): ① \`get_beginner_report_rules\` 호출(보이면 필수) ② 파일 쓰기 도구로 \`.jutell-local/receipt.json\`에 \`{"asked":["요청 요약"],"done":["한 일"],"checked":["직접 확인한 것"],"unchecked":["확인 못 한 것 (이유)"],"next":["해도 되고 안 해도 되는 추천"],"summary":"한 줄 요약"}\`을 쓰고(셸·heredoc 금지), ③ 프로젝트 루트에서 인자 없이 \`${command}\`를 한 번 실행해 출력을 답 맨 위에 붙입니다. 바뀐 파일은 영수증이 세므로 저장소 상태·브랜치·변경 비교는 보지 않습니다. 요청이 테스트·실행 결과·화면 확인을 필요로 하면 실행하고, 실행하거나 읽지 않은 것(예: 다른 파일을 안 건드렸는지)은 checked가 아닌 unchecked에 씁니다. 직접 보지 않았으면 화면은 unchecked에 씁니다(파일을 읽은 것은 화면 확인이 아닙니다). 명령이 실패하면(없음·"알 수 없는 명령" 포함) 재시도 없이 "영수증을 저장하지 못했어요. 터미널에서 jutell doctor를 실행하면 해결 방법을 알려 줘요." 한 줄만 씁니다.
 - 영수증이 최종 답입니다. 영수증 아래에는 아무것도 쓰지 않고, 붙이지 못했을 때만 \`직접 확인한 것:\`/\`확인 못 한 것:\` 두 줄을 씁니다. "설명형 변경 요약" 같은 내부 소제목은 쓰지 않습니다.
 `;
 const NO_RECEIPT_LINES = `- 최종 답에는 \`직접 확인한 것:\`과 \`확인 못 한 것:\` 두 줄(없으면 "없음")을 씁니다. "설명형 변경 요약" 같은 내부 소제목은 쓰지 않습니다.
@@ -83,7 +83,41 @@ export function claudeMdFile(projectRoot: string) {
 export async function receiptCommandFor(projectRoot: string, root = packageRoot()) {
   const real = async (file: string) => (await fs.realpath(file).catch(() => path.resolve(file))).replaceAll('\\', '/');
   const [pkg, project] = await Promise.all([real(root), real(projectRoot)]);
-  return pkg === `${project}/node_modules/jutell` ? 'npm exec --offline --no -- jutell receipt' : 'jutell receipt';
+  if (pkg === `${project}/node_modules/jutell`) return LOCAL_RECEIPT_COMMAND;
+  // An npm workspaces member: jutell is hoisted to the workspace root's node_modules. Plain `npm exec`
+  // would run it for the workspace root; `--prefix .` keeps it on this project and still finds the bin.
+  for (let dir = path.posix.dirname(project); path.posix.dirname(dir) !== dir; dir = path.posix.dirname(dir)) {
+    if (pkg === `${dir}/node_modules/jutell`) return WORKSPACE_RECEIPT_COMMAND;
+  }
+  return 'jutell receipt';
+}
+const LOCAL_RECEIPT_COMMAND = 'npm exec --offline --no -- jutell receipt';
+const WORKSPACE_RECEIPT_COMMAND = 'npm exec --offline --no --prefix . -- jutell receipt';
+
+/** The receipt command each JuTell block in this project tells the AI to run (AGENTS.md, CLAUDE.md). */
+export async function writtenReceiptCommands(projectRoot: string) {
+  const written: Array<{ file: string; command: string }> = [];
+  for (const file of [agentsFile(projectRoot), claudeMdFile(projectRoot)]) {
+    const block = (await readText(file))?.match(markerPattern())?.[0];
+    if (!block || !block.includes('jutell receipt')) continue;
+    written.push({ file: path.basename(file), command: [WORKSPACE_RECEIPT_COMMAND, LOCAL_RECEIPT_COMMAND].find((known) => block.includes(known)) ?? 'jutell receipt' });
+  }
+  return written;
+}
+
+/**
+ * Rewrites only the JuTell blocks whose receipt command no longer matches this install (B1: the install
+ * type changed). Used by a repeat `jutell --yes`, so the one command doctor names really fixes it.
+ */
+export async function refreshStaleReceiptCommands(projectRoot: string) {
+  const command = await receiptCommandFor(projectRoot);
+  const fixed: string[] = [];
+  for (const entry of await writtenReceiptCommands(projectRoot)) {
+    if (entry.command === command) continue;
+    const file = entry.file === 'CLAUDE.md' ? claudeMdFile(projectRoot) : agentsFile(projectRoot);
+    if ((await ensureManagedBlock(file, entry.file === 'CLAUDE.md' ? 'claude' : 'agents')).changed) fixed.push(entry.file);
+  }
+  return fixed;
 }
 
 async function hasManagedBlock(file: string) {
@@ -91,8 +125,11 @@ async function hasManagedBlock(file: string) {
   return Boolean(content && markerPattern().test(content));
 }
 
+// A file the user already had (even empty) is theirs: uninstall removes only the block, never the file.
+const PREEXISTING_MARK = '<!-- jutell: file existed before setup -->';
 async function ensureManagedBlock(file: string, target: GuidanceTarget = 'agents') {
-  const current = await readText(file) ?? '';
+  const before = await readText(file);
+  const current = before === undefined || before === null ? '' : (before.trim() === '' && !before.includes(PREEXISTING_MARK) ? `${PREEXISTING_MARK}\n` : before);
   const managedBlock = managedBlockFor(await receiptReportEnabled(path.dirname(file)), target, await receiptCommandFor(path.dirname(file)));
   const next = markerPattern().test(current)
     ? current.replace(markerPattern(), managedBlock).replace(/\n{3,}/g, '\n\n').trimEnd() + '\n'
@@ -104,8 +141,12 @@ async function ensureManagedBlock(file: string, target: GuidanceTarget = 'agents
 async function removeManagedBlock(file: string) {
   const current = await readText(file);
   if (!current || !markerPattern().test(current)) return { changed: false };
-  const next = current.replace(markerPattern(), '').replace(/\n{3,}/g, '\n\n').trimEnd();
-  await writeTextSafely(file, next ? `${next}\n` : '');
+  const stripped = current.replace(markerPattern(), '').replace(/\n{3,}/g, '\n\n').trimEnd();
+  if (stripped === PREEXISTING_MARK) { await writeTextSafely(file, ''); return { changed: true }; }
+  const next = stripped;
+  // A file that held only JuTell's block is JuTell-made; leaving a 0-byte file behind confused users.
+  if (!next) { await fs.rm(file, { force: true }); return { changed: true, removedFile: true }; }
+  await writeTextSafely(file, `${next}\n`);
   return { changed: true };
 }
 

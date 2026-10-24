@@ -40,15 +40,15 @@ describe('receipt renderer', () => {
       ' 1. 브라우저 탭 이름: 할 일 목록 → 오늘 할 일',
       ' 2. 화면 맨 위 큰 글씨: 할 일 목록 → 오늘 할 일',
       '',
-      '[확인]',
+      '[확인]  [AI가 적음]',
       ' ✔ 직접 확인한 것: 파일에서 두 제목이 바뀐 것 (파일 내용을 읽음)  [AI가 적음]',
       ' ✖ 확인 못 한 것: 브라우저로 열어보기 (이 환경에서 화면을 못 열어서)  [AI가 적음]',
       '------------------------------',
       '[다음 추천]  [AI가 적음]',
-      ' ○ 추천',
-      '   - 페이지를 한 번 열어 제목만 봐 주세요',
-      ' ■ 여기서 멈춰도 됨',
-      '   - 부탁한 일은 끝났어요',
+      ' ○ 추천  [AI가 적음]',
+      '   - 페이지를 한 번 열어 제목만 봐 주세요  [AI가 적음]',
+      ' ■ 여기서 멈춰도 됨  [AI가 적음]',
+      '   - 부탁한 일은 끝났어요  [AI가 적음]',
       '------------------------------',
       ' 저장됨: .jutell-local/reports/2026-10-18-164012.md  [JuTell이 적음]',
       '==============================',
@@ -119,7 +119,7 @@ describe('receipt renderer', () => {
     }, timestamp);
     const headings = [
       '[이번에 한 작업]  [AI가 적음]',
-      '[확인]',
+      '[확인]  [AI가 적음]',
       '[다음 추천]',
       ' 여기서 멈춰도 됩니다 – 따로 추천할 다음 작업이 없어요  [JuTell이 적음]',
     ];
@@ -374,7 +374,7 @@ describe('receipt command', () => {
     expect(await receiptCommand(paths, ['--file', '-'], io, stdin, new Date(2026, 9, 18, 16, 40, 12))).toBe(0);
 
     const sectionPositions = RECEIPT_SECTIONS.filter((section) => section !== '[바뀐 파일]').map((section) => output[0].indexOf(section));
-    expect(output[0]).toContain(' ○ 추천\n   - 다음 추천');
+    expect(output[0]).toContain(' ○ 추천  [AI가 적음]\n   - 다음 추천  [AI가 적음]');
     expect(output[0]).not.toContain(' ▶ 계속');
     expect(output[0].split('\n').at(-1)).toBe('한 줄 요약: 한 일  [AI가 적음]');
     expect(sectionPositions.every((position) => position >= 0)).toBe(true);
@@ -401,14 +401,15 @@ describe('receipt command', () => {
     expect(await fs.readdir(path.join(paths.dataRoot, 'reports'))).toHaveLength(2);
   });
 
-  it('does not print raw command text from checked items', async () => {
+  it('shows raw command text from checked items as a code span, keeping the result', async () => {
     await setup();
     const stdin = new PassThrough();
     stdin.end(JSON.stringify({ done: ['한 일'], checked: ['npm test'] }));
 
     expect(await receiptCommand(paths, ['--file', '-'], io, stdin)).toBe(0);
-    expect(output[0]).not.toContain('npm test');
-    expect(output[0]).toContain('명령어 줄은 쉬운 말로 바꾸지 못해 뺐어요');
+    // Dogfood #36: the result is kept; the command shows as a code span instead of being dropped.
+    expect(output[0]).toContain(' ✔ 직접 확인한 것: `npm test`  [AI가 적음]');
+    expect(output[0]).not.toContain('바꾸지 못해');
   });
 
   it('lists modified and untracked files while excluding .jutell-local', async () => {

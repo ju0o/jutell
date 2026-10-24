@@ -10,9 +10,11 @@ const MAX_HASH_BYTES = 8 * 1024 * 1024;
 const MAX_STATE_BYTES = 2 * 1024 * 1024;
 const MAX_FILES = 5000;
 export const FIRST_RUN_NOTE = ' ⓘ 첫 영수증이라 위 파일 중 일부는 작업 전부터 바뀌어 있었을 수도 있어요  [Git 기준]';
-export const beforeNote = (count: number) => ` ⓘ 작업 전부터 바뀌어 있던 파일 ${count}개 (지난 영수증 기준)  [Git 기준]`;
+// The note names the real baseline: the JuTell setup run (first receipt) or the previous receipt.
+export const beforeNote = (count: number, source: BaselineSource = 'receipt') => ` ⓘ 작업 전부터 바뀌어 있던 파일 ${count}개 (${source === 'setup' ? 'JuTell 설치·연결 때' : '지난 영수증'} 기준)  [Git 기준]`;
+export type BaselineSource = 'setup' | 'receipt';
 
-type State = { version: 1; files: Record<string, string> };
+type State = { version: 1; files: Record<string, string>; source?: BaselineSource };
 
 async function hashFile(root: string, file: string): Promise<string> {
   const full = path.join(root, file);
@@ -56,7 +58,7 @@ async function readState(file: string): Promise<State | undefined> {
     if (!files || typeof files !== 'object' || Array.isArray(files)) return undefined;
     const clean: Record<string, string> = {};
     for (const [key, hash] of Object.entries(files)) if (typeof hash === 'string') clean[key] = hash;
-    return { version: 1, files: clean };
+    return { version: 1, files: clean, source: (value as State).source === 'setup' ? 'setup' : 'receipt' };
   } catch {
     return undefined;
   }
@@ -82,7 +84,7 @@ export const RECEIPT_HASH_TIME_MS = 2000;
 const NOT_HASHED = 'not-hashed';
 export const hashCutNote = (count: number) => ` (시간 제한으로 ${count}개는 비교 못 함)`;
 
-export async function checkBeforeWork(paths: ScopePaths, files: string[], timeLimitMs = RECEIPT_HASH_TIME_MS): Promise<BeforeWork> {
+export async function checkBeforeWork(paths: ScopePaths, files: string[], timeLimitMs = RECEIPT_HASH_TIME_MS, source: BaselineSource = 'receipt'): Promise<BeforeWork> {
   const listed = files.slice(0, MAX_FILES);
   const hashes: Record<string, string> = {};
   const deadline = Date.now() + timeLimitMs;
@@ -97,12 +99,12 @@ export async function checkBeforeWork(paths: ScopePaths, files: string[], timeLi
   const previous = safe ? await readState(stateFile) : undefined;
   if (safe) {
     if (await canWriteState(stateFile)) {
-      await writeViaTemp(stateFile, `${JSON.stringify({ version: 1, files: hashes } satisfies State)}\n`).catch(() => undefined);
+      await writeViaTemp(stateFile, `${JSON.stringify({ version: 1, files: hashes, source } satisfies State)}\n`).catch(() => undefined);
     }
   }
   if (listed.length === 0) return { before: [] };
   if (!previous) return { note: withCut(FIRST_RUN_NOTE), before: [] };
   const before = listed.filter((file) => hashes[file] !== NOT_HASHED && previous.files[file] === hashes[file]);
-  if (before.length > 0) return { note: withCut(beforeNote(before.length)), before };
+  if (before.length > 0) return { note: withCut(beforeNote(before.length, previous.source)), before };
   return cut ? { note: ` ⓘ 시간 제한으로 파일 ${cut}개는 작업 전과 비교 못 함  [Git 기준]`, before: [] } : { before: [] };
 }

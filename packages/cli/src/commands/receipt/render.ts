@@ -52,7 +52,8 @@ export const AI_RESULTS_NOTE = ` ⓘ 위 테스트·명령 결과는 AI가 알�
 // A run record: a command name as a whole word (not 'test-app' or 'npm-debug.log'), or a run word plus a
 // result word ('테스트 통과'). A line that says it was NOT run ('실행하지 않음') never counts.
 const RUN_COMMAND = /(?<![\w./-])(?:npm|npx|pnpm|yarn|tsc|vitest|jest|pytest|eslint|cargo|make)(?![\w./-])/i;
-const RUN_NOUN = /테스트|빌드|검사|린트|명령|(?<![\w./-])(?:tests?|build|lint)(?![\w./-])/i;
+// A noun that names a folder or file ('tests 폴더', '테스트 파일') is not a run.
+const RUN_NOUN = /(?:테스트|빌드|검사|린트|명령|(?<![\w./-])(?:tests?|build|lint)(?![\w./-]))(?!\s*(?:폴더|디렉터리|디렉토리|파일|folder|dir|file))/i;
 const RUN_RESULT = /실행했|실행함|실행 결과|돌려|돌렸|돌림|통과|실패|성공|(?<![\w-])(?:passed|failed|ran)(?![\w-])/i;
 const NOT_RUN = /않|안 ?함|안 ?했|안 ?돌|못 ?함|못 ?했|못 ?돌|생략|건너|미실행|(?<![\w-])(?:not|didn't|skipped)(?![\w-])/i;
 export function mentionsRunRecord(text: string): boolean {
@@ -63,6 +64,13 @@ export const SAYS_BUT_NO_FILES = ' ⚠ 말과 실제가 달라요: 한 일은 �
 
 const forbiddenStatusPhrases = ['확인 완료', '일부 확인', '추가 확인 필요'];
 const rawCommandPattern = /`|(?:^|[^A-Za-z0-9_])(?:git|npm|npx|node|pnpm|yarn|rg|grep|cat|sed|ls|cd|python|pytest|vitest|tsc|make|curl)\s+\S+|(?:^|\s)--[A-Za-z][A-Za-z0-9-]*(?=\s|=|$)|(?:^|\s)-[A-Za-z](?:[A-Za-z0-9-]*)(?=\s|$)/;
+const commandSpans = new RegExp(rawCommandPattern.source.replace(/^`\|/, ''), 'g');
+export function markCommandSpans(text: string): string {
+  return text.replace(commandSpans, (match) => {
+    const lead = /^[^A-Za-z0-9_-]/.test(match) ? match[0] : '';
+    return `${lead}\`${match.slice(lead.length)}\``;
+  });
+}
 const normalizedReceipts = new WeakSet<object>();
 // C0/C1 controls, bidi controls (U+202A–202E, U+2066–2069, U+200E/F, U+061C) and zero-width characters (U+200B–200D, U+2060, U+FEFF).
 const controlCharacters = /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069\u200e\u200f\u061c\u200b-\u200d\u2060\ufeff]/g;
@@ -104,7 +112,8 @@ function readText(value: unknown, label: string): string {
   if (forbiddenStatusPhrases.some((phrase) => cleaned.includes(phrase))) {
     return fail('상태 문구는 영수증 내용에 넣을 수 없어요.');
   }
-  if (rawCommandPattern.test(cleaned)) {
+  // Commands already shown as code spans (normalizeReceipt's markCommandSpans) are allowed.
+  if (rawCommandPattern.test(spansAllowed ? cleaned.replace(/`[^`\n]+`/g, ' ') : cleaned)) {
     return fail(`명령어를 그대로 쓰지 말고, 무엇을 확인했는지 쉬운 말로 써 주세요: ${label}`);
   }
   return limitText(maskAbsolutePaths(cleaned.trim()));
@@ -116,7 +125,14 @@ function readTextArray(value: unknown, label: string, max: number): string[] {
   return value.map((item, index) => readText(item, `${label} ${index + 1}번`));
 }
 
+// Only a normalized receipt (normalizeReceipt already turned commands into code spans) may contain them;
+// a receipt passed straight to renderReceipt keeps the strict 'no raw commands' rule.
+let spansAllowed = false;
 function validateReceipt(value: unknown, allowEmptyDetails = false): ReceiptInput {
+  spansAllowed = allowEmptyDetails;
+  try { return validateReceiptInner(value, allowEmptyDetails); } finally { spansAllowed = false; }
+}
+function validateReceiptInner(value: unknown, allowEmptyDetails: boolean): ReceiptInput {
   if (!isRecord(value)) return fail('영수증 입력은 JSON 객체여야 해요.');
   if (Object.hasOwn(value, 'status')) return fail('status 항목은 영수증 입력에 넣을 수 없어요.');
 
@@ -260,9 +276,8 @@ function cleanReceiptText(value: unknown): string | undefined {
   if (!text) return undefined;
 
   const withoutBackticks = text.replace(/`/g, '');
-  text = rawCommandPattern.test(withoutBackticks)
-    ? '명령어 줄은 쉬운 말로 바꾸지 못해 뺐어요'
-    : withoutBackticks;
+  // Keep the sentence (e.g. a test result) and show each command part as a code span instead of dropping it.
+  text = rawCommandPattern.test(withoutBackticks) ? markCommandSpans(withoutBackticks) : withoutBackticks;
   text = maskAbsolutePaths(text).trim();
   return text ? limitText(text) : undefined;
 }
@@ -435,7 +450,8 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
       '',
     ] : []),
     ...(asked.length === 0 && receipt.mapNote ? [` ${receipt.mapNote}`, ''] : []),
-    RECEIPT_SECTIONS[3],
+    // Every line carries its own source label (dogfood: [확인], ' ○ 추천' and '- …' lines had none).
+    `${RECEIPT_SECTIONS[3]}  ${LABEL_AI}`,
     ...renderList(
       receipt.checks,
       (check) => check.result === '확인함'
@@ -453,7 +469,7 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
       : [`${RECEIPT_SECTIONS[4]}  ${LABEL_AI}`]),
     ...(nextGroups.every((group) => group.length === 0)
       ? []
-      : nextGroups.flatMap((group, index) => group.length === 0 ? [] : [NEXT_GROUPS[index], ...group.map((item) => `   - ${item}`)])),
+      : nextGroups.flatMap((group, index) => group.length === 0 ? [] : [`${NEXT_GROUPS[index]}  ${LABEL_AI}`, ...group.map((item) => `   - ${item}  ${LABEL_AI}`)])),
     '------------------------------',
   ];
 

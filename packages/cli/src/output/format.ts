@@ -125,8 +125,10 @@ export function printHelp(io: CliIo) {
   jutell use claude     Claude Code에 연결합니다 (베타).
   jutell status         현재 연결 상태를 확인합니다.
   jutell doctor         문제가 있는지 점검합니다.
-  jutell on             연결을 켭니다.
-  jutell off            연결을 끕니다.
+  jutell on --yes       연결을 켭니다.
+  jutell off --yes      연결을 끕니다.
+
+on·off·enable·disable·uninstall은 확인용 --yes를 붙여야 실제로 바뀝니다.
 
 연결 후 새 대화를 열면 JuTell이 자동으로 적용됩니다.
 JuTell은 AI Agent를 대신 실행하지 않고 연결과 보고만 도와줍니다.
@@ -135,16 +137,18 @@ JuTell은 AI Agent를 대신 실행하지 않고 연결과 보고만 도와줍�
 
   jutell dashboard      관리자 화면을 엽니다 (필요할 때만 직접 실행).
   jutell setup          설치를 다시 진행합니다.
-  jutell enable         연결을 켭니다 (on과 같음).
-  jutell disable        연결을 끕니다 (off와 같음).
+  jutell enable --yes   연결을 켭니다 (on과 같음).
+  jutell disable --yes  연결을 끕니다 (off와 같음).
   jutell provider       Agent 연결 상태를 자세히 봅니다.
   jutell connect        연결만 추가합니다.
   jutell disconnect     해당 연결만 끕니다.
   jutell switch         기본 Agent를 전환합니다.
-  jutell uninstall      설치를 제거합니다.
-  jutell upgrade        설치된 Skill/설정/MCP를 최신으로 새로고침합니다.
+  jutell uninstall --yes  이 프로젝트에서 JuTell을 뺍니다. 안내 파일(Skill, AGENTS.md의 JuTell 부분)과 연결을 지우고,
+                        설정(.jutell.json)·지도(JuTellMap.md)·작업 기록(.jutell-local, Beta Journal)은 남깁니다.
+                        --remove-data를 더하면 설정과 작업 기록도 지웁니다. 지도 파일은 직접 지우세요.
+  jutell upgrade        안내 파일(Skill)·설정·AI 연결(MCP)을 최신으로 새로고침합니다.
   jutell migrate        레거시 beginner_bridge → jutell 로 안전하게 옮깁니다. (이전 명령 이름: beginner-bridge)
-  jutell migrate --clean 레거시 정리를 수행합니다 (canonical 확인 후).
+  jutell migrate --clean 예전 이름(beginner_bridge) 연결을 지웁니다 (새 이름 jutell 연결을 확인한 뒤).
 
 하루 작업 기록
 
@@ -159,7 +163,7 @@ JuTell은 AI Agent를 대신 실행하지 않고 연결과 보고만 도와줍�
 
 프로젝트 지도
 
-  jutell map            전체 지도, 작은 인덱스, 기능 상세 파일과 HTML을 만들거나 갱신합니다.
+  jutell map            지도(JuTellMap.md), 기능 목록, 기능별 설명과 보기 쉬운 화면(map.html)을 만들거나 갱신합니다.
   jutell map --list     기능 이름과 ID만 읽습니다.
   jutell map --show <ID 또는 이름 일부>  기능 하나의 상세만 봅니다.
   jutell map --git-exclude  지도를 이 컴퓨터에서만 git에서 뺍니다. --git-include로 되돌립니다.

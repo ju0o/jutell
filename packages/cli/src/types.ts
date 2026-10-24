@@ -111,6 +111,8 @@ export type CheckResult = {
   name: string;
   status: '정상' | '주의' | '오류' | '직접 확인 필요';
   detail: string;
+  /** Plain-words display name; `name` stays the stable id used by --json and tests. */
+  label?: string;
 };
 
 export type AssetPaths = {

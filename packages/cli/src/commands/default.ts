@@ -4,9 +4,11 @@ import { enableCommand } from './lifecycle.js';
 import { getStatus } from './status.js';
 import { useCommand } from './use.js';
 import { assets } from '../config/paths.js';
+import { refreshStaleReceiptCommands } from '../installer/agents.js';
 import { installSkill, recordSkillFiles, skillConflictMessage, skillRefreshMessage } from '../installer/skill.js';
 import { exists } from '../config/managed.js';
 import { offerMap } from '../map/write.js';
+import { recordReceiptBaseline } from './receipt/index.js';
 import path from 'node:path';
 import { AGENT_PROVIDERS, type AgentProvider, type AgentProviderId } from '../installer/providers.js';
 import type { CliIo, CliOptions, ScopePaths, StatusResult } from '../types.js';
@@ -190,6 +192,7 @@ export async function defaultCommand(paths: ScopePaths, options: CliOptions, io:
     // `jutell dashboard` remains the explicit, unchanged, opt-in way to do that.
     io.write(connectedSummaryMessage(providerRuntimeStatuses(await getStatus(paths))));
     await offerMap(paths, options, io, stdin.isTTY === true);
+    await recordReceiptBaseline(paths).catch(() => undefined);
     return { cancelled: false };
   }
 
@@ -200,6 +203,7 @@ export async function defaultCommand(paths: ScopePaths, options: CliOptions, io:
       io.write(readyMessage(await getStatus(paths)));
       // A new project: --yes makes the map, a person at a terminal is asked (supervisor decision 2).
       if (options.yes || stdin.isTTY === true) await offerMap(paths, options, io, stdin.isTTY === true);
+      await recordReceiptBaseline(paths).catch(() => undefined);
       io.write('관리자 화면은 `jutell dashboard`로 열 수 있어요.');
       return { cancelled: false };
     }
@@ -210,6 +214,7 @@ export async function defaultCommand(paths: ScopePaths, options: CliOptions, io:
     }
     io.write(readyMessage(await getStatus(paths)));
     await offerMap(paths, options, io, true);
+    await recordReceiptBaseline(paths).catch(() => undefined);
     return dashboardCommand(paths, options, io);
   }
 
@@ -217,8 +222,13 @@ export async function defaultCommand(paths: ScopePaths, options: CliOptions, io:
   // this is a repeat run, not onboarding. Keep it minimal: no wizard, no
   // dashboard auto-launch, just a status line and a pointer to --help.
   io.write(alreadyConfiguredMessage(statuses));
+  if (paths.scope === 'project') {
+    const fixed = await refreshStaleReceiptCommands(paths.targetRoot).catch(() => [] as string[]);
+    if (fixed.length) io.write(`JuTell 설치 방식이 바뀌어 ${fixed.join('·')}의 영수증 명령을 지금 설치에 맞게 고쳤어요.`);
+  }
   // `jutell --yes` makes the map in every project, also when the agents were connected earlier
   // (e.g. from another project); at a terminal the person is asked. offerMap never overwrites an existing map.
   if (options.yes || stdin.isTTY === true) await offerMap(paths, options, io, stdin.isTTY === true);
+  await recordReceiptBaseline(paths).catch(() => undefined);
   return { cancelled: false };
 }

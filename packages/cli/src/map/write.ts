@@ -7,6 +7,7 @@ import { writeViaTemp } from '../fs/atomic.js';
 import type { CliIo, CliOptions, ScopePaths } from '../types.js';
 import { MAP_HTML_FILE, renderMapHtml } from './html.js';
 import { classifyFiles, ESTIMATED_LABEL, UNCLASSIFIED, type Classified } from './classify.js';
+import { stamp } from './stamp.js';
 import { scanProject, type MapScan } from './scan.js';
 import { selectionUpToDate, writeMapSelectionFiles, type MapSelectionWriteResult } from './selection.js';
 
@@ -50,13 +51,7 @@ function linePath(line: string): string | undefined {
   return cut > 2 ? line.slice(2, cut) : undefined;
 }
 
-/** User's local time with its zone, e.g. "2026-10-24 21:07 (UTC+9)". */
-export function stamp(now: Date) {
-  const pad = (value: number) => String(value).padStart(2, '0');
-  const offset = -now.getTimezoneOffset();
-  const zone = `UTC${offset < 0 ? '-' : '+'}${Math.floor(Math.abs(offset) / 60)}${Math.abs(offset) % 60 ? `:${pad(Math.abs(offset) % 60)}` : ''}`;
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())} (${zone})`;
-}
+export { stamp };
 function headerLine(now: Date, files: number, unclassified: number, scan?: Pick<MapScan, 'source' | 'truncated'>) {
   const source = scan?.source === 'git' ? 'Git 파일 목록' : scan?.source === 'walk' ? '폴더 탐색' : undefined;
   const completeness = scan?.source === 'walk' ? (scan.truncated ? '20,000개 상한 초과로 일부 생략' : '20,000개 상한 내') : undefined;
