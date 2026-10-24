@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { chmod, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,7 +12,7 @@ let lastStatus: number | null = null;
 afterAll(async () => { await Promise.all(roots.map((root) => rm(root, { recursive: true, force: true }))); });
 
 async function runDoctor(withJutellOnLoginPath: boolean, shell?: string, receiptReport?: boolean, withLocalJutell = false) {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'jutell-doctor-login-'));
+  const root = await realpath(await mkdtemp(path.join(os.tmpdir(), 'jutell-doctor-login-')));
   roots.push(root);
   const home = path.join(root, 'home');
   const project = path.join(root, 'project with spaces');
@@ -105,7 +105,7 @@ describe.skipIf(process.platform === 'win32')('doctor checks jutell on the login
   });
 
   it('uses the supplied project root when the caller cwd has changed', async () => {
-    const root = await mkdtemp(path.join(os.tmpdir(), 'jutell-doctor-changed-cwd-'));
+    const root = await realpath(await mkdtemp(path.join(os.tmpdir(), 'jutell-doctor-changed-cwd-')));
     roots.push(root);
     const home = path.join(root, 'home');
     const project = path.join(root, 'project with spaces');
