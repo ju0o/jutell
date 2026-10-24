@@ -14,6 +14,8 @@ const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 const shell = process.platform === 'win32';
 const started = Date.now();
 try {
+  // Build first so the tarball holds the current src, never a stale dist (pack uses --ignore-scripts).
+  execFileSync(npm, ['run', '-s', 'build'], { cwd: cliDir, stdio: 'inherit', shell });
   const packOut = execFileSync(npm, ['pack', '--ignore-scripts', '--silent', '--pack-destination', root], { cwd: cliDir, encoding: 'utf8', shell });
   const tarball = path.join(root, packOut.trim().split(/\r?\n/).pop());
   const project = path.join(root, 'proj');

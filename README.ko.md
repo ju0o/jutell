@@ -284,6 +284,8 @@ JuTell 준비 완료.
 
 ```text
 # JuTell 지도 — 이 프로젝트는 어떻게 생겼나요?
+<!-- --> 로 된 줄은 JuTell이 자동으로 고치는 자리 표시예요. 지우지 말고, 설명은 마음대로 고쳐도 돼요.
+마지막 갱신: 2026-10-24 13:19 (UTC+0) · 파일 7개 · 분류 안 된 파일 4개 · 목록 기준 Git 파일 목록
 
 ## 할 일 [지도로 짐작]
 - src/api/todos.ts — 기능
@@ -342,10 +344,10 @@ JuTell 준비 완료.
 | Agent를 찾지 못함 | 지원되는 Coding Agent를 설치하고 열어 본 뒤 `jutell`을 다시 실행하세요. |
 | 연결에 실패함 | `jutell doctor`를 실행하고 안내를 따르세요. |
 | 한 Agent를 다시 연결하고 싶음 | `jutell`을 다시 실행하거나, 아래 고급 수동 연결 명령을 사용하세요. |
-| JuTell을 끄고 싶음 | `jutell off`를 실행하세요. 설정과 로컬 작업 기록은 남습니다. |
-| JuTell을 지우고 싶음 | `jutell uninstall`을 실행하세요. `--remove-data`를 직접 추가하지 않는 한 로컬 데이터는 남습니다. |
+| JuTell을 끄고 싶음 | `jutell off --yes`를 실행하세요. 설정과 로컬 작업 기록은 남습니다. |
+| JuTell을 지우고 싶음 | `jutell uninstall --yes`를 실행하세요. `--remove-data`를 직접 추가하지 않는 한 로컬 데이터는 남습니다. |
 | 무엇이 잘못됐는지 모르겠음 | `jutell doctor`를 실행하세요. 줄마다 `정상`·`주의`·`오류`가 붙고, `오류` 줄에 고치는 방법이 바로 적혀 있습니다. |
-| 영수증이 안 생김 / "jutell 명령을 찾을 수 없음"(command not found) | `jutell doctor`의 "Codex에서 jutell 명령 찾기" 줄을 보세요. 전역 설치(`-g`)라면 안내대로 PATH 한 줄을 넣고 터미널과 Agent를 다시 여세요. 프로젝트에만 설치했다면 `npm exec --offline --no -- jutell receipt`처럼 앞에 `npm exec --offline --no --`를 붙이면 됩니다. 나중에 설치 방식을 바꿨다면(프로젝트 안 ↔ 컴퓨터 전체) 프로젝트 폴더에서 `jutell --yes`를 한 번 더 실행하세요. doctor가 이 경우를 `주의`로 알려 줍니다. |
+| 영수증이 안 생김 / "jutell 명령을 찾을 수 없음"(command not found) | `jutell doctor`의 "Codex에서 jutell 명령 찾기" 줄을 보세요. 전역 설치(`-g`)라면 안내대로 PATH 한 줄을 넣고 터미널과 Agent를 다시 여세요. 프로젝트에만 설치했다면 `npm exec --offline --no -- jutell receipt`처럼 앞에 `npm exec --offline --no --`를 붙이면 됩니다. npm workspaces의 멤버 폴더라면 `npm exec --offline --no --prefix . -- jutell receipt`처럼 `--prefix .`를 붙여 그 멤버 폴더에서 실행하세요(작업 공간 루트에서 실행하면 루트가 대상이 됩니다). 나중에 설치 방식을 바꿨다면(프로젝트 안 ↔ 컴퓨터 전체) doctor가 `주의`로 알려 주고, 프로젝트 폴더에서 `jutell --yes`를 한 번 더 실행하면 AGENTS.md/CLAUDE.md의 영수증 명령이 지금 설치에 맞게 고쳐집니다("…영수증 명령을 지금 설치에 맞게 고쳤어요"). |
 | 지웠는데 파일이 남아 있음 | 정상입니다. `jutell uninstall --yes`는 설정(`.jutell.json`), 작업 기록·영수증(`.jutell-local/`), 지도(`JuTellMap.md`)를 일부러 남기고 화면에 "남겨 둔 것"으로 알려 줍니다. 모두 지우려면 `jutell uninstall --remove-data --yes` 뒤 `JuTellMap.md`를 직접 지우세요. Codex 연결은 모든 프로젝트가 함께 쓰므로 `jutell uninstall --global --yes`로 따로 지웁니다. |
 | Ubuntu/Linux에서 설치 중 `EACCES`/권한 오류가 남 | [Ubuntu/Linux 설치 권한 오류](docs/CLI_INSTALLATION.md)를 확인하세요. `sudo npm install -g jutell`은 피하세요. |
 
