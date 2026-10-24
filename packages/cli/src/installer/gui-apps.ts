@@ -176,7 +176,10 @@ export async function disconnectGuiApp(app: GuiApp, wantsGlobal: boolean, projec
   if (app.mode === 'status-only') return { written: false, message: [`${app.label}은(는) 읽기만 지원해서 설정 파일을 바꾸지 않았어요. JuTell 항목이 있다면 직접 지우세요.`] };
   const scope = guiScopeFor(app, wantsGlobal);
   const target = fileFor(app, scope, projectRoot);
-  if (!target.file) return { written: false, message: ['VS Code에서 MCP: List Servers → jutell → Uninstall을 실행하세요. (이 운영체제에서는 자동으로 못 지워요.)'] };
+  if (!target.file) {
+    if (app.id === 'vscode') return { written: false, message: ['VS Code에서 MCP: List Servers → jutell → Uninstall을 실행하세요. (이 운영체제에서는 자동으로 못 지워요.)'] };
+    return { written: false, message: [`${target.label} 설정 파일 위치가 이 운영체제에서는 ${UNVERIFIED_PATH_NOTE}이라 바꾸지 않았어요. 앱의 MCP 설정에서 jutell 항목을 직접 지우세요.`] };
+  }
   const result = await removeJsonMcp({ rootKey: target.rootKey }, target.file, scope === 'project' ? { projectRoot } : {});
   if (result.status === 'absent') return { written: false, message: [`${target.label}에 JuTell 연결이 없어요.`] };
   if (result.status === 'written') {

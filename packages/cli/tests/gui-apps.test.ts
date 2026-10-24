@@ -147,6 +147,14 @@ describe('jutell use / disconnect <GUI app> (built dist)', () => {
     expect(await exists(file)).toBe(true);
   });
 
+  it.skipIf(!linux)('disconnect claude-desktop where its path is not documented (Linux) says so for Claude Desktop, not VS Code', async () => {
+    const { run } = await sandbox();
+    const out = run(['disconnect', 'claude-desktop', '--yes']);
+    expect(out.status, out.stderr).toBe(0);
+    expect(out.stdout).toContain('Claude Desktop 설정 파일 위치가 이 운영체제에서는 문서로 확인 안 됨');
+    expect(out.stdout).not.toContain('VS Code');
+  });
+
   it.skipIf(!linux)('vscode --global (Q10, Linux): writes $XDG_CONFIG_HOME/Code/User/mcp.json and uninstall --global removes it cleanly', async () => {
     const { home, project, run, json } = await sandbox();
     const file = path.join(home, '.config', 'Code', 'User', 'mcp.json');

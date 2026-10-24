@@ -63,6 +63,13 @@ const ALLOWED_EXCEPTIONS = [
     scope: '해당 파일의 winPath 탐지에만 적용',
   },
   {
+    file: 'packages/cli/src/installer/json-mcp.ts',
+    kind: 'parentEscape',
+    line: 'path.relative(realRoot, realProbe)',
+    reason: '설정 파일이 프로젝트 루트 안에 있는지 확인하는 방어 코드(path.relative 결과가 ..로 시작하면 거부). 경로 탈출이 아니라 탈출 차단',
+    scope: 'line 필드가 가리키는 줄의 parentEscape 탐지에만 적용 (같은 파일의 다른 줄은 계속 검사)',
+  },
+  {
     file: 'apps/mcp-server/src/config/project-root.ts',
     kind: 'parentEscape',
     reason: '데이터 폴더가 프로젝트 루트 안에 있는지 확인하는 방어 코드(path.relative 결과가 ..로 시작하면 거부). 경로 탈출이 아니라 탈출 차단',
