@@ -8,7 +8,7 @@ export type MatchItem =
   // `before`: feature files that were already changed before the work (W7). Shown, but never counted as a change.
   // `via`: how the files were tied when the request's own map words did not ('file' = the user's request
   // names the file; 'context' = map area guessed from the AI's work list/summary, shown as an estimate).
-  | { status: 'changed'; features: string[]; files: string[]; before?: string[]; via?: 'file' | 'context' }
+  | { status: 'changed'; features: string[]; files: string[]; before?: string[]; via?: 'file' | 'context' | 'sensitive' }
   | { status: 'unchanged'; features: string[]; before?: string[] }
   | { status: 'unplaced' };
 
@@ -127,11 +127,14 @@ export function matchRequests(asked: string[], changed: string[], sections: MapS
     const ownSensitive = sensitiveNamedIn(request, [...sensitive], dependencies);
     for (const file of ownSensitive) linked.add(file);
     let fromContext = false;
-    if (!matched.length && !named.length && asked.length === 1) {
+    if (!matched.length && !named.length && !ownSensitive.length && asked.length === 1) {
       matched = featuresFor(contextText, sections);
       fromContext = matched.length > 0;
     }
-    if (!matched.length && !named.length) return { status: 'unplaced' };
+    // A sensitive file named in the (AI-written) request: the request counts as handled, labelled as based on
+    // that request, while the file keeps its own ⚠ line (PR #37 last blocker).
+    const askedOnly = ownSensitive.length ? { status: 'changed' as const, features: [], files: ownSensitive, via: 'sensitive' as const } : { status: 'unplaced' as const };
+    if (!matched.length && !named.length) return askedOnly;
     const featureFiles = new Set([...matched.flatMap((section) => section.files), ...named]);
     const own = changed.filter((file) => featureFiles.has(file) && !sensitive.has(file));
     // Same folder as a file this request already has (not the project root, not sensitive files).
@@ -144,7 +147,7 @@ export function matchRequests(asked: string[], changed: string[], sections: MapS
     const features = matched.map((section) => section.name);
     const withBefore = before.length ? { before } : {};
     const via = fromContext ? { via: 'context' as const } : features.length ? {} : { via: 'file' as const };
-    return files.length ? { status: 'changed', features, files, ...withBefore, ...via } : features.length ? { status: 'unchanged', features, ...withBefore } : { status: 'unplaced' };
+    return files.length ? { status: 'changed', features, files, ...withBefore, ...via } : features.length ? { status: 'unchanged', features, ...withBefore } : askedOnly;
   });
   const extra = changed.filter((file) => (sensitive.has(file) && !linked.has(file)) || (!sensitive.has(file) && !claimed.has(file) && !beforeSet.has(file)));
   const sensitiveNamed = [...linked];

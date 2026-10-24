@@ -94,6 +94,26 @@ function isAbsolutePath(value: string): boolean {
   return value.startsWith('/') || value.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(value);
 }
 
+/**
+ * Secret values never reach the receipt (Reviewer #37): `KEY=value` / `token: value` for secret-looking names,
+ * Bearer headers, private key blocks, and well-known token shapes are replaced with [비밀값].
+ */
+const SECRET_ASSIGNMENT = /\b([A-Za-z0-9_.-]*(?:api[_-]?key|secret|token|passw(?:or)?d|pwd|private[_-]?key|access[_-]?key|credential)[A-Za-z0-9_.-]*)(\s*[=:]\s*)(["']?)[^\s"'`,;]+\3/gi;
+const SECRET_SHAPES = [
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)/g,
+  /\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi,
+  /\b(?:sk|pk|rk)-[A-Za-z0-9_-]{16,}/g,
+  /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{20,}|\bgithub_pat_[A-Za-z0-9_]{20,}/g,
+  /\bxox[abposr]-[A-Za-z0-9-]{10,}/g,
+  /\bA(?:KIA|SIA)[0-9A-Z]{16}\b/g,
+  /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g,
+];
+export function maskSecretValues(value: string): string {
+  let text = value.replace(SECRET_ASSIGNMENT, (_match, key: string, sep: string) => `${key}${sep}[비밀값]`);
+  for (const shape of SECRET_SHAPES) text = text.replace(shape, '[비밀값]');
+  return text;
+}
+
 function maskAbsolutePaths(value: string): string {
   const boundary = /(^|[\s("'`=\[,;])/g;
   const pathPattern = /\/(?:[^/\s"'`<>|?*]+(?:\/[^/\s"'`<>|?*]+)*)?|[A-Za-z]:[\\/](?:[^\\/\s"'`<>|?*]+(?:[\\/][^\\/\s"'`<>|?*]+)*)?|\\\\[^\\/\s"'`<>|?*]+[\\/][^\\/\s"'`<>|?*]+(?:[\\/][^\\/\s"'`<>|?*]+)*/g;
@@ -119,7 +139,7 @@ function readText(value: unknown, label: string): string {
   if (rawCommandPattern.test(spansAllowed ? cleaned.replace(/`[^`\n]+`/g, ' ') : cleaned)) {
     return fail(`명령어를 그대로 쓰지 말고, 무엇을 확인했는지 쉬운 말로 써 주세요: ${label}`);
   }
-  return limitText(maskAbsolutePaths(cleaned.trim()));
+  return limitText(maskSecretValues(maskAbsolutePaths(cleaned.trim())));
 }
 
 function readTextArray(value: unknown, label: string, max: number): string[] {
@@ -195,7 +215,7 @@ function readMatch(value: unknown, askedCount: number): ReceiptMatch | undefined
     if (!isRecord(item)) return undefined;
     if (item.status === 'unplaced') items.push({ status: 'unplaced' });
     else if (item.status === 'unchanged') items.push({ status: 'unchanged', features: readNames(item.features), ...readBefore(item.before) });
-    else if (item.status === 'changed') items.push({ status: 'changed', features: readNames(item.features), files: readFileNames(item.files), ...readBefore(item.before), ...(item.via === 'file' || item.via === 'context' ? { via: item.via } : {}) });
+    else if (item.status === 'changed') items.push({ status: 'changed', features: readNames(item.features), files: readFileNames(item.files), ...readBefore(item.before), ...(item.via === 'file' || item.via === 'context' || item.via === 'sensitive' ? { via: item.via } : {}) });
     else return undefined;
   }
   const extraBefore = readFileNames(value.extraBefore ?? []);
@@ -239,7 +259,7 @@ function matchLines(receipt: ReceiptInput, asked: string[], askedMore: number, s
   const lines = [`${MATCH_SECTION}  요청 ${asked.length}개 중 ${parts.join(' · ')}  ${LABEL_MATCH}`];
   match.items.forEach((item, index) => {
     lines.push(` ${index + 1}. ${asked[index]}  ${LABEL_AI}`);
-    if (item.status === 'changed') lines.push(`    → 바뀐 곳 있음: ${shortList(item.files)}  ${item.via === 'context' ? '[추정 · AI 설명 기준]' : `[Git 기준 · ${item.features.length ? `지도: ${item.features.join(', ')}` : '파일 이름으로 찾음'}]`}`);
+    if (item.status === 'changed') lines.push(`    → 바뀐 곳 있음: ${shortList(item.files)}  ${item.via === 'context' ? '[추정 · AI 설명 기준]' : item.via === 'sensitive' ? '[Git 기준 · 요청에 적힌 민감 파일]' : `[Git 기준 · ${item.features.length ? `지도: ${item.features.join(', ')}` : '파일 이름으로 찾음'}]`}`);
     else if (item.status === 'unchanged') lines.push(`    → 바뀐 곳 없음: '${item.features.join(', ')}' 파일이 바뀌지 않았어요  [Git 기준 · 지도: ${item.features.join(', ')}]`);
     else lines.push(`    → 장소를 못 찾았어요(지도에 맞는 기능이 없어요)  ${LABEL_ESTIMATE}`);
     if (item.status !== 'unplaced' && item.before?.length) lines.push(`    ${BEFORE_WORK_MARK} 바뀌어 있던 파일: ${shortList(item.before)}  ${LABEL_GIT}`);
@@ -255,7 +275,7 @@ function matchLines(receipt: ReceiptInput, asked: string[], askedMore: number, s
 
 function cleanFileName(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
-  const text = limitText(maskAbsolutePaths(value.replace(controlCharacters, '')));
+  const text = limitText(maskSecretValues(maskAbsolutePaths(value.replace(controlCharacters, ''))));
   return text.length > 0 ? text : undefined;
 }
 
@@ -283,7 +303,7 @@ function cleanReceiptText(value: unknown): string | undefined {
   const withoutBackticks = text.replace(/`/g, '');
   // Keep the sentence (e.g. a test result) and show each command part as a code span instead of dropping it.
   text = rawCommandPattern.test(withoutBackticks) ? markCommandSpans(withoutBackticks) : withoutBackticks;
-  text = maskAbsolutePaths(text).trim();
+  text = maskSecretValues(maskAbsolutePaths(text)).trim();
   return text ? limitText(text) : undefined;
 }
 

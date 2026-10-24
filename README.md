@@ -324,6 +324,8 @@ the ⚠ line just above it. Usually Codex cannot find the `jutell` command; `jut
 
 영수증은 AI가 알아서 만들어요 — the agent makes the receipt by itself at the end of its answer; you never need to type `jutell receipt`.
 
+Running `jutell` again once everything is connected only prints a short status; open the admin screen in your browser with `jutell dashboard`. If JuTell was turned off or needs a fix, an interactive run asks to turn it back on and then opens the admin screen in the browser.
+
 You should see that an agent was found and connected, without an error. Then run `jutell status` if
 you want a short connection summary. If it says there is a problem, run `jutell doctor` for the
 next step to take.

