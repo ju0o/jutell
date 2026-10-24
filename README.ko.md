@@ -2,53 +2,42 @@
 
 [English](README.md) | **한국어**
 
-## 내가 하려는 말을 Agent에게, Agent가 한 일을 나에게.
+## AI Agent가 "다 했어요!"라고 하는데 — 정말 했을까요?
 
-AI Agent에게 원하는 걸 말할 수 있지만, 정말 됐는지 알려고 코드나 로그까지 읽고 싶지는 않은
-분들을 위해.
+JuTell은 Coding Agent가 일을 마치면 한 페이지 **작업 영수증**을 보여 줘요. 내가 요청한 것, AI가
+*했다고 말한* 것, 그리고 **Git이 실제로 본 변경**을 줄마다 출처 라벨과 함께 나눠 보여 줍니다.
+코드나 로그를 읽을 필요가 없어요.
 
 ![Codex: 정식 지원](https://img.shields.io/badge/Codex-정식%20지원-brightgreen)
 ![Claude Code: 베타](https://img.shields.io/badge/Claude%20Code-베타-yellow)
 ![OpenCode: 베타](https://img.shields.io/badge/OpenCode-베타-yellow)
 
+### 전 / 후 비교
+
+| JuTell 없이 — Agent의 말만 | JuTell과 함께 — 작업 영수증 (실제 출력 일부) |
+|---|---|
+| *(흔한 Agent 답변 예시)*<br>"완료했어요! 로그인 버튼을 파란색으로 바꿨고 테스트도 모두 통과했어요. 🎉" | `[요청 대조]  요청 1개 중 1개 바뀐 곳 있음  [Git 기준 · 지도 대조]`<br>`→ 바뀐 곳 있음: src/pages/Login.tsx  [Git 기준 · 지도: 로그인]`<br>`✔ 직접 확인한 것: npm test 통과  [AI가 적음]`<br>`✖ 확인 못 한 것: 실제 화면은 브라우저로 보지 않음  [AI가 적음]`<br>`ⓘ 위 테스트·명령 결과는 AI가 알려 준 내용이에요. JuTell이 직접 돌려 보지는 않았어요  [JuTell이 적음]` |
+| 그냥 믿거나, 직접 변경 내용을 읽어야 해요. | 확인된 것, AI 주장일 뿐인 것, 아직 확인 못 한 것이 한눈에 보여요. |
+
+### 3단계로 시작하기
+
+1. **설치** (Node.js 18 이상): `npm install -g jutell`
+2. **프로젝트 폴더에서 실행:** `cd 내-프로젝트 && jutell` — 설치된 Agent(Codex, Claude Code, OpenCode)를 찾아 연결해요.
+3. **평소처럼 Agent에게 요청**하세요(새 대화에서). 작업이 끝나면 JuTell 영수증이 나와요.
+
+### 직접 보기 (실제 터미널 녹화, 편집 없음)
+
+설정 → 작은 변경 → `jutell receipt`:
+
+![JuTell 데모: jutell --yes setup, 한 줄 변경, jutell receipt](docs/assets/readme/demo-receipt.gif)
+
+JuTell은 파일을 기능별로 묶은 프로젝트 지도 **JuTellMap.md**도 만들어요:
+
+![JuTellMap 데모: cat JuTellMap.md, jutell map --list](docs/assets/readme/demo-map.gif)
+
 ![내가 하려는 말을 Agent에게, Agent가 한 일을 나에게 — 작업 전에는 프로젝트 사실을 확인하고 필요할 때만 질문하고, 작업 후에는 확인된 것과 아직 확인하지 못한 것을 나눕니다.](docs/assets/readme/hero-report.ko.svg)
 
-**빠른 시작**
-
-먼저 JuTell을 사용할 프로젝트 폴더로 이동합니다:
-
-```bash
-cd /path/to/your-project
-```
-
-```bash
-npm install -g jutell
-jutell
-```
-
-<!-- 관리자: 2.1.0이 npm에 올라가면 이 안내를 지우세요. -->
-> **2.1.0이 npm에 올라가기 전까지**: `npm install -g jutell`은 2.0.1을 설치해요. 2.1.0을 지금 쓰려면 소스에서 묶은 복사본을 설치하세요. **git**과 **Node.js 18 이상**이 필요해요.
->
-> macOS / Linux:
->
-> ```bash
-> git clone https://github.com/ju0o/jutell.git && cd jutell
-> (cd apps/mcp-server && npm ci) && (cd apps/local-admin && npm ci)
-> cd packages/cli && npm ci && npm pack && npm install -g ./jutell-*.tgz
-> ```
->
-> Windows PowerShell (PowerShell은 npm에 `*`를 풀어 주지 않아서 파일 이름을 먼저 찾아요):
->
-> ```powershell
-> git clone https://github.com/ju0o/jutell.git; cd jutell
-> cd apps/mcp-server; npm ci; cd ../local-admin; npm ci; cd ../../packages/cli
-> npm ci; npm pack
-> npm install -g (Get-ChildItem jutell-*.tgz).FullName
-> ```
->
-> `jutell-*.tgz` 파일이 여러 개 생겼거나 PowerShell에서 빨간 오류가 나오면 거기서 멈추세요. `packages/cli`의 `jutell-*.tgz`를 모두 지운 뒤 `npm pack`을 한 번만 다시 실행해 그 파일 하나만 설치하세요.
->
-> Linux에서 `npm install -g`가 `EACCES` 권한 오류로 실패하면 sudo 대신, npm 설치 위치를 홈 폴더로 바꾸거나(`npm config set prefix ~/.npm-global` 후 `~/.npm-global/bin`을 `PATH`에 추가) nvm으로 Node를 설치하세요.
+Linux에서 `npm install -g`가 `EACCES` 권한 오류로 실패하면 sudo 대신, npm 설치 위치를 홈 폴더로 바꾸거나(`npm config set prefix ~/.npm-global` 후 `~/.npm-global/bin`을 `PATH`에 추가) nvm으로 Node를 설치하세요.
 
 JuTell은 해당 폴더에 `AGENTS.md`, `.agents/`, `.jutell.json`, `.jutell-local/`을 만들거나
 업데이트합니다. Codex를 연결하면 `~/.codex/config.toml`에도 연결 설정을 추가합니다.
@@ -433,8 +422,7 @@ JuTell은 여러분 컴퓨터에 이미 있는 파일·Git·명령 결과를 바
 
 ## 최신 소식
 
-**`jutell@2.1.0`**은 다음 릴리스예요(아직 npm에 공개되지 않음). npm 최신
-버전은 `jutell@2.0.1`입니다. 이제 작업이 끝난 뒤뿐 아니라 시작하기 전에도
+**`jutell@2.1.0`**이 npm에 공개됐어요(2026-10-24). 이제 작업이 끝난 뒤뿐 아니라 시작하기 전에도
 돕습니다. 프로젝트 사실을 먼저 확인하고, 진짜 결정만 물으며, 확인됨 / 예상 / 미확인을 섞지
 않습니다.
 

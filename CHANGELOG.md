@@ -2,9 +2,7 @@
 
 Notable user-facing changes to JuTell. See [GitHub Releases](https://github.com/ju0o/jutell/releases) for the full history and exact publish dates.
 
-## v2.1.0 — 2026-10-24 (unreleased — not yet published to npm)
-
-Not yet published on npm. The latest npm release is still v2.0.1.
+## v2.1.0 — 2026-10-24
 
 **Cycle 2: a project map, a receipt that checks the AI's claims, and a steadier setup.**
 
