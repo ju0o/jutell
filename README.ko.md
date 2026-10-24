@@ -345,7 +345,7 @@ JuTell 준비 완료.
 | JuTell을 끄고 싶음 | `jutell off`를 실행하세요. 설정과 로컬 작업 기록은 남습니다. |
 | JuTell을 지우고 싶음 | `jutell uninstall`을 실행하세요. `--remove-data`를 직접 추가하지 않는 한 로컬 데이터는 남습니다. |
 | 무엇이 잘못됐는지 모르겠음 | `jutell doctor`를 실행하세요. 줄마다 `정상`·`주의`·`오류`가 붙고, `오류` 줄에 고치는 방법이 바로 적혀 있습니다. |
-| 영수증이 안 생김 / "jutell 명령을 찾을 수 없음"(command not found) | `jutell doctor`의 "Codex에서 jutell 명령 찾기" 줄을 보세요. 전역 설치(`-g`)라면 안내대로 PATH 한 줄을 넣고 터미널과 Agent를 다시 여세요. 프로젝트에만 설치했다면 `npm exec --offline --no -- jutell receipt`처럼 앞에 `npm exec --offline --no --`를 붙이면 됩니다. |
+| 영수증이 안 생김 / "jutell 명령을 찾을 수 없음"(command not found) | `jutell doctor`의 "Codex에서 jutell 명령 찾기" 줄을 보세요. 전역 설치(`-g`)라면 안내대로 PATH 한 줄을 넣고 터미널과 Agent를 다시 여세요. 프로젝트에만 설치했다면 `npm exec --offline --no -- jutell receipt`처럼 앞에 `npm exec --offline --no --`를 붙이면 됩니다. 나중에 설치 방식을 바꿨다면(프로젝트 안 ↔ 컴퓨터 전체) 프로젝트 폴더에서 `jutell --yes`를 한 번 더 실행하세요. doctor가 이 경우를 `주의`로 알려 줍니다. |
 | 지웠는데 파일이 남아 있음 | 정상입니다. `jutell uninstall --yes`는 설정(`.jutell.json`), 작업 기록·영수증(`.jutell-local/`), 지도(`JuTellMap.md`)를 일부러 남기고 화면에 "남겨 둔 것"으로 알려 줍니다. 모두 지우려면 `jutell uninstall --remove-data --yes` 뒤 `JuTellMap.md`를 직접 지우세요. Codex 연결은 모든 프로젝트가 함께 쓰므로 `jutell uninstall --global --yes`로 따로 지웁니다. |
 | Ubuntu/Linux에서 설치 중 `EACCES`/권한 오류가 남 | [Ubuntu/Linux 설치 권한 오류](docs/CLI_INSTALLATION.md)를 확인하세요. `sudo npm install -g jutell`은 피하세요. |
 
