@@ -3,7 +3,7 @@ import { execFile } from 'node:child_process';
 import { promises as fs } from 'node:fs';
 import net from 'node:net';
 import path from 'node:path';
-import { assets, codexScopedPaths, packageRoot, safeLocation } from '../config/paths.js';
+import { assets, codexScopedPaths, packageRoot, safeLocation, resolveScope as resolveGuiScope } from '../config/paths.js';
 import { claudeDetected, codexDetected, nodeMajorVersion, operatingSystem } from '../process/system.js';
 import { exists, parseSkillVersion, readBridgeConfig, readCodexRegistration, readText, readVersionInfo, FEATURE_IDS } from '../config/managed.js';
 import { setupCommand } from './lifecycle.js';
@@ -12,6 +12,7 @@ import { differingSkillFiles } from '../installer/skill.js';
 import { opencodeDetected, readOpenCodeRegistration } from '../installer/opencode.js';
 import { readClaudeRegistration } from '../installer/claude.js';
 import { probeMcpServer } from '../process/mcpProbe.js';
+import { GUI_CHECK_PREFIX, guiStatusCheck, readGuiStatuses, vscodeDuplicateNote } from '../installer/gui-apps.js';
 import type { CheckResult, CliIo, CliOptions, ScopePaths, StatusResult } from '../types.js';
 
 async function processAlive(pid: number) {
@@ -84,7 +85,9 @@ export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
   if (opencode.bothRegistered) warnings.push('OpenCode에 canonical jutell과 legacy beginner_bridge MCP가 모두 있습니다. 자동 정리하지 않았습니다. 이전 항목을 정리하려면 jutell migrate --clean 을 실행하세요.');
   if (registration.legacyRegistered && !registration.canonicalRegistered) warnings.push('Codex에 이전 beginner_bridge 항목만 있습니다. jutell use codex 를 실행하면 보존하면서 새 jutell 항목을 추가합니다.');
   if (opencode.legacyRegistered && !opencode.canonicalRegistered) warnings.push('OpenCode에 이전 beginner_bridge 항목만 있습니다. jutell use opencode 를 실행하면 보존하면서 새 jutell 항목을 추가합니다.');
-  if (config.config.mcp?.enabled && !anyProviderRegistered) warnings.push('MCP 연결 정책은 켜져 있지만 Codex·OpenCode·Claude Code 어느 Provider에도 JuTell MCP가 등록되지 않았습니다. jutell use <agent> 를 실행해 주세요.');
+  const apps = await readGuiStatuses(guiProjectRoot(paths));
+  const guiRegistered = apps.some((app) => app.writable && app.registered);
+  if (config.config.mcp?.enabled && !anyProviderRegistered && !guiRegistered) warnings.push('MCP 연결 정책은 켜져 있지만 Codex·OpenCode·Claude Code 어느 Provider에도 JuTell MCP가 등록되지 않았습니다. jutell use <agent> 를 실행해 주세요.');
   if (config.config.mcp?.enabled && anyProviderRegistered && !anyProviderEnabled) warnings.push('연결 정책(.jutell.json)은 켜져 있지만 새 세션에서 자동 시작할 활성 Provider 항목이 없습니다. jutell use <agent> 를 실행해 주세요.');
   if (!config.config.mcp?.enabled && anyProviderEnabled) warnings.push('연결 정책(.jutell.json)은 꺼져 있지만 Provider 자동 시작은 켜져 있습니다. jutell off 뒤라면 정상이에요: Codex 연결은 다른 프로젝트와 함께 쓰는 전역 설정이라 남아 있어요. 모든 프로젝트에서 끄려면 jutell disable --global, 다시 켜려면 jutell use <agent>를 실행하세요.');
   return {
@@ -118,7 +121,12 @@ export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
     telemetry: '비활성화',
     externalTransmission: '없음',
     warnings,
+    apps,
   };
+}
+
+function guiProjectRoot(paths: ScopePaths) {
+  return paths.scope === 'project' ? paths.targetRoot : resolveGuiScope('project').targetRoot;
 }
 
 export async function statusCommand(paths: ScopePaths, options: CliOptions, io: CliIo) {
@@ -133,7 +141,13 @@ export async function statusCommand(paths: ScopePaths, options: CliOptions, io: 
   const claudeDetectedLabel = status.claudeDetected ? '감지됨' : status.claude.registered ? '설정 있음(명령 미감지)' : '미감지';
   const claudeScopeNote = status.installationScope === 'global' ? '사용자 전역(user)' : '현재 프로젝트(local)';
   io.write(`JuTell 상태\n\nCLI: ${status.cliVersion}\nSkill: ${status.skillInstalled ? '설치됨' : '설치되지 않음'}\nAGENTS.md: ${status.agentsManaged ? 'JuTell 블록 있음' : 'JuTell 블록 없음'}\nJuTell 연결 정책: ${status.mcpEnabled ? '켜짐' : '꺼짐'}\nCodex MCP (전역, Codex는 프로젝트 설정을 읽지 않음): ${codexLabel}${status.codexDetected ? ` (명령 ${codexDetectedLabel})` : ''}\nCodex (CLI·앱·IDE 확장 공용 설정): ChatGPT 데스크톱 앱과 IDE 확장도 위 Codex 설정을 같이 씁니다. 바꾼 뒤 앱은 설정 → MCP servers → Restart, IDE는 Restart extension\nOpenCode MCP: ${opencodeLabel}${status.opencode.enabled ? ' (새 세션 자동 시작 켜짐)' : ''}${status.opencodeDetected ? '' : ` (명령 ${opencodeDetectedLabel})`}\nClaude Code MCP (${claudeScopeNote}): ${claudeLabel}${status.claudeDetected ? '' : ` (명령 ${claudeDetectedLabel})`}\nMCP 서버 응답: ${actual}\n현재 Agent 세션 적용: 직접 확인 필요\nProfile: ${status.profile}\n활성 Feature: ${status.activeFeatureCount}개\n설치 범위 (설정·Skill·AGENTS.md): ${status.installationScope === 'global' ? '사용자 전역' : '현재 프로젝트'}\n로컬 관리자: ${status.localAdmin}\n로컬 사용량 카운터: ${status.usageCountersEnabled ? '켜짐' : '꺼짐'}\nTelemetry: ${status.telemetry}\n외부 전송: ${status.externalTransmission}\n설정 위치: ${status.configLocation}`);
+  for (const app of status.apps) {
+    const check = guiStatusCheck(app);
+    io.write(`${check.label}: ${check.status === '정상' ? '' : `${check.status} — `}${check.detail}`);
+  }
   for (const warning of status.warnings) io.write(`주의: ${warning}`);
+  const duplicate = vscodeDuplicateNote(status.apps);
+  if (duplicate) io.write(`참고: ${duplicate}`);
   const map = await mapFreshnessCheck(paths);
   // Always one map line in a project (dogfood #37): fresh, missing, or the stale warning.
   if (map?.status === '주의') io.write(`주의: ${map.detail}`);
@@ -278,6 +292,10 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
       ? probe.ok ? `JuTell 도구를 실제로 켜 보니 응답했고 ${probe.toolCount}개 도구를 AI에게 줄 수 있습니다(Stdio는 AI 앱이 JuTell과 직접 주고받는 방식).` : `서버 응답 실패: ${probe.error ?? '알 수 없는 오류'}`
       : '아직 MCP를 등록하지 않아 실제 연결을 확인할 수 없습니다. 프로젝트 폴더에서 `jutell`을 실행하세요.',
   });
+  const apps = await readGuiStatuses(guiProjectRoot(paths));
+  for (const app of apps) checks.push(guiStatusCheck(app));
+  const duplicate = vscodeDuplicateNote(apps);
+  if (duplicate) checks.push({ name: `${GUI_CHECK_PREFIX}vscode-discovery`, label: 'VS Code 중복 표시', status: '정상', detail: duplicate });
   if (paths.scope === 'project') {
     // Item 12: a project-local npm install has no `jutell` on PATH, so show the exact receipt command the AI is told to use.
     const command = await receiptCommandFor(paths.targetRoot);
@@ -294,7 +312,7 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
 
 export async function doctorCommand(paths: ScopePaths, options: CliOptions, io: CliIo) {
   let checks = await getDoctorResults(paths);
-  const fixableError = checks.some((check) => check.status === '오류' && check.name !== 'MCP 서버 실제 연결 (Stdio)');
+  const fixableError = checks.some((check) => check.status === '오류' && check.name !== 'MCP 서버 실제 연결 (Stdio)' && !check.name.startsWith(GUI_CHECK_PREFIX));
   if (options.fix && fixableError) {
     await setupCommand(paths, { ...options, yes: true }, io);
     checks = await getDoctorResults(paths);

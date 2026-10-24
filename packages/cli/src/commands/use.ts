@@ -1,4 +1,6 @@
-import { assets, codexScopedPaths, packageRoot } from '../config/paths.js';
+import { assets, codexScopedPaths, packageRoot, resolveScope } from '../config/paths.js';
+import { findGuiApp, type GuiApp } from '../installer/app-specs.js';
+import { disconnectGuiApp, useGuiApp, writeLines } from '../installer/gui-apps.js';
 import { readCodexRegistration, registerMcp, snapshot, restore } from '../config/managed.js';
 import { ensureBridgeConfig, setMcpEnabled } from '../installer/config.js';
 import { installSkill, recordSkillFiles, removeAddedSkillFiles, skillConflictMessage, skillRefreshMessage } from '../installer/skill.js';
@@ -114,7 +116,44 @@ async function rollback(snapshots: FileSnapshot[], changed: string[], paths: Sco
   await removeAddedSkillFiles(paths.skillRoot, changed);
 }
 
+/**
+ * `jutell use <GUI app>` (cycle-3 W5). The project gets the same JuTell rules as `use codex`;
+ * `--global` only picks the app's all-folders file, pinned to this project (decision 13).
+ */
+async function useGuiCommand(app: GuiApp, paths: ScopePaths, options: CliOptions, io: CliIo) {
+  const wantsGlobal = paths.scope === 'global';
+  const project = paths.scope === 'project' ? paths : resolveScope('project');
+  if (app.mode === 'status-only') {
+    writeLines(io, (await useGuiApp(app, wantsGlobal, project.targetRoot)).message);
+    return { cancelled: false };
+  }
+  const snapshots = await Promise.all([project.configFile, agentsFile(project.targetRoot)].map((file) => snapshot(file)));
+  let changed: string[] = [];
+  try {
+    await ensureBridgeConfig(project, options.profile);
+    const skillResult = await installSkill(assets().skill, project.skillRoot, project);
+    changed = skillResult.changed;
+    await ensureJuTellAgentsBlock(project.targetRoot);
+    await setMcpEnabled(project, true);
+    const outcome = await useGuiApp(app, wantsGlobal, project.targetRoot);
+    if (outcome.error) throw new Error(outcome.error);
+    await recordSkillFiles(project, [...changed, ...skillResult.replaced]);
+    writeLines(io, outcome.message);
+    return { cancelled: false };
+  } catch (error) {
+    await rollback(snapshots, changed, project);
+    throw error;
+  }
+}
+
+function guiOnlyWithUse(name: string | undefined) {
+  const app = findGuiApp(name);
+  if (app) throw new Error(`${app.label}은(는) jutell use ${app.id} 로 연결하고 jutell disconnect ${app.id} 로 빼세요.`);
+}
+
 export async function useCommand(paths: ScopePaths, options: CliOptions, io: CliIo, args: string[]) {
+  const gui = findGuiApp(args[1]);
+  if (gui) return useGuiCommand(gui, paths, options, io);
   const provider = await resolveTarget(args, io);
   if (!provider) return { cancelled: true };
   const detected = adapterFor(provider.id).detected();
@@ -142,6 +181,7 @@ export async function useCommand(paths: ScopePaths, options: CliOptions, io: Cli
 }
 
 export async function connectCommand(paths: ScopePaths, options: CliOptions, io: CliIo, args: string[]) {
+  guiOnlyWithUse(args[1]);
   const provider = await resolveTarget(args, io);
   if (!provider) return { cancelled: true };
   const detected = adapterFor(provider.id).detected();
@@ -160,6 +200,14 @@ export async function connectCommand(paths: ScopePaths, options: CliOptions, io:
 }
 
 export async function disconnectCommand(paths: ScopePaths, options: CliOptions, io: CliIo, args: string[]) {
+  const gui = findGuiApp(args[1]);
+  if (gui) {
+    const project = paths.scope === 'project' ? paths : resolveScope('project');
+    const outcome = await disconnectGuiApp(gui, paths.scope === 'global', project.targetRoot);
+    if (outcome.error) throw new Error(outcome.error);
+    writeLines(io, outcome.message);
+    return { cancelled: false };
+  }
   const provider = await resolveTarget(args, io);
   if (!provider) return { cancelled: true };
   const adapter = adapterFor(provider.id, () => io.write(RESTORED_JUTELL_TABLES_HINT));
@@ -172,6 +220,7 @@ export async function disconnectCommand(paths: ScopePaths, options: CliOptions, 
 }
 
 export async function switchCommand(paths: ScopePaths, options: CliOptions, io: CliIo, args: string[]) {
+  guiOnlyWithUse(args[1]);
   const provider = await resolveTarget(args, io);
   if (!provider) return { cancelled: true };
   const detected = adapterFor(provider.id).detected();

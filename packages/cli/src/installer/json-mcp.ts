@@ -215,6 +215,12 @@ function desiredEntry(existing: Record<string, unknown> | undefined, entry: Json
   // (j) keep keys the person added (e.g. disabledTools, other env values); JuTell's own keys win.
   const merged: Record<string, unknown> = { ...existing };
   for (const [key, value] of Object.entries(entry)) {
+    if (key === 'args' && Array.isArray(value) && Array.isArray(existing.args)) {
+      // Values the person added to args (e.g. `--flag`) stay, after JuTell's server path.
+      const server = serverPathOf(existing);
+      merged.args = [...value, ...existing.args.filter((arg) => arg !== server && !value.includes(arg))];
+      continue;
+    }
     merged[key] = key === 'env' && isPlainObject(value) && isPlainObject(existing.env) ? { ...existing.env, ...value } : value;
   }
   return merged;

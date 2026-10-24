@@ -12,11 +12,13 @@ export const RULES_STAMP_FILE = 'rules-fetched.json';
  */
 export async function recordRulesFetched(projectRoot = resolveProjectRoot(), now = new Date()): Promise<boolean> {
   try {
-    const directory = path.join(path.resolve(projectRoot), '.jutell-local');
+    // JUTELL_PROJECT_ROOT may itself go through a link (e.g. a pinned global app entry, /tmp on macOS):
+    // resolve the root once, then the data folder must be a real folder directly inside that real root.
+    const root = await fs.realpath(path.resolve(projectRoot));
+    const directory = path.join(root, '.jutell-local');
     const stats = await fs.lstat(directory);
     if (stats.isSymbolicLink() || !stats.isDirectory()) return false;
-    if (!await safeDataDir(path.resolve(projectRoot), directory)) return false;
-    // A link anywhere above (the project root or a parent folder) would write elsewhere: the real path must match.
+    if (!await safeDataDir(root, directory)) return false;
     if (await fs.realpath(directory) !== directory) return false;
     const file = path.join(directory, RULES_STAMP_FILE);
     const existing = await fs.lstat(file).catch(() => undefined);

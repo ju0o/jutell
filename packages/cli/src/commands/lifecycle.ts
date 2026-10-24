@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
-import { assets, codexScopedPaths, packageRoot, safeLocation } from '../config/paths.js';
+import { assets, codexScopedPaths, packageRoot, safeLocation, resolveScope } from '../config/paths.js';
+import { guiInstallHints, refreshGuiEntries, uninstallGuiEntries, writeLines } from '../installer/gui-apps.js';
 import { readBridgeConfig, readCodexRegistration, snapshot, restore } from '../config/managed.js';
 import { ensureBridgeConfig, setMcpDisabled, setMcpEnabled } from '../installer/config.js';
 import { installSkill, recordSkillFiles, removeAddedSkillFiles, removeManagedSkillFiles, skillConflictMessage, skillRefreshMessage } from '../installer/skill.js';
@@ -61,6 +62,12 @@ export async function setupCommand(paths: ScopePaths, options: CliOptions, io: C
   }
   // The install's own changes (package.json, lockfile…) become the receipt's 'before work' baseline.
   await recordReceiptBaseline(paths).catch(() => undefined);
+  // cycle-3 W7 / decision 18: GUI apps are never connected here. Only stale paths in existing JuTell entries are fixed.
+  if (!options.skillOnly) {
+    const guiRoot = paths.scope === 'project' ? paths.targetRoot : resolveScope('project').targetRoot;
+    writeLines(io, await refreshGuiEntries(guiRoot));
+    if (!options.oneCommand) writeLines(io, await guiInstallHints(guiRoot));
+  }
   // Asked after a successful install only (a map problem never rolls the install back).
   if (!options.oneCommand && !options.mcpOnly) await offerMap(paths, options, io, process.stdin.isTTY === true);
   return { cancelled: false, skillResult };
@@ -197,6 +204,7 @@ export async function uninstallCommand(paths: ScopePaths, options: CliOptions, i
   if (paths.scope === 'project') io.write(leftoverNote(removeData));
   for (const note of codexNotes) io.write(note);
   if (codexLocal && codexRemoved) io.write('Codex 전역 설정에 남아 있던 이 프로젝트용 JuTell 연결(이 폴더의 node_modules를 가리킴)도 지웠어요. 다른 설정은 그대로예요.');
+  writeLines(io, await uninstallGuiEntries(paths.scope === 'project' ? paths.targetRoot : resolveScope('project').targetRoot, paths.scope === 'global'));
   if (codexSkipped) io.write('Codex와 JuTell을 잇는 연결(MCP)은 이 컴퓨터의 모든 프로젝트가 함께 쓰는 Codex 설정 파일에 있어서, 다른 프로젝트와 공유되어 제거하지 않았습니다. 모든 프로젝트에서 지우려면 jutell uninstall --global --yes 를 실행하세요.');
   return { cancelled: false };
 }
