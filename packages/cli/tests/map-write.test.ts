@@ -168,6 +168,17 @@ describe('map write (W2)', () => {
     expect(await read(file)).toBe(before);
   });
 
+  it('a non-JuTell map-index.json is kept, and the skip reason says it is NOT JuTell format', async () => {
+    const { dir, paths } = await project();
+    await fs.mkdir(path.join(dir, '.jutell-local'), { recursive: true });
+    const indexFile = path.join(dir, '.jutell-local', 'map-index.json');
+    await fs.writeFile(indexFile, '{"mine":true}');
+    const result = await writeMap(paths, NOW);
+    expect(result.selection?.status).toBe('skipped');
+    expect(result.selection?.reason).toBe('기존 인덱스가 JuTell 형식이 아니어서 보존함');
+    expect(await read(indexFile)).toBe('{"mine":true}');
+  });
+
   it('reports a partial detail write and rejects a stale card if a later write fails', async () => {
     const { dir, paths } = await project();
     await writeMap(paths, NOW);

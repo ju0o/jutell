@@ -243,7 +243,7 @@ export async function writeMapSelectionFiles(
 
     const oldIndexText = await safeReadRegular(indexFile);
     const oldIndex = parseExistingIndex(oldIndexText);
-    if (oldIndexText !== undefined && !oldIndex) return { status: 'skipped', indexFile, sectionCount: 0, reason: '기존 인덱스가 JuTell 형식이어서 보존함' };
+    if (oldIndexText !== undefined && !oldIndex) return { status: 'skipped', indexFile, sectionCount: 0, reason: '기존 인덱스가 JuTell 형식이 아니어서 보존함' };
     const probe = buildIndex(markdown, scan, commit, now.toISOString(), oldIndex);
     const sameSource = oldIndex?.sourceMap.sha256 === probe.sourceMap.sha256
       && oldIndex?.sourceMap.commit === probe.sourceMap.commit
