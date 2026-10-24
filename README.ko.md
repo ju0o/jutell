@@ -4,9 +4,14 @@
 
 ## AI Agent가 "다 했어요!"라고 하는데 — 정말 했을까요?
 
-JuTell은 Coding Agent가 일을 마치면 한 페이지 **작업 영수증**을 보여 줘요. 내가 요청한 것, AI가
-*했다고 말한* 것, 그리고 **Git이 실제로 본 변경**을 줄마다 출처 라벨과 함께 나눠 보여 줍니다.
-코드나 로그를 읽을 필요가 없어요.
+JuTell은 두 가지를 해 줘요. 코드나 로그를 읽을 필요가 없어요.
+
+- **프로젝트 지도를 자동으로 만들고 계속 최신으로 유지해요.** 프로젝트 루트에 `JuTellMap.md`
+  (파일을 로그인·결제·api 같은 기능별로 묶은 지도)와 보기 쉬운 화면 `.jutell-local/map.html`을
+  만들어요. JuTell을 설정할 때 만들어지고, Agent가 작업을 마치고 영수증을 낼 때마다 새로 생기거나
+  지워진 파일을 반영해 갱신돼요(직접 적은 설명은 그대로 둬요). 언제든 `jutell map`으로 갱신할 수도 있어요.
+- **Agent가 일을 마치면 한 페이지 작업 영수증:** 내가 요청한 것, AI가 *했다고 말한* 것, 그리고
+  **Git이 실제로 본 변경**을 줄마다 출처 라벨과 함께 나눠 보여 줘요.
 
 ![Codex: 정식 지원](https://img.shields.io/badge/Codex-정식%20지원-brightgreen)
 ![Claude Code: 베타](https://img.shields.io/badge/Claude%20Code-베타-yellow)
@@ -17,13 +22,15 @@ JuTell은 Coding Agent가 일을 마치면 한 페이지 **작업 영수증**을
 | JuTell 없이 — Agent의 말만 | JuTell과 함께 — 작업 영수증 (실제 출력 일부) |
 |---|---|
 | *(흔한 Agent 답변 예시)*<br>"완료했어요! 로그인 버튼을 파란색으로 바꿨고 테스트도 모두 통과했어요. 🎉" | `[요청 대조]  요청 1개 중 1개 바뀐 곳 있음  [Git 기준 · 지도 대조]`<br>`→ 바뀐 곳 있음: src/pages/Login.tsx  [Git 기준 · 지도: 로그인]`<br>`✔ 직접 확인한 것: npm test 통과  [AI가 적음]`<br>`✖ 확인 못 한 것: 실제 화면은 브라우저로 보지 않음  [AI가 적음]`<br>`ⓘ 위 테스트·명령 결과는 AI가 알려 준 내용이에요. JuTell이 직접 돌려 보지는 않았어요  [JuTell이 적음]` |
+| *"결제 코드는 어디 있지? 뭘 건드렸지?"* — 폴더를 직접 뒤져야 해요. | **프로젝트 지도** — `JuTellMap.md` / `map.html`: `결제` → `src/pages/Checkout.tsx`, `src/payment/charge.ts`, `src/payment/refund.ts`, `tests/payment.test.ts`. 영수증도 바뀐 파일을 지도 기능과 이어 보여 줘요(`[지도: 로그인]`). |
 | 그냥 믿거나, 직접 변경 내용을 읽어야 해요. | 확인된 것, AI 주장일 뿐인 것, 아직 확인 못 한 것이 한눈에 보여요. |
 
 ### 3단계로 시작하기
 
 1. **설치** (Node.js 18 이상): `npm install -g jutell`
 2. **프로젝트 폴더에서 실행:** `cd 내-프로젝트 && jutell` — 설치된 Agent(Codex, Claude Code, OpenCode)를 찾아 연결해요.
-3. **평소처럼 Agent에게 요청**하세요(새 대화에서). 작업이 끝나면 JuTell 영수증이 나와요.
+3. **프로젝트 지도 열기** — 브라우저로 `.jutell-local/map.html`(또는 `JuTellMap.md`)을 열어 보고,
+   **평소처럼 Agent에게 요청**하세요(새 대화에서). 작업이 끝나면 JuTell 영수증이 나오고 지도도 갱신돼요.
 
 ### 직접 보기 (실제 터미널 녹화, 편집 없음)
 
@@ -31,7 +38,12 @@ JuTell은 Coding Agent가 일을 마치면 한 페이지 **작업 영수증**을
 
 ![JuTell 데모: jutell --yes setup, 한 줄 변경, jutell receipt](docs/assets/readme/demo-receipt.gif)
 
-JuTell은 파일을 기능별로 묶은 프로젝트 지도 **JuTellMap.md**도 만들어요:
+**브라우저로 본 프로젝트 지도** (`.jutell-local/map.html`, 작은 쇼핑몰 예제에서 `jutell map`이 만든 실제 화면을
+headless Chrome으로 찍었어요. 카드를 하나씩 펼친 모습):
+
+![JuTell 프로젝트 지도(map.html): 기능 카드를 접은 모습과 펼친 모습](docs/assets/readme/demo-map-html.gif)
+
+터미널에서 본 같은 지도 — `JuTellMap.md`와 `jutell map --list`:
 
 ![JuTellMap 데모: cat JuTellMap.md, jutell map --list](docs/assets/readme/demo-map.gif)
 
