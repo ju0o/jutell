@@ -94,12 +94,15 @@ const LOCKFILE = /(^|\/)(package-lock\.json|npm-shrinkwrap\.json|pnpm-lock\.yaml
 export function sensitiveNamedIn(request: string, files: string[], dependencies: string[]): string[] {
   const lower = request.toLowerCase();
   const namesDependency = dependencies.some((name) => name.length >= 2 && mentions(lower, name.toLowerCase()));
-  return files.filter((file) => {
+  const named = files.filter((file) => {
     const full = file.toLowerCase();
     const base = full.split('/').pop() ?? full;
     if (lower.includes(full) || mentions(lower, base)) return true;
     return namesDependency && (base === 'package.json' || LOCKFILE.test(full));
   });
+  // A named package.json brings its lockfile in the same folder along (both keep their ⚠; Reviewer #37).
+  const manifestFolders = new Set(named.filter((file) => /(^|\/)package\.json$/i.test(file)).map(folder));
+  return [...named, ...files.filter((file) => LOCKFILE.test(file) && !named.includes(file) && manifestFolders.has(folder(file)))];
 }
 
 const folder = (file: string) => (file.includes('/') ? file.slice(0, file.lastIndexOf('/')) : '');

@@ -138,6 +138,18 @@ async function ensureManagedBlock(file: string, target: GuidanceTarget = 'agents
   return { changed: next !== current };
 }
 
+/**
+ * True only when an AGENTS.md/CLAUDE.md holds exactly what JuTell's setup writes for a new file (just the
+ * current managed block). Anything else in it, or a changed block, is the AI's or the user's edit (Reviewer #37).
+ */
+export async function isPristineJuTellGuidance(file: string, target: GuidanceTarget): Promise<boolean> {
+  const content = await readText(file);
+  if (typeof content !== 'string') return false;
+  const block = managedBlockFor(await receiptReportEnabled(path.dirname(file)), target, await receiptCommandFor(path.dirname(file)));
+  const text = content.replace(/\r\n/g, '\n');
+  return text === `${block}\n` || text === `${PREEXISTING_MARK}\n\n${block}\n`;
+}
+
 async function removeManagedBlock(file: string) {
   const current = await readText(file);
   if (!current || !markerPattern().test(current)) return { changed: false };

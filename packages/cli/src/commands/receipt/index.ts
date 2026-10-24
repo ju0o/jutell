@@ -1,3 +1,4 @@
+import { isPristineJuTellGuidance } from '../../installer/agents.js';
 import { EXCLUDED_PATHSPECS, inExcludedFolder } from '../../map/scan.js';
 import { execFile } from 'node:child_process';
 import { constants as fsConstants, promises as fs } from 'node:fs';
@@ -166,10 +167,10 @@ function pathsFromStatus(stdout: string, projectPrefix: string): string[] {
     if (projectPrefix && !repoPath.startsWith(projectPrefix)) continue;
     const file = (projectPrefix ? repoPath.slice(projectPrefix.length) : repoPath).replace(/^\.\//, '');
     if (!file) continue;
-    // JuTell's own setup files are not the user's work; an untracked AGENTS.md/CLAUDE.md was created by JuTell.
+    // JuTell's own setup files are not the user's work. An untracked AGENTS.md/CLAUDE.md is dropped later only
+    // when it holds exactly JuTell's setup content (readChangedFiles); anything else is a sensitive change.
     if (file === '.jutell-local' || file.startsWith('.jutell-local/') || file === '.jutell.json') continue;
     if (file.startsWith('.agents/skills/beginner-bridge/') || file.startsWith('.claude/skills/beginner-bridge/')) continue;
-    if (status === '??' && (file === 'AGENTS.md' || file === 'CLAUDE.md')) continue;
     // Same rule as the map scan: untracked files in node_modules, dist, build… are not the user's work.
     // A tracked file there (committed on purpose) still counts.
     if (status === '??' && inExcludedFolder(file)) continue;
@@ -251,7 +252,12 @@ async function readChangedFiles(cwd: string): Promise<ChangedFiles> {
       runGit(cwd, ['--no-optional-locks', 'status', '--porcelain=v1', '-z', '--untracked-files=all', ...EXCLUDED_PATHSPECS]),
     ]);
     const onlyUntracked = untracked.split('\0').filter((field) => field.startsWith('?? ')).join('\0');
-    return { files: [...new Set([...pathsFromStatus(tracked, projectPrefix), ...pathsFromStatus(onlyUntracked, projectPrefix)])] };
+    const untrackedFiles = new Set(pathsFromStatus(onlyUntracked, projectPrefix));
+    const files = [...new Set([...pathsFromStatus(tracked, projectPrefix), ...untrackedFiles])];
+    const setupOnly = await Promise.all(files.map((file) => (untrackedFiles.has(file) && (file === 'AGENTS.md' || file === 'CLAUDE.md')
+      ? isPristineJuTellGuidance(path.join(cwd, file), file === 'CLAUDE.md' ? 'claude' : 'agents').catch(() => false)
+      : false)));
+    return { files: files.filter((_file, index) => !setupOnly[index]) };
   } catch (error) {
     return { files: [], unknownReason: gitFailureReason(error) };
   }

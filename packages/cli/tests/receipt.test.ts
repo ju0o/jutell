@@ -10,6 +10,7 @@ import { NEXT_GROUPS, NOTHING_NEXT_LINE, RECEIPT_SECTIONS, normalizeReceipt, ren
 import { resolveScope } from '../src/config/paths.js';
 import { run } from '../src/cli.js';
 import { ensureBridgeConfig } from '../src/installer/config.js';
+import { ensureJuTellAgentsBlock } from '../src/installer/agents.js';
 import { ensureDataRoot } from '../src/config/managed.js';
 import type { CliIo, ScopePaths } from '../src/types.js';
 
@@ -428,7 +429,8 @@ describe('receipt command', () => {
     await fs.mkdir(path.join(paths.targetRoot, '.agents', 'skills', 'beginner-bridge'), { recursive: true });
     await fs.writeFile(path.join(paths.targetRoot, '.agents', 'skills', 'beginner-bridge', 'SKILL.md'), 'x\n', 'utf8');
     await fs.writeFile(path.join(paths.targetRoot, '.jutell.json'), '{}\n', 'utf8');
-    await fs.writeFile(path.join(paths.targetRoot, 'AGENTS.md'), 'x\n', 'utf8');
+    // An untracked AGENTS.md is hidden only when it holds exactly JuTell's setup content (Reviewer #37).
+    await ensureJuTellAgentsBlock(paths.targetRoot);
     const stdin = new PassThrough();
     stdin.end(JSON.stringify({ done: ['한 일'] }));
 
