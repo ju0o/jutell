@@ -2,11 +2,14 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { ensureDataRoot, readBridgeConfig, writeBridgeConfig } from '../config/managed.js';
 import { addGitExclude, gitExcludeMessage, removeGitExclude } from '../map/git-exclude.js';
+import { formatMapSelectionContext, formatMapSelectionIndex, readMapSelectionDetail, readMapSelectionIndex, sanitizeMapSelectionText } from '../map/selection.js';
 import { scanProject } from '../map/scan.js';
 import { MAP_STATE_FILE, mapFile, mapHtmlMessage, mapListFiles, mapWriteMessage, parseMap, readMapState, sha256, writeMap, writeMapHtml } from '../map/write.js';
 import type { CliIo, ScopePaths } from '../types.js';
 
-export const MAP_HELP = `jutell map             프로젝트 지도(JuTellMap.md)와 .jutell-local/map.html을 만들거나 갱신합니다.
+export const MAP_HELP = `jutell map             전체 지도, 작은 인덱스, 기능 상세 파일과 .jutell-local/map.html을 만들거나 갱신합니다.
+jutell map --list      작은 기계 인덱스에서 기능 이름과 ID만 읽습니다.
+jutell map --show <ID> 인덱스와 선택한 기능 상세 파일 하나만 읽습니다.
 jutell map --git-exclude  지도를 이 컴퓨터에서만 git에서 뺍니다(.git/info/exclude, .gitignore는 그대로).
 jutell map --git-include  뺀 것을 되돌립니다.`;
 
@@ -22,6 +25,18 @@ export { writeMapHtml };
 
 export async function mapCommand(paths: ScopePaths, args: string[], io: CliIo) {
   if (args.includes('--help') || args.includes('-h')) { io.write(MAP_HELP); return 0; }
+  if (args[0] === '--list') {
+    if (args.length !== 1) throw new Error('사용법: jutell map --list');
+    const { index } = await readMapSelectionIndex(paths);
+    io.write(formatMapSelectionIndex(index));
+    return 0;
+  }
+  if (args[0] === '--show') {
+    if (args.length !== 2) throw new Error('사용법: jutell map --show <ID>');
+    const result = await readMapSelectionDetail(paths, args[1]);
+    io.write(sanitizeMapSelectionText(`${formatMapSelectionContext(result.index, result.entry)}${result.text.trimEnd()}`));
+    return 0;
+  }
   const exclude = args.includes('--git-exclude');
   const include = args.includes('--git-include');
   if (exclude && include) throw new Error('--git-exclude와 --git-include는 함께 쓸 수 없어요.');
@@ -36,6 +51,8 @@ export async function mapCommand(paths: ScopePaths, args: string[], io: CliIo) {
   const result = await writeMap(paths);
   io.write(mapWriteMessage(result, paths));
   if (result.status === 'broken' || result.status === 'link') return 0;
+  if (result.selection?.status === 'skipped') io.write(`기계용 기능 인덱스와 상세를 갱신하지 못했어요 (${result.selection.reason ?? '파일을 쓸 수 없음'}). 전체 지도는 JuTellMap.md에서 확인하세요.`);
+  else if (result.selection) io.write(`기계 인덱스와 기능 상세 ${result.selection.sectionCount}개: .jutell-local/map-index.json`);
   const html = await writeMapHtml(paths);
   if (html !== 'skipped') io.write(mapHtmlMessage(html));
   return 0;
@@ -114,8 +131,11 @@ export async function refreshMapForReceipt(paths: ScopePaths, timeoutMs = RECEIP
     if (result === 'timeout') return { jutellOwned, note: 'ⓘ 지도 갱신 못 함(시간 초과로 건너뜀)' };
     if (result.status === 'link') return { jutellOwned: false, note: 'ⓘ 지도 갱신 못 함(지도가 링크예요)' };
     if (result.status === 'broken') return { jutellOwned, note: 'ⓘ 지도 갱신 못 함(자동 칸 표시가 망가져 있어요. `jutell map`으로 확인하세요)' };
-    if (result.status !== 'updated') return { jutellOwned };
     await writeMapHtml(paths).catch(() => undefined);
+    if (result.selection?.status === 'skipped') return { jutellOwned, note: `ⓘ 기능 인덱스 갱신 못 함(${result.selection.reason ?? '파일을 쓸 수 없음'})` };
+    if (result.status !== 'updated') return result.selection?.status === 'written'
+      ? { jutellOwned, note: 'ⓘ 기능 인덱스와 상세 파일을 만들었어요  [JuTell이 고침]' }
+      : { jutellOwned };
     const parts = [
       result.added.length ? `새 파일 ${result.added.length}개` : '',
       result.removed.length ? `빠진 파일 ${result.removed.length}개` : '',
