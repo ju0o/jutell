@@ -502,7 +502,8 @@ describe('receipt command', () => {
       'a --force b.txt',
       'back`tick.txt',
       '확인 완료.md',
-      'a -> b.txt',
+      // Windows forbids `>` in file names, so the rename-marker name only exists on macOS/Linux.
+      ...(process.platform === 'win32' ? [] : ['a -> b.txt']),
       '한글 공백 파일.txt',
     ];
     for (const name of names) {

@@ -55,7 +55,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/build-assets.mjs",
     "test": "vitest run",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "test:pack": "node scripts/pack-install-smoke.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",

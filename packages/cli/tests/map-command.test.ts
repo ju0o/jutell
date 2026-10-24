@@ -25,7 +25,7 @@ async function project(name = 'proj', files = ['src/auth/login.ts', 'src/payment
     await fs.writeFile(path.join(dir, file), 'x');
   }
   execFileSync('git', ['init', '-q'], { cwd: dir });
-  const env = { ...process.env, HOME: home, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: home, JUTELL_NO_FUNDING: '1' };
+  const env = { ...process.env, HOME: home, USERPROFILE: home, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: home, JUTELL_NO_FUNDING: '1' };
   const run = (...args: string[]) => spawnSync(process.execPath, [cliEntry, ...args], { cwd: dir, env, encoding: 'utf8', timeout: 30000 });
   return { dir, run, paths: resolveScope('project', dir) };
 }

@@ -23,7 +23,7 @@ async function repo(name = 'proj', init = true) {
   await fs.mkdir(home, { recursive: true });
   if (init) git(dir, 'init', '-q');
   await fs.writeFile(path.join(dir, 'JuTellMap.md'), '# 지도\n');
-  const env = { ...process.env, HOME: home, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: home, JUTELL_NO_FUNDING: '1' };
+  const env = { ...process.env, HOME: home, USERPROFILE: home, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: home, JUTELL_NO_FUNDING: '1' };
   const run = (...args: string[]) => spawnSync(process.execPath, [cliEntry, ...args], { cwd: dir, env, encoding: 'utf8', timeout: 30000 });
   return { root, dir, run, exclude: path.join(dir, '.git', 'info', 'exclude') };
 }

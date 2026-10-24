@@ -8,7 +8,7 @@ import type { CliIo, ScopePaths } from '../../types.js';
 import { normalizeReceipt, receiptMarkdown, renderReceipt } from './render.js';
 import { refreshMapForReceipt, RECEIPT_MAP_TIMEOUT_MS } from '../map.js';
 import { MAP_FILE } from '../../map/write.js';
-import { checkBeforeWork } from './before.js';
+import { checkBeforeWork, RECEIPT_STATE_FILE } from './before.js';
 import { matchRequests, readMapSections } from './match.js';
 import { mapAreaIds } from '../../map/selection.js';
 
@@ -393,6 +393,8 @@ export async function receiptCommand(
  */
 export async function recordReceiptBaseline(paths: ScopePaths): Promise<void> {
   if (paths.scope !== 'project') return;
+  // Only the first time: re-running `jutell` mid-task must not turn the AI's edits into 'before work'.
+  if (await fs.lstat(path.join(paths.dataRoot, RECEIPT_STATE_FILE)).then(() => true, () => false)) return;
   const changed = await readChangedFiles(paths.targetRoot);
   if (changed.unknownReason) return;
   await prepareSafeReportsDirectory(paths).catch(() => undefined);

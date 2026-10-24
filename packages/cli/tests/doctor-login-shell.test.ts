@@ -52,7 +52,7 @@ exit 1
   }
   const result = spawnSync(process.execPath, [cliEntry, 'doctor'], {
     cwd: project,
-    env: { HOME: home, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: home, PATH: `${npmBin}:/usr/bin:/bin`, JUTELL_TEST_EXPECTED_ROOT: project, NO_COLOR: '1', ...(shell ? { SHELL: shell } : {}) },
+    env: { HOME: home, USERPROFILE: home, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: home, PATH: `${npmBin}:/usr/bin:/bin`, JUTELL_TEST_EXPECTED_ROOT: project, NO_COLOR: '1', ...(shell ? { SHELL: shell } : {}) },
     encoding: 'utf8',
     timeout: 20000,
   });
@@ -130,7 +130,7 @@ echo 2.1.0-dev
     // The test process cwd is the repository, while the login shell must run
     // from the explicitly supplied project path (which contains spaces).
     const result = await loginShellJutellCheck(true, {
-      HOME: home,
+      HOME: home, USERPROFILE: home,
       BEGINNER_BRIDGE_HOME: home,
       PATH: `${npmBin}:/usr/bin:/bin`,
       SHELL: '/bin/bash',

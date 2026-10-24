@@ -32,7 +32,7 @@ describe('interactive `jutell` in a new project asks the map question', () => {
       await fs.writeFile(path.join(dir, 'src', 'app.js'), 'x');
       execFileSync('git', ['init', '-q'], { cwd: dir });
     }
-    const env = { HOME: home, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: home, JUTELL_NO_FUNDING: '1', PATH: `${bin}${path.delimiter}${process.env.PATH ?? ''}` };
+    const env = { HOME: home, USERPROFILE: home, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: home, JUTELL_NO_FUNDING: '1', PATH: `${bin}${path.delimiter}${process.env.PATH ?? ''}` };
     // Codex gets connected from another project first (shared CODEX_HOME).
     expect(spawnSync(process.execPath, [cliEntry, '--yes', '--no-funding'], { cwd: projects[0], env: { ...process.env, ...env }, encoding: 'utf8', timeout: 30000 }).status).toBe(0);
 
