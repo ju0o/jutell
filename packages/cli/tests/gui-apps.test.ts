@@ -14,10 +14,10 @@ afterEach(async () => { await Promise.all(dirs.splice(0).map((dir) => rm(dir, { 
 const linux = process.platform === 'linux';
 const exists = (file: string) => stat(file).then(() => true, () => false);
 
-async function sandbox() {
+async function sandbox(homeName = 'home') {
   const root = await realpath(await mkdtemp(path.join(os.tmpdir(), 'jutell-gui-')));
   dirs.push(root);
-  const home = path.join(root, 'home'); const project = path.join(root, 'proj'); const other = path.join(root, 'other');
+  const home = path.join(root, homeName); const project = path.join(root, 'proj'); const other = path.join(root, 'other');
   for (const dir of [home, project, other]) await mkdir(dir, { recursive: true });
   for (const dir of [project, other]) execFileSync('git', ['init', '-q'], { cwd: dir });
   const env: NodeJS.ProcessEnv = { ...process.env, HOME: home, USERPROFILE: home, BEGINNER_BRIDGE_HOME: home, JUTELL_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: path.join(home, '.claude'), XDG_CONFIG_HOME: path.join(home, '.config'), APPDATA: path.join(home, 'AppData', 'Roaming') };
@@ -112,6 +112,39 @@ describe('jutell use / disconnect <GUI app> (built dist)', () => {
     expect(run(['use', 'cursor']).status).toBe(0);
     expect(run(['disconnect', 'cursor']).status).toBe(0);
     expect(await readFile(path.join(project, '.cursor', 'mcp.json'), 'utf8')).toBe('{ "mcpServers": {} }\n');
+  });
+
+  it('W8: a home path with Korean letters and spaces — real write and clean removal (Claude Desktop under a temp %APPDATA% on Windows/macOS)', async () => {
+    const { home, project, run, json } = await sandbox('홍 길동 홈');
+    const cursor = path.join(home, '.cursor', 'mcp.json');
+    expect(run(['use', 'cursor', '--global']).status).toBe(0);
+    expect((await json(cursor)).mcpServers.jutell.env.JUTELL_PROJECT_ROOT).toBe(project);
+    const desktop = process.platform === 'win32' ? path.join(home, 'AppData', 'Roaming', 'Claude', 'claude_desktop_config.json')
+      : process.platform === 'darwin' ? path.join(home, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json') : undefined;
+    if (desktop) {
+      expect(run(['use', 'claude-desktop']).status).toBe(0);
+      expect((await json(desktop)).mcpServers.jutell.args[0]).toMatch(/mcp-server[\\/]index\.js$/);
+    }
+    const removed = run(['uninstall', '--global', '--yes']);
+    expect(removed.status, removed.stderr).toBe(0);
+    for (const file of [cursor, ...(desktop ? [desktop] : [])]) expect(await exists(file), file).toBe(false);
+  }, 60000);
+
+  it('(l) a JuTell-created file that is kept (the person added a server) loses only the marker; when it later becomes empty it is never deleted', async () => {
+    const { project, run } = await sandbox();
+    const file = path.join(project, '.cursor', 'mcp.json');
+    expect(run(['use', 'cursor']).status).toBe(0);
+    const withMine = JSON.parse(await readFile(file, 'utf8'));
+    withMine.mcpServers.mine = { command: 'x' };
+    await writeFile(file, JSON.stringify(withMine, null, 2));
+    expect(run(['disconnect', 'cursor']).status).toBe(0);
+    expect(await exists(file)).toBe(true);
+    expect(await exists(`${file}.jutell-created`)).toBe(false);
+    // The person empties it; JuTell connects and disconnects again: the file stays.
+    await writeFile(file, '{ "mcpServers": {} }\n');
+    expect(run(['use', 'cursor']).status).toBe(0);
+    expect(run(['disconnect', 'cursor']).status).toBe(0);
+    expect(await exists(file)).toBe(true);
   });
 
   it.skipIf(!linux)('vscode --global (Q10, Linux): writes $XDG_CONFIG_HOME/Code/User/mcp.json and uninstall --global removes it cleanly', async () => {

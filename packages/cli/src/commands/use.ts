@@ -1,6 +1,7 @@
+import { promises as fs } from 'node:fs';
 import { assets, codexScopedPaths, packageRoot, resolveScope } from '../config/paths.js';
 import { findGuiApp, type GuiApp } from '../installer/app-specs.js';
-import { disconnectGuiApp, useGuiApp, writeLines } from '../installer/gui-apps.js';
+import { disconnectGuiApp, guiWriteTargets, useGuiApp, writeLines } from '../installer/gui-apps.js';
 import { readCodexRegistration, registerMcp, snapshot, restore } from '../config/managed.js';
 import { ensureBridgeConfig, setMcpEnabled } from '../installer/config.js';
 import { installSkill, recordSkillFiles, removeAddedSkillFiles, skillConflictMessage, skillRefreshMessage } from '../installer/skill.js';
@@ -127,7 +128,10 @@ async function useGuiCommand(app: GuiApp, paths: ScopePaths, options: CliOptions
     writeLines(io, (await useGuiApp(app, wantsGlobal, project.targetRoot)).message);
     return { cancelled: false };
   }
-  const snapshots = await Promise.all([project.configFile, agentsFile(project.targetRoot)].map((file) => snapshot(file)));
+  // The app file (and its backups/marker) is snapshotted too, so a later failure takes the JuTell entry back out.
+  const targets = guiWriteTargets(app, wantsGlobal, project.targetRoot);
+  const dirExisted = targets ? await fs.lstat(targets.dir).then(() => true, () => false) : true;
+  const snapshots = await Promise.all([project.configFile, agentsFile(project.targetRoot), ...(targets?.files ?? [])].map((file) => snapshot(file)));
   let changed: string[] = [];
   try {
     await ensureBridgeConfig(project, options.profile);
@@ -142,6 +146,7 @@ async function useGuiCommand(app: GuiApp, paths: ScopePaths, options: CliOptions
     return { cancelled: false };
   } catch (error) {
     await rollback(snapshots, changed, project);
+    if (targets && !dirExisted) await fs.rmdir(targets.dir).catch(() => undefined);
     throw error;
   }
 }
