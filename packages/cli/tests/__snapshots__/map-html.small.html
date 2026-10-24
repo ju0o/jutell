@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>JuTell 지도 — 이 프로젝트는 어떻게 생겼나요?</title><style>body{font-family:system-ui,sans-serif;max-width:68rem;margin:2rem auto;padding:0 1rem;line-height:1.5;color:#18212b;background:#ffffff}a{color:#0b5cad}.count{display:block;color:#536171;font-size:.9rem;font-weight:400;margin-top:.15rem}.notice,.evidence,.note{color:#435160}.notice{background:#f2f6fa;padding:.8rem 1rem;border-radius:.5rem}.notice p{margin:.3rem 0}table{border-collapse:collapse;width:100%;margin:.5rem 0 1rem}th,td{text-align:left;padding:.35rem .5rem;border-bottom:1px solid #ccd5df}td:not(:first-child),th:not(:first-child){text-align:right}td a{display:inline-block;min-height:44px;line-height:44px;overflow-wrap:anywhere}details{border:1px solid #ccd5df;border-radius:.6rem;margin:.7rem 0;padding:.7rem 1rem}summary{font-weight:650;cursor:pointer;overflow-wrap:anywhere;min-height:44px}.evidence{background:#f7f9fb;border-radius:.4rem;padding:.7rem 1rem;margin:.7rem 0}.evidence p{margin:.25rem 0}.files{margin:.4rem 0 .8rem;padding-left:1.4rem;overflow-wrap:anywhere}.files li{padding:.12rem 0}.note{font-size:.95rem;overflow-wrap:anywhere}@media (prefers-color-scheme:dark){body{color:#e6edf3;background:#11161c}a{color:#8cc4ff}.count{color:#a9b6c4}.notice,.evidence,.note{color:#b4c0cc}.notice{background:#1b2430}.evidence{background:#161d26}details,th,td{border-color:#3a4757}}@media (max-width:40rem){body{margin:1rem auto;padding:0 .75rem}details{padding:.6rem .75rem}.evidence{padding:.6rem .75rem}th,td{padding:.35rem .3rem}}@media print{body{max-width:none;margin:0;color:#000;background:#fff}a{color:#000;text-decoration:none}.notice,.evidence{background:none}details{break-inside:avoid;border-color:#888}details::details-content{content-visibility:visible;display:block}summary{min-height:0}td a{min-height:0;line-height:inherit}}</style></head><body>
+<header><h1>JuTell 지도 — 이 프로젝트는 어떻게 생겼나요?</h1>
+<div class="notice"><p>이 지도는 파일 경로를 기준으로 묶은 안내입니다. 기능 이름과 역할은 지도 기준 추정이며, 화면·코드·데이터의 연결 및 실제 동작은 확인되지 않았습니다. 아래 시각은 마지막 지도 갱신 시각입니다. 최신성은 jutell status에서 확인하세요.</p>
+<p>모든 기능 공통: <strong>데이터 연결</strong>은 모름 — 지도는 파일끼리 데이터가 어떻게 이어지는지 보지 않아요. <strong>동작</strong>도 모름 — 파일 목록만으로는 잘 동작하는지 알 수 없어요. <strong>테스트 경로</strong>는 지도에 적힌 파일이고, 테스트를 실행하지 않아 통과했는지 몰라요.</p></div>
+<p class="note">마지막 갱신: 2026-10-24 20:00</p>
+</header><main>
+<h2 id="overview">한눈에 보기</h2>
+<table><caption class="note">기능 이름을 누르면 그 기능 카드로 가요.</caption>
+<thead><tr><th scope="col">기능</th><th scope="col">파일</th><th scope="col">화면</th><th scope="col">코드</th><th scope="col">테스트</th><th scope="col">기타</th></tr></thead><tbody>
+<tr><td><a href="#f-할-일-지도로-짐작">할 일 [지도로 짐작]</a></td><td>3</td><td>1</td><td>1</td><td>1</td><td>0</td></tr>
+<tr><td><a href="#f-로그인-지도로-짐작">로그인 [지도로 짐작]</a></td><td>1</td><td>0</td><td>1</td><td>0</td><td>0</td></tr>
+<tr><td><a href="#f-로그인-지도로-짐작-2">로그인 [지도로 짐작]</a></td><td>1</td><td>0</td><td>1</td><td>0</td><td>0</td></tr>
+<tr><td><a href="#f-아직-분류-안-된-파일">아직 분류 안 된 파일</a></td><td>1</td><td>0</td><td>0</td><td>0</td><td>1</td></tr>
+</tbody></table>
+<h2 id="cards">기능별 파일 목록 · 펼치면 경로를 볼 수 있어요</h2>
+<details id="f-할-일-지도로-짐작"><summary>할 일 [지도로 짐작]<span class="count">파일 3개</span></summary><div class="evidence"><p><strong>화면 경로</strong></p><ul class="files"><li>test-app/todo.html — 화면</li></ul><p><strong>코드 경로</strong></p><ul class="files"><li>src/todo/service.ts — 기능</li></ul><p><strong>테스트 경로</strong></p><ul class="files"><li>src/todo/service.test.ts — 테스트</li></ul><p class="note">내 메모: 할 일 앱</p></div></details>
+<details id="f-로그인-지도로-짐작"><summary>로그인 [지도로 짐작]<span class="count">파일 1개</span></summary><div class="evidence"><p><strong>화면 경로</strong>: 없음</p><p><strong>코드 경로</strong></p><ul class="files"><li>src/auth/login.ts — 기능</li></ul><p><strong>테스트 경로</strong>: 없음</p></div></details>
+<details id="f-로그인-지도로-짐작-2"><summary>로그인 [지도로 짐작]<span class="count">파일 1개</span></summary><div class="evidence"><p><strong>화면 경로</strong>: 없음</p><p><strong>코드 경로</strong></p><ul class="files"><li>src/auth2/login.ts — 기능</li></ul><p><strong>테스트 경로</strong>: 없음</p></div></details>
+<details id="f-아직-분류-안-된-파일"><summary>아직 분류 안 된 파일<span class="count">파일 1개</span></summary><div class="evidence"><p><strong>화면 경로</strong>: 없음</p><p><strong>코드 경로</strong>: 없음</p><p><strong>테스트 경로</strong>: 없음</p><p><strong>기타 경로</strong></p><ul class="files"><li>README.md — 문서</li></ul></div></details>
+</main>
+</body></html>
