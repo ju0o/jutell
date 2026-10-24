@@ -5,7 +5,7 @@ import net from 'node:net';
 import path from 'node:path';
 import { assets, codexScopedPaths, packageRoot, safeLocation, resolveScope as resolveGuiScope } from '../config/paths.js';
 import { claudeDetected, codexDetected, nodeMajorVersion, operatingSystem } from '../process/system.js';
-import { exists, parseSkillVersion, readBridgeConfig, readCodexRegistration, readText, readVersionInfo, FEATURE_IDS } from '../config/managed.js';
+import { exists, parseSkillVersion, readBridgeConfig, readCodexRegistration, readText, unreadableWarning, withReadOnlyReads, readVersionInfo, FEATURE_IDS } from '../config/managed.js';
 import { setupCommand } from './lifecycle.js';
 import { hasJuTellAgentsBlock, receiptCommandFor, writtenReceiptCommands } from '../installer/agents.js';
 import { differingSkillFiles } from '../installer/skill.js';
@@ -58,6 +58,17 @@ async function adminState(paths: ScopePaths) {
 }
 
 export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
+  const { result, unreadable } = await withReadOnlyReads(() => collectStatus(paths));
+  for (const { file, code } of unreadable) result.warnings.push(unreadableWarning(displayPath(paths, file), code));
+  return result;
+}
+
+function displayPath(paths: ScopePaths, file: string) {
+  const relative = path.relative(paths.targetRoot, file);
+  return relative && !relative.startsWith('..') && !path.isAbsolute(relative) ? relative : file;
+}
+
+async function collectStatus(paths: ScopePaths): Promise<StatusResult> {
   const config = await readBridgeConfig(paths);
   // Codex only reads MCP servers from its global config, so status always
   // checks that real file regardless of the invocation's scope (see
@@ -216,6 +227,15 @@ export async function loginShellJutellCheck(
 }
 
 export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]> {
+  const { result, unreadable } = await withReadOnlyReads(() => collectDoctorResults(paths));
+  for (const { file, code } of unreadable) {
+    const shown = displayPath(paths, file);
+    result.push({ name: `읽을 수 없는 파일: ${shown}`, status: '주의', detail: unreadableWarning(shown, code) });
+  }
+  return result;
+}
+
+async function collectDoctorResults(paths: ScopePaths): Promise<CheckResult[]> {
   const config = await readBridgeConfig(paths);
   const codexPaths = codexScopedPaths(paths);
   const registration = await readCodexRegistration(codexPaths, packageRoot(), config.config.mcp?.enabled === true);

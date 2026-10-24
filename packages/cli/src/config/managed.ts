@@ -1,6 +1,7 @@
 import { parse } from 'smol-toml';
 import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { writeViaTemp } from '../fs/atomic.js';
 import { assets } from './paths.js';
 import type { BridgeConfig, FileSnapshot, ScopePaths } from '../types.js';
@@ -97,11 +98,31 @@ export async function exists(file: string) {
   try { await fs.access(file); return true; } catch { return false; }
 }
 
+const readOnlyScope = new AsyncLocalStorage<Map<string, string>>();
+
+/**
+ * Runs a read-only command (status/doctor). Inside it, a file readText cannot read (EACCES, EISDIR, …)
+ * reads as missing and is recorded instead of throwing. Never wrap a command that writes: there a
+ * snapshot of an unreadable file must not become "did not exist" (see readText).
+ */
+export async function withReadOnlyReads<T>(run: () => Promise<T>): Promise<{ result: T; unreadable: Array<{ file: string; code: string }> }> {
+  const seen = new Map<string, string>();
+  const result = await readOnlyScope.run(seen, run);
+  return { result, unreadable: [...seen].map(([file, code]) => ({ file, code })) };
+}
+
+export function unreadableWarning(file: string, code: string) {
+  return `${file} 파일을 읽을 수 없어(${code}) 없는 것으로 보고 점검했어요. 파일 권한을 확인하세요. JuTell은 이 파일을 바꾸지 않았어요.`;
+}
+
 export async function readText(file: string) {
   // Only a missing file is "missing". Any other error (EACCES, EISDIR, …) is rethrown, so a
   // snapshot of an unreadable file never becomes "did not exist" and rollback never deletes it.
   try { return await fs.readFile(file, 'utf8'); } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === 'ENOENT') return undefined;
+    const scope = readOnlyScope.getStore();
+    if (scope) { scope.set(file, code ?? 'UNKNOWN'); return undefined; }
     throw error;
   }
 }
