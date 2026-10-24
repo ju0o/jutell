@@ -42,6 +42,11 @@ jobs:
         working-directory: packages/cli
         run: npx vitest run --exclude tests/cli.test.ts --exclude tests/default-command.test.ts
 
+      # ~4 s: npm pack -> install the tarball into a temp project -> jutell --help / doctor.
+      - name: packages/cli pack + install smoke
+        working-directory: packages/cli
+        run: node scripts/pack-install-smoke.mjs
+
       - name: packages/cli known-flaky tests (non-blocking)
         if: matrix.node == '22'
         continue-on-error: true

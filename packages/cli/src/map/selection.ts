@@ -409,22 +409,23 @@ export function sanitizeMapSelectionText(value: string) {
 }
 
 export function formatMapSelectionIndex(index: MapSelectionIndex) {
-  const rows = index.sections.map((section) => `- ${visibleText(section.name)} · ${section.pathCount === undefined ? '파일 수 모름' : `파일 ${section.pathCount}개`}${section.estimated ? ` ${ESTIMATED_LABEL}` : ''} · ID ${section.id}`);
+  const rows = index.sections.map((section) => `- ${visibleText(section.name)} · ${section.pathCount === undefined ? '파일 수 모름' : `파일 ${section.pathCount}개`}${section.estimated ? ` ${ESTIMATED_LABEL}` : ''}`);
   const scan = `${index.scan.source === 'git' ? 'Git 파일 목록' : '폴더 탐색'} · ${index.scan.fileCount}개${index.scan.truncated ? ' · 너무 많아 일부 빠졌을 수 있음' : ''}`;
   return [
-    `기능 목록 · 정리한 시각 ${localStamp(index.generatedAt)}${index.sourceMap.commit ? ` · 커밋 ${index.sourceMap.commit.slice(0, 7)}` : ''}`,
+    `기능 목록 · 정리한 시각 ${localStamp(index.generatedAt)}`,
     `파일 목록: ${scan}`,
     ...rows,
     '파일끼리의 연결, 실제 동작, 테스트 통과는 이 목록으로 알 수 없어요.',
-    '자세히 보기: `jutell map --show <ID 또는 이름 일부>`',
+    '자세히 보기: `jutell map --show <기능 이름 일부>`',
   ].join('\n');
 }
 
 /** Global source and scan metadata shown with the selected, section-local detail. */
-export function formatMapSelectionContext(index: MapSelectionIndex, entry: MapSectionEntry) {
+// IDs and commits are for the AI's files (map-index.json), not for people (dogfood #37).
+export function formatMapSelectionContext(index: MapSelectionIndex, _entry: MapSectionEntry) {
   const scan = `${index.scan.source === 'git' ? 'Git 파일 목록' : '폴더 탐색'} ${index.scan.fileCount}개${index.scan.truncated ? ' (일부 빠졌을 수 있음)' : ''}`;
   return [
-    `${index.sourceMap.path} 기준 · ${scan} · ID ${entry.id}${index.sourceMap.commit ? ` · 커밋 ${index.sourceMap.commit.slice(0, 7)}` : ''}`,
+    `${index.sourceMap.path} 기준 · ${scan}`,
     '지금 폴더와 다시 맞춰 보지 않았어요. 최신으로 하려면 `jutell map`을 실행하세요.',
     '',
   ].join('\n');

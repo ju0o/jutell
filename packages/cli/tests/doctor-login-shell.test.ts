@@ -31,7 +31,7 @@ if [ "$1" = "exec" ]; then
   [ "$5" = "$JUTELL_TEST_EXPECTED_ROOT" ] || exit 3
   [ "$6" = "--" ] && [ "$7" = "jutell" ] && [ "$8" = "--version" ] || exit 4
   [ -x "$5/node_modules/.bin/jutell" ] || exit 5
-  echo 2.1.0-dev
+  echo 2.1.0
   exit 0
 fi
 exit 1
@@ -40,7 +40,7 @@ exit 1
   if (withLocalJutell) {
     const localBin = path.join(project, 'node_modules', '.bin');
     await mkdir(localBin, { recursive: true });
-    await writeFile(path.join(localBin, 'jutell'), '#!/bin/sh\necho 2.1.0-dev\n', 'utf8');
+    await writeFile(path.join(localBin, 'jutell'), '#!/bin/sh\necho 2.1.0\n', 'utf8');
     await chmod(path.join(localBin, 'jutell'), 0o755);
     await writeFile(path.join(home, '.profile'), `export PATH="${npmBin}:$PATH"\n`, 'utf8');
   }
@@ -52,7 +52,7 @@ exit 1
   }
   const result = spawnSync(process.execPath, [cliEntry, 'doctor'], {
     cwd: project,
-    env: { HOME: home, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: home, PATH: `${npmBin}:/usr/bin:/bin`, JUTELL_TEST_EXPECTED_ROOT: project, NO_COLOR: '1', ...(shell ? { SHELL: shell } : {}) },
+    env: { HOME: home, USERPROFILE: home, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: home, PATH: `${npmBin}:/usr/bin:/bin`, JUTELL_TEST_EXPECTED_ROOT: project, NO_COLOR: '1', ...(shell ? { SHELL: shell } : {}) },
     encoding: 'utf8',
     timeout: 20000,
   });
@@ -114,7 +114,7 @@ describe.skipIf(process.platform === 'win32')('doctor checks jutell on the login
     const log = path.join(root, 'npm-args.txt');
     const localBin = path.join(project, 'node_modules', '.bin');
     await mkdir(localBin, { recursive: true });
-    await writeFile(path.join(localBin, 'jutell'), '#!/bin/sh\necho 2.1.0-dev\n', 'utf8');
+    await writeFile(path.join(localBin, 'jutell'), '#!/bin/sh\necho 2.1.0\n', 'utf8');
     await chmod(path.join(localBin, 'jutell'), 0o755);
     await writeFile(path.join(npmBin, 'npm'), `#!/bin/sh
 [ "$1" = "exec" ] && [ "$2" = "--offline" ] && [ "$3" = "--no" ] && [ "$4" = "--prefix" ] || exit 2
@@ -123,14 +123,14 @@ describe.skipIf(process.platform === 'win32')('doctor checks jutell on the login
 [ "$6" = "--" ] && [ "$7" = "jutell" ] && [ "$8" = "--version" ] || exit 5
 [ -x "$5/node_modules/.bin/jutell" ] || exit 6
 printf '%s\n%s\n' "$5" "$PWD" > "$JUTELL_TEST_LOG"
-echo 2.1.0-dev
+echo 2.1.0
 `, 'utf8');
     await chmod(path.join(npmBin, 'npm'), 0o755);
     await writeFile(path.join(home, '.profile'), `export PATH="${npmBin}:$PATH"\n`, 'utf8');
     // The test process cwd is the repository, while the login shell must run
     // from the explicitly supplied project path (which contains spaces).
     const result = await loginShellJutellCheck(true, {
-      HOME: home,
+      HOME: home, USERPROFILE: home,
       BEGINNER_BRIDGE_HOME: home,
       PATH: `${npmBin}:/usr/bin:/bin`,
       SHELL: '/bin/bash',
@@ -147,5 +147,17 @@ echo 2.1.0-dev
     expect(await runDoctor(true, '/bin/sh')).toContain('Codex가 명령을 실행하는 셸에서 jutell을 찾았습니다.');
     // A shell that cannot run proves $SHELL is used (bash would have found it).
     expect(await runDoctor(true, '/nonexistent/shell')).toContain('jutell을 찾지 못했어요');
+  });
+  it('shows only the fix for how JuTell is installed (#37: both fixes made the message long)', async () => {
+    const root = await realpath(await mkdtemp(path.join(os.tmpdir(), 'jutell-doctor-one-fix-')));
+    roots.push(root);
+    const env = { HOME: root, USERPROFILE: root, PATH: '/usr/bin:/bin', SHELL: '/bin/sh' };
+    const global = await loginShellJutellCheck(true, env, root);
+    expect(global.status).toBe('오류');
+    expect(global.detail).not.toContain('npm install --save-dev');
+    await mkdir(path.join(root, 'node_modules', 'jutell'), { recursive: true });
+    const local = await loginShellJutellCheck(true, env, root);
+    expect(local.detail).toContain('npm install --save-dev jutell');
+    expect(local.detail).not.toContain('PATH');
   });
 });

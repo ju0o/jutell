@@ -1,3 +1,4 @@
+import { isPristineJuTellGuidance } from '../../installer/agents.js';
 import { EXCLUDED_PATHSPECS, inExcludedFolder } from '../../map/scan.js';
 import { execFile } from 'node:child_process';
 import { constants as fsConstants, promises as fs } from 'node:fs';
@@ -9,6 +10,7 @@ import { normalizeReceipt, receiptMarkdown, renderReceipt } from './render.js';
 import { refreshMapForReceipt, RECEIPT_MAP_TIMEOUT_MS } from '../map.js';
 import { MAP_FILE } from '../../map/write.js';
 import { checkBeforeWork, RECEIPT_STATE_FILE } from './before.js';
+import { applyRulesWithoutFetch, rulesFetchedForThisWork } from './rules.js';
 import { matchRequests, readMapSections } from './match.js';
 import { mapAreaIds } from '../../map/selection.js';
 
@@ -165,10 +167,10 @@ function pathsFromStatus(stdout: string, projectPrefix: string): string[] {
     if (projectPrefix && !repoPath.startsWith(projectPrefix)) continue;
     const file = (projectPrefix ? repoPath.slice(projectPrefix.length) : repoPath).replace(/^\.\//, '');
     if (!file) continue;
-    // JuTell's own setup files are not the user's work; an untracked AGENTS.md/CLAUDE.md was created by JuTell.
+    // JuTell's own setup files are not the user's work. An untracked AGENTS.md/CLAUDE.md is dropped later only
+    // when it holds exactly JuTell's setup content (readChangedFiles); anything else is a sensitive change.
     if (file === '.jutell-local' || file.startsWith('.jutell-local/') || file === '.jutell.json') continue;
     if (file.startsWith('.agents/skills/beginner-bridge/') || file.startsWith('.claude/skills/beginner-bridge/')) continue;
-    if (status === '??' && (file === 'AGENTS.md' || file === 'CLAUDE.md')) continue;
     // Same rule as the map scan: untracked files in node_modules, dist, build… are not the user's work.
     // A tracked file there (committed on purpose) still counts.
     if (status === '??' && inExcludedFolder(file)) continue;
@@ -250,7 +252,12 @@ async function readChangedFiles(cwd: string): Promise<ChangedFiles> {
       runGit(cwd, ['--no-optional-locks', 'status', '--porcelain=v1', '-z', '--untracked-files=all', ...EXCLUDED_PATHSPECS]),
     ]);
     const onlyUntracked = untracked.split('\0').filter((field) => field.startsWith('?? ')).join('\0');
-    return { files: [...new Set([...pathsFromStatus(tracked, projectPrefix), ...pathsFromStatus(onlyUntracked, projectPrefix)])] };
+    const untrackedFiles = new Set(pathsFromStatus(onlyUntracked, projectPrefix));
+    const files = [...new Set([...pathsFromStatus(tracked, projectPrefix), ...untrackedFiles])];
+    const setupOnly = await Promise.all(files.map((file) => (untrackedFiles.has(file) && (file === 'AGENTS.md' || file === 'CLAUDE.md')
+      ? isPristineJuTellGuidance(path.join(cwd, file), file === 'CLAUDE.md' ? 'claude' : 'agents').catch(() => false)
+      : false)));
+    return { files: files.filter((_file, index) => !setupOnly[index]) };
   } catch (error) {
     return { files: [], unknownReason: gitFailureReason(error) };
   }
@@ -361,6 +368,13 @@ export async function receiptCommand(
   if (mapStep.note) receipt.mapNote = mapStep.note;
   receipt.filesUnknownReason = changedFiles.unknownReason;
   receipt.filesChecked = true;
+  // BLOCKER B (#37): the AI skipped get_beginner_report_rules in 1 of 5 runs. Read the MCP stamp before
+  // checkBeforeWork rewrites receipt-state.json; if this work did not fetch the rules, JuTell applies them.
+  const aiWrote = receipt.done.length > 0 || Boolean(receipt.summary);
+  if (aiWrote && paths.scope === 'project' && !(await rulesFetchedForThisWork(paths).catch(() => false))) {
+    // Silent: nothing aimed at the AI goes to any output a person may see (dogfood: it was pasted as-is).
+    applyRulesWithoutFetch(receipt);
+  }
   let beforeWork: string[] = [];
   if (!changedFiles.unknownReason) {
     // Make sure `.jutell-local` exists (same link checks as the receipt) so the state can be saved.
@@ -373,7 +387,7 @@ export async function receiptCommand(
   if ((receipt.asked?.length ?? 0) > 0 && !changedFiles.unknownReason) {
     const markdown = await fs.readFile(path.join(paths.targetRoot, MAP_FILE), { encoding: 'utf8', flag: fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) }).catch(() => undefined);
     // Files changed before the work stay in the comparison, marked, but never count as '바뀐 곳 있음' or '⚠ 요청에 없던 곳'.
-    receipt.match = markdown === undefined ? { map: false } : matchRequests(receipt.asked ?? [], receipt.files, readMapSections(markdown), beforeWork);
+    receipt.match = markdown === undefined ? { map: false } : matchRequests(receipt.asked ?? [], receipt.files, readMapSections(markdown), beforeWork, [...receipt.done, receipt.summary ?? ''], await projectDependencies(paths.targetRoot));
     if (markdown !== undefined && receipt.match.map && receipt.match.extra.length) {
       const ids = mapAreaIds(markdown);
       const extraAreas = Object.fromEntries(receipt.match.extra.flatMap((file) => (ids.has(file) ? [[file, ids.get(file)!]] : [])));
@@ -400,4 +414,20 @@ export async function recordReceiptBaseline(paths: ScopePaths): Promise<void> {
   // No safe .jutell-local (e.g. it is a link out of the project): record nothing.
   if (!(await prepareSafeReportsDirectory(paths).then(() => true, () => false))) return;
   await checkBeforeWork(paths, changed.files, undefined, 'setup').catch(() => undefined);
+}
+
+/** Dependency names in the project's package.json, so a request that names one links package.json (dogfood #37). */
+async function projectDependencies(root: string): Promise<string[]> {
+  try {
+    const text = await fs.readFile(path.join(root, 'package.json'), { encoding: 'utf8', flag: fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) });
+    if (text.length > 1_000_000) return [];
+    const json = JSON.parse(text) as Record<string, unknown>;
+    const names = ['dependencies', 'devDependencies', 'peerDependencies', 'optionalDependencies'].flatMap((key) => {
+      const value = json[key];
+      return value && typeof value === 'object' ? Object.keys(value as object) : [];
+    });
+    return [...new Set(names)];
+  } catch {
+    return [];
+  }
 }

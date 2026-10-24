@@ -24,7 +24,8 @@ if (process.platform !== 'win32') {
   chmodSync(path.join(bin, 'jutell'), 0o755);
   process.env.PATH = `${bin}${path.delimiter}${process.env.PATH ?? ''}`;
   const shell = path.join(bin, 'login-shell');
-  writeFileSync(shell, '#!/bin/sh\n[ "$1" = "-lc" ] && shift\nexec /bin/sh -c "$1"\n');
+  // Like a profile that puts the npm bin on PATH: tests that narrow PATH still find the fake jutell.
+  writeFileSync(shell, `#!/bin/sh\nPATH="${bin}:$PATH"; export PATH\n[ "$1" = "-lc" ] && shift\nexec /bin/sh -c "$1"\n`);
   chmodSync(shell, 0o755);
   process.env.SHELL = shell;
 }

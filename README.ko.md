@@ -26,6 +26,30 @@ npm install -g jutell
 jutell
 ```
 
+<!-- 관리자: 2.1.0이 npm에 올라가면 이 안내를 지우세요. -->
+> **2.1.0이 npm에 올라가기 전까지**: `npm install -g jutell`은 2.0.1을 설치해요. 2.1.0을 지금 쓰려면 소스에서 묶은 복사본을 설치하세요. **git**과 **Node.js 18 이상**이 필요해요.
+>
+> macOS / Linux:
+>
+> ```bash
+> git clone https://github.com/ju0o/jutell.git && cd jutell
+> (cd apps/mcp-server && npm ci) && (cd apps/local-admin && npm ci)
+> cd packages/cli && npm ci && npm pack && npm install -g ./jutell-*.tgz
+> ```
+>
+> Windows PowerShell (PowerShell은 npm에 `*`를 풀어 주지 않아서 파일 이름을 먼저 찾아요):
+>
+> ```powershell
+> git clone https://github.com/ju0o/jutell.git; cd jutell
+> cd apps/mcp-server; npm ci; cd ../local-admin; npm ci; cd ../../packages/cli
+> npm ci; npm pack
+> npm install -g (Get-ChildItem jutell-*.tgz).FullName
+> ```
+>
+> `jutell-*.tgz` 파일이 여러 개 생겼거나 PowerShell에서 빨간 오류가 나오면 거기서 멈추세요. `packages/cli`의 `jutell-*.tgz`를 모두 지운 뒤 `npm pack`을 한 번만 다시 실행해 그 파일 하나만 설치하세요.
+>
+> Linux에서 `npm install -g`가 `EACCES` 권한 오류로 실패하면 sudo 대신, npm 설치 위치를 홈 폴더로 바꾸거나(`npm config set prefix ~/.npm-global` 후 `~/.npm-global/bin`을 `PATH`에 추가) nvm으로 Node를 설치하세요.
+
 JuTell은 해당 폴더에 `AGENTS.md`, `.agents/`, `.jutell.json`, `.jutell-local/`을 만들거나
 업데이트합니다. Codex를 연결하면 `~/.codex/config.toml`에도 연결 설정을 추가합니다.
 
@@ -226,15 +250,27 @@ status`를 실행하세요. 문제가 보이면 `jutell doctor`가 다음에 할
 jutell status
 ```
 
-이제 막 설치했고 아직 연결하지 않은 실제 프로젝트는 짐작하지 않고 정직하게 이렇게
-보여줍니다.
+작은 연습 프로젝트에서 Codex만 설치된 채 `jutell --yes`를 실행한 직후의 실제 출력이에요(핵심 줄만 남김).
+AI 세션이 실제로 JuTell을 읽었는지는 여기서 볼 수 없으니 짐작하지 않고 "직접 확인 필요"라고 보여줍니다.
 
 ```text
-Skill: 설치되지 않음
-AGENTS.md: JuTell 블록 없음
-Codex MCP: 활성화됨 (전역, 이 프로젝트에서는 아직 사용 안 함)
-OpenCode MCP: 미등록
+$ jutell status
+JuTell 상태
+
+CLI: 2.1.0
+Skill: 설치됨
+AGENTS.md: JuTell 블록 있음
+JuTell 연결 정책: 켜짐
+Codex MCP (전역, Codex는 프로젝트 설정을 읽지 않음): 활성화됨 (명령 감지됨)
+OpenCode MCP: 미등록 (명령 미감지)
+Claude Code MCP (현재 프로젝트(local)): 미등록 (명령 미감지)
+MCP 서버 응답: 확인하지 않음
 현재 Agent 세션 적용: 직접 확인 필요
+Profile: balanced
+설치 범위 (설정·Skill·AGENTS.md): 현재 프로젝트
+Telemetry: 비활성화
+외부 전송: 없음
+지도: 지도가 최신이에요.
 ```
 
 "설정됨"과 "실제로 확인함"을 나누기 때문에, 아직 도구를 호출해 보지 않은 상태를 오류처럼
@@ -248,6 +284,111 @@ jutell doctor
 한 줄씩 점검하며, 각 줄을 정상·오류·직접 확인 필요로 표시합니다. 기본 출력에는 전체 경로나
 비밀 값을 보여주지 않습니다.
 
+## 처음 써 보는 분을 위한 실제 화면
+
+아래 화면은 모두 **실제로 실행해서 나온 그대로**입니다. 작은 연습용 Git 프로젝트(파일 5개)에서
+Codex만 깔린 환경으로 실행했어요. 날짜·시각·파일 이름은 여러분 컴퓨터에서 다르게 나옵니다.
+
+**한 줄 설치** — 터미널에 붙여 넣으세요. (Node.js 18 이상이 필요해요.)
+
+```bash
+npm install -g jutell && jutell
+```
+
+**처음 실행했을 때** (`jutell` 화면 중 일부):
+
+```text
+찾은 Coding Agent:
+
+Codex        찾음
+OpenCode     미감지
+Claude Code  미감지
+...
+JuTell을 지금 연결할까요? (Y/n)
+...
+JuTell 준비 완료.
+
+✓ Codex 연결됨
+
+새 Coding Agent 세션을 열고 평소처럼 사용하세요.
+...
+프로젝트 지도(JuTellMap.md)를 만들까요? 파일이 어디 있는지 기능별로 정리해요. (Y/n)
+프로젝트 지도(JuTellMap.md)를 만들었어요. 파일 7개, 분류 안 된 파일 4개.
+보기 쉬운 화면: .jutell-local/map.html
+```
+
+질문은 두 번 나와요: 연결할지, 그리고 프로젝트 지도를 만들지. 둘 다 Enter를 누르면 "예"예요.
+
+"준비 완료." 대신 **"JuTell 준비됨, 하나 확인 필요."**가 나오면, 바로 위 ⚠ 줄을 읽어 보세요. 대부분은
+Codex가 `jutell` 명령을 찾지 못하는 경우라 `jutell doctor`가 고치는 법을 한 가지 알려 줘요.
+
+영수증은 AI가 알아서 만들어요. 작업이 끝나면 AI 답 맨 위에 붙어 나오니 `jutell receipt`를 직접 칠 필요는 없어요.
+
+이미 연결된 뒤 `jutell`을 다시 치면 상태만 짧게 보여 줘요. 관리 화면은 `jutell dashboard`로 브라우저에서 열어요. 꺼 두었거나 고칠 게 있으면 터미널에서 다시 켤지 물은 뒤 관리 화면이 브라우저로 열려요.
+
+**프로젝트 지도 예시** — 프로젝트 폴더에 생기는 `JuTellMap.md`의 앞부분입니다. AI가 "로그인 고쳐 줘" 같은
+말을 어느 파일과 연결할지 이 지도를 보고 정합니다. `[지도로 짐작]`은 파일 이름으로 짐작했다는 뜻이고,
+설명은 마음대로 고쳐도 됩니다. (아래는 실제로 만든 지도이고, 파일 안의 자동 칸 표시 줄만 생략했어요.)
+
+```text
+# JuTell 지도 — 이 프로젝트는 어떻게 생겼나요?
+표와 목록은 JuTell이 자동으로 다시 채워요. 설명 글은 마음대로 고쳐도 되지만, 숨은 칸 표시(HTML 주석)는 지우지 마세요.
+마지막 갱신: 2026-10-24 14:17 (UTC+0) · 파일 7개 · 분류 안 된 파일 4개 · 목록 기준 Git 파일 목록
+
+## 할 일 [지도로 짐작]
+- src/api/todos.ts — 기능
+- src/components/TodoList.tsx — 화면
+
+## 로그인 [지도로 짐작]
+- src/pages/Login.tsx — 화면
+
+## 아직 분류 안 된 파일
+설명: 아래 줄을 원하는 기능 칸으로 옮기면, 다음부터 그 칸에 둡니다.
+- .jutell.json — 설정
+- AGENTS.md — 문서
+- README.md — 문서
+- package.json — 설정
+```
+
+`jutell map --list`로 터미널에서도 볼 수 있어요.
+
+**작업 영수증 예시** — AI가 "로그인 버튼을 파란색으로" 작업을 끝낸 뒤 만든 영수증입니다.
+`[AI가 적음]`은 AI가 스스로 한 말, `[Git 기준]`은 JuTell이 실제 파일 변화를 보고 확인한 것이에요.
+둘이 다르면 Git 기준을 믿으세요. `ⓘ` 줄은 JuTell이 덧붙인 안내라 `[JuTell이 적음]`이 붙어요.
+(아래는 임시 프로젝트에서 `jutell --yes`와 `jutell receipt`를 실제로 실행한 출력입니다.)
+
+```text
+==============================
+  JuTell 작업 영수증
+  2026-10-24 14:17
+==============================
+[요청 대조]  요청 1개 중 1개 바뀐 곳 있음  [Git 기준 · 지도 대조]
+ 1. 로그인 버튼을 파란색으로  [AI가 적음]
+    → 바뀐 곳 있음: src/pages/Login.tsx  [Git 기준 · 지도: 로그인]
+
+[이번에 한 작업]  [AI가 적음]
+ 1. 로그인 버튼을 파란색으로 바꿨어요
+
+[바뀐 파일]  [Git 기준]
+ 1. src/pages/Login.tsx
+
+[확인]  [AI가 적음 · JuTell이 적은 줄은 따로 표시]
+ ✔ 직접 확인한 것: Login.tsx에 파란색 클래스가 들어간 것을 확인  [AI가 적음]
+ ✔ 직접 확인한 것: `npm test` 실행해서 3개 통과  [AI가 적음]
+ ✖ 확인 못 한 것: 브라우저 화면은 열어 보지 않음  [AI가 적음]
+ ⓘ 위 테스트·명령 결과는 AI가 알려 준 내용이에요. JuTell이 직접 돌려 보지는 않았어요  [JuTell이 적음]
+------------------------------
+[다음 추천]  [AI가 적음]
+ ○ 추천  [AI가 적음]
+   - 브라우저에서 색이 맞는지 직접 봐 주세요  [AI가 적음]
+------------------------------
+ 저장됨: .jutell-local/reports/2026-10-24-141734.md  [JuTell이 적음]
+==============================
+한 줄 요약: 로그인 버튼을 파란색으로 바꿨어요  [AI가 적음] · 요청 1개 중 1개 처리  [Git 기준]
+```
+
+영수증은 `.jutell-local/reports/` 폴더에 파일로도 남습니다.
+
 ## 문제가 생겼나요?
 
 | 이런 경우 | 이렇게 해 보세요 |
@@ -255,8 +396,11 @@ jutell doctor
 | Agent를 찾지 못함 | 지원되는 Coding Agent를 설치하고 열어 본 뒤 `jutell`을 다시 실행하세요. |
 | 연결에 실패함 | `jutell doctor`를 실행하고 안내를 따르세요. |
 | 한 Agent를 다시 연결하고 싶음 | `jutell`을 다시 실행하거나, 아래 고급 수동 연결 명령을 사용하세요. |
-| JuTell을 끄고 싶음 | `jutell off`를 실행하세요. 설정과 로컬 작업 기록은 남습니다. |
-| JuTell을 지우고 싶음 | `jutell uninstall`을 실행하세요. `--remove-data`를 직접 추가하지 않는 한 로컬 데이터는 남습니다. |
+| JuTell을 끄고 싶음 | `jutell off --yes`를 실행하세요. MCP 연결을 끄고, 설정과 `.jutell-local`의 기록(작업 영수증·지도·Beta Journal 하루 작업 기록)은 남겨요. |
+| JuTell을 지우고 싶음 | `jutell uninstall --yes`를 실행하세요. `--remove-data`를 직접 추가하지 않는 한 로컬 데이터는 남습니다. |
+| 무엇이 잘못됐는지 모르겠음 | `jutell doctor`를 실행하세요. 줄마다 `정상`·`주의`·`오류`가 붙고, `오류` 줄에 고치는 방법이 바로 적혀 있습니다. |
+| 영수증이 안 생김 / "jutell 명령을 찾을 수 없음"(command not found) | `jutell doctor`의 "Codex에서 jutell 명령 찾기" 줄을 보세요. 전역 설치(`-g`)라면 안내대로 PATH 한 줄을 넣고 터미널과 Agent를 다시 여세요. 프로젝트에만 설치했다면 `npm exec --offline --no -- jutell receipt`처럼 앞에 `npm exec --offline --no --`를 붙이면 됩니다. npm workspaces의 멤버 폴더라면 `npm exec --offline --no --prefix . -- jutell receipt`처럼 `--prefix .`를 붙여 그 멤버 폴더에서 실행하세요(작업 공간 루트에서 실행하면 루트가 대상이 됩니다). 나중에 설치 방식을 바꿨다면(프로젝트 안 ↔ 컴퓨터 전체) doctor가 `주의`로 알려 주고, 프로젝트 폴더에서 `jutell --yes`를 한 번 더 실행하면 AGENTS.md/CLAUDE.md의 영수증 명령이 지금 설치에 맞게 고쳐집니다("…영수증 명령을 지금 설치에 맞게 고쳤어요"). |
+| 지웠는데 파일이 남아 있음 | 정상입니다. `jutell uninstall --yes`는 설정(`.jutell.json`), 작업 기록·영수증(`.jutell-local/`), 지도(`JuTellMap.md`)를 일부러 남기고 화면에 "남겨 둔 것"으로 알려 줍니다. 모두 지우려면 `jutell uninstall --remove-data --yes` 뒤 `JuTellMap.md`를 직접 지우세요. Codex 연결은 모든 프로젝트가 함께 쓰므로 `jutell uninstall --global --yes`로 따로 지웁니다. |
 | Ubuntu/Linux에서 설치 중 `EACCES`/권한 오류가 남 | [Ubuntu/Linux 설치 권한 오류](docs/CLI_INSTALLATION.md)를 확인하세요. `sudo npm install -g jutell`은 피하세요. |
 
 ## JuTell이 하는 일과 하지 않는 일
@@ -289,7 +433,7 @@ JuTell은 여러분 컴퓨터에 이미 있는 파일·Git·명령 결과를 바
 
 ## 최신 소식
 
-**`jutell@2.1.0-dev`**는 `main`의 출시 후보이며 아직 npm에 공개되지 않음 상태입니다. npm 최신
+**`jutell@2.1.0`**은 다음 릴리스예요(아직 npm에 공개되지 않음). npm 최신
 버전은 `jutell@2.0.1`입니다. 이제 작업이 끝난 뒤뿐 아니라 시작하기 전에도
 돕습니다. 프로젝트 사실을 먼저 확인하고, 진짜 결정만 물으며, 확인됨 / 예상 / 미확인을 섞지
 않습니다.
@@ -300,6 +444,19 @@ JuTell은 여러분 컴퓨터에 이미 있는 파일·Git·명령 결과를 바
 
 ## 설치·제어·고급 명령
 
+### Agent별로 직접 연결하기 (Codex · Claude Code · OpenCode)
+
+보통은 `jutell` 한 번이면 컴퓨터에 있는 Agent를 찾아 알아서 연결합니다. 하나만 골라 다시 연결하고 싶을 때
+프로젝트 폴더에서 아래 중 하나를 실행하세요. 연결한 뒤에는 그 Agent에서 **새 대화**를 열어야 적용됩니다.
+
+| Agent | 명령 | 알아 둘 점 |
+|---|---|---|
+| Codex (권장) | `jutell use codex` | Codex는 연결 정보를 모든 프로젝트가 함께 쓰는 `~/.codex/config.toml`에서 읽어서, 그 파일에 JuTell 연결 한 부분만 넣습니다. 다른 설정은 건드리지 않아요. |
+| Claude Code (베타) | `jutell use claude` | Claude Code 설정 파일(`~/.claude.json`) 안의 이 프로젝트 칸에만 연결합니다. |
+| OpenCode (베타) | `jutell use opencode` | 이 프로젝트 폴더의 `opencode.json`에 연결합니다. |
+
+연결이 됐는지는 `jutell doctor`에서 `Codex MCP` / `Claude Code MCP` / `OpenCode MCP` 줄이 `정상`인지 보면 됩니다.
+
 ### 자주 쓰는 명령
 
 | 명령 | 하는 일 |
@@ -307,7 +464,7 @@ JuTell은 여러분 컴퓨터에 이미 있는 파일·Git·명령 결과를 바
 | `jutell` | 설치된 지원 Agent를 찾아 연결할지 물어봅니다. |
 | `jutell status` | 설치·연결·Profile·Feature 상태를 보여줍니다. |
 | `jutell doctor` | 설치 문제를 점검합니다. |
-| `jutell on` / `jutell off` | JuTell 연결을 켜거나 끕니다. |
+| `jutell on` / `jutell off --yes` | JuTell 연결을 켜거나 끕니다(`off`는 터미널에서는 먼저 묻고, 물을 수 없으면 `--yes` 없이는 진행하지 않아요). |
 | `jutell setup` | Skill·기본 설정·MCP 연결을 다시 준비합니다. |
 | `jutell provider` | Agent별 연결 상태를 자세히 보여줍니다. |
 | `jutell upgrade` | 설치된 Skill/설정/MCP를 최신 버전으로 새로고침합니다. |
@@ -323,7 +480,7 @@ CLI가 만들어 주는 프로젝트의 `.jutell.json`으로 보고 방식을 �
 않습니다.
 
 npm이 아니라 저장소 소스를 직접 검증하는 기여자라면 `packages/cli`에서 `npm pack`을
-실행했을 때 `jutell-2.1.0-dev.tgz`가 만들어집니다. 일반 사용자는 이 경로가 필요 없습니다.
+실행했을 때 `jutell-2.1.0.tgz`가 만들어집니다. 일반 사용자는 이 경로가 필요 없습니다.
 
 기여자용 문서: [Changelog](CHANGELOG.md) · [문서 지도](docs/DOCUMENTATION_MAP.md) ·
 [OpenCode 연결](docs/PROVIDER_OPENCODE.md) ·

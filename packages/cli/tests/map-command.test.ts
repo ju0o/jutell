@@ -25,7 +25,7 @@ async function project(name = 'proj', files = ['src/auth/login.ts', 'src/payment
     await fs.writeFile(path.join(dir, file), 'x');
   }
   execFileSync('git', ['init', '-q'], { cwd: dir });
-  const env = { ...process.env, HOME: home, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: home, JUTELL_NO_FUNDING: '1' };
+  const env = { ...process.env, HOME: home, USERPROFILE: home, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: home, JUTELL_NO_FUNDING: '1' };
   const run = (...args: string[]) => spawnSync(process.execPath, [cliEntry, ...args], { cwd: dir, env, encoding: 'utf8', timeout: 30000 });
   return { dir, run, paths: resolveScope('project', dir) };
 }
@@ -47,7 +47,7 @@ describe('map HTML (W3)', () => {
     expect(html).toContain(`content="default-src 'none'; style-src 'unsafe-inline'"`);
     expect(html).not.toMatch(/<script|<link|<iframe|<img|\ssrc=|href="https?:|url\(|@import/i);
     expect(html).not.toMatch(/<a\s|\shref=/i);
-    expect(html).toContain('<h2>파일 분류 인덱스');
+    expect(html).toContain('<h2>기능별 파일 목록');
     expect(html).toContain('<details><summary>로그인<span class="count">파일 1개 · 화면 0 · 코드 1 · 테스트 0 · 기타 0</span></summary>');
     expect(html).toContain('데이터 연결</strong> · 모름');
     expect(html).toContain('통과했는지 몰라요');
@@ -55,7 +55,7 @@ describe('map HTML (W3)', () => {
 
   it('keeps file paths behind the index and labels grouping and verification limits', () => {
     const html = renderMapHtml('# 지도\n## 로그인 [지도 기준 추정]\n- src/auth/Login.tsx — 화면\n- src/auth/login.test.ts — 테스트\n');
-    expect(html.indexOf('파일 분류 인덱스')).toBeLessThan(html.indexOf('src/auth/Login.tsx'));
+    expect(html.indexOf('기능별 파일 목록')).toBeLessThan(html.indexOf('src/auth/Login.tsx'));
     expect(html).toContain('화면 1 · 코드 0 · 테스트 1');
     expect(html).toContain('기능 이름과 역할은 지도 기준 추정');
     expect(html).toContain('데이터 연결</strong> · 모름');
@@ -93,7 +93,11 @@ describe('jutell map (W3)', () => {
     const { run } = await project();
     expect(run('map', '--nope').status).not.toBe(0);
     expect(run('map', '--help').stdout).toContain('jutell map');
-    expect(run('map', '--help').stdout).toContain('jutell map --show <ID 또는 이름 일부>');
+    expect(run('map', '--help').stdout).toContain('jutell map --show <기능 이름 일부>');
+    // No argument: usage, not an error (dogfood #37).
+    const bare = run('map', '--show');
+    expect(bare.status).toBe(0);
+    expect(bare.stdout).toContain('사용법: jutell map --show <기능 이름 일부>');
   });
 
   it('works in a Korean path with spaces', async () => {
@@ -147,14 +151,17 @@ describe('jutell map (W3)', () => {
     const shown = run('map', '--show', login!.id);
     await fs.rename(movedMap, fullMapFile);
     expect(list.status).toBe(0);
-    expect(list.stdout).toContain(login!.id);
-    expect(list.stdout).toContain('파일 4개');
-    expect(list.stdout).toContain('jutell map --show <ID 또는 이름 일부>');
+    // IDs and commits are for the AI's files only (dogfood #37).
+    expect(list.stdout).not.toContain(login!.id);
+    expect(list.stdout).not.toMatch(/커밋 [0-9a-f]{7}|ID f-/);
+    expect(list.stdout).toContain('- 로그인 · 파일 4개');
+    expect(list.stdout).toContain('jutell map --show <기능 이름 일부>');
     expect(list.stdout).toContain('파일 목록: Git 파일 목록');
     expect(list.stdout).not.toContain('src/auth/LoginForm.tsx');
     expect(shown.status).toBe(0);
     expect(shown.stdout).toContain('src/auth/LoginForm.tsx');
     expect(shown.stdout).toContain(`${MAP_FILE} 기준 · Git 파일 목록`);
+    expect(shown.stdout).not.toMatch(/커밋 [0-9a-f]{7}|ID f-/);
     expect(shown.stdout).toContain('지금 폴더와 다시 맞춰 보지 않았어요.');
     expect(shown.stdout).not.toMatch(/SHA-256|선택 단면|라이브 파일|<!--/);
     expect(list.stdout).not.toMatch(/SHA-256|단면/);
@@ -257,11 +264,19 @@ describe('"지도 오래됨" in doctor and status: one rule, the file LIST (dogf
     const { dir, paths } = await project();
     await writeMap(paths);
     await fs.rm(path.join(dir, 'index.js'));
-    expect((await mapFreshnessCheck(paths))?.detail).toBe('지도 오래됨: 지도에 없는 없어진 파일 1개(index.js). `jutell map`으로 갱신하세요.');
+    expect((await mapFreshnessCheck(paths))?.detail).toBe('지도 오래됨: 지도에는 있지만 폴더에서 없어진 파일 1개(index.js). `jutell map`으로 갱신하세요.');
     await fs.rename(path.join(dir, 'src', 'payments', 'refund.ts'), path.join(dir, 'src', 'payments', 'refund2.ts'));
     const detail = (await mapFreshnessCheck(paths))?.detail ?? '';
     expect(detail).toContain('새 파일 1개(src/payments/refund2.ts)');
     expect(detail).toContain('없어진 파일 2개');
+  });
+
+  it('jutell on/off adding or removing its own AGENTS.md does not make the map out of date (dogfood #37)', async () => {
+    const { dir, paths } = await project();
+    await fs.writeFile(path.join(dir, 'AGENTS.md'), '# rules');
+    await writeMap(paths);
+    await fs.rm(path.join(dir, 'AGENTS.md'));
+    expect(await mapFreshnessCheck(paths)).toMatchObject({ status: '정상', detail: '지도가 최신이에요.' });
   });
 
   it('records the file list in map-state.json (version 2); an old version-1 state falls back to the map lines', async () => {

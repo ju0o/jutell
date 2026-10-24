@@ -35,7 +35,8 @@ export type ReceiptInput = {
 export const RECEIPT_SECTIONS = ['[요청 대조]', '[이번에 한 작업]', '[바뀐 파일]', '[확인]', '[다음 추천]'] as const;
 export const NEXT_GROUPS = [' ▶ 계속', ' ○ 추천', ' ■ 여기서 멈춰도 됨'] as const;
 export const NOTHING_NEXT_LINE = ' 여기서 멈춰도 됩니다 – 따로 추천할 다음 작업이 없어요';
-export const DEFAULT_SUMMARY = '요청한 작업을 마쳤어요.';
+// No AI summary or work list (e.g. a person ran `jutell receipt` by hand): never claim the work is done.
+export const DEFAULT_SUMMARY = 'AI가 작업 설명을 주지 않아 Git이 본 변경만 적었어요.';
 export const SUMMARY_PREFIX = '한 줄 요약: ';
 export const MATCH_SECTION = RECEIPT_SECTIONS[0];
 export const LABEL_GIT = '[Git 기준]';
@@ -48,6 +49,8 @@ export const LABEL_MATCH = '[Git 기준 · 지도 대조]';
 export const LABEL_JUTELL = '[JuTell이 적음]';
 /** Shown only when a check or a done item mentions a test or a command (item 2). */
 export const HANJA_NOTE = ` ⓘ AI가 적은 글에 한자가 섞여 있어요. 뜻이 헷갈리면 AI에게 쉬운 우리말로 다시 써 달라고 하세요  ${LABEL_JUTELL}`;
+/** [확인] heading label when JuTell's own ⓘ line sits under it, so the AI label never seems to cover JuTell's line. */
+export const LABEL_CHECK_MIXED = '[AI가 적음 · JuTell이 적은 줄은 따로 표시]';
 export const AI_RESULTS_NOTE = ` ⓘ 위 테스트·명령 결과는 AI가 알려 준 내용이에요. JuTell이 직접 돌려 보지는 않았어요  ${LABEL_JUTELL}`;
 // A run record: a command name as a whole word (not 'test-app' or 'npm-debug.log'), or a run word plus a
 // result word ('테스트 통과'). A line that says it was NOT run ('실행하지 않음') never counts.
@@ -91,6 +94,26 @@ function isAbsolutePath(value: string): boolean {
   return value.startsWith('/') || value.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(value);
 }
 
+/**
+ * Secret values never reach the receipt (Reviewer #37): `KEY=value` / `token: value` for secret-looking names,
+ * Bearer headers, private key blocks, and well-known token shapes are replaced with [비밀값].
+ */
+const SECRET_ASSIGNMENT = /\b([A-Za-z0-9_.-]*(?:api[_-]?key|secret|token|passw(?:or)?d|pwd|private[_-]?key|access[_-]?key|credential)[A-Za-z0-9_.-]*)(\s*[=:]\s*)(["']?)[^\s"'`,;]+\3/gi;
+const SECRET_SHAPES = [
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?(?:-----END [A-Z ]*PRIVATE KEY-----|$)/g,
+  /\bBearer\s+[A-Za-z0-9._~+/=-]{8,}/gi,
+  /\b(?:sk|pk|rk)-[A-Za-z0-9_-]{16,}/g,
+  /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{20,}|\bgithub_pat_[A-Za-z0-9_]{20,}/g,
+  /\bxox[abposr]-[A-Za-z0-9-]{10,}/g,
+  /\bA(?:KIA|SIA)[0-9A-Z]{16}\b/g,
+  /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g,
+];
+export function maskSecretValues(value: string): string {
+  let text = value.replace(SECRET_ASSIGNMENT, (_match, key: string, sep: string) => `${key}${sep}[비밀값]`);
+  for (const shape of SECRET_SHAPES) text = text.replace(shape, '[비밀값]');
+  return text;
+}
+
 function maskAbsolutePaths(value: string): string {
   const boundary = /(^|[\s("'`=\[,;])/g;
   const pathPattern = /\/(?:[^/\s"'`<>|?*]+(?:\/[^/\s"'`<>|?*]+)*)?|[A-Za-z]:[\\/](?:[^\\/\s"'`<>|?*]+(?:[\\/][^\\/\s"'`<>|?*]+)*)?|\\\\[^\\/\s"'`<>|?*]+[\\/][^\\/\s"'`<>|?*]+(?:[\\/][^\\/\s"'`<>|?*]+)*/g;
@@ -116,7 +139,7 @@ function readText(value: unknown, label: string): string {
   if (rawCommandPattern.test(spansAllowed ? cleaned.replace(/`[^`\n]+`/g, ' ') : cleaned)) {
     return fail(`명령어를 그대로 쓰지 말고, 무엇을 확인했는지 쉬운 말로 써 주세요: ${label}`);
   }
-  return limitText(maskAbsolutePaths(cleaned.trim()));
+  return limitText(maskSecretValues(maskAbsolutePaths(cleaned.trim())));
 }
 
 function readTextArray(value: unknown, label: string, max: number): string[] {
@@ -192,18 +215,19 @@ function readMatch(value: unknown, askedCount: number): ReceiptMatch | undefined
     if (!isRecord(item)) return undefined;
     if (item.status === 'unplaced') items.push({ status: 'unplaced' });
     else if (item.status === 'unchanged') items.push({ status: 'unchanged', features: readNames(item.features), ...readBefore(item.before) });
-    else if (item.status === 'changed') items.push({ status: 'changed', features: readNames(item.features), files: readFileNames(item.files), ...readBefore(item.before) });
+    else if (item.status === 'changed') items.push({ status: 'changed', features: readNames(item.features), files: readFileNames(item.files), ...readBefore(item.before), ...(item.via === 'file' || item.via === 'context' || item.via === 'sensitive' ? { via: item.via } : {}) });
     else return undefined;
   }
   const extraBefore = readFileNames(value.extraBefore ?? []);
   const extra = readFileNames(value.extra ?? []);
+  const sensitiveNamed = readFileNames(value.sensitiveNamed ?? []);
   const areas = isRecord(value.extraAreas)
     ? Object.fromEntries(extra.flatMap((file) => {
       const id = (value.extraAreas as Record<string, unknown>)[file];
       return typeof id === 'string' && /^f-[a-f0-9]{12}$/.test(id) ? [[file, id]] : [];
     }))
     : {};
-  return { map: true, items, extra, ...(extraBefore.length ? { extraBefore } : {}), ...(Object.keys(areas).length ? { extraAreas: areas } : {}) };
+  return { map: true, items, extra, ...(sensitiveNamed.length ? { sensitiveNamed } : {}), ...(extraBefore.length ? { extraBefore } : {}), ...(Object.keys(areas).length ? { extraAreas: areas } : {}) };
 }
 
 function readBefore(value: unknown): { before?: string[] } {
@@ -235,22 +259,23 @@ function matchLines(receipt: ReceiptInput, asked: string[], askedMore: number, s
   const lines = [`${MATCH_SECTION}  요청 ${asked.length}개 중 ${parts.join(' · ')}  ${LABEL_MATCH}`];
   match.items.forEach((item, index) => {
     lines.push(` ${index + 1}. ${asked[index]}  ${LABEL_AI}`);
-    if (item.status === 'changed') lines.push(`    → 바뀐 곳 있음: ${shortList(item.files)}  [Git 기준 · 지도: ${item.features.join(', ')}]`);
+    if (item.status === 'changed') lines.push(`    → 바뀐 곳 있음: ${shortList(item.files)}  ${item.via === 'context' ? '[추정 · AI 설명 기준]' : item.via === 'sensitive' ? '[Git 기준 · 요청에 적힌 민감 파일]' : `[Git 기준 · ${item.features.length ? `지도: ${item.features.join(', ')}` : '파일 이름으로 찾음'}]`}`);
     else if (item.status === 'unchanged') lines.push(`    → 바뀐 곳 없음: '${item.features.join(', ')}' 파일이 바뀌지 않았어요  [Git 기준 · 지도: ${item.features.join(', ')}]`);
     else lines.push(`    → 장소를 못 찾았어요(지도에 맞는 기능이 없어요)  ${LABEL_ESTIMATE}`);
     if (item.status !== 'unplaced' && item.before?.length) lines.push(`    ${BEFORE_WORK_MARK} 바뀌어 있던 파일: ${shortList(item.before)}  ${LABEL_GIT}`);
   });
   lines.push(...more);
   // Each file the map lists carries its area ID, so the user can find it in the map (`jutell map --show`).
-  const withArea = (file: string) => (match.extraAreas?.[file] ? `${file} [${match.extraAreas[file]}]` : file);
-  if (match.extra.length) lines.push(` ⚠ 요청에 없던 곳도 바뀜: ${shortList(match.extra.map(withArea))}  ${LABEL_GIT}`);
+  // Map area ids ([f-…]) mean nothing to the person reading: file names only (dogfood #37).
+  if (match.sensitiveNamed?.length) lines.push(` ⚠ 민감 파일 바뀜: ${shortList(match.sensitiveNamed)} (요청에 적혀 있음 · AI가 적음)`);
+  if (match.extra.length) lines.push(` ⚠ 요청에 없던 곳도 바뀜: ${shortList(match.extra)}  ${LABEL_GIT}`);
   if (match.extraBefore?.length) lines.push(` ${BEFORE_WORK_MARK} 바뀌어 있던 요청 밖 파일: ${shortList(match.extraBefore)}  ${LABEL_GIT}`);
   return [...lines, ...tail];
 }
 
 function cleanFileName(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
-  const text = limitText(maskAbsolutePaths(value.replace(controlCharacters, '')));
+  const text = limitText(maskSecretValues(maskAbsolutePaths(value.replace(controlCharacters, ''))));
   return text.length > 0 ? text : undefined;
 }
 
@@ -278,7 +303,7 @@ function cleanReceiptText(value: unknown): string | undefined {
   const withoutBackticks = text.replace(/`/g, '');
   // Keep the sentence (e.g. a test result) and show each command part as a code span instead of dropping it.
   text = rawCommandPattern.test(withoutBackticks) ? markCommandSpans(withoutBackticks) : withoutBackticks;
-  text = maskAbsolutePaths(text).trim();
+  text = maskSecretValues(maskAbsolutePaths(text)).trim();
   return text ? limitText(text) : undefined;
 }
 
@@ -434,7 +459,7 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
     `  ${time}`,
     '==============================',
     ...(asked.length > 0 ? matchLines(receipt, asked, askedMore, saysButNoFiles) : []),
-    `${RECEIPT_SECTIONS[1]}  ${LABEL_AI}`,
+    `${RECEIPT_SECTIONS[1]}  ${receipt.done.length ? LABEL_AI : LABEL_JUTELL}`,
     ...renderList(receipt.done, (item, index) => ` ${index + 1}. ${item}`, ' 없음'),
     ...(asked.length === 0 && saysButNoFiles ? [`${SAYS_BUT_NO_FILES}  ${LABEL_GIT}`] : []),
     '',
@@ -451,12 +476,13 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
     ] : []),
     ...(asked.length === 0 && receipt.mapNote ? [` ${receipt.mapNote}`, ''] : []),
     // Every line carries its own source label (dogfood: [확인], ' ○ 추천' and '- …' lines had none).
-    `${RECEIPT_SECTIONS[3]}  ${LABEL_AI}`,
+    // Every line in [확인] written by JuTell (dogfood #37): the heading says so, not 'AI가 적음'.
+    `${RECEIPT_SECTIONS[3]}  ${receipt.checks.length > 0 && receipt.checks.every((check) => check.result !== '확인함' && check.jutell === true) ? LABEL_JUTELL : mentionsRun || hasHanja || receipt.checks.some((check) => check.result !== '확인함' && check.jutell === true) ? LABEL_CHECK_MIXED : LABEL_AI}`,
     ...renderList(
       receipt.checks,
       (check) => check.result === '확인함'
         ? ` ✔ 직접 확인한 것: ${check.what}${check.how ? ` (${check.how})` : ''}  ${LABEL_AI}`
-        : ` ✖ 확인 못 한 것: ${check.what}${check.reason ? ` (${check.reason})` : ''}${check.jutell ? '' : `  ${LABEL_AI}`}`,
+        : ` ✖ 확인 못 한 것: ${check.what}${check.reason ? ` (${check.reason})` : ''}  ${check.jutell ? LABEL_JUTELL : LABEL_AI}`,
       ` ✔ 직접 확인한 것: 없음  ${LABEL_AI}`,
     ),
     // '확인 못 한 것' is never left out: with nothing unchecked it says so explicitly.

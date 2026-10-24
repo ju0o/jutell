@@ -28,7 +28,7 @@ describe('`jutell --yes` makes the map in every project (dogfood fix)', () => {
       await fs.writeFile(path.join(dir, 'test-app', 'todo.html'), '<h1>할 일 목록</h1>');
       execFileSync('git', ['init', '-q'], { cwd: dir });
     }
-    const env = { ...process.env, HOME: home, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: home, JUTELL_NO_FUNDING: '1', PATH: `${bin}${path.delimiter}${process.env.PATH ?? ''}` };
+    const env = { ...process.env, HOME: home, USERPROFILE: home, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: home, JUTELL_NO_FUNDING: '1', PATH: `${bin}${path.delimiter}${process.env.PATH ?? ''}` };
     const run = (cwd: string) => spawnSync(process.execPath, [cliEntry, '--yes', '--no-funding'], { cwd, env, encoding: 'utf8', timeout: 30000 });
     const map = (dir: string) => path.join(dir, 'JuTellMap.md');
     const html = (dir: string) => path.join(dir, '.jutell-local', 'map.html');

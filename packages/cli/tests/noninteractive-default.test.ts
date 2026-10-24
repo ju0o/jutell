@@ -32,10 +32,13 @@ describe('non-interactive default command', () => {
     const fakeCodex = path.join(bin, 'codex');
     await writeFile(fakeCodex, '#!/bin/sh\nprintf "codex 0.1.0\\n"\n', 'utf8');
     await chmod(fakeCodex, 0o755);
+    // Windows runs `codex` through cmd.exe, which needs a .cmd file instead of a sh script.
+    await writeFile(path.join(bin, 'codex.cmd'), '@echo codex 0.1.0\r\n', 'utf8');
 
     const env = {
       ...process.env,
       HOME: home,
+      USERPROFILE: home, // os.homedir() reads this on Windows
       BEGINNER_BRIDGE_HOME: home,
       CODEX_HOME: path.join(home, '.codex'),
       CLAUDE_CONFIG_DIR: home,

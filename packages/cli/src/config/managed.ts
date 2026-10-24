@@ -335,7 +335,8 @@ function hasJuTellMcpEvidence(content: string, key: string) {
   // JuTell's server always contains `assets/mcp-server` or `apps/mcp-server` in args (see buildMcpBlock)
   // Unrelated custom entries (e.g. jira, other, even a custom `jutell` pointing to `not-mcp-server.js`) do not –
   // this prevents broadly adopting arbitrary unmarked MCP entries.
-  return /(?:assets|apps)[\\/]mcp-server/i.test(slice);
+  // Windows paths may be written TOML-escaped (`assets\\mcp-server` in the file), so accept `/`, `\` or an escaped `\\`.
+  return /(?:assets|apps)(?:\\\\|[\\/])mcp-server/i.test(slice);
 }
 
 function extractField(block: string | undefined, field: 'command' | 'args') {
@@ -630,7 +631,7 @@ export async function removeMcp(paths: ScopePaths, packageRoot: string) {
 
 export async function readVersionInfo() {
   const content = await readText(assets().version);
-  const fallback = { cli: '2.1.0-dev', skill: '확인 필요', mcp: '0.1.0', admin: '0.1.0' };
+  const fallback = { cli: '2.1.0', skill: '확인 필요', mcp: '0.1.0', admin: '0.1.0' };
   if (!content) return fallback;
   try { return JSON.parse(content) as { cli: string; skill: string; mcp: string; admin: string }; } catch { return fallback; }
 }

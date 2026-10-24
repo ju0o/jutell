@@ -10,6 +10,7 @@ import { NEXT_GROUPS, NOTHING_NEXT_LINE, RECEIPT_SECTIONS, normalizeReceipt, ren
 import { resolveScope } from '../src/config/paths.js';
 import { run } from '../src/cli.js';
 import { ensureBridgeConfig } from '../src/installer/config.js';
+import { ensureJuTellAgentsBlock } from '../src/installer/agents.js';
 import { ensureDataRoot } from '../src/config/managed.js';
 import type { CliIo, ScopePaths } from '../src/types.js';
 
@@ -118,7 +119,7 @@ describe('receipt renderer', () => {
       next: { continue: [], nice: [], stop: [] },
     }, timestamp);
     const headings = [
-      '[이번에 한 작업]  [AI가 적음]',
+      '[이번에 한 작업]  [JuTell이 적음]',
       '[확인]  [AI가 적음]',
       '[다음 추천]',
       ' 여기서 멈춰도 됩니다 – 따로 추천할 다음 작업이 없어요  [JuTell이 적음]',
@@ -131,7 +132,7 @@ describe('receipt renderer', () => {
     expect(output).not.toContain('[요청 대조]');
     expect(output).not.toContain('[바뀐 파일]');
     expect(output).not.toMatch(/- 없음/);
-    expect(lines.at(-1)).toBe('한 줄 요약: 요청한 작업을 마쳤어요.  [JuTell이 적음]');
+    expect(lines.at(-1)).toBe('한 줄 요약: AI가 작업 설명을 주지 않아 Git이 본 변경만 적었어요.  [JuTell이 적음]');
   });
 
   it('rejects unsupported results, missing detail, and status fields', () => {
@@ -352,6 +353,7 @@ describe('receipt command', () => {
     await fs.writeFile(defaultInput, JSON.stringify({ ...sample, status: '확인 완료' }), 'utf8');
 
     expect(await runInProject(['receipt'])).toBe(0);
+    // No MCP rules stamp: JuTell applies the rules itself, silently (#37 BLOCKER B + dogfood).
     expect(errors).toEqual([]);
     expect(output[0]).toContain('[이번에 한 작업]');
 
@@ -427,7 +429,8 @@ describe('receipt command', () => {
     await fs.mkdir(path.join(paths.targetRoot, '.agents', 'skills', 'beginner-bridge'), { recursive: true });
     await fs.writeFile(path.join(paths.targetRoot, '.agents', 'skills', 'beginner-bridge', 'SKILL.md'), 'x\n', 'utf8');
     await fs.writeFile(path.join(paths.targetRoot, '.jutell.json'), '{}\n', 'utf8');
-    await fs.writeFile(path.join(paths.targetRoot, 'AGENTS.md'), 'x\n', 'utf8');
+    // An untracked AGENTS.md is hidden only when it holds exactly JuTell's setup content (Reviewer #37).
+    await ensureJuTellAgentsBlock(paths.targetRoot);
     const stdin = new PassThrough();
     stdin.end(JSON.stringify({ done: ['한 일'] }));
 
@@ -503,7 +506,8 @@ describe('receipt command', () => {
       'a --force b.txt',
       'back`tick.txt',
       '확인 완료.md',
-      'a -> b.txt',
+      // Windows forbids `>` in file names, so the rename-marker name only exists on macOS/Linux.
+      ...(process.platform === 'win32' ? [] : ['a -> b.txt']),
       '한글 공백 파일.txt',
     ];
     for (const name of names) {

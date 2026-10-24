@@ -1,7 +1,9 @@
 import { stdin } from 'node:process';
 import { dashboardCommand } from './dashboard.js';
 import { enableCommand } from './lifecycle.js';
-import { getStatus } from './status.js';
+import { getStatus, loginShellJutellCheck } from './status.js';
+import { readBridgeConfig } from '../config/managed.js';
+import { codexDetected } from '../process/system.js';
 import { useCommand } from './use.js';
 import { assets } from '../config/paths.js';
 import { refreshStaleReceiptCommands } from '../installer/agents.js';
@@ -190,7 +192,7 @@ export async function defaultCommand(paths: ScopePaths, options: CliOptions, io:
     // auto-launch the dashboard (JUTELL-V1.X-AUTO-SETUP-FOUNDATION-01B): the
     // user asked to connect, not to open a local browser/server session.
     // `jutell dashboard` remains the explicit, unchanged, opt-in way to do that.
-    io.write(connectedSummaryMessage(providerRuntimeStatuses(await getStatus(paths))));
+    await writeReady(paths, io, connectedSummaryMessage(providerRuntimeStatuses(await getStatus(paths))));
     await offerMap(paths, options, io, stdin.isTTY === true);
     await recordReceiptBaseline(paths).catch(() => undefined);
     return { cancelled: false };
@@ -200,7 +202,7 @@ export async function defaultCommand(paths: ScopePaths, options: CliOptions, io:
     io.write('JuTell 연결이 일부 준비되지 않았습니다.\nSkill, AGENTS.md, AI Agent Provider 연결 준비를 안전하게 확인할 수 있습니다.');
     if (options.yes || stdin.isTTY !== true || process.stdout.isTTY !== true) {
       await enableCommand(paths, { ...options, yes: true, oneCommand: true }, io);
-      io.write(readyMessage(await getStatus(paths)));
+      await writeReady(paths, io, readyMessage(await getStatus(paths)));
       // A new project: --yes makes the map, a person at a terminal is asked (supervisor decision 2).
       if (options.yes || stdin.isTTY === true) await offerMap(paths, options, io, stdin.isTTY === true);
       await recordReceiptBaseline(paths).catch(() => undefined);
@@ -221,7 +223,7 @@ export async function defaultCommand(paths: ScopePaths, options: CliOptions, io:
   // Every detected provider is already connected and nothing needs repair -
   // this is a repeat run, not onboarding. Keep it minimal: no wizard, no
   // dashboard auto-launch, just a status line and a pointer to --help.
-  io.write(alreadyConfiguredMessage(statuses));
+  await writeReady(paths, io, alreadyConfiguredMessage(statuses));
   if (paths.scope === 'project') {
     const fixed = await refreshStaleReceiptCommands(paths.targetRoot).catch(() => [] as string[]);
     if (fixed.length) io.write(`JuTell 설치 방식이 바뀌어 ${fixed.join('·')}의 영수증 명령을 지금 설치에 맞게 고쳤어요.`);
@@ -231,4 +233,29 @@ export async function defaultCommand(paths: ScopePaths, options: CliOptions, io:
   if (options.yes || stdin.isTTY === true) await offerMap(paths, options, io, stdin.isTTY === true);
   await recordReceiptBaseline(paths).catch(() => undefined);
   return { cancelled: false };
+}
+
+/**
+ * '준비 완료' must not hide what `jutell doctor` calls an error (dogfood #37: a non-default global npm
+ * folder is not on Codex's login-shell PATH, so receipts cannot run). Same check as doctor, one short line.
+ */
+export const CODEX_CANNOT_RUN_JUTELL = '⚠ Codex가 jutell 명령을 찾지 못해 작업 영수증을 만들 수 없어요. 고치는 법은 `jutell doctor`에 있어요.';
+export const READY_WITH_WARNING = 'JuTell 준비됨, 하나 확인 필요';
+export const AGENT_READY_WITH_WARNING = '⚠ AI Agent 연결됨, 영수증 명령은 아직 못 찾음 (위 경고 참고)';
+async function codexCannotRunJutell(paths: ScopePaths): Promise<boolean> {
+  if (process.platform === 'win32' || paths.scope !== 'project' || !codexDetected()) return false;
+  const { config } = await readBridgeConfig(paths).catch(() => ({ config: undefined }));
+  if (config?.features.receiptReport === false) return false;
+  const check = await loginShellJutellCheck(true, process.env, paths.targetRoot).catch(() => undefined);
+  return check?.status === '오류';
+}
+/** The warning comes first, and with a warning the message never says '준비 완료' (dogfood #37). */
+async function writeReady(paths: ScopePaths, io: CliIo, message: string): Promise<void> {
+  for (const line of readyOutput(message, await codexCannotRunJutell(paths))) io.write(line);
+}
+export function readyOutput(message: string, codexWarning: boolean): string[] {
+  // With a warning no line may claim the Agent side is fully ready (Reviewer #37 follow-up).
+  return codexWarning
+    ? [CODEX_CANNOT_RUN_JUTELL, message.replace('JuTell 준비 완료', READY_WITH_WARNING).replace('✓ AI Agent 연결 준비 완료', AGENT_READY_WITH_WARNING)]
+    : [message];
 }

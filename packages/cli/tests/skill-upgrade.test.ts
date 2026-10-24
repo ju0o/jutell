@@ -18,7 +18,7 @@ async function tempProject() {
   const home = path.join(root, 'home');
   const project = path.join(root, 'project');
   await Promise.all([home, project].map((dir) => fs.mkdir(dir, { recursive: true })));
-  const env = { ...process.env, HOME: home, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: home, JUTELL_NO_FUNDING: '1' };
+  const env = { ...process.env, HOME: home, USERPROFILE: home, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: home, JUTELL_NO_FUNDING: '1' };
   return { root, home, project, env };
 }
 

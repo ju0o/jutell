@@ -26,7 +26,7 @@ async function makeEnv() {
   await chmod(fakeCodex, 0o755);
   const env = {
     ...process.env,
-    HOME: home,
+    HOME: home, USERPROFILE: home,
     BEGINNER_BRIDGE_HOME: home,
     CODEX_HOME: path.join(home, '.codex'),
     CLAUDE_CONFIG_DIR: home,

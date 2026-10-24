@@ -11,8 +11,8 @@ import type { CliIo, ScopePaths } from '../types.js';
 import { MAP_HTML_FILE } from '../map/html.js';
 
 export const MAP_HELP = `jutell map             전체 지도, 작은 인덱스, 기능 상세 파일과 .jutell-local/map.html을 만들거나 갱신합니다.
-jutell map --list      작은 기계 인덱스에서 기능 이름과 ID만 읽습니다.
-jutell map --show <ID 또는 이름 일부>  기능 하나의 상세만 봅니다.
+jutell map --list      기능 이름 목록만 봅니다.
+jutell map --show <기능 이름 일부>  기능 하나의 상세만 봅니다.
 jutell map --git-exclude  지도를 이 컴퓨터에서만 git에서 뺍니다(.git/info/exclude, .gitignore는 그대로).
 jutell map --git-include  뺀 것을 되돌립니다.`;
 
@@ -26,6 +26,8 @@ async function recordGitExclude(paths: ScopePaths, value: boolean) {
 
 export { writeMapHtml };
 
+const JUTELL_GUIDANCE_FILE = /^(AGENTS\.md|CLAUDE\.md|\.agents\/skills\/beginner-bridge\/.*)$/;
+
 export async function mapCommand(paths: ScopePaths, args: string[], io: CliIo) {
   if (args.includes('--help') || args.includes('-h')) { io.write(MAP_HELP); return 0; }
   if (args[0] === '--list') {
@@ -35,16 +37,17 @@ export async function mapCommand(paths: ScopePaths, args: string[], io: CliIo) {
     return 0;
   }
   if (args[0] === '--show') {
-    if (args.length < 2) throw new Error('사용법: jutell map --show <ID 또는 이름 일부>');
+    if (args.length < 2) { io.write('사용법: jutell map --show <기능 이름 일부>\n기능 이름은 `jutell map --list`에서 볼 수 있어요.'); return 0; }
     let id = args.slice(1).join(' ').trim();
     if (!/^f-[a-f0-9]{12}$/.test(id)) {
       // Keyword search over feature names in the small index (never the full map).
       const { index } = await readMapSelectionIndex(paths);
       const word = id.toLowerCase();
-      const found = index.sections.filter((section) => section.name.toLowerCase().includes(word));
+      const exact = index.sections.filter((section) => section.name.toLowerCase() === word);
+      const found = exact.length === 1 ? exact : index.sections.filter((section) => section.name.toLowerCase().includes(word));
       if (!found.length) throw new Error(`'${id}'${subjectParticle(id)} 들어간 기능 이름이 없어요. \`jutell map --list\`로 목록을 확인하세요.`);
       if (found.length > 1) {
-        io.write([`'${id}'${subjectParticle(id)} 들어간 기능이 ${found.length}개예요. 하나를 골라 ID로 다시 보세요.`, ...found.map((section) => `- ${sanitizeMapSelectionText(section.name)} · ID ${section.id}`)].join('\n'));
+        io.write([`'${id}'${subjectParticle(id)} 들어간 기능이 ${found.length}개예요. 하나를 골라 이름 전체로 다시 보세요.`, ...found.map((section) => `- ${sanitizeMapSelectionText(section.name)}`)].join('\n'));
         return 0;
       }
       id = found[0].id;
@@ -99,7 +102,9 @@ export async function staleMapFiles(paths: ScopePaths): Promise<{ exists: boolea
   }
   const before = new Set(recorded);
   const now = new Set(current);
-  return { exists: true, added: current.filter((file) => !before.has(file)), removed: recorded.filter((file) => !now.has(file)) };
+  // jutell on/off add and remove its own guidance files; that alone does not make the map out of date (dogfood #37).
+  const own = (file: string) => JUTELL_GUIDANCE_FILE.test(file);
+  return { exists: true, added: current.filter((file) => !before.has(file) && !own(file)), removed: recorded.filter((file) => !now.has(file) && !own(file)) };
 }
 
 /** doctor/status line: "주의" when files were added or deleted since the map was synced; never an error (exit code stays 0). */
@@ -119,10 +124,10 @@ export async function mapFreshnessCheck(paths: ScopePaths) {
     }
     const list = (files: string[]) => `${files.slice(0, 3).join(', ')}${files.length > 3 ? ' 등' : ''}`;
     const parts = [
-      stale.added.length ? `새 파일 ${stale.added.length}개(${list(stale.added)})` : '',
-      stale.removed.length ? `없어진 파일 ${stale.removed.length}개(${list(stale.removed)})` : '',
+      stale.added.length ? `지도에 없는 새 파일 ${stale.added.length}개(${list(stale.added)})` : '',
+      stale.removed.length ? `지도에는 있지만 폴더에서 없어진 파일 ${stale.removed.length}개(${list(stale.removed)})` : '',
     ].filter(Boolean);
-    return { name, status: '주의' as const, detail: `지도 오래됨: 지도에 없는 ${parts.join(', ')}${selection.length ? ` · 기능 목록: ${selection.join(' · ')}` : ''}. \`jutell map\`으로 갱신하세요.` };
+    return { name, status: '주의' as const, detail: `지도 오래됨: ${parts.join(', ')}${selection.length ? ` · 기능 목록: ${selection.join(' · ')}` : ''}. \`jutell map\`으로 갱신하세요.` };
   } catch {
     return { name, status: '직접 확인 필요' as const, detail: '지도를 확인하지 못했어요.' };
   }

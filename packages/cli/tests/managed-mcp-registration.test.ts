@@ -44,6 +44,8 @@ async function scopePaths(dir: string): Promise<ScopePaths> {
 
 const FAKE_PACKAGE_ROOT = '/opt/fake-jutell-package';
 const USER_PROJECT_TABLE = '[projects."X"]\ntrust_level = "trusted"\n';
+/** Same form buildMcpBlock writes (tomlString): forward slashes, JSON-quoted. */
+const tomlPath = (value: string) => JSON.stringify(value.replaceAll('\\', '/'));
 const OTHER_MCP_TABLE = '[mcp_servers.other]\ncommand = "/usr/bin/other-mcp"\nargs = ["--keep"]\nenabled = true\n';
 
 async function writeConfig(dir: string, content: string) {
@@ -305,7 +307,7 @@ describe('registerMcp - canonical Codex MCP registration currency (managed block
 
     expect(await backupExists(dir)).toBe(true); // a rewrite did happen, and it was backed up first
     const finalContent = await readConfig(dir);
-    expect(finalContent).toContain(`command = ${JSON.stringify(process.execPath)}`);
+    expect(finalContent).toContain(`command = ${tomlPath(process.execPath)}`);
     expect(finalContent).not.toContain('C:/Program Files/nodejs/node.exe');
     expect(countCanonicalHeaders(finalContent)).toBe(1); // no leftover duplicate table
     expect(result.canonicalUpToDate).toBe(true);
@@ -349,7 +351,7 @@ describe('registerMcp - canonical Codex MCP registration currency (managed block
 
     const finalContent = await readConfig(dir);
     expect(countCanonicalHeaders(finalContent)).toBe(1); // the old bare table must not survive alongside the new managed one
-    expect(finalContent).toContain(`command = ${JSON.stringify(process.execPath)}`);
+    expect(finalContent).toContain(`command = ${tomlPath(process.execPath)}`);
     expect(finalContent).toContain('# JUTELL_CLI_MCP_BEGIN');
   });
 
@@ -407,7 +409,7 @@ describe('registerMcp - canonical Codex MCP registration currency (managed block
     // manages the canonical `jutell` key, never legacy `beginner_bridge`.
     expect(finalContent).toContain(legacyBlock);
     // And the canonical key was still correctly added alongside it.
-    expect(finalContent).toContain(`command = ${JSON.stringify(process.execPath)}`);
+    expect(finalContent).toContain(`command = ${tomlPath(process.execPath)}`);
     expect(countCanonicalHeaders(finalContent)).toBe(1);
   });
 
@@ -711,5 +713,26 @@ describe('registerMcp and removeMcp - final TOML validation', () => {
     await expect(removeMcp(paths, FAKE_PACKAGE_ROOT)).rejects.toThrow('유효하지 않은 TOML');
 
     expect(await readConfig(dir)).toBe(original);
+  });
+});
+
+describe('hasJuTellMcpEvidence accepts TOML-escaped Windows paths (any OS)', () => {
+  it('recognizes an unmarked jutell entry whose args use escaped backslashes', async () => {
+    const paths = await scopePaths(await mkdtemp());
+    const winArgs = JSON.stringify('C:\\Users\\me\\AppData\\Roaming\\npm\\node_modules\\jutell\\assets\\mcp-server\\index.js');
+    await fs.writeFile(paths.codexConfigFile, `[mcp_servers.jutell]\ncommand = "C:\\\\Program Files\\\\nodejs\\\\node.exe"\nargs = [${winArgs}]\n`);
+    const registration = await readCodexRegistration(paths, FAKE_PACKAGE_ROOT, true);
+    expect(registration.registered).toBe(true);
+    expect(registration.conflict).toBe(false);
+  });
+  it('still treats an unrelated escaped Windows path as not JuTell', async () => {
+    const paths = await scopePaths(await mkdtemp());
+    await fs.writeFile(paths.codexConfigFile, `[mcp_servers.jutell]\ncommand = "node"\nargs = [${JSON.stringify('C:\\tools\\not-mcp-server.js')}]\n`);
+    expect((await readCodexRegistration(paths, FAKE_PACKAGE_ROOT, true)).conflict).toBe(true);
+  });
+  it('the block JuTell writes matches the tomlString form the tests expect', () => {
+    const block = buildMcpBlock({ scope: 'global' } as ScopePaths, 'C:\\pkg\\jutell', true);
+    expect(block).toContain(`command = ${tomlPath(process.execPath)}`);
+    expect(block).toContain('C:/pkg/jutell/');
   });
 });

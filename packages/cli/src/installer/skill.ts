@@ -136,7 +136,8 @@ export async function differingSkillFiles(source: string, destination: string) {
     const [want, have] = await Promise.all([fs.readFile(path.join(source, relative)), fs.readFile(path.join(destination, relative)).catch(() => undefined)]);
     if (!have || !have.equals(want)) differing.push(relative);
   }
-  return differing;
+  // Same text on every OS: '/' separators and a fixed order (Windows lists folders case-insensitively).
+  return differing.map((file) => file.replaceAll('\\', '/')).sort();
 }
 
 /** Plain lines for the user about refreshed guide files (empty when nothing was replaced). */

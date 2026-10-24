@@ -11,7 +11,8 @@ const roots: string[] = [];
 async function writeInBatches(files: string[]) {
   for (let index = 0; index < files.length; index += 256) await Promise.all(files.slice(index, index + 256).map((file) => fs.writeFile(file, '')));
 }
-afterAll(async () => { await Promise.all(roots.map((root) => fs.rm(root, { recursive: true, force: true }))); });
+// Deleting the 10k-file trees is slow on Windows runners; allow more than the 10 s default.
+afterAll(async () => { await Promise.all(roots.map((root) => fs.rm(root, { recursive: true, force: true }))); }, 120_000);
 
 async function project(name = 'proj') {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-map-'));
@@ -74,7 +75,8 @@ describe('map scanner (W1)', () => {
     expect(scan.files).toHaveLength(WALK_MAX_FILES);
   }, 60000);
 
-  it('removes control characters from file names', async () => {
+  // Windows cannot create file names with control characters (ESC) at all, so there is nothing to strip there.
+  it.skipIf(process.platform === 'win32')('removes control characters from file names', async () => {
     const root = await project();
     await write(root, ['bad\u001b[31mname.ts', 'rtl\u202eevil.ts']);
     expect((await scanProject(root)).files).toEqual(['bad[31mname.ts', 'rtlevil.ts']);

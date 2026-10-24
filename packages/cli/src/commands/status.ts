@@ -86,7 +86,7 @@ export async function getStatus(paths: ScopePaths): Promise<StatusResult> {
   if (opencode.legacyRegistered && !opencode.canonicalRegistered) warnings.push('OpenCode에 이전 beginner_bridge 항목만 있습니다. jutell use opencode 를 실행하면 보존하면서 새 jutell 항목을 추가합니다.');
   if (config.config.mcp?.enabled && !anyProviderRegistered) warnings.push('MCP 연결 정책은 켜져 있지만 Codex·OpenCode·Claude Code 어느 Provider에도 JuTell MCP가 등록되지 않았습니다. jutell use <agent> 를 실행해 주세요.');
   if (config.config.mcp?.enabled && anyProviderRegistered && !anyProviderEnabled) warnings.push('연결 정책(.jutell.json)은 켜져 있지만 새 세션에서 자동 시작할 활성 Provider 항목이 없습니다. jutell use <agent> 를 실행해 주세요.');
-  if (!config.config.mcp?.enabled && anyProviderEnabled) warnings.push('연결 정책(.jutell.json)은 꺼져 있지만 Provider 자동 시작은 켜져 있습니다. 일치시키려면 jutell use <agent> 또는 jutell off을 실행해 주세요.');
+  if (!config.config.mcp?.enabled && anyProviderEnabled) warnings.push('연결 정책(.jutell.json)은 꺼져 있지만 Provider 자동 시작은 켜져 있습니다. jutell off 뒤라면 정상이에요: Codex 연결은 다른 프로젝트와 함께 쓰는 전역 설정이라 남아 있어요. 모든 프로젝트에서 끄려면 jutell disable --global, 다시 켜려면 jutell use <agent>를 실행하세요.');
   return {
     cliVersion: versions.cli,
     skillVersion: skillInstalled ? (parseSkillVersion(installedSkillText) ?? versions.skill) : '설치되지 않음',
@@ -135,7 +135,9 @@ export async function statusCommand(paths: ScopePaths, options: CliOptions, io: 
   io.write(`JuTell 상태\n\nCLI: ${status.cliVersion}\nSkill: ${status.skillInstalled ? '설치됨' : '설치되지 않음'}\nAGENTS.md: ${status.agentsManaged ? 'JuTell 블록 있음' : 'JuTell 블록 없음'}\nJuTell 연결 정책: ${status.mcpEnabled ? '켜짐' : '꺼짐'}\nCodex MCP (전역, Codex는 프로젝트 설정을 읽지 않음): ${codexLabel}${status.codexDetected ? ` (명령 ${codexDetectedLabel})` : ''}\nOpenCode MCP: ${opencodeLabel}${status.opencode.enabled ? ' (새 세션 자동 시작 켜짐)' : ''}${status.opencodeDetected ? '' : ` (명령 ${opencodeDetectedLabel})`}\nClaude Code MCP (${claudeScopeNote}): ${claudeLabel}${status.claudeDetected ? '' : ` (명령 ${claudeDetectedLabel})`}\nMCP 서버 응답: ${actual}\n현재 Agent 세션 적용: 직접 확인 필요\nProfile: ${status.profile}\n활성 Feature: ${status.activeFeatureCount}개\n설치 범위 (설정·Skill·AGENTS.md): ${status.installationScope === 'global' ? '사용자 전역' : '현재 프로젝트'}\n로컬 관리자: ${status.localAdmin}\n로컬 사용량 카운터: ${status.usageCountersEnabled ? '켜짐' : '꺼짐'}\nTelemetry: ${status.telemetry}\n외부 전송: ${status.externalTransmission}\n설정 위치: ${status.configLocation}`);
   for (const warning of status.warnings) io.write(`주의: ${warning}`);
   const map = await mapFreshnessCheck(paths);
+  // Always one map line in a project (dogfood #37): fresh, missing, or the stale warning.
   if (map?.status === '주의') io.write(`주의: ${map.detail}`);
+  else if (map) io.write(`지도: ${map.detail}`);
   return status;
 }
 
@@ -187,7 +189,11 @@ export async function loginShellJutellCheck(
   const globalFix = prefix
     ? `전역 설치를 쓰면 ${profile} 파일 맨 아래에 이 한 줄을 넣고 터미널과 Codex를 다시 여세요: export PATH="${path.join(prefix, 'bin')}:$PATH"`
     : `전역 설치를 쓰면 jutell이 들어 있는 폴더를 ${profile}의 PATH에 넣고 터미널과 Codex를 다시 여세요.`;
-  const fix = `프로젝트 로컬 설치를 쓰려면 프로젝트 루트에서 npm install --save-dev jutell 후 npm exec --offline --no --prefix "<프로젝트 루트>" -- jutell doctor 를 실행하세요. ${globalFix}`;
+  // Show only the fix for how JuTell is installed here (dogfood #37: both fixes made the message long).
+  const localInstall = await fs.lstat(path.join(path.resolve(projectRoot), 'node_modules', 'jutell')).then(() => true, () => false);
+  const fix = localInstall
+    ? '이 프로젝트에 설치된 JuTell을 쓰고 있어요. 프로젝트 폴더에서 npm install --save-dev jutell 을 다시 실행한 뒤 jutell doctor 로 확인하세요.'
+    : globalFix.replace('전역 설치를 쓰면 ', '');
   return {
     name,
     status: receiptReport ? '오류' : '주의',

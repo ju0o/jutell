@@ -48,7 +48,8 @@ describe('map readability (dogfood fix)', () => {
     const { dir, paths } = await project();
     await writeMap(paths, NOW);
     const lines = (await read(path.join(dir, MAP_FILE))).split('\n');
-    expect(MAP_GUIDE).toBe('<!-- --> 로 된 줄은 JuTell이 자동으로 고치는 자리 표시예요. 지우지 말고, 설명은 마음대로 고쳐도 돼요.');
+    expect(MAP_GUIDE).toBe('표와 목록은 JuTell이 자동으로 다시 채워요. 설명 글은 마음대로 고쳐도 되지만, 숨은 칸 표시(HTML 주석)는 지우지 마세요.');
+    expect(MAP_GUIDE).not.toContain('<!--');
     expect(lines.indexOf(MAP_GUIDE)).toBe(1);
     expect(lines.indexOf(MAP_GUIDE)).toBeLessThan(lines.findIndex((line) => line.startsWith('<!-- jutell:auto')));
   });
@@ -169,11 +170,12 @@ describe('map write (W2)', () => {
     expect(await read(file)).not.toContain(stamp(LATER));
   });
 
-  it('map.html shows the guide line with its literal "<!-- -->" (escaped), while real marker comments stay hidden', async () => {
+  it('map.html shows the guide line (no literal HTML comment), while real marker comments stay hidden', async () => {
     const { dir, paths } = await project();
     await writeMap(paths, NOW);
     const html = renderMapHtml(await read(path.join(dir, MAP_FILE)));
-    expect(html).toContain('&lt;!-- --&gt; 로 된 줄은 JuTell이');
+    expect(html).toContain('표와 목록은 JuTell이 자동으로');
+    expect(html).not.toContain('&lt;!--');
     expect(html).not.toContain('jutell:auto');
   });
 
@@ -476,7 +478,7 @@ describe('install question (W2)', () => {
     const home = path.join(path.dirname(dir), 'home');
     await fs.mkdir(home, { recursive: true });
     execFileSync('git', ['init', '-q'], { cwd: dir });
-    const env = { ...process.env, HOME: home, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: home, JUTELL_NO_FUNDING: '1' };
+    const env = { ...process.env, HOME: home, USERPROFILE: home, BEGINNER_BRIDGE_HOME: home, CODEX_HOME: path.join(home, '.codex'), CLAUDE_CONFIG_DIR: home, JUTELL_NO_FUNDING: '1' };
     const result = spawnSync(process.execPath, [cliEntry, 'setup', '--yes'], { cwd: dir, env, encoding: 'utf8', timeout: 30000 });
     expect(result.status).toBe(0);
     expect(result.stdout).toContain('프로젝트 지도(JuTellMap.md)를 만들었어요.');

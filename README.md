@@ -2,6 +2,11 @@
 
 **English** | [한국어](README.ko.md)
 
+[![CI](https://github.com/ju0o/jutell/actions/workflows/ci.yml/badge.svg)](https://github.com/ju0o/jutell/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/jutell.svg)](https://www.npmjs.com/package/jutell)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![node: >=18](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org)
+
 ## Tell your agent what you mean. Understand what it did.
 
 For people who can tell a coding agent what they want, but don't want to read code or logs just to
@@ -12,6 +17,116 @@ know whether it actually worked.
 ![OpenCode: Beta](https://img.shields.io/badge/OpenCode-Beta-yellow)
 
 ![Tell your agent what you mean. Understand what it did — before work, JuTell checks project facts and asks one question if it matters; after work, it separates verified from not-checked-yet.](docs/assets/readme/hero-report.svg)
+
+**Install in one line** (inside your project folder):
+
+```bash
+npm install -g jutell && jutell
+```
+
+<!-- Maintainers: delete this note once 2.1.0 is published to npm. -->
+> **Until 2.1.0 is on npm**: `npm install -g jutell` gives 2.0.1. To try 2.1.0 now, install a packed copy from source. You need **git** and **Node.js 18+**.
+>
+> macOS / Linux:
+>
+> ```bash
+> git clone https://github.com/ju0o/jutell.git && cd jutell
+> (cd apps/mcp-server && npm ci) && (cd apps/local-admin && npm ci)
+> cd packages/cli && npm ci && npm pack && npm install -g ./jutell-*.tgz
+> ```
+>
+> Windows PowerShell (PowerShell does not expand `*` for npm, so the file name is looked up first):
+>
+> ```powershell
+> git clone https://github.com/ju0o/jutell.git; cd jutell
+> cd apps/mcp-server; npm ci; cd ../local-admin; npm ci; cd ../../packages/cli
+> npm ci; npm pack
+> npm install -g (Get-ChildItem jutell-*.tgz).FullName
+> ```
+>
+> If `npm pack` left more than one `jutell-*.tgz`, or a PowerShell step shows a red error, stop there: delete every `jutell-*.tgz` in `packages/cli`, run `npm pack` once more, and install that single file.
+>
+> Linux `EACCES` permission error on `npm install -g`? Don't use sudo; point npm at a folder in your home (`npm config set prefix ~/.npm-global` and add `~/.npm-global/bin` to `PATH`) or install Node with nvm.
+
+## Two key features
+
+JuTell's terminal output is written in Korean for now. The examples below are real, unedited output
+from running `jutell --yes` and then `jutell receipt` in a small temporary Git project.
+
+### 1. A plain-language work receipt
+
+When your agent finishes, it runs `jutell receipt`. JuTell prints a one-page receipt and saves it in
+`.jutell-local/reports/`. Every line says who it comes from:
+
+| Label | Meaning |
+|---|---|
+| `[AI가 적음]` | Written by the AI agent (its own claim) |
+| `[Git 기준]` | Checked by JuTell against the real file changes in Git |
+| `[지도 대조]` / `[지도: …]` | Matched against the project map (feature 2) |
+| `[JuTell이 적음]` | A note written by JuTell itself, such as the `ⓘ` line |
+
+If the AI's words and Git disagree, trust Git. The `ⓘ` line below is JuTell pointing out that the
+test result is only what the AI reported; JuTell did not run the tests itself.
+
+```text
+==============================
+  JuTell 작업 영수증
+  2026-10-24 14:17
+==============================
+[요청 대조]  요청 1개 중 1개 바뀐 곳 있음  [Git 기준 · 지도 대조]
+ 1. 로그인 버튼을 파란색으로  [AI가 적음]
+    → 바뀐 곳 있음: src/pages/Login.tsx  [Git 기준 · 지도: 로그인]
+
+[이번에 한 작업]  [AI가 적음]
+ 1. 로그인 버튼을 파란색으로 바꿨어요
+
+[바뀐 파일]  [Git 기준]
+ 1. src/pages/Login.tsx
+
+[확인]  [AI가 적음 · JuTell이 적은 줄은 따로 표시]
+ ✔ 직접 확인한 것: Login.tsx에 파란색 클래스가 들어간 것을 확인  [AI가 적음]
+ ✔ 직접 확인한 것: `npm test` 실행해서 3개 통과  [AI가 적음]
+ ✖ 확인 못 한 것: 브라우저 화면은 열어 보지 않음  [AI가 적음]
+ ⓘ 위 테스트·명령 결과는 AI가 알려 준 내용이에요. JuTell이 직접 돌려 보지는 않았어요  [JuTell이 적음]
+------------------------------
+[다음 추천]  [AI가 적음]
+ ○ 추천  [AI가 적음]
+   - 브라우저에서 색이 맞는지 직접 봐 주세요  [AI가 적음]
+------------------------------
+ 저장됨: .jutell-local/reports/2026-10-24-141734.md  [JuTell이 적음]
+==============================
+한 줄 요약: 로그인 버튼을 파란색으로 바꿨어요  [AI가 적음] · 요청 1개 중 1개 처리  [Git 기준]
+```
+
+### 2. JuTellMap — a feature map of your project
+
+On first run, JuTell writes `JuTellMap.md`, which groups your files by feature (for example,
+"로그인" = login, "할 일" = to-do). The agent uses it to connect a request like "fix the login" to the
+right files, and the receipt uses it to check whether the requested feature was actually touched.
+`[지도로 짐작]` means "guessed from file names". You can freely edit the descriptions, or move lines
+into a different section. This is the real map from the same run; only the hidden auto-section
+marker lines are omitted. `jutell map --list` shows it in the terminal, and
+`.jutell-local/map.html` is an easy-to-read view.
+
+```text
+# JuTell 지도 — 이 프로젝트는 어떻게 생겼나요?
+표와 목록은 JuTell이 자동으로 다시 채워요. 설명 글은 마음대로 고쳐도 되지만, 숨은 칸 표시(HTML 주석)는 지우지 마세요.
+마지막 갱신: 2026-10-24 14:17 (UTC+0) · 파일 7개 · 분류 안 된 파일 4개 · 목록 기준 Git 파일 목록
+
+## 할 일 [지도로 짐작]
+- src/api/todos.ts — 기능
+- src/components/TodoList.tsx — 화면
+
+## 로그인 [지도로 짐작]
+- src/pages/Login.tsx — 화면
+
+## 아직 분류 안 된 파일
+설명: 아래 줄을 원하는 기능 칸으로 옮기면, 다음부터 그 칸에 둡니다.
+- .jutell.json — 설정
+- AGENTS.md — 문서
+- README.md — 문서
+- package.json — 설정
+```
 
 **Quick start**
 
@@ -200,6 +315,17 @@ Claude Code, or OpenCode and use it as usual.
 
 ### Step 6 — What successful setup looks like
 
+Setup asks two questions: `JuTell을 지금 연결할까요? (Y/n)` ("Connect JuTell now?") and
+`프로젝트 지도(JuTellMap.md)를 만들까요? 파일이 어디 있는지 기능별로 정리해요. (Y/n)` ("Create the project map?").
+Press Enter for yes.
+
+If it ends with `JuTell 준비됨, 하나 확인 필요.` ("Ready, one thing to check") instead of `JuTell 준비 완료.`, read
+the ⚠ line just above it. Usually Codex cannot find the `jutell` command; `jutell doctor` shows the one fix.
+
+영수증은 AI가 알아서 만들어요 — the agent makes the receipt by itself at the end of its answer; you never need to type `jutell receipt`.
+
+Running `jutell` again once everything is connected only prints a short status; open the admin screen in your browser with `jutell dashboard`. If JuTell was turned off or needs a fix, an interactive run asks to turn it back on and then opens the admin screen in the browser.
+
 You should see that an agent was found and connected, without an error. Then run `jutell status` if
 you want a short connection summary. If it says there is a problem, run `jutell doctor` for the
 next step to take.
@@ -222,15 +348,31 @@ turn your request into a technical questionnaire.
 jutell status
 ```
 
-A real, freshly installed, not-yet-connected project reports honestly instead of guessing:
+Real output (the CLI speaks Korean) from a small practice project right after `jutell --yes`
+with only Codex installed, trimmed to the key lines:
 
 ```text
-Skill: not installed
-AGENTS.md: no JuTell block
-Codex MCP: enabled (globally, not yet used from this project)
-OpenCode MCP: not registered
-Current agent session applied: needs direct confirmation
+$ jutell status
+JuTell 상태
+
+CLI: 2.1.0
+Skill: 설치됨
+AGENTS.md: JuTell 블록 있음
+JuTell 연결 정책: 켜짐
+Codex MCP (전역, Codex는 프로젝트 설정을 읽지 않음): 활성화됨 (명령 감지됨)
+OpenCode MCP: 미등록 (명령 미감지)
+Claude Code MCP (현재 프로젝트(local)): 미등록 (명령 미감지)
+MCP 서버 응답: 확인하지 않음
+현재 Agent 세션 적용: 직접 확인 필요
+Profile: balanced
+설치 범위 (설정·Skill·AGENTS.md): 현재 프로젝트
+Telemetry: 비활성화
+외부 전송: 없음
+지도: 지도가 최신이에요.
 ```
+
+"MCP 서버 응답: 확인하지 않음" means "MCP server response: not checked", and "현재 Agent 세션 적용:
+직접 확인 필요" means "applied to the current agent session: confirm it yourself".
 
 It separates "configured" from "actually checked," so an untested tool call is not presented as a
 failure.
@@ -250,8 +392,8 @@ closer look. Its normal output avoids showing full paths or secret values.
 | No agent was found | Install and open a supported coding agent first, then run `jutell` again. |
 | Connection failed | Run `jutell doctor`, then follow its message. |
 | You want to reconnect one agent | Run `jutell` again, or use the manual connection commands in Advanced. |
-| You want to turn JuTell off | Run `jutell off`. Your settings and local journal stay. |
-| You want to remove JuTell | Run `jutell uninstall`. It keeps local data unless you explicitly add `--remove-data`. |
+| You want to turn JuTell off | Run `jutell off --yes`. It turns off the MCP connection; your settings and the records in `.jutell-local` (receipts, map, Beta Journal) stay. |
+| You want to remove JuTell | Run `jutell uninstall --yes`. It keeps local data unless you explicitly add `--remove-data`. |
 | `EACCES` / permission denied installing on Ubuntu/Linux | See [Ubuntu/Linux install permission error](docs/CLI_INSTALLATION.md). Avoid `sudo npm install -g jutell`. |
 
 ## What JuTell is — and is not
@@ -283,7 +425,7 @@ limitations, see [Product scope](docs/PRODUCT_SCOPE.md).
 
 ## What's new
 
-**`jutell@2.1.0-dev`** is a release candidate on `main` and is not yet published; the latest npm
+**`jutell@2.1.0`** is the next release and is not yet published to npm; the latest npm
 release is `jutell@2.0.1`. It helps before work starts as well as after it finishes: project facts
 are checked first, only a real decision is asked, and verified / expected / not-checked remain
 separate.
@@ -301,7 +443,7 @@ actual output.
 | `jutell` | Finds installed supported agents and offers to connect them. |
 | `jutell status` | Shows installation, connection, profile, and feature status. |
 | `jutell doctor` | Checks setup problems. |
-| `jutell on` / `jutell off` | Turns JuTell's connection on or off. |
+| `jutell on` / `jutell off --yes` | Turns JuTell's connection on or off (`off` asks at a terminal and stops without `--yes` when it cannot ask). |
 | `jutell setup` | Prepares the Skill, default config, and MCP connection again. |
 | `jutell provider` | Shows detailed agent connection status. |
 | `jutell upgrade` | Refreshes JuTell's installed Skill/config/MCP to the current version. |
@@ -317,7 +459,7 @@ You can tune reports with a project `.jutell.json` file created by the CLI. Avai
 underlying facts or risk.
 
 If you are verifying the repository source instead of installing from npm, `npm pack` creates
-`jutell-2.1.0-dev.tgz` in `packages/cli`; ordinary users do not need this path.
+`jutell-2.1.0.tgz` in `packages/cli`; ordinary users do not need this path.
 
 For contributors: [Changelog](CHANGELOG.md) · [Documentation map](docs/DOCUMENTATION_MAP.md) ·
 [OpenCode connection](docs/PROVIDER_OPENCODE.md) ·
@@ -336,7 +478,3 @@ Not supporting changes nothing — every feature stays available to everyone.
 ## JuTell by Ju0
 
 Ju0 is the parent brand; JuTell is its product.
-
-[![npm version](https://img.shields.io/npm/v/jutell.svg)](https://www.npmjs.com/package/jutell)
-[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![node: >=18](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org)
