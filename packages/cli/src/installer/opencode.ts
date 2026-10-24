@@ -3,6 +3,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { backupFile, exists, readText, writeTextSafely } from '../config/managed.js';
 import type { ScopePaths } from '../types.js';
+import { stripJsoncComments } from '../config/jsonc.js';
 
 export const OPENCODE_BEGIN_MARKER = 'BEGIN JUTELL MANAGED BLOCK';
 export const OPENCODE_END_MARKER = 'END JUTELL MANAGED BLOCK';
@@ -20,40 +21,6 @@ export type OpenCodeRegistration = {
   bothRegistered: boolean;
   preview: string;
 };
-
-function stripJsoncComments(text: string) {
-  let out = '';
-  let inString = false;
-  let escaped = false;
-  let inLine = false;
-  let inBlock = false;
-  for (let i = 0; i < text.length; i += 1) {
-    const c = text[i];
-    const next = text[i + 1];
-    if (inBlock) {
-      if (c === '*' && next === '/') { inBlock = false; out += '  '; i += 1; }
-      else out += c === '\n' ? '\n' : ' ';
-      continue;
-    }
-    if (inLine) {
-      if (c === '\n') { inLine = false; out += '\n'; }
-      else out += ' ';
-      continue;
-    }
-    if (inString) {
-      out += c;
-      if (escaped) escaped = false;
-      else if (c === '\\') escaped = true;
-      else if (c === '"') inString = false;
-      continue;
-    }
-    if (c === '"') { inString = true; out += c; continue; }
-    if (c === '/' && next === '/') { inLine = true; out += '  '; i += 1; continue; }
-    if (c === '/' && next === '*') { inBlock = true; out += '  '; i += 1; continue; }
-    out += c;
-  }
-  return out;
-}
 
 function tryParseJson(text: string): Record<string, unknown> | undefined {
   const trimmed = (text ?? '').trim();

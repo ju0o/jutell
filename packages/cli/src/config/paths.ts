@@ -120,3 +120,48 @@ export function safeLocation(scope: InstallScope, kind: 'config' | 'codex') {
 export function codexScopedPaths(paths: ScopePaths): ScopePaths {
   return { ...paths, scope: 'global', codexConfigFile: path.join(codexHome(), 'config.toml') };
 }
+
+export type AppConfigPaths = {
+  cursor: { global: string; project: string };
+  /** undefined: not confirmed by the official docs for this OS (doctor: "문서로 확인 안 됨"). */
+  claudeDesktop: string | undefined;
+  /** Status only (decision 15): both documented locations. */
+  windsurf: { current: string | undefined; legacy: string };
+  vscode: {
+    workspace: string;
+    /** Linux: measured in W0 (VS Code 1.143.1 `code --add-mcp`). Other OS: not confirmed → undefined. */
+    userProfile: string | undefined;
+  };
+  /** Status only (decision 16). */
+  copilot: { user: string; project: string };
+};
+
+/**
+ * Pure: every GUI app config path for a platform, so tests can play any OS.
+ * Only paths from the plan's doc table (cycle-3/plan.md, checked 2026-10-24) or W0 measurement.
+ * `home` defaults to userHome(), so JUTELL_HOME keeps isolating tests.
+ */
+export function appConfigPaths(platform: NodeJS.Platform, env: NodeJS.ProcessEnv, projectRoot: string, home: string = userHome()): AppConfigPaths {
+  const p = platform === 'win32' ? path.win32 : path.posix;
+  const appData = platform === 'win32' && env.APPDATA?.trim() && p.isAbsolute(env.APPDATA) ? env.APPDATA : undefined;
+  const xdg = env.XDG_CONFIG_HOME?.trim() && p.isAbsolute(env.XDG_CONFIG_HOME) ? env.XDG_CONFIG_HOME : p.join(home, '.config');
+  return {
+    cursor: { global: p.join(home, '.cursor', 'mcp.json'), project: p.join(projectRoot, '.cursor', 'mcp.json') },
+    claudeDesktop: platform === 'darwin'
+      ? p.join(home, 'Library', 'Application Support', 'Claude', 'claude_desktop_config.json')
+      : platform === 'win32'
+        ? (appData ? p.join(appData, 'Claude', 'claude_desktop_config.json') : undefined)
+        : undefined,
+    windsurf: {
+      current: platform === 'win32' ? (appData ? p.join(appData, 'devin', 'mcp_config.json') : undefined) : p.join(xdg, 'devin', 'mcp_config.json'),
+      legacy: p.join(home, '.codeium', 'windsurf', 'mcp_config.json'),
+    },
+    vscode: {
+      workspace: p.join(projectRoot, '.vscode', 'mcp.json'),
+      userProfile: platform === 'linux' ? p.join(xdg, 'Code', 'User', 'mcp.json') : undefined,
+    },
+    copilot: { user: p.join(home, '.copilot', 'mcp-config.json'), project: p.join(projectRoot, '.mcp.json') },
+  };
+}
+
+export const UNVERIFIED_PATH_NOTE = '문서로 확인 안 됨';
