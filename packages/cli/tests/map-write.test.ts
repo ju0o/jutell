@@ -48,7 +48,8 @@ describe('map readability (dogfood fix)', () => {
     const { dir, paths } = await project();
     await writeMap(paths, NOW);
     const lines = (await read(path.join(dir, MAP_FILE))).split('\n');
-    expect(MAP_GUIDE).toBe('<!-- --> 로 된 줄은 JuTell이 자동으로 고치는 자리 표시예요. 지우지 말고, 설명은 마음대로 고쳐도 돼요.');
+    expect(MAP_GUIDE).toBe('JuTell 자동 칸 표시 줄은 JuTell이 자동으로 고치는 자리예요. 지우지 말고, 설명은 마음대로 고쳐도 돼요.');
+    expect(MAP_GUIDE).not.toContain('<!--');
     expect(lines.indexOf(MAP_GUIDE)).toBe(1);
     expect(lines.indexOf(MAP_GUIDE)).toBeLessThan(lines.findIndex((line) => line.startsWith('<!-- jutell:auto')));
   });
@@ -169,11 +170,12 @@ describe('map write (W2)', () => {
     expect(await read(file)).not.toContain(stamp(LATER));
   });
 
-  it('map.html shows the guide line with its literal "<!-- -->" (escaped), while real marker comments stay hidden', async () => {
+  it('map.html shows the guide line (no literal HTML comment), while real marker comments stay hidden', async () => {
     const { dir, paths } = await project();
     await writeMap(paths, NOW);
     const html = renderMapHtml(await read(path.join(dir, MAP_FILE)));
-    expect(html).toContain('&lt;!-- --&gt; 로 된 줄은 JuTell이');
+    expect(html).toContain('JuTell 자동 칸 표시 줄은 JuTell이');
+    expect(html).not.toContain('&lt;!--');
     expect(html).not.toContain('jutell:auto');
   });
 

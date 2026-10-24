@@ -22,7 +22,7 @@ export const LEGACY_UNCLASSIFIED_KEY = '분류 안 됨';
 
 const TITLE = '# JuTell 지도 — 이 프로젝트는 어떻게 생겼나요?';
 /** Plain line at the top of a new map, before the first marker (a person can read it in a text editor). */
-export const MAP_GUIDE = '<!-- --> 로 된 줄은 JuTell이 자동으로 고치는 자리 표시예요. 지우지 말고, 설명은 마음대로 고쳐도 돼요.';
+export const MAP_GUIDE = 'JuTell 자동 칸 표시 줄은 JuTell이 자동으로 고치는 자리예요. 지우지 말고, 설명은 마음대로 고쳐도 돼요.';
 const HEADER_PREFIX = '마지막 갱신:';
 const UNCLASSIFIED_HELP = '설명: 아래 줄을 원하는 기능 칸으로 옮기면, 다음부터 그 칸에 둡니다.';
 const OPEN = /^<!-- jutell:auto (.+) -->$/;

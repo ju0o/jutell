@@ -48,6 +48,8 @@ export const LABEL_MATCH = '[Git 기준 · 지도 대조]';
 export const LABEL_JUTELL = '[JuTell이 적음]';
 /** Shown only when a check or a done item mentions a test or a command (item 2). */
 export const HANJA_NOTE = ` ⓘ AI가 적은 글에 한자가 섞여 있어요. 뜻이 헷갈리면 AI에게 쉬운 우리말로 다시 써 달라고 하세요  ${LABEL_JUTELL}`;
+/** [확인] heading label when JuTell's own ⓘ line sits under it, so the AI label never seems to cover JuTell's line. */
+export const LABEL_CHECK_MIXED = '[AI가 적음 · ⓘ 줄은 JuTell이 적음]';
 export const AI_RESULTS_NOTE = ` ⓘ 위 테스트·명령 결과는 AI가 알려 준 내용이에요. JuTell이 직접 돌려 보지는 않았어요  ${LABEL_JUTELL}`;
 // A run record: a command name as a whole word (not 'test-app' or 'npm-debug.log'), or a run word plus a
 // result word ('테스트 통과'). A line that says it was NOT run ('실행하지 않음') never counts.
@@ -451,7 +453,7 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
     ] : []),
     ...(asked.length === 0 && receipt.mapNote ? [` ${receipt.mapNote}`, ''] : []),
     // Every line carries its own source label (dogfood: [확인], ' ○ 추천' and '- …' lines had none).
-    `${RECEIPT_SECTIONS[3]}  ${LABEL_AI}`,
+    `${RECEIPT_SECTIONS[3]}  ${mentionsRun || hasHanja ? LABEL_CHECK_MIXED : LABEL_AI}`,
     ...renderList(
       receipt.checks,
       (check) => check.result === '확인함'

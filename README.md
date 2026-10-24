@@ -2,6 +2,11 @@
 
 **English** | [한국어](README.ko.md)
 
+[![CI](https://github.com/ju0o/jutell/actions/workflows/ci.yml/badge.svg)](https://github.com/ju0o/jutell/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/jutell.svg)](https://www.npmjs.com/package/jutell)
+[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![node: >=18](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org)
+
 ## Tell your agent what you mean. Understand what it did.
 
 For people who can tell a coding agent what they want, but don't want to read code or logs just to
@@ -12,6 +17,92 @@ know whether it actually worked.
 ![OpenCode: Beta](https://img.shields.io/badge/OpenCode-Beta-yellow)
 
 ![Tell your agent what you mean. Understand what it did — before work, JuTell checks project facts and asks one question if it matters; after work, it separates verified from not-checked-yet.](docs/assets/readme/hero-report.svg)
+
+**Install in one line** (inside your project folder):
+
+```bash
+npm install -g jutell && jutell
+```
+
+## Two key features
+
+JuTell's terminal output is written in Korean for now. The examples below are real, unedited output
+from running `jutell --yes` and then `jutell receipt` in a small temporary Git project.
+
+### 1. A plain-language work receipt
+
+When your agent finishes, it runs `jutell receipt`. JuTell prints a one-page receipt and saves it in
+`.jutell-local/reports/`. Every line says who it comes from:
+
+| Label | Meaning |
+|---|---|
+| `[AI가 적음]` | Written by the AI agent (its own claim) |
+| `[Git 기준]` | Checked by JuTell against the real file changes in Git |
+| `[지도 대조]` / `[지도: …]` | Matched against the project map (feature 2) |
+| `[JuTell이 적음]` | A note written by JuTell itself, such as the `ⓘ` line |
+
+If the AI's words and Git disagree, trust Git. The `ⓘ` line below is JuTell pointing out that the
+test result is only what the AI reported; JuTell did not run the tests itself.
+
+```text
+==============================
+  JuTell 작업 영수증
+  2026-10-24 14:17
+==============================
+[요청 대조]  요청 1개 중 1개 바뀐 곳 있음  [Git 기준 · 지도 대조]
+ 1. 로그인 버튼을 파란색으로  [AI가 적음]
+    → 바뀐 곳 있음: src/pages/Login.tsx  [Git 기준 · 지도: 로그인]
+
+[이번에 한 작업]  [AI가 적음]
+ 1. 로그인 버튼을 파란색으로 바꿨어요
+
+[바뀐 파일]  [Git 기준]
+ 1. src/pages/Login.tsx
+
+[확인]  [AI가 적음 · ⓘ 줄은 JuTell이 적음]
+ ✔ 직접 확인한 것: Login.tsx에 파란색 클래스가 들어간 것을 확인  [AI가 적음]
+ ✔ 직접 확인한 것: `npm test` 실행해서 3개 통과  [AI가 적음]
+ ✖ 확인 못 한 것: 브라우저 화면은 열어 보지 않음  [AI가 적음]
+ ⓘ 위 테스트·명령 결과는 AI가 알려 준 내용이에요. JuTell이 직접 돌려 보지는 않았어요  [JuTell이 적음]
+------------------------------
+[다음 추천]  [AI가 적음]
+ ○ 추천  [AI가 적음]
+   - 브라우저에서 색이 맞는지 직접 봐 주세요  [AI가 적음]
+------------------------------
+ 저장됨: .jutell-local/reports/2026-10-24-141734.md  [JuTell이 적음]
+==============================
+한 줄 요약: 로그인 버튼을 파란색으로 바꿨어요  [AI가 적음] · 요청 1개 중 1개 처리  [Git 기준]
+```
+
+### 2. JuTellMap — a feature map of your project
+
+On first run, JuTell writes `JuTellMap.md`, which groups your files by feature (for example,
+"로그인" = login, "할 일" = to-do). The agent uses it to connect a request like "fix the login" to the
+right files, and the receipt uses it to check whether the requested feature was actually touched.
+`[지도로 짐작]` means "guessed from file names". You can freely edit the descriptions, or move lines
+into a different section. This is the real map from the same run; only the hidden auto-section
+marker lines are omitted. `jutell map --list` shows it in the terminal, and
+`.jutell-local/map.html` is an easy-to-read view.
+
+```text
+# JuTell 지도 — 이 프로젝트는 어떻게 생겼나요?
+JuTell 자동 칸 표시 줄은 JuTell이 자동으로 고치는 자리예요. 지우지 말고, 설명은 마음대로 고쳐도 돼요.
+마지막 갱신: 2026-10-24 14:17 (UTC+0) · 파일 7개 · 분류 안 된 파일 4개 · 목록 기준 Git 파일 목록
+
+## 할 일 [지도로 짐작]
+- src/api/todos.ts — 기능
+- src/components/TodoList.tsx — 화면
+
+## 로그인 [지도로 짐작]
+- src/pages/Login.tsx — 화면
+
+## 아직 분류 안 된 파일
+설명: 아래 줄을 원하는 기능 칸으로 옮기면, 다음부터 그 칸에 둡니다.
+- .jutell.json — 설정
+- AGENTS.md — 문서
+- README.md — 문서
+- package.json — 설정
+```
 
 **Quick start**
 
@@ -250,8 +341,8 @@ closer look. Its normal output avoids showing full paths or secret values.
 | No agent was found | Install and open a supported coding agent first, then run `jutell` again. |
 | Connection failed | Run `jutell doctor`, then follow its message. |
 | You want to reconnect one agent | Run `jutell` again, or use the manual connection commands in Advanced. |
-| You want to turn JuTell off | Run `jutell off`. Your settings and local journal stay. |
-| You want to remove JuTell | Run `jutell uninstall`. It keeps local data unless you explicitly add `--remove-data`. |
+| You want to turn JuTell off | Run `jutell off --yes`. Your settings and local journal stay. |
+| You want to remove JuTell | Run `jutell uninstall --yes`. It keeps local data unless you explicitly add `--remove-data`. |
 | `EACCES` / permission denied installing on Ubuntu/Linux | See [Ubuntu/Linux install permission error](docs/CLI_INSTALLATION.md). Avoid `sudo npm install -g jutell`. |
 
 ## What JuTell is — and is not
@@ -336,7 +427,3 @@ Not supporting changes nothing — every feature stays available to everyone.
 ## JuTell by Ju0
 
 Ju0 is the parent brand; JuTell is its product.
-
-[![npm version](https://img.shields.io/npm/v/jutell.svg)](https://www.npmjs.com/package/jutell)
-[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![node: >=18](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org)

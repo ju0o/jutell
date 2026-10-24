@@ -43,7 +43,7 @@ async function project(options: { map?: boolean; name?: string } = {}) {
   return { dir, paths, receipt, edit };
 }
 /** Content lines (not frames, blanks, section/group headers whose lines carry labels) without a source label. */
-const LABEL_END = /(\[(Git 기준|AI가 적음|지도로 짐작|JuTell이 적음|JuTell이 고침|Git 기준 · 지도 대조|Git 기준 · 지도: [^\]]+)\])$/;
+const LABEL_END = /(\[(Git 기준|AI가 적음|지도로 짐작|JuTell이 적음|JuTell이 고침|AI가 적음 · ⓘ 줄은 JuTell이 적음|Git 기준 · 지도 대조|Git 기준 · 지도: [^\]]+)\])$/;
 function unlabeled(text: string): string[] {
   const lines = text.split('\n');
   const start = lines.findIndex((line, index) => index > 2 && line.startsWith('='));
@@ -136,6 +136,20 @@ describe('request matching (W6, plan.md §2)', () => {
     expect(text).toContain('[다음 추천]\n 여기서 멈춰도 됩니다 – 따로 추천할 다음 작업이 없어요  [JuTell이 적음]');
     expect(text).toContain(' 1. 할 일 페이지 제목 바꾸기  [AI가 적음]');
     expect(unlabeled(text)).toEqual([]);
+  });
+
+  it('#37: under [확인], JuTell\'s ⓘ line carries the JuTell label (never [AI가 적음]) and the heading says so', async () => {
+    const { receipt, edit } = await project();
+    await edit('test-app/todo.html');
+    const text = await receipt({ asked: ['할 일 페이지 제목 바꾸기'], done: ['제목을 바꿨어요'], checked: ['npm test 실행해서 3개 통과'], unchecked: [], next: [] });
+    const lines = text.split('\n');
+    const note = lines.find((line) => line.startsWith(' ⓘ 위 테스트'));
+    expect(note).toBeDefined();
+    expect(note!.endsWith('  [JuTell이 적음]')).toBe(true);
+    expect(note).not.toContain('[AI가 적음]');
+    expect(lines).toContain('[확인]  [AI가 적음 · ⓘ 줄은 JuTell이 적음]');
+    const plain = await receipt({ asked: ['할 일 페이지 제목 바꾸기'], done: ['제목을 바꿨어요'], checked: ['파일을 다시 읽었어요'], unchecked: [], next: [] });
+    expect(plain.split('\n')).toContain('[확인]  [AI가 적음]');
   });
 
   it('dogfood #36: a checked line with a command keeps its result (command as a code span) and gets the ⓘ note', async () => {
