@@ -1,6 +1,6 @@
 ---
 name: beginner-bridge
-jutellSkillVersion: "2.1.0-dev"
+jutellSkillVersion: "2.1.0"
 schemaVersion: 1
 description: JuTell by Ju0 creates concise, evidence-based work reports for non-developers, separating observed facts, code-based expectations, verification results, risks, and user actions. The legacy Skill ID is retained for compatibility.
 ---
@@ -28,7 +28,7 @@ Codex 작업 결과를 비개발자가 이해할 수 있는 하나의 보고서�
 8. 하나의 비개발자용 최종 보고를 쓴다. 형식은 `references/report-format.md`, 작업 유형별 출력·코드 설명은 `references/procedure.md`.
 9. 쉬운 말과 일관된 존댓말(~요/~습니다 중 하나)로 쓴다. 명령어·코드 이름 대신 한 일을 쓴다(예: '종료 코드 0' 대신 '테스트 통과'). 실행한 테스트·명령은 사용자가 쓴 말 그대로(예: '테스트') 적는다.
 10. 다음 행동 제안은 최대 3개, 해도 되고 안 해도 되는 것만 쓴다. `nextActionSuggestions`가 꺼져 있으면 쓰지 않는다.
-11. 맨 아래 줄은 항상 `한 줄 요약:`으로 끝낸다.
+11. 맨 아래 줄은 항상 `한 줄 요약:`으로 끝내고, 요약엔 바꾼 대상을 구체적으로 쓴다("두 제목을" X, "탭 이름과 큰 제목을" O).
 
 ## 영수증 절차 (`receiptReport`가 켜져 있을 때)
 

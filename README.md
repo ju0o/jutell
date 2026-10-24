@@ -24,6 +24,9 @@ know whether it actually worked.
 npm install -g jutell && jutell
 ```
 
+> **Until 2.1.0 is on npm** (delete this note after publishing): `npm install -g jutell` gives 2.0.1. To try 2.1.0 now, install a packed copy from source:
+> `git clone https://github.com/ju0o/jutell.git && cd jutell && (cd apps/mcp-server && npm ci) && (cd apps/local-admin && npm ci) && cd packages/cli && npm ci && npm pack && npm install -g ./jutell-2.1.0.tgz`
+
 ## Two key features
 
 JuTell's terminal output is written in Korean for now. The examples below are real, unedited output
@@ -86,7 +89,7 @@ marker lines are omitted. `jutell map --list` shows it in the terminal, and
 
 ```text
 # JuTell 지도 — 이 프로젝트는 어떻게 생겼나요?
-JuTell 자동 칸 표시 줄은 JuTell이 자동으로 고치는 자리예요. 지우지 말고, 설명은 마음대로 고쳐도 돼요.
+표와 목록은 JuTell이 자동으로 다시 채워요. 설명 글은 마음대로 고쳐도 되지만, 숨은 칸 표시(HTML 주석)는 지우지 마세요.
 마지막 갱신: 2026-10-24 14:17 (UTC+0) · 파일 7개 · 분류 안 된 파일 4개 · 목록 기준 Git 파일 목록
 
 ## 할 일 [지도로 짐작]
@@ -313,15 +316,30 @@ turn your request into a technical questionnaire.
 jutell status
 ```
 
-A real, freshly installed, not-yet-connected project reports honestly instead of guessing:
+Real output (the CLI speaks Korean) from a small practice project right after `jutell --yes`
+with only Codex installed, trimmed to the key lines:
 
 ```text
-Skill: not installed
-AGENTS.md: no JuTell block
-Codex MCP: enabled (globally, not yet used from this project)
-OpenCode MCP: not registered
-Current agent session applied: needs direct confirmation
+$ jutell status
+JuTell 상태
+
+CLI: 2.1.0
+Skill: 설치됨
+AGENTS.md: JuTell 블록 있음
+JuTell 연결 정책: 켜짐
+Codex MCP (전역, Codex는 프로젝트 설정을 읽지 않음): 활성화됨 (명령 감지됨)
+OpenCode MCP: 미등록 (명령 미감지)
+Claude Code MCP (현재 프로젝트(local)): 미등록 (명령 미감지)
+MCP 서버 응답: 확인하지 않음
+현재 Agent 세션 적용: 직접 확인 필요
+Profile: balanced
+설치 범위 (설정·Skill·AGENTS.md): 현재 프로젝트
+Telemetry: 비활성화
+외부 전송: 없음
 ```
+
+"MCP 서버 응답: 확인하지 않음" means "MCP server response: not checked", and "현재 Agent 세션 적용:
+직접 확인 필요" means "applied to the current agent session: confirm it yourself".
 
 It separates "configured" from "actually checked," so an untested tool call is not presented as a
 failure.
@@ -374,7 +392,7 @@ limitations, see [Product scope](docs/PRODUCT_SCOPE.md).
 
 ## What's new
 
-**`jutell@2.1.0-dev`** is a release candidate on `main` and is not yet published; the latest npm
+**`jutell@2.1.0`** is the next release and is not yet published to npm; the latest npm
 release is `jutell@2.0.1`. It helps before work starts as well as after it finishes: project facts
 are checked first, only a real decision is asked, and verified / expected / not-checked remain
 separate.
@@ -408,7 +426,7 @@ You can tune reports with a project `.jutell.json` file created by the CLI. Avai
 underlying facts or risk.
 
 If you are verifying the repository source instead of installing from npm, `npm pack` creates
-`jutell-2.1.0-dev.tgz` in `packages/cli`; ordinary users do not need this path.
+`jutell-2.1.0.tgz` in `packages/cli`; ordinary users do not need this path.
 
 For contributors: [Changelog](CHANGELOG.md) · [Documentation map](docs/DOCUMENTATION_MAP.md) ·
 [OpenCode connection](docs/PROVIDER_OPENCODE.md) ·

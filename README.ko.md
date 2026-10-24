@@ -26,6 +26,9 @@ npm install -g jutell
 jutell
 ```
 
+> **2.1.0이 npm에 올라가기 전까지** (공개 후 이 안내는 지우세요): `npm install -g jutell`은 2.0.1을 설치해요. 2.1.0을 지금 쓰려면 소스에서 묶은 복사본을 설치하세요:
+> `git clone https://github.com/ju0o/jutell.git && cd jutell && (cd apps/mcp-server && npm ci) && (cd apps/local-admin && npm ci) && cd packages/cli && npm ci && npm pack && npm install -g ./jutell-2.1.0.tgz`
+
 JuTell은 해당 폴더에 `AGENTS.md`, `.agents/`, `.jutell.json`, `.jutell-local/`을 만들거나
 업데이트합니다. Codex를 연결하면 `~/.codex/config.toml`에도 연결 설정을 추가합니다.
 
@@ -250,10 +253,10 @@ jutell doctor
 
 ## 처음 써 보는 분을 위한 실제 화면
 
-아래 화면은 모두 **실제로 실행해서 나온 그대로**입니다. 빈 연습용 프로젝트(`todo-app`, 파일 5개)에서
-Codex만 깔린 컴퓨터로 실행했어요. 날짜·시각·파일 이름은 여러분 컴퓨터에서 다르게 나옵니다.
+아래 화면은 모두 **실제로 실행해서 나온 그대로**입니다. 작은 연습용 Git 프로젝트(파일 5개)에서
+Codex만 깔린 환경으로 실행했어요. 날짜·시각·파일 이름은 여러분 컴퓨터에서 다르게 나옵니다.
 
-**한 줄 설치** — 터미널에 붙여 넣으세요. (Node.js 20 이상이 필요해요.)
+**한 줄 설치** — 터미널에 붙여 넣으세요. (Node.js 18 이상이 필요해요.)
 
 ```bash
 npm install -g jutell && jutell
@@ -284,7 +287,7 @@ JuTell 준비 완료.
 
 ```text
 # JuTell 지도 — 이 프로젝트는 어떻게 생겼나요?
-JuTell 자동 칸 표시 줄은 JuTell이 자동으로 고치는 자리예요. 지우지 말고, 설명은 마음대로 고쳐도 돼요.
+표와 목록은 JuTell이 자동으로 다시 채워요. 설명 글은 마음대로 고쳐도 되지만, 숨은 칸 표시(HTML 주석)는 지우지 마세요.
 마지막 갱신: 2026-10-24 14:17 (UTC+0) · 파일 7개 · 분류 안 된 파일 4개 · 목록 기준 Git 파일 목록
 
 ## 할 일 [지도로 짐작]
@@ -385,7 +388,7 @@ JuTell은 여러분 컴퓨터에 이미 있는 파일·Git·명령 결과를 바
 
 ## 최신 소식
 
-**`jutell@2.1.0-dev`**는 `main`의 출시 후보이며 아직 npm에 공개되지 않음 상태입니다. npm 최신
+**`jutell@2.1.0`**은 다음 릴리스예요(아직 npm에 공개되지 않음). npm 최신
 버전은 `jutell@2.0.1`입니다. 이제 작업이 끝난 뒤뿐 아니라 시작하기 전에도
 돕습니다. 프로젝트 사실을 먼저 확인하고, 진짜 결정만 물으며, 확인됨 / 예상 / 미확인을 섞지
 않습니다.
@@ -432,7 +435,7 @@ CLI가 만들어 주는 프로젝트의 `.jutell.json`으로 보고 방식을 �
 않습니다.
 
 npm이 아니라 저장소 소스를 직접 검증하는 기여자라면 `packages/cli`에서 `npm pack`을
-실행했을 때 `jutell-2.1.0-dev.tgz`가 만들어집니다. 일반 사용자는 이 경로가 필요 없습니다.
+실행했을 때 `jutell-2.1.0.tgz`가 만들어집니다. 일반 사용자는 이 경로가 필요 없습니다.
 
 기여자용 문서: [Changelog](CHANGELOG.md) · [문서 지도](docs/DOCUMENTATION_MAP.md) ·
 [OpenCode 연결](docs/PROVIDER_OPENCODE.md) ·

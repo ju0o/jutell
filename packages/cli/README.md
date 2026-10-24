@@ -75,31 +75,36 @@ OpenCode connected.
 Open a new conversation in OpenCode and JuTell applies automatically.
 ```
 
-Then check it honestly — note that it does **not** claim the agent session picked it up, because it
+Then check it honestly (real output; the CLI speaks Korean, trimmed to the key lines) — note that it does **not** claim the agent session picked it up, because it
 cannot see that from here:
 
 ```console
 $ jutell status
-JuTell status
+JuTell 상태
 
-CLI: 2.1.0-dev
-Skill: installed
-AGENTS.md: JuTell block present
-OpenCode MCP: enabled (auto-start on new session)
-Codex MCP: not registered
-Current agent session applied: needs direct confirmation
+CLI: 2.1.0
+Skill: 설치됨
+AGENTS.md: JuTell 블록 있음
+JuTell 연결 정책: 켜짐
+Codex MCP (전역, Codex는 프로젝트 설정을 읽지 않음): 활성화됨 (명령 감지됨)
+OpenCode MCP: 미등록 (명령 미감지)
+Claude Code MCP (현재 프로젝트(local)): 미등록 (명령 미감지)
+MCP 서버 응답: 확인하지 않음
+현재 Agent 세션 적용: 직접 확인 필요
 Profile: balanced
-Telemetry: disabled
-External transmission: none
+설치 범위 (설정·Skill·AGENTS.md): 현재 프로젝트
+Telemetry: 비활성화
+외부 전송: 없음
 ```
 
-And when something looks wrong:
+
+And when something looks wrong (summary, translated):
 
 ```console
 $ jutell doctor
 OK       Node version: Node 22.22.1
 OK       Skill file: verified
-OK       Skill version: 2.1.0-dev (installed copy matches)
+OK       Skill version: 2.1.0 (installed copy matches)
 OK       MCP server live connection (Stdio): JuTell server responded with 5 tools
 OK       External transmission code: no outbound patterns in the MCP build
 Check    Current agent session applied: must be confirmed in that agent's session
@@ -108,6 +113,49 @@ Warning  Codex MCP: not registered
 
 `doctor` marks every line OK / warning / needs-a-closer-look, and never prints full paths or secret
 values.
+
+### Work receipt (`jutell receipt`)
+
+After the agent finishes, it writes what it did to `.jutell-local/receipt.json` and runs
+`jutell receipt`. JuTell compares that with Git and the project map, and labels who wrote each line.
+Real output from a practice project where the request was "make the login button blue":
+
+```text
+==============================
+  JuTell 작업 영수증
+==============================
+[요청 대조]  요청 1개 중 1개 바뀐 곳 있음  [Git 기준 · 지도 대조]
+ 1. 로그인 버튼을 파란색으로  [AI가 적음]
+    → 바뀐 곳 있음: src/pages/Login.tsx  [Git 기준 · 지도: 로그인]
+
+[바뀐 파일]  [Git 기준]
+ 1. src/pages/Login.tsx
+
+[확인]  [AI가 적음 · ⓘ 줄은 JuTell이 적음]
+ ✔ 직접 확인한 것: `npm test` 실행해서 3개 통과  [AI가 적음]
+ ✖ 확인 못 한 것: 브라우저 화면은 열어 보지 않음  [AI가 적음]
+ ⓘ 위 테스트·명령 결과는 AI가 알려 준 내용이에요. JuTell이 직접 돌려 보지는 않았어요  [JuTell이 적음]
+==============================
+한 줄 요약: 로그인 버튼을 파란색으로 바꿨어요  [AI가 적음] · 요청 1개 중 1개 처리  [Git 기준]
+```
+
+`[AI가 적음]` = written by the AI, `[Git 기준]` = taken from Git, `[JuTell이 적음]` = written by JuTell.
+
+### Project map (`JuTellMap.md`)
+
+Real map from the same project (hidden marker comments omitted):
+
+```markdown
+# JuTell 지도 — 이 프로젝트는 어떻게 생겼나요?
+표와 목록은 JuTell이 자동으로 다시 채워요. 설명 글은 마음대로 고쳐도 되지만, 숨은 칸 표시(HTML 주석)는 지우지 마세요.
+
+## 할 일 [지도로 짐작]
+- src/api/todos.ts — 기능
+- src/components/TodoList.tsx — 화면
+
+## 로그인 [지도로 짐작]
+- src/pages/Login.tsx — 화면
+```
 
 ## The rule it follows
 
@@ -124,7 +172,7 @@ an empty-search message's styling, it reported:
 It does not turn "looks right in code" into "confirmed on screen."
 
 If you are verifying the source instead of installing from npm, `npm pack` in
-`packages/cli` creates `jutell-2.1.0-dev.tgz`; ordinary users do not need this path.
+`packages/cli` creates `jutell-2.1.0.tgz`; ordinary users do not need this path.
 
 ## Supported agents & platforms
 
