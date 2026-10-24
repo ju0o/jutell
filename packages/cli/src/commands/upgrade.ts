@@ -1,4 +1,5 @@
-import { assets, codexScopedPaths, packageRoot } from '../config/paths.js';
+import { assets, codexScopedPaths, packageRoot, resolveScope } from '../config/paths.js';
+import { refreshGuiEntries } from '../installer/gui-apps.js';
 import { readBridgeConfig, snapshot, restore } from '../config/managed.js';
 import { ensureBridgeConfig } from '../installer/config.js';
 import { installSkill, recordSkillFiles, removeAddedSkillFiles, skillConflictMessage, skillRefreshMessage } from '../installer/skill.js';
@@ -110,6 +111,7 @@ export async function upgradeCommand(paths: ScopePaths, options: CliOptions, io:
 
     const anyLegacy = codexReg.legacyRegistered || opencodeReg.legacyRegistered || beforeConfig.source === 'legacy';
     if (anyLegacy) parts.push('- 레거시: 이전 beginner_bridge 상태는 그대로 두었습니다. 정리하려면 jutell migrate --clean 을 실행하세요.');
+    for (const note of await refreshGuiEntries(paths.scope === 'project' ? paths.targetRoot : resolveScope('project').targetRoot)) parts.push(`- ${note}`);
     parts.push('다음: jutell status / jutell doctor 로 확인하세요.');
 
     io.write(parts.join('\n'));

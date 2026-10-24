@@ -105,6 +105,8 @@ export type StatusResult = {
   telemetry: '비활성화';
   externalTransmission: '없음';
   warnings: string[];
+  /** cycle-3 W6: GUI app config files (internal ids). */
+  apps: import('./installer/gui-apps.js').GuiFileStatus[];
 };
 
 export type CheckResult = {
