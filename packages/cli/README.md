@@ -209,7 +209,7 @@ You need a coding agent first — JuTell connects to one you already installed.
 | Claude Desktop | `jutell use claude-desktop` / `jutell disconnect claude-desktop` (macOS, Windows) | `claude_desktop_config.json` in the app's settings folder |
 | Windsurf | Status only (`jutell status`); JuTell never writes it | — |
 
-`use` also creates JuTell rule files in the project: `AGENTS.md`, `.agents/skills/`, `.jutell.json`, `.jutell-local/` (shared with other AI connections; `jutell uninstall --yes` removes them).
+`use` also creates JuTell rule files in the project: `AGENTS.md`, `.agents/skills/`, `.jutell.json`, `.jutell-local/` (shared with other AI connections). `jutell uninstall --yes` takes out the JuTell part of `AGENTS.md` and the Skill but keeps `.jutell.json` and `.jutell-local/`; add `--remove-data` to delete those too.
 Paths that are not confirmed for an OS are never guessed: JuTell explains instead of writing.
 Per-OS paths, restart steps and real output: [README.md](https://github.com/ju0o/jutell#connect-a-gui-app-cursor--vs-code--claude-desktop--windsurf).
 

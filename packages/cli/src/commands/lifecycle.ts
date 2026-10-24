@@ -203,14 +203,17 @@ export async function uninstallCommand(paths: ScopePaths, options: CliOptions, i
     await fs.rm(paths.dataRoot, { recursive: true, force: true });
   }
   if (paths.scope === 'project') await removeEmptyFolders([paths.skillRoot, path.dirname(paths.skillRoot), path.dirname(path.dirname(paths.skillRoot))]);
-  io.write(`제거했습니다. ${removeData ? '설정과 Beta Journal(JuTell이 남긴 하루 작업 기록)도 삭제했습니다.' : '설정과 Beta Journal(JuTell이 남긴 하루 작업 기록)은 보존했습니다.'}`);
+  const present = async (file: string) => fs.lstat(file).then(() => true, () => false);
+  const configLeft = await present(paths.configFile);
+  const dataLeft = await present(paths.dataRoot);
+  // F1: "보존했습니다" only when there is something to keep.
+  const dataNote = removeData ? '설정과 Beta Journal(JuTell이 남긴 하루 작업 기록)도 삭제했습니다.'
+    : configLeft || dataLeft ? '설정과 Beta Journal(JuTell이 남긴 하루 작업 기록)은 보존했습니다.' : '';
+  io.write(`제거했습니다.${dataNote ? ` ${dataNote}` : ''}`);
   if (paths.scope === 'project') {
-    const present = async (file: string) => fs.lstat(file).then(() => true, () => false);
-    const note = leftoverNote(removeData, {
-      config: await present(paths.configFile),
-      data: await present(paths.dataRoot),
-      map: await present(path.join(paths.targetRoot, MAP_FILE)),
-    });
+    // F2: Skill files JuTell has no record of (e.g. .jutell-local/ was deleted first) stay, so list them.
+    const skillLeft = await present(paths.skillRoot) ? `${path.relative(paths.targetRoot, paths.skillRoot).split(path.sep).join('/')}/` : undefined;
+    const note = leftoverNote(removeData, { config: configLeft, data: dataLeft, map: await present(path.join(paths.targetRoot, MAP_FILE)), skill: skillLeft });
     if (note) io.write(note);
   }
   for (const note of codexNotes) io.write(note);
@@ -228,18 +231,20 @@ async function removeEmptyFolders(dirs: string[]) {
 }
 
 /** Lists only what is really left (dogfood: a JuTellMap.md that never existed is not "left"). */
-export function leftoverNote(removeData: boolean, left: { config: boolean; data: boolean; map: boolean }) {
+export function leftoverNote(removeData: boolean, left: { config: boolean; data: boolean; map: boolean; skill?: string }) {
   const kept = [
     ...(!removeData && left.config ? ['.jutell.json(설정)'] : []),
     ...(!removeData && left.data ? ['.jutell-local/(작업 기록·영수증·지도 상세)'] : []),
     ...(left.map ? ['JuTellMap.md(프로젝트 지도)'] : []),
+    ...(left.skill ? [`${left.skill}(JuTell 기록이 없어 지우지 않은 Skill 파일)`] : []),
   ];
   if (!kept.length) return undefined;
   const dataLeft = !removeData && (left.config || left.data);
   const how = dataLeft
     ? `모두 지우려면 jutell uninstall --remove-data --yes 를 실행${left.map ? '한 뒤 JuTellMap.md를 직접 지우세요' : '하세요'}.`
     : '필요 없으면 직접 지우세요.';
-  return `남겨 둔 것: ${kept.join(', ')}. ${dataLeft ? '다시 설치하면 그대로 이어서 씁니다. ' : ''}${how}`;
+  const skillHow = dataLeft && left.skill ? ' Skill 폴더는 직접 지우세요.' : '';
+  return `남겨 둔 것: ${kept.join(', ')}. ${dataLeft ? '다시 설치하면 그대로 이어서 씁니다. ' : ''}${how}${skillHow}`;
 }
 
 export async function onCommand(paths: ScopePaths, options: CliOptions, io: CliIo) {

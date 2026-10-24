@@ -463,7 +463,8 @@ JuTell은 여러분 컴퓨터에 이미 있는 파일·Git·명령 결과를 바
 JuTell은 앱 설정 파일에서 자기 `jutell` 항목만 바꾸고, 바꾸기 전 파일을 백업해 두고, 다른 도구 연결(다른 MCP 서버 항목)과
 주석(메모 줄)은 그대로 둡니다. `use`는 앱 파일과 함께 이 프로젝트에 **JuTell 규칙 파일**도 만들어요:
 `AGENTS.md`(AI가 읽는 규칙), `.agents/skills/`(Skill), `.jutell.json`(설정), `.jutell-local/`(작업 기록).
-Codex 등 다른 AI 연결과 함께 쓰는 파일이고, `jutell uninstall --yes`로 뺄 수 있어요.
+Codex 등 다른 AI 연결과 함께 쓰는 파일이에요. `jutell uninstall --yes`는 `AGENTS.md`의 JuTell 내용과 Skill을 빼고
+`.jutell.json`·`.jutell-local/`은 남겨요. 이것까지 지우려면 `--remove-data`를 붙이세요.
 
 | 앱 | 연결 | 바뀌는 파일 | 연결한 뒤 | 빼기 |
 |---|---|---|---|---|
@@ -486,7 +487,7 @@ Codex 등 다른 AI 연결과 함께 쓰는 파일이고, `jutell uninstall --ye
 $ jutell use cursor
 Cursor (이 프로젝트) 연결이 끝났어요. 설정 파일: ~/my-project/.cursor/mcp.json
 바뀐 연결은 Cursor를 다시 시작하면 적용돼요.
-이 프로젝트에 JuTell 규칙 파일도 준비했어요: AGENTS.md, .agents/skills/, .jutell.json, .jutell-local/ (모든 AI 연결이 함께 써요. 빼려면 jutell uninstall --yes)
+이 프로젝트에 JuTell 규칙 파일도 준비했어요: AGENTS.md, .agents/skills/, .jutell.json, .jutell-local/ (모든 AI 연결이 함께 써요. jutell uninstall --yes는 AGENTS.md의 JuTell 내용과 Skill을 빼고 .jutell.json·.jutell-local/은 남겨요. 이것까지 지우려면 --remove-data를 붙이세요)
 
 $ jutell use windsurf
 Windsurf은(는) 아직 읽기만 지원해요. 설정 파일을 바꾸지 않았어요. 연결 상태는 `jutell status`에서 볼 수 있어요.
