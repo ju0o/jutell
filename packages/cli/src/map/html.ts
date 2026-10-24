@@ -30,7 +30,7 @@ function countsOf(files: string[]): Counts {
 }
 
 function parseSections(markdown: string) {
-  const lines = markdown.replace(/\r\n/g, '\n').replace(/<!--[\s\S]*?-->/g, '').split('\n');
+  const lines = markdown.replace(/\r\n/g, '\n').replace(/<!--(?!\s*-->)[\s\S]*?-->/g, '').split('\n');
   let title = 'JuTell 지도';
   const sections: Section[] = [];
   let current: Section | undefined;

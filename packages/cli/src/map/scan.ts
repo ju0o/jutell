@@ -47,20 +47,21 @@ function finish(raw: string[]): string[] {
   return [...seen].sort(byCodePoint);
 }
 
-function runGit(cwd: string, args: string[]): Promise<string> {
+function runGit(cwd: string, args: string[], signal?: AbortSignal): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile('git', args, { cwd, timeout: GIT_TIMEOUT_MS, maxBuffer: GIT_MAX_BUFFER, env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' } }, (error, stdout) => {
+    execFile('git', args, { cwd, timeout: GIT_TIMEOUT_MS, maxBuffer: GIT_MAX_BUFFER, env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' }, ...(signal ? { signal } : {}) }, (error, stdout) => {
       if (error) reject(error);
       else resolve(stdout);
     });
   });
 }
 
-async function gitFiles(root: string): Promise<string[] | undefined> {
+async function gitFiles(root: string, signal?: AbortSignal): Promise<string[] | undefined> {
   let stdout: string;
   try {
-    stdout = await runGit(root, ['--no-optional-locks', 'ls-files', '-z', '--cached', '--others', '--exclude-standard']);
+    stdout = await runGit(root, ['--no-optional-locks', 'ls-files', '-z', '--cached', '--others', '--exclude-standard'], signal);
   } catch (error) {
+    signal?.throwIfAborted();
     const failure = error as NodeJS.ErrnoException & { killed?: boolean };
     // No git, or not a repository: fall back to walking the folder.
     if (failure.code === 'ENOENT' || typeof failure.code === 'number') return undefined;
@@ -73,6 +74,7 @@ async function gitFiles(root: string): Promise<string[] | undefined> {
   const kept: string[] = [];
   const batch = 256;
   for (let index = 0; index < listed.length; index += batch) {
+    signal?.throwIfAborted();
     const slice = listed.slice(index, index + batch);
     const stats = await Promise.all(slice.map((file) => fs.lstat(path.join(root, file)).catch(() => undefined)));
     slice.forEach((file, i) => { if (stats[i]?.isFile()) kept.push(file); });
@@ -80,10 +82,11 @@ async function gitFiles(root: string): Promise<string[] | undefined> {
   return kept;
 }
 
-async function walkFiles(root: string): Promise<{ files: string[]; truncated: boolean }> {
+async function walkFiles(root: string, signal?: AbortSignal): Promise<{ files: string[]; truncated: boolean }> {
   const files: string[] = [];
   const queue = [''];
   while (queue.length) {
+    signal?.throwIfAborted();
     const dir = queue.shift() as string;
     let entries;
     try {
@@ -106,10 +109,10 @@ async function walkFiles(root: string): Promise<{ files: string[]; truncated: bo
   return { files, truncated: false };
 }
 
-/** Collects the project's files for JuTellMap.md. Paths are relative to `root`. */
-export async function scanProject(root: string): Promise<MapScan> {
-  const fromGit = await gitFiles(root);
+/** Collects the project's files for JuTellMap.md. Paths are relative to `root`. Stops (throws) once `signal` aborts. */
+export async function scanProject(root: string, signal?: AbortSignal): Promise<MapScan> {
+  const fromGit = await gitFiles(root, signal);
   if (fromGit) return { files: finish(fromGit), source: 'git', truncated: false };
-  const walked = await walkFiles(root);
+  const walked = await walkFiles(root, signal);
   return { files: finish(walked.files), source: 'walk', truncated: walked.truncated };
 }

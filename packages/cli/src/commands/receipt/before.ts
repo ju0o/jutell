@@ -77,10 +77,21 @@ export async function beforeWorkNote(paths: ScopePaths, files: string[]): Promis
 }
 
 /** Like beforeWorkNote, plus the files that were already changed (same hash) at the previous receipt. */
-export async function checkBeforeWork(paths: ScopePaths, files: string[]): Promise<BeforeWork> {
+/** Time cap for hashing the changed files: files left when it runs out are not compared (never marked 'before'). */
+export const RECEIPT_HASH_TIME_MS = 2000;
+const NOT_HASHED = 'not-hashed';
+export const hashCutNote = (count: number) => ` (시간 제한으로 ${count}개는 비교 못 함)`;
+
+export async function checkBeforeWork(paths: ScopePaths, files: string[], timeLimitMs = RECEIPT_HASH_TIME_MS): Promise<BeforeWork> {
   const listed = files.slice(0, MAX_FILES);
   const hashes: Record<string, string> = {};
-  for (const file of listed) hashes[file] = await hashFile(paths.targetRoot, file);
+  const deadline = Date.now() + timeLimitMs;
+  let cut = 0;
+  for (const file of listed) {
+    if (Date.now() >= deadline) { hashes[file] = NOT_HASHED; cut += 1; continue; }
+    hashes[file] = await hashFile(paths.targetRoot, file);
+  }
+  const withCut = (note: string) => (cut ? note.replace(/  \[Git 기준\]$/, `${hashCutNote(cut)}  [Git 기준]`) : note);
   const safe = await safeDataRoot(paths);
   const stateFile = path.join(paths.dataRoot, RECEIPT_STATE_FILE);
   const previous = safe ? await readState(stateFile) : undefined;
@@ -90,7 +101,8 @@ export async function checkBeforeWork(paths: ScopePaths, files: string[]): Promi
     }
   }
   if (listed.length === 0) return { before: [] };
-  if (!previous) return { note: FIRST_RUN_NOTE, before: [] };
-  const before = listed.filter((file) => previous.files[file] === hashes[file]);
-  return before.length > 0 ? { note: beforeNote(before.length), before } : { before: [] };
+  if (!previous) return { note: withCut(FIRST_RUN_NOTE), before: [] };
+  const before = listed.filter((file) => hashes[file] !== NOT_HASHED && previous.files[file] === hashes[file]);
+  if (before.length > 0) return { note: withCut(beforeNote(before.length)), before };
+  return cut ? { note: ` ⓘ 시간 제한으로 파일 ${cut}개는 작업 전과 비교 못 함  [Git 기준]`, before: [] } : { before: [] };
 }

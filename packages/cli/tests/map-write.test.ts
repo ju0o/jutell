@@ -5,7 +5,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import { resolveScope } from '../src/config/paths.js';
-import { MAP_COPY_FILE, MAP_DECLINED_FILE, MAP_DECLINED_NOTE, MAP_GUIDE, MAP_FILE, MAP_LATER, MAP_QUESTION, MAP_STATE_FILE, mapWriteMessage, offerMap, parseMap, sha256, writeMap } from '../src/map/write.js';
+import { MAP_COPY_FILE, MAP_DECLINED_FILE, MAP_DECLINED_NOTE, MAP_GUIDE, MAP_FILE, MAP_LATER, MAP_QUESTION, MAP_STATE_FILE, mapDeclined, mapWriteMessage, offerMap, rememberMapDeclined, parseMap, sha256, writeMap } from '../src/map/write.js';
 import { MAP_HTML_FILE, renderMapHtml } from '../src/map/html.js';
 import { readMapSelectionDetail, writeMapSelectionFiles } from '../src/map/selection.js';
 import { scanProject } from '../src/map/scan.js';
@@ -378,6 +378,20 @@ describe('install question (W2)', () => {
     await offerMap(paths, {} as never, first.io, true);
     expect(first.asked).toEqual([MAP_QUESTION]);
     await expect(fs.stat(path.join(outsideDir, MAP_DECLINED_FILE))).resolves.toBeTruthy();
+  });
+
+  it.skipIf(process.platform === 'win32')('(iii) saving the \'no\' writes nothing through a .jutell-local link or outside the project', async () => {
+    const { dir, paths } = await project();
+    const outsideDir = path.join(path.dirname(dir), 'outside-save');
+    await fs.mkdir(outsideDir);
+    await fs.symlink(outsideDir, path.join(dir, '.jutell-local'));
+    await rememberMapDeclined(paths);
+    expect(await fs.readdir(outsideDir)).toEqual([]);
+    expect(await mapDeclined(paths)).toBe(false);
+    await fs.unlink(path.join(dir, '.jutell-local'));
+    await fs.mkdir(path.join(dir, '.jutell-local'));
+    await rememberMapDeclined(paths);
+    expect(await mapDeclined(paths)).toBe(true);
   });
 
   it('--yes → creates without asking, plus .jutell-local/map.html (same as `jutell map`)', async () => {

@@ -1,6 +1,7 @@
 import { parse } from 'smol-toml';
 import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
+import { writeViaTemp } from '../fs/atomic.js';
 import { assets } from './paths.js';
 import type { BridgeConfig, FileSnapshot, ScopePaths } from '../types.js';
 
@@ -116,12 +117,9 @@ export async function restore(snapshotValue: FileSnapshot) {
 
 export async function writeTextSafely(file: string, content: string) {
   await fs.mkdir(path.dirname(file), { recursive: true });
-  const temporary = `${file}.beginner-bridge-tmp-${process.pid}`;
   // Keep the existing file's permissions (e.g. 600 on config.toml with secrets in env); rename would reset them.
   const existingMode = await fs.stat(file).then((stat) => stat.mode & 0o777, () => undefined);
-  await fs.writeFile(temporary, content, { encoding: 'utf8', ...(existingMode !== undefined ? { mode: existingMode } : {}) });
-  if (existingMode !== undefined) await fs.chmod(temporary, existingMode);
-  try { await fs.rename(temporary, file); } catch (error) { await fs.rm(temporary, { force: true }); throw error; }
+  await writeViaTemp(file, content, existingMode !== undefined ? { mode: existingMode } : {});
 }
 
 // Creates `.jutell-local` with its own `.gitignore` (`*`) so nothing inside (receipt.json, reports)
@@ -157,9 +155,7 @@ export async function backupFile(file: string) {
   // Immediately previous version: written to a temp file and renamed over, so a link at
   // `.previous` is replaced, never followed.
   const backupPath = `${file}.previous`;
-  const temp = `${backupPath}.jutell-${process.pid}-${Date.now()}`;
-  await writeNew(temp);
-  try { await fs.rename(temp, backupPath); } catch (error) { await fs.rm(temp, { force: true }); throw error; }
+  await writeViaTemp(backupPath, content, { mode: 0o600 });
   return backupPath;
 }
 

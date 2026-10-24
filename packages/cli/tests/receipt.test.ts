@@ -50,7 +50,7 @@ describe('receipt renderer', () => {
       ' ■ 여기서 멈춰도 됨',
       '   - 부탁한 일은 끝났어요',
       '------------------------------',
-      ' 저장됨: .jutell-local/reports/2026-10-18-164012.md',
+      ' 저장됨: .jutell-local/reports/2026-10-18-164012.md  [JuTell이 적음]',
       '==============================',
       '한 줄 요약: 브라우저 탭 이름: 할 일 목록 → 오늘 할 일 외 1건  [AI가 적음]',
     ].join('\n'));
@@ -61,7 +61,7 @@ describe('receipt renderer', () => {
     const lines = output.split('\n');
     expect(lines.at(-1)).toBe('한 줄 요약: 제목을 바꿨고 끝났어요  [AI가 적음]');
     expect(lines.at(-2)).toBe('==============================');
-    expect(lines.at(-3)).toBe(' 저장됨: .jutell-local/reports/x.md');
+    expect(lines.at(-3)).toBe(' 저장됨: .jutell-local/reports/x.md  [JuTell이 적음]');
   });
 
   it('is deterministic and does not print optional risk or next-message fields', () => {
@@ -285,7 +285,7 @@ describe('receipt command', () => {
     expect(output).toHaveLength(1);
     expect(output[0]).toContain(`저장됨: .jutell-local/reports/${reportFiles[0]}`);
     expect(output[0].split('\n').map((line) => line.trim()).filter((line) => line.startsWith('저장됨: '))).toEqual([
-      `저장됨: .jutell-local/reports/${reportFiles[0]}`,
+      `저장됨: .jutell-local/reports/${reportFiles[0]}  [JuTell이 적음]`,
     ]);
     expect(output[0]).not.toContain(path.join(paths.dataRoot, 'reports'));
     const report = path.join(paths.dataRoot, 'reports', reportFiles[0]);

@@ -9,6 +9,7 @@ import { refreshMapForReceipt, RECEIPT_MAP_TIMEOUT_MS } from '../map.js';
 import { MAP_FILE } from '../../map/write.js';
 import { checkBeforeWork } from './before.js';
 import { matchRequests, readMapSections } from './match.js';
+import { mapAreaIds } from '../../map/selection.js';
 
 const RECEIPT_INPUT_EXAMPLE = `표준 입력으로 전달하는 방식을 권장합니다:
 ... | jutell receipt --file -
@@ -366,6 +367,11 @@ export async function receiptCommand(
     const markdown = await fs.readFile(path.join(paths.targetRoot, MAP_FILE), { encoding: 'utf8', flag: fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) }).catch(() => undefined);
     // Files changed before the work stay in the comparison, marked, but never count as '바뀐 곳 있음' or '⚠ 요청에 없던 곳'.
     receipt.match = markdown === undefined ? { map: false } : matchRequests(receipt.asked ?? [], receipt.files, readMapSections(markdown), beforeWork);
+    if (markdown !== undefined && receipt.match.map && receipt.match.extra.length) {
+      const ids = mapAreaIds(markdown);
+      const extraAreas = Object.fromEntries(receipt.match.extra.flatMap((file) => (ids.has(file) ? [[file, ids.get(file)!]] : [])));
+      if (Object.keys(extraAreas).length) receipt.match.extraAreas = extraAreas;
+    }
   }
   const time = receiptTimestamp(now);
   const output = await saveReceipt(paths, receipt, time.display, time.filename);

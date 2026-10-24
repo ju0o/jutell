@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
 import { ensureDataRoot } from '../config/managed.js';
+import { writeViaTemp } from '../fs/atomic.js';
 import type { CliIo, CliOptions, ScopePaths } from '../types.js';
 import { MAP_HTML_FILE, renderMapHtml } from './html.js';
 import { classifyFiles, ESTIMATED_LABEL, UNCLASSIFIED, type Classified } from './classify.js';
@@ -181,14 +182,8 @@ export function sha256(text: string) {
   return createHash('sha256').update(text).digest('hex');
 }
 
-export async function writeViaTemp(file: string, content: string) {
-  const temporary = path.join(path.dirname(file), `.${path.basename(file)}.jutell-tmp-${process.pid}`);
-  const flags = fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_WRONLY | (fsConstants.O_NOFOLLOW ?? 0);
-  const existingMode = await fs.lstat(file).then((stat) => stat.mode & 0o777, () => undefined);
-  const handle = await fs.open(temporary, flags, existingMode ?? 0o644);
-  try { await handle.writeFile(content, 'utf8'); } finally { await handle.close(); }
-  try { await fs.rename(temporary, file); } catch (error) { await fs.rm(temporary, { force: true }); throw error; }
-}
+/** Shared temp-then-rename write (src/fs/atomic.ts), re-exported for existing callers. */
+export { writeViaTemp };
 
 /**
  * .jutell-local/map-state.json. version 2 adds `files`: the project file list the map was last synced with.
@@ -240,18 +235,22 @@ export async function mapExists(paths: ScopePaths) {
 }
 
 /** Creates JuTellMap.md or refreshes its auto blocks. Writes nothing when nothing changed. */
-export async function writeMap(paths: ScopePaths, now = new Date()): Promise<MapWriteResult> {
+export async function writeMap(paths: ScopePaths, now = new Date(), signal?: AbortSignal): Promise<MapWriteResult> {
+  // `signal` (receipt time limit): once aborted, nothing more is written; the call throws instead.
+  const check = () => signal?.throwIfAborted();
   const file = mapFile(paths);
   const stats = await fs.lstat(file).catch(() => undefined);
   if (stats && !stats.isFile()) return { status: 'link', file };
-  const scan = await scanProject(paths.targetRoot);
+  const scan = await scanProject(paths.targetRoot, signal);
   const listed = mapListFiles(scan.files);
   const items = classifyFiles(listed);
   if (!stats) {
     const text = renderNewMap(items, now, scan);
+    check();
     await writeViaTemp(file, text);
     await recordState(paths, sha256(text), listed, now).catch(() => undefined);
     await forgetMapDeclined(paths).catch(() => undefined);
+    check();
     const selection = await updateSelection(paths, text, scan, now);
     return { status: 'created', file, files: items.length, unclassified: items.filter((item) => item.feature === UNCLASSIFIED).length, selection };
   }
@@ -263,6 +262,7 @@ export async function writeMap(paths: ScopePaths, now = new Date()): Promise<Map
     if (!(await fs.lstat(paths.dataRoot).catch(() => undefined))?.isDirectory()) return { status: 'broken', file, copy: undefined, reason: updated };
     const copy = path.join(paths.dataRoot, MAP_COPY_FILE);
     if ((await fs.lstat(copy).catch(() => undefined))?.isSymbolicLink()) throw new Error('지도 사본 위치가 링크라서 쓰지 않았어요');
+    check();
     await writeViaTemp(copy, renderNewMap(items, now, scan));
     return { status: 'broken', file, copy, reason: updated };
   }
@@ -271,12 +271,15 @@ export async function writeMap(paths: ScopePaths, now = new Date()): Promise<Map
     const state = await readMapState(paths);
     const sameList = Array.isArray(state?.files) && state.files.length === listed.length && state.files.every((entry, index) => entry === listed[index]);
     if (!sameList) await recordState(paths, typeof state?.hash === 'string' ? state.hash : '', listed, now).catch(() => undefined);
+    check();
     const selection = await updateSelection(paths, existing, scan, now);
     return { status: 'unchanged', file, selection };
   }
+  check();
   await writeViaTemp(file, updated.text);
   // The map is already renamed into place: a state write failure must not turn the result into an error.
   await recordState(paths, sha256(updated.text), listed, now).catch(() => undefined);
+  check();
   const selection = await updateSelection(paths, updated.text, scan, now);
   return { status: 'updated', file, added: updated.added, removed: updated.removed, newSections: updated.newSections, selection };
 }
@@ -324,7 +327,6 @@ export const MAP_LATER = '프로젝트 지도는 만들지 않았어요. 언제�
 export const MAP_DECLINED_NOTE = '프로젝트 지도는 만들지 않기로 하셨어요. 언제든 `jutell map`으로 만들 수 있어요.';
 export const MAP_DECLINED_FILE = 'map-declined.json';
 
-/** True when the person answered 'no' to the map question in this project before. */
 /** .jutell-local is a real directory (not a symlink) whose real path stays inside the project. */
 async function safeDataRoot(paths: ScopePaths): Promise<boolean> {
   try {
@@ -346,6 +348,7 @@ async function declinedRecord(paths: ScopePaths): Promise<string | undefined> {
   return stats !== undefined && stats.isFile() && stats.nlink === 1 ? file : undefined;
 }
 
+/** True when the person answered 'no' to the map question in this project before. */
 export async function mapDeclined(paths: ScopePaths): Promise<boolean> {
   return (await declinedRecord(paths)) !== undefined;
 }
@@ -356,10 +359,15 @@ export async function forgetMapDeclined(paths: ScopePaths): Promise<void> {
   if (file) await fs.unlink(file).catch(() => undefined);
 }
 
-async function rememberMapDeclined(paths: ScopePaths, now = new Date()) {
+/**
+ * Saves the 'no' only inside a safe .jutell-local (same rule as reading it): a real directory, not a link,
+ * whose real path stays inside the project. An existing unsafe .jutell-local is never touched.
+ */
+export async function rememberMapDeclined(paths: ScopePaths, now = new Date()) {
+  const present = await fs.lstat(paths.dataRoot).then(() => true, () => false);
+  if (present && !(await safeDataRoot(paths))) return;
   await ensureDataRoot(paths);
-  const data = await fs.lstat(paths.dataRoot);
-  if (data.isSymbolicLink() || !data.isDirectory()) return;
+  if (!(await safeDataRoot(paths))) return;
   const file = path.join(paths.dataRoot, MAP_DECLINED_FILE);
   const existing = await fs.lstat(file).catch(() => undefined);
   if (existing && (!existing.isFile() || existing.nlink > 1)) return;

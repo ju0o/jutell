@@ -6,7 +6,7 @@ import { PassThrough } from 'node:stream';
 import { afterAll, describe, expect, it } from 'vitest';
 import { resolveScope } from '../src/config/paths.js';
 import { receiptCommand } from '../src/commands/receipt/index.js';
-import { canWriteState } from '../src/commands/receipt/before.js';
+import { canWriteState, checkBeforeWork } from '../src/commands/receipt/before.js';
 import type { CliIo } from '../src/types.js';
 
 const roots: string[] = [];
@@ -149,5 +149,18 @@ describe('receipt-state.json write safety', () => {
       await fs.symlink(path.join(root, 'missing.json'), path.join(root, 'link.json'));
       expect(await canWriteState(path.join(root, 'link.json'))).toBe(false);
     }
+  });
+
+  it('the hash step has a time cap: files left over are not compared and the note says so', async () => {
+    const { dir } = await project();
+    const paths = resolveScope('project', dir);
+    await fs.mkdir(path.join(dir, '.jutell-local'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'src', 'a.ts'), 'a2');
+    await checkBeforeWork(paths, ['src/a.ts']);
+    const result = await checkBeforeWork(paths, ['src/a.ts'], 0);
+    expect(result.before).toEqual([]);
+    expect(result.note).toBe(' ⓘ 시간 제한으로 파일 1개는 작업 전과 비교 못 함  [Git 기준]');
+    // The cut file was saved as not compared, so the next receipt does not call it 'before the work'.
+    expect((await checkBeforeWork(paths, ['src/a.ts'])).before).toEqual([]);
   });
 });

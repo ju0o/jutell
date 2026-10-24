@@ -122,6 +122,16 @@ function sectionDigest(section: MapSection, entry: Omit<MapSectionEntry, 'detail
   }));
 }
 
+/** Map area ID (same as the feature index: `f-…`) for every file listed in JuTellMap.md. */
+export function mapAreaIds(markdown: string): Map<string, string> {
+  const ids = new Map<string, string>();
+  selectionSections(markdown).forEach((section, position) => {
+    const id = `f-${sha256(section.markerKey ? `marker:${section.markerKey}` : `heading:${section.title}:${position}`).slice(0, 12)}`;
+    for (const file of section.files) if (!ids.has(file.path)) ids.set(file.path, id);
+  });
+  return ids;
+}
+
 function buildIndex(markdown: string, scan: MapScan, commit: string | null, generatedAt: string, oldIndex?: MapSelectionIndex): MapSelectionIndex {
   const sections = selectionSections(markdown);
   const presentPaths = new Set(scan.files);

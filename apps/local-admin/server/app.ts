@@ -298,7 +298,7 @@ export async function handleApiRequest(req: IncomingMessage, res: ServerResponse
       if (wanted !== before) {
         const applied = await (wanted ? addGitExclude(projectRoot) : removeGitExclude(projectRoot)).catch((caught: Error) => ({ status: 'error' as const, message: caught.message }));
         const ok = ['added', 'already', 'removed', 'absent'].includes(applied.status);
-        gitExclude = { status: applied.status, ...('ignored' in applied ? { ignored: applied.ignored } : {}), message: applied.status === 'error' ? `git 제외 줄을 바꾸지 못했어요(${applied.message}).` : gitExcludeMessage(applied) };
+        gitExclude = { status: applied.status, ...('ignored' in applied ? { ignored: applied.ignored } : {}), message: applied.status === 'error' ? `git 제외 줄을 바꾸지 못했어요(${applied.message}).` : gitExcludeMessage(applied, projectRoot) };
         // Not applied (not git, committed map, link, error): keep the old value so the switch matches .git/info/exclude.
         if (!ok) next = { ...result.value, map: { gitExclude: before } };
       }

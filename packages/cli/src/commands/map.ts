@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { ensureDataRoot, readBridgeConfig, writeBridgeConfig } from '../config/managed.js';
+import { friendlyError } from '../output/friendly.js';
 import { addGitExclude, gitExcludeMessage, removeGitExclude } from '../map/git-exclude.js';
 import { formatMapSelectionContext, formatMapSelectionIndex, readMapSelectionDetail, readMapSelectionIndex, sanitizeMapSelectionText } from '../map/selection.js';
 import { scanProject } from '../map/scan.js';
@@ -42,7 +43,7 @@ export async function mapCommand(paths: ScopePaths, args: string[], io: CliIo) {
   if (exclude && include) throw new Error('--git-exclude와 --git-include는 함께 쓸 수 없어요.');
   if (exclude || include) {
     const result = exclude ? await addGitExclude(paths.targetRoot) : await removeGitExclude(paths.targetRoot);
-    io.write(gitExcludeMessage(result));
+    io.write(gitExcludeMessage(result, paths.targetRoot));
     if (['added', 'already', 'removed', 'absent'].includes(result.status)) await recordGitExclude(paths, exclude);
     return 0;
   }
@@ -125,9 +126,11 @@ export async function refreshMapForReceipt(paths: ScopePaths, timeoutMs = RECEIP
     jutellOwned = false;
   }
   let timer: NodeJS.Timeout | undefined;
-  const timeout = new Promise<'timeout'>((resolve) => { timer = setTimeout(() => resolve('timeout'), timeoutMs); });
+  // On time out the refresh is cancelled too (AbortSignal): it stops scanning and writes nothing afterwards.
+  const controller = new AbortController();
+  const timeout = new Promise<'timeout'>((resolve) => { timer = setTimeout(() => { controller.abort(); resolve('timeout'); }, timeoutMs); });
   try {
-    const result = await Promise.race([writeMap(paths), timeout]);
+    const result = await Promise.race([writeMap(paths, new Date(), controller.signal), timeout]);
     if (result === 'timeout') return { jutellOwned, note: 'ⓘ 지도 갱신 못 함(시간 초과로 건너뜀)' };
     if (result.status === 'link') return { jutellOwned: false, note: 'ⓘ 지도 갱신 못 함(지도가 링크예요)' };
     if (result.status === 'broken') return { jutellOwned, note: 'ⓘ 지도 갱신 못 함(자동 칸 표시가 망가져 있어요. `jutell map`으로 확인하세요)' };
@@ -142,7 +145,7 @@ export async function refreshMapForReceipt(paths: ScopePaths, timeoutMs = RECEIP
     ].filter(Boolean);
     return { jutellOwned, note: `ⓘ 지도를 갱신했어요${parts.length ? ` (${parts.join(', ')} 반영)` : ''}  [JuTell이 고침]` };
   } catch (error) {
-    return { jutellOwned, note: `ⓘ 지도 갱신 못 함(${(error as Error).message || '알 수 없는 오류'})` };
+    return { jutellOwned, note: `ⓘ 지도 갱신 못 함(${friendlyError(error, paths.targetRoot)})` };
   } finally {
     if (timer) clearTimeout(timer);
   }

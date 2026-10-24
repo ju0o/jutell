@@ -142,6 +142,24 @@ describe('receipt refreshes the map (W5)', () => {
     expect(text).toContain('저장됨: .jutell-local/reports/');
   });
 
+  it('a timed-out refresh is cancelled: the map is not written later', async () => {
+    const { dir, paths } = await project();
+    await writeMap(paths);
+    const mapBefore = await fs.readFile(path.join(dir, 'JuTellMap.md'), 'utf8');
+    await fs.writeFile(path.join(dir, 'late.ts'), 'x');
+    expect((await refreshMapForReceipt(paths, 0)).note).toBe('ⓘ 지도 갱신 못 함(시간 초과로 건너뜀)');
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(await fs.readFile(path.join(dir, 'JuTellMap.md'), 'utf8')).toBe(mapBefore);
+  });
+
+  it('writeMap with an aborted signal writes nothing and throws', async () => {
+    const { dir, paths } = await project();
+    const controller = new AbortController();
+    controller.abort();
+    await expect(writeMap(paths, new Date(), controller.signal)).rejects.toThrow();
+    await expect(fs.lstat(path.join(dir, 'JuTellMap.md'))).rejects.toThrow();
+  });
+
   it('works in a Korean path with spaces', async () => {
     const { dir, paths, receipt } = await project('한글 폴더/내 프로젝트');
     await writeMap(paths);

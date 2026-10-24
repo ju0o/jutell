@@ -9,7 +9,7 @@ import { removeOpenCodeMcp, readOpenCodeRegistration, setOpenCodeEnabled } from 
 import { removeClaudeMcp } from '../installer/claude.js';
 import { scopeLabel } from '../output/format.js';
 import { offerMap } from '../map/write.js';
-import { removeGitExclude } from '../map/git-exclude.js';
+import { removeGitExclude, shownExcludePath } from '../map/git-exclude.js';
 import { codexDetected, nodeMajorVersion, operatingSystem } from '../process/system.js';
 import type { CliIo, CliOptions, ScopePaths } from '../types.js';
 
@@ -149,7 +149,8 @@ export async function uninstallCommand(paths: ScopePaths, options: CliOptions, i
   await removeManagedSkillFiles(assets().skill, paths.skillRoot, paths);
   if (paths.scope === 'project') await removeJuTellAgentsBlock(paths.targetRoot);
   // Only JuTell's two lines in .git/info/exclude; the map file itself and the user's .gitignore stay.
-  if (paths.scope === 'project' && (await removeGitExclude(paths.targetRoot).catch(() => undefined))?.status === 'removed') io.write('JuTellMap.md를 git에서 빼던 줄(.git/info/exclude)을 지웠어요.');
+  const excluded = paths.scope === 'project' ? await removeGitExclude(paths.targetRoot).catch(() => undefined) : undefined;
+  if (excluded?.status === 'removed') io.write(`JuTellMap.md를 git에서 빼던 줄(${shownExcludePath(excluded.file, paths.targetRoot)})을 지웠어요.`);
   await removeOpenCodeMcp(paths, packageRoot());
   // Same reasoning as disable: Claude's scope is already per-project, so no
   // shared-global-entry risk to guard against here.
