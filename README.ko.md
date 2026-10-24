@@ -26,7 +26,8 @@ npm install -g jutell
 jutell
 ```
 
-> **2.1.0이 npm에 올라가기 전까지** (공개 후 이 안내는 지우세요): `npm install -g jutell`은 2.0.1을 설치해요. 2.1.0을 지금 쓰려면 소스에서 묶은 복사본을 설치하세요. **git**과 **Node.js 18 이상**이 필요해요.
+<!-- 관리자: 2.1.0이 npm에 올라가면 이 안내를 지우세요. -->
+> **2.1.0이 npm에 올라가기 전까지**: `npm install -g jutell`은 2.0.1을 설치해요. 2.1.0을 지금 쓰려면 소스에서 묶은 복사본을 설치하세요. **git**과 **Node.js 18 이상**이 필요해요.
 >
 > macOS / Linux:
 >
@@ -44,6 +45,8 @@ jutell
 > npm ci; npm pack
 > npm install -g (Get-ChildItem jutell-*.tgz).FullName
 > ```
+>
+> `jutell-*.tgz` 파일이 여러 개 생겼거나 PowerShell에서 빨간 오류가 나오면 거기서 멈추세요. `packages/cli`의 `jutell-*.tgz`를 모두 지운 뒤 `npm pack`을 한 번만 다시 실행해 그 파일 하나만 설치하세요.
 >
 > Linux에서 `npm install -g`가 `EACCES` 권한 오류로 실패하면 sudo 대신, npm 설치 위치를 홈 폴더로 바꾸거나(`npm config set prefix ~/.npm-global` 후 `~/.npm-global/bin`을 `PATH`에 추가) nvm으로 Node를 설치하세요.
 
@@ -247,15 +250,27 @@ status`를 실행하세요. 문제가 보이면 `jutell doctor`가 다음에 할
 jutell status
 ```
 
-이제 막 설치했고 아직 연결하지 않은 실제 프로젝트는 짐작하지 않고 정직하게 이렇게
-보여줍니다.
+작은 연습 프로젝트에서 Codex만 설치된 채 `jutell --yes`를 실행한 직후의 실제 출력이에요(핵심 줄만 남김).
+AI 세션이 실제로 JuTell을 읽었는지는 여기서 볼 수 없으니 짐작하지 않고 "직접 확인 필요"라고 보여줍니다.
 
 ```text
-Skill: 설치되지 않음
-AGENTS.md: JuTell 블록 없음
-Codex MCP: 활성화됨 (전역, 이 프로젝트에서는 아직 사용 안 함)
-OpenCode MCP: 미등록
+$ jutell status
+JuTell 상태
+
+CLI: 2.1.0
+Skill: 설치됨
+AGENTS.md: JuTell 블록 있음
+JuTell 연결 정책: 켜짐
+Codex MCP (전역, Codex는 프로젝트 설정을 읽지 않음): 활성화됨 (명령 감지됨)
+OpenCode MCP: 미등록 (명령 미감지)
+Claude Code MCP (현재 프로젝트(local)): 미등록 (명령 미감지)
+MCP 서버 응답: 확인하지 않음
 현재 Agent 세션 적용: 직접 확인 필요
+Profile: balanced
+설치 범위 (설정·Skill·AGENTS.md): 현재 프로젝트
+Telemetry: 비활성화
+외부 전송: 없음
+지도: 지도가 최신이에요.
 ```
 
 "설정됨"과 "실제로 확인함"을 나누기 때문에, 아직 도구를 호출해 보지 않은 상태를 오류처럼
@@ -345,7 +360,7 @@ JuTell 준비 완료.
 [바뀐 파일]  [Git 기준]
  1. src/pages/Login.tsx
 
-[확인]  [AI가 적음 · ⓘ 줄은 JuTell이 적음]
+[확인]  [AI가 적음 · JuTell이 적은 줄은 따로 표시]
  ✔ 직접 확인한 것: Login.tsx에 파란색 클래스가 들어간 것을 확인  [AI가 적음]
  ✔ 직접 확인한 것: `npm test` 실행해서 3개 통과  [AI가 적음]
  ✖ 확인 못 한 것: 브라우저 화면은 열어 보지 않음  [AI가 적음]
@@ -437,7 +452,7 @@ JuTell은 여러분 컴퓨터에 이미 있는 파일·Git·명령 결과를 바
 | `jutell` | 설치된 지원 Agent를 찾아 연결할지 물어봅니다. |
 | `jutell status` | 설치·연결·Profile·Feature 상태를 보여줍니다. |
 | `jutell doctor` | 설치 문제를 점검합니다. |
-| `jutell on` / `jutell off` | JuTell 연결을 켜거나 끕니다. |
+| `jutell on` / `jutell off --yes` | JuTell 연결을 켜거나 끕니다(`off`는 먼저 물어보고, `--yes`는 묻지 않아요). |
 | `jutell setup` | Skill·기본 설정·MCP 연결을 다시 준비합니다. |
 | `jutell provider` | Agent별 연결 상태를 자세히 보여줍니다. |
 | `jutell upgrade` | 설치된 Skill/설정/MCP를 최신 버전으로 새로고침합니다. |

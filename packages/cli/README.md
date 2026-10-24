@@ -95,6 +95,7 @@ Profile: balanced
 설치 범위 (설정·Skill·AGENTS.md): 현재 프로젝트
 Telemetry: 비활성화
 외부 전송: 없음
+지도: 지도가 최신이에요.
 ```
 
 
@@ -131,7 +132,7 @@ Real output from a practice project where the request was "make the login button
 [바뀐 파일]  [Git 기준]
  1. src/pages/Login.tsx
 
-[확인]  [AI가 적음 · ⓘ 줄은 JuTell이 적음]
+[확인]  [AI가 적음 · JuTell이 적은 줄은 따로 표시]
  ✔ 직접 확인한 것: `npm test` 실행해서 3개 통과  [AI가 적음]
  ✖ 확인 못 한 것: 브라우저 화면은 열어 보지 않음  [AI가 적음]
  ⓘ 위 테스트·명령 결과는 AI가 알려 준 내용이에요. JuTell이 직접 돌려 보지는 않았어요  [JuTell이 적음]
@@ -195,7 +196,7 @@ You need a coding agent first — JuTell connects to one you already installed.
 | `jutell status` | Installation, connection, profile, and feature status. |
 | `jutell doctor` | Checks for setup problems. |
 | `jutell use codex` / `claude` / `opencode` | Connect one agent by hand (repair path). |
-| `jutell on` / `jutell off` | Turn the connection on or off. |
+| `jutell on` / `jutell off --yes` | Turn the connection on or off (`--yes` skips the question). |
 | `jutell upgrade` | Refresh the installed Skill/config/MCP. |
 | `jutell uninstall` | Remove JuTell's managed setup. |
 

@@ -6,7 +6,9 @@ export type MapSection = { key: string; name: string; files: string[] };
 
 export type MatchItem =
   // `before`: feature files that were already changed before the work (W7). Shown, but never counted as a change.
-  | { status: 'changed'; features: string[]; files: string[]; before?: string[] }
+  // `via`: how the files were tied to the request when the map area alone could not ('file' = the request or
+  // the work list names the file; 'only' = the only request, so every changed file belongs to it).
+  | { status: 'changed'; features: string[]; files: string[]; before?: string[]; via?: 'file' | 'only' }
   | { status: 'unchanged'; features: string[]; before?: string[] }
   | { status: 'unplaced' };
 
@@ -67,24 +69,53 @@ export function featuresFor(request: string, sections: MapSection[]): MapSection
   return sections.filter((section) => candidates(section).some((word) => mentions(request, word)));
 }
 
-export function matchRequests(asked: string[], changed: string[], sections: MapSection[], beforeWork: string[] = []): ReceiptMatch {
+/** Changed files a text names directly: by path, file name, or file name without extension (3+ letters). */
+export function filesNamedIn(text: string, changed: string[]): string[] {
+  const lower = text.toLowerCase();
+  return changed.filter((file) => {
+    const full = file.toLowerCase();
+    const base = full.split('/').pop() ?? full;
+    const stem = base.replace(/\.[a-z0-9]+$/, '');
+    return lower.includes(full) || mentions(lower, base) || (stem.length >= 3 && /^[a-z0-9_-]+$/.test(stem) && mentions(lower, stem));
+  });
+}
+
+/**
+ * Matches each request to the changed files. The AI's own `asked` wording is not the only input
+ * (dogfood #37: '페이지의 탭 이름과 큰 제목을 바꾸기' left out '할 일', so the requested todo.html became
+ * '요청에 없던 곳'): `context` (the work list and summary) and the file names are used too, and with a
+ * single request every changed file belongs to it.
+ */
+export function matchRequests(asked: string[], changed: string[], sections: MapSection[], beforeWork: string[] = [], context: string[] = []): ReceiptMatch {
   const changedSet = new Set(changed);
   const beforeSet = new Set(beforeWork.filter((file) => changedSet.has(file)));
   const claimed = new Set<string>();
+  const contextText = context.join('\n');
   const items = asked.map((request): MatchItem => {
-    const matched = featuresFor(request, sections);
-    if (!matched.length) return { status: 'unplaced' };
-    const featureFiles = new Set(matched.flatMap((section) => section.files));
+    let matched = featuresFor(request, sections);
+    const named = filesNamedIn(request, changed);
+    // Only one request: the work list describes that same request, so its words count too.
+    if (!matched.length && !named.length && asked.length === 1) {
+      matched = featuresFor(contextText, sections);
+      named.push(...filesNamedIn(contextText, changed));
+    }
+    if (!matched.length && !named.length) return { status: 'unplaced' };
+    const featureFiles = new Set([...matched.flatMap((section) => section.files), ...named]);
     for (const file of featureFiles) claimed.add(file);
     const inFeature = changed.filter((file) => featureFiles.has(file));
     const files = inFeature.filter((file) => !beforeSet.has(file));
     const before = inFeature.filter((file) => beforeSet.has(file));
     const features = matched.map((section) => section.name);
     const withBefore = before.length ? { before } : {};
-    return files.length ? { status: 'changed', features, files, ...withBefore } : { status: 'unchanged', features, ...withBefore };
+    const via = features.length ? {} : { via: 'file' as const };
+    return files.length ? { status: 'changed', features, files, ...withBefore, ...via } : features.length ? { status: 'unchanged', features, ...withBefore } : { status: 'unplaced' };
   });
-  const outside = [...changedSet].filter((file) => !claimed.has(file));
-  const extra = outside.filter((file) => !beforeSet.has(file));
-  const extraBefore = outside.filter((file) => beforeSet.has(file));
-  return { map: true, items, extra, ...(extraBefore.length ? { extraBefore } : {}) };
+  let outside = [...changedSet].filter((file) => !claimed.has(file) && !beforeSet.has(file));
+  // A single request that found no place: the changed files are its work, not '요청에 없던 곳'.
+  if (asked.length === 1 && items[0].status === 'unplaced' && outside.length) {
+    items[0] = { status: 'changed', features: [], files: outside, via: 'only' };
+    outside = [];
+  }
+  const extraBefore = [...changedSet].filter((file) => !claimed.has(file) && beforeSet.has(file));
+  return { map: true, items, extra: outside, ...(extraBefore.length ? { extraBefore } : {}) };
 }

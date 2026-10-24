@@ -9,6 +9,7 @@ import { normalizeReceipt, receiptMarkdown, renderReceipt } from './render.js';
 import { refreshMapForReceipt, RECEIPT_MAP_TIMEOUT_MS } from '../map.js';
 import { MAP_FILE } from '../../map/write.js';
 import { checkBeforeWork, RECEIPT_STATE_FILE } from './before.js';
+import { applyRulesWithoutFetch, RULES_REMINDER, rulesFetchedForThisWork } from './rules.js';
 import { matchRequests, readMapSections } from './match.js';
 import { mapAreaIds } from '../../map/selection.js';
 
@@ -361,6 +362,13 @@ export async function receiptCommand(
   if (mapStep.note) receipt.mapNote = mapStep.note;
   receipt.filesUnknownReason = changedFiles.unknownReason;
   receipt.filesChecked = true;
+  // BLOCKER B (#37): the AI skipped get_beginner_report_rules in 1 of 5 runs. Read the MCP stamp before
+  // checkBeforeWork rewrites receipt-state.json; if this work did not fetch the rules, JuTell applies them.
+  const aiWrote = receipt.done.length > 0 || Boolean(receipt.summary);
+  if (aiWrote && paths.scope === 'project' && !(await rulesFetchedForThisWork(paths).catch(() => true))) {
+    applyRulesWithoutFetch(receipt);
+    io.error(RULES_REMINDER);
+  }
   let beforeWork: string[] = [];
   if (!changedFiles.unknownReason) {
     // Make sure `.jutell-local` exists (same link checks as the receipt) so the state can be saved.
@@ -373,7 +381,7 @@ export async function receiptCommand(
   if ((receipt.asked?.length ?? 0) > 0 && !changedFiles.unknownReason) {
     const markdown = await fs.readFile(path.join(paths.targetRoot, MAP_FILE), { encoding: 'utf8', flag: fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) }).catch(() => undefined);
     // Files changed before the work stay in the comparison, marked, but never count as '바뀐 곳 있음' or '⚠ 요청에 없던 곳'.
-    receipt.match = markdown === undefined ? { map: false } : matchRequests(receipt.asked ?? [], receipt.files, readMapSections(markdown), beforeWork);
+    receipt.match = markdown === undefined ? { map: false } : matchRequests(receipt.asked ?? [], receipt.files, readMapSections(markdown), beforeWork, [...receipt.done, receipt.summary ?? '']);
     if (markdown !== undefined && receipt.match.map && receipt.match.extra.length) {
       const ids = mapAreaIds(markdown);
       const extraAreas = Object.fromEntries(receipt.match.extra.flatMap((file) => (ids.has(file) ? [[file, ids.get(file)!]] : [])));

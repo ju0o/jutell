@@ -257,7 +257,7 @@ describe('"지도 오래됨" in doctor and status: one rule, the file LIST (dogf
     const { dir, paths } = await project();
     await writeMap(paths);
     await fs.rm(path.join(dir, 'index.js'));
-    expect((await mapFreshnessCheck(paths))?.detail).toBe('지도 오래됨: 지도에 없는 없어진 파일 1개(index.js). `jutell map`으로 갱신하세요.');
+    expect((await mapFreshnessCheck(paths))?.detail).toBe('지도 오래됨: 지도에는 있지만 폴더에서 없어진 파일 1개(index.js). `jutell map`으로 갱신하세요.');
     await fs.rename(path.join(dir, 'src', 'payments', 'refund.ts'), path.join(dir, 'src', 'payments', 'refund2.ts'));
     const detail = (await mapFreshnessCheck(paths))?.detail ?? '';
     expect(detail).toContain('새 파일 1개(src/payments/refund2.ts)');

@@ -35,7 +35,8 @@ export type ReceiptInput = {
 export const RECEIPT_SECTIONS = ['[요청 대조]', '[이번에 한 작업]', '[바뀐 파일]', '[확인]', '[다음 추천]'] as const;
 export const NEXT_GROUPS = [' ▶ 계속', ' ○ 추천', ' ■ 여기서 멈춰도 됨'] as const;
 export const NOTHING_NEXT_LINE = ' 여기서 멈춰도 됩니다 – 따로 추천할 다음 작업이 없어요';
-export const DEFAULT_SUMMARY = '요청한 작업을 마쳤어요.';
+// No AI summary or work list (e.g. a person ran `jutell receipt` by hand): never claim the work is done.
+export const DEFAULT_SUMMARY = 'AI가 작업 설명을 주지 않아 Git이 본 변경만 적었어요.';
 export const SUMMARY_PREFIX = '한 줄 요약: ';
 export const MATCH_SECTION = RECEIPT_SECTIONS[0];
 export const LABEL_GIT = '[Git 기준]';
@@ -49,7 +50,7 @@ export const LABEL_JUTELL = '[JuTell이 적음]';
 /** Shown only when a check or a done item mentions a test or a command (item 2). */
 export const HANJA_NOTE = ` ⓘ AI가 적은 글에 한자가 섞여 있어요. 뜻이 헷갈리면 AI에게 쉬운 우리말로 다시 써 달라고 하세요  ${LABEL_JUTELL}`;
 /** [확인] heading label when JuTell's own ⓘ line sits under it, so the AI label never seems to cover JuTell's line. */
-export const LABEL_CHECK_MIXED = '[AI가 적음 · ⓘ 줄은 JuTell이 적음]';
+export const LABEL_CHECK_MIXED = '[AI가 적음 · JuTell이 적은 줄은 따로 표시]';
 export const AI_RESULTS_NOTE = ` ⓘ 위 테스트·명령 결과는 AI가 알려 준 내용이에요. JuTell이 직접 돌려 보지는 않았어요  ${LABEL_JUTELL}`;
 // A run record: a command name as a whole word (not 'test-app' or 'npm-debug.log'), or a run word plus a
 // result word ('테스트 통과'). A line that says it was NOT run ('실행하지 않음') never counts.
@@ -194,7 +195,7 @@ function readMatch(value: unknown, askedCount: number): ReceiptMatch | undefined
     if (!isRecord(item)) return undefined;
     if (item.status === 'unplaced') items.push({ status: 'unplaced' });
     else if (item.status === 'unchanged') items.push({ status: 'unchanged', features: readNames(item.features), ...readBefore(item.before) });
-    else if (item.status === 'changed') items.push({ status: 'changed', features: readNames(item.features), files: readFileNames(item.files), ...readBefore(item.before) });
+    else if (item.status === 'changed') items.push({ status: 'changed', features: readNames(item.features), files: readFileNames(item.files), ...readBefore(item.before), ...(item.via === 'file' || item.via === 'only' ? { via: item.via } : {}) });
     else return undefined;
   }
   const extraBefore = readFileNames(value.extraBefore ?? []);
@@ -237,7 +238,7 @@ function matchLines(receipt: ReceiptInput, asked: string[], askedMore: number, s
   const lines = [`${MATCH_SECTION}  요청 ${asked.length}개 중 ${parts.join(' · ')}  ${LABEL_MATCH}`];
   match.items.forEach((item, index) => {
     lines.push(` ${index + 1}. ${asked[index]}  ${LABEL_AI}`);
-    if (item.status === 'changed') lines.push(`    → 바뀐 곳 있음: ${shortList(item.files)}  [Git 기준 · 지도: ${item.features.join(', ')}]`);
+    if (item.status === 'changed') lines.push(`    → 바뀐 곳 있음: ${shortList(item.files)}  [Git 기준 · ${item.features.length ? `지도: ${item.features.join(', ')}` : item.via === 'only' ? '요청이 하나뿐이라 바뀐 파일 전부' : '파일 이름으로 찾음'}]`);
     else if (item.status === 'unchanged') lines.push(`    → 바뀐 곳 없음: '${item.features.join(', ')}' 파일이 바뀌지 않았어요  [Git 기준 · 지도: ${item.features.join(', ')}]`);
     else lines.push(`    → 장소를 못 찾았어요(지도에 맞는 기능이 없어요)  ${LABEL_ESTIMATE}`);
     if (item.status !== 'unplaced' && item.before?.length) lines.push(`    ${BEFORE_WORK_MARK} 바뀌어 있던 파일: ${shortList(item.before)}  ${LABEL_GIT}`);
@@ -453,12 +454,12 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
     ] : []),
     ...(asked.length === 0 && receipt.mapNote ? [` ${receipt.mapNote}`, ''] : []),
     // Every line carries its own source label (dogfood: [확인], ' ○ 추천' and '- …' lines had none).
-    `${RECEIPT_SECTIONS[3]}  ${mentionsRun || hasHanja ? LABEL_CHECK_MIXED : LABEL_AI}`,
+    `${RECEIPT_SECTIONS[3]}  ${mentionsRun || hasHanja || receipt.checks.some((check) => check.result !== '확인함' && check.jutell === true) ? LABEL_CHECK_MIXED : LABEL_AI}`,
     ...renderList(
       receipt.checks,
       (check) => check.result === '확인함'
         ? ` ✔ 직접 확인한 것: ${check.what}${check.how ? ` (${check.how})` : ''}  ${LABEL_AI}`
-        : ` ✖ 확인 못 한 것: ${check.what}${check.reason ? ` (${check.reason})` : ''}${check.jutell ? '' : `  ${LABEL_AI}`}`,
+        : ` ✖ 확인 못 한 것: ${check.what}${check.reason ? ` (${check.reason})` : ''}  ${check.jutell ? LABEL_JUTELL : LABEL_AI}`,
       ` ✔ 직접 확인한 것: 없음  ${LABEL_AI}`,
     ),
     // '확인 못 한 것' is never left out: with nothing unchecked it says so explicitly.

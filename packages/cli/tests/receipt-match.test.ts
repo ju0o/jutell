@@ -43,7 +43,7 @@ async function project(options: { map?: boolean; name?: string } = {}) {
   return { dir, paths, receipt, edit };
 }
 /** Content lines (not frames, blanks, section/group headers whose lines carry labels) without a source label. */
-const LABEL_END = /(\[(Git 기준|AI가 적음|지도로 짐작|JuTell이 적음|JuTell이 고침|AI가 적음 · ⓘ 줄은 JuTell이 적음|Git 기준 · 지도 대조|Git 기준 · 지도: [^\]]+)\])$/;
+const LABEL_END = /(\[(Git 기준|AI가 적음|지도로 짐작|JuTell이 적음|JuTell이 고침|AI가 적음 · JuTell이 적은 줄은 따로 표시|Git 기준 · 지도 대조|Git 기준 · 지도: [^\]]+)\])$/;
 function unlabeled(text: string): string[] {
   const lines = text.split('\n');
   const start = lines.findIndex((line, index) => index > 2 && line.startsWith('='));
@@ -85,9 +85,40 @@ describe('request matching (W6, plan.md §2)', () => {
   it('③ no feature matches → 장소를 못 찾았어요 [지도로 짐작]', async () => {
     const { receipt, edit } = await project();
     await edit('test-app/todo.html');
-    const text = await receipt({ ...base, asked: ['배경 음악 넣기'], done: ['넣었어요'] });
-    expect(text).toContain('[요청 대조]  요청 1개 중 1개 장소 못 찾음  [Git 기준 · 지도 대조]');
+    // Two requests: the one with no place stays 장소 못 찾음 (one request alone takes every changed file, see #37 below).
+    const text = await receipt({ ...base, asked: ['할 일 페이지 제목 바꾸기', '배경 음악 넣기'], done: ['넣었어요'] });
+    expect(text).toContain('1개 장소 못 찾음');
     expect(text).toContain('    → 장소를 못 찾았어요(지도에 맞는 기능이 없어요)  [지도로 짐작]');
+  });
+
+  // #37 final dogfood run 4: the request's own words did not name the map area.
+  it('#37 repro: "페이지의 탭 이름과 큰 제목을 바꾸기" + todo.html (할 일 area) is 처리, not 요청에 없던 곳', async () => {
+    const { receipt, edit } = await project();
+    await edit('test-app/todo.html');
+    const asked = ['페이지의 탭 이름과 큰 제목을 바꾸기'];
+    // The AI's work list names the area: matched through the map.
+    const withDone = await receipt({ ...base, asked, done: ["탭 이름과 큰 제목을 '오늘 할 일'로 바꿨어요"] });
+    expect(withDone).toContain('요청 1개 중 1개 처리');
+    expect(withDone).not.toContain('장소 못 찾음');
+    expect(withDone).not.toContain('요청에 없던 곳');
+    // The work list says nothing useful: one request still owns the changed file (not the AI's wording).
+    const second = await project();
+    await second.edit('test-app/todo.html');
+    const vague = await second.receipt({ ...base, asked, done: ['바꿨어요'] });
+    expect(vague).toContain('요청 1개 중 1개 처리');
+    expect(vague).toContain('test-app/todo.html  [Git 기준 · 요청이 하나뿐이라 바뀐 파일 전부]');
+    expect(vague).not.toContain('요청에 없던 곳');
+  });
+
+  // Like "index.html 제목 바꾸기" with index.html under '아직 분류 안 된 파일': the request names the file.
+  it('#37 repro: a request naming an unclassified file by name finds it', async () => {
+    const { receipt, edit } = await project();
+    await edit('scripts/migrate-2024.js');
+    await edit('test-app/todo.html');
+    const text = await receipt({ ...base, asked: ['migrate-2024.js 날짜 바꾸기', '할 일 페이지 색 바꾸기'], done: ['바꿨어요'] });
+    expect(text).toContain('요청 2개 중 2개 처리');
+    expect(text).toContain('scripts/migrate-2024.js  [Git 기준 · 파일 이름으로 찾음]');
+    expect(text).not.toContain('요청에 없던 곳');
   });
 
   it('④ a place outside the request changed → ⚠ 요청에 없던 곳도 바뀜 [Git 기준]', async () => {
@@ -147,7 +178,7 @@ describe('request matching (W6, plan.md §2)', () => {
     expect(note).toBeDefined();
     expect(note!.endsWith('  [JuTell이 적음]')).toBe(true);
     expect(note).not.toContain('[AI가 적음]');
-    expect(lines).toContain('[확인]  [AI가 적음 · ⓘ 줄은 JuTell이 적음]');
+    expect(lines).toContain('[확인]  [AI가 적음 · JuTell이 적은 줄은 따로 표시]');
     const plain = await receipt({ asked: ['할 일 페이지 제목 바꾸기'], done: ['제목을 바꿨어요'], checked: ['파일을 다시 읽었어요'], unchecked: [], next: [] });
     expect(plain.split('\n')).toContain('[확인]  [AI가 적음]');
   });
@@ -316,12 +347,15 @@ describe('files changed before the work in the comparison (W7 × W6)', () => {
 });
 
 // Supervisor (c): the blank-line notices JuTell writes itself in [확인] are not labelled as written by the AI.
-describe('[확인] blank lines made by JuTell carry no [AI가 적음]', () => {
-  it('"한 일 목록이 비어 있었어요" / "확인한 내용을 받지 못했어요" have no AI label; AI lines keep theirs', async () => {
+describe('[확인] blank lines made by JuTell carry [JuTell이 적음], not [AI가 적음]', () => {
+  it('"한 일 목록이 비어 있었어요" / "확인한 내용을 받지 못했어요" are labelled JuTell; AI lines keep theirs', async () => {
     const { receipt } = await project();
     const text = await receipt({ asked: [], done: [], checked: [], unchecked: [], next: [] });
-    expect(text).toContain('\n ✖ 확인 못 한 것: 한 일 목록이 비어 있었어요\n');
-    expect(text).toContain('\n ✖ 확인 못 한 것: 확인한 내용을 받지 못했어요\n');
+    expect(text).toContain('\n ✖ 확인 못 한 것: 한 일 목록이 비어 있었어요  [JuTell이 적음]\n');
+    expect(text).toContain('\n ✖ 확인 못 한 것: 확인한 내용을 받지 못했어요  [JuTell이 적음]\n');
+    // The heading covers both sources, and a hand-run receipt never claims the work is done (#37 dogfood).
+    expect(text).toContain('[확인]  [AI가 적음 · JuTell이 적은 줄은 따로 표시]');
+    expect(text).not.toContain('마쳤어요');
     const withAi = await receipt({ ...base, asked: [], done: ['했어요'] });
     expect(withAi).toContain(' ✖ 확인 못 한 것: 브라우저 화면 (안 열어 봄)  [AI가 적음]');
   });

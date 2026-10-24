@@ -119,10 +119,10 @@ export async function mapFreshnessCheck(paths: ScopePaths) {
     }
     const list = (files: string[]) => `${files.slice(0, 3).join(', ')}${files.length > 3 ? ' 등' : ''}`;
     const parts = [
-      stale.added.length ? `새 파일 ${stale.added.length}개(${list(stale.added)})` : '',
-      stale.removed.length ? `없어진 파일 ${stale.removed.length}개(${list(stale.removed)})` : '',
+      stale.added.length ? `지도에 없는 새 파일 ${stale.added.length}개(${list(stale.added)})` : '',
+      stale.removed.length ? `지도에는 있지만 폴더에서 없어진 파일 ${stale.removed.length}개(${list(stale.removed)})` : '',
     ].filter(Boolean);
-    return { name, status: '주의' as const, detail: `지도 오래됨: 지도에 없는 ${parts.join(', ')}${selection.length ? ` · 기능 목록: ${selection.join(' · ')}` : ''}. \`jutell map\`으로 갱신하세요.` };
+    return { name, status: '주의' as const, detail: `지도 오래됨: ${parts.join(', ')}${selection.length ? ` · 기능 목록: ${selection.join(' · ')}` : ''}. \`jutell map\`으로 갱신하세요.` };
   } catch {
     return { name, status: '직접 확인 필요' as const, detail: '지도를 확인하지 못했어요.' };
   }

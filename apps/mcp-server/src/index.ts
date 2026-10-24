@@ -4,6 +4,7 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { readBridgeContext } from './config/bridge-config.js';
 import { activeFeatures, beginnerReportRules, bridgeStatus, reportPreferences, safeReportRequirements } from './tools/bridge-tools.js';
 import { recordToolCall } from './tools/usage-counters.js';
+import { recordRulesFetched } from './tools/rules-stamp.js';
 
 const server = new McpServer({
   name: 'JuTell',
@@ -41,6 +42,8 @@ server.registerTool('get_report_preferences', { ...noInput, description: 'Diagno
 
 server.registerTool('get_beginner_report_rules', { ...noInput, description: 'Call exactly once before every final report (required even if the JuTell Skill was read). The primary report-writing tool: returns this project\'s active report rules (which sections to include, length/voice limits, the evidence/status/diff rules, safety requirements) in one call. Call this once, right before writing the final owner-facing report for a completed task — it replaces reading report-format.md, risk-level-guide.md, and related Skill reference files by hand. Do not call it for non-report answers (plain questions, explanations, plans), and do not call it more than once per task just to double-check.' }, async () => counted('get_beginner_report_rules', async () => {
   const context = await readBridgeContext();
+  // Lets `jutell receipt` tell whether the rules were fetched for this work (it applies them itself if not).
+  await recordRulesFetched(context.projectRoot);
   return { content: [{ type: 'text', text: JSON.stringify(beginnerReportRules(context.config)) }] };
 }));
 

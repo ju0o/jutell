@@ -1,3 +1,4 @@
+import { RULES_REMINDER } from '../src/commands/receipt/rules.js';
 import { PassThrough } from 'node:stream';
 import { execFile } from 'node:child_process';
 import os from 'node:os';
@@ -131,7 +132,7 @@ describe('receipt renderer', () => {
     expect(output).not.toContain('[요청 대조]');
     expect(output).not.toContain('[바뀐 파일]');
     expect(output).not.toMatch(/- 없음/);
-    expect(lines.at(-1)).toBe('한 줄 요약: 요청한 작업을 마쳤어요.  [JuTell이 적음]');
+    expect(lines.at(-1)).toBe('한 줄 요약: AI가 작업 설명을 주지 않아 Git이 본 변경만 적었어요.  [JuTell이 적음]');
   });
 
   it('rejects unsupported results, missing detail, and status fields', () => {
@@ -352,7 +353,8 @@ describe('receipt command', () => {
     await fs.writeFile(defaultInput, JSON.stringify({ ...sample, status: '확인 완료' }), 'utf8');
 
     expect(await runInProject(['receipt'])).toBe(0);
-    expect(errors).toEqual([]);
+    // No MCP rules stamp: JuTell applies the rules itself and tells the AI on stderr (#37 BLOCKER B).
+    expect(errors).toEqual([RULES_REMINDER]);
     expect(output[0]).toContain('[이번에 한 작업]');
 
     await expect(fs.access(defaultInput)).rejects.toMatchObject({ code: 'ENOENT' });

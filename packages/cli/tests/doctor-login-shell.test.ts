@@ -148,4 +148,16 @@ echo 2.1.0
     // A shell that cannot run proves $SHELL is used (bash would have found it).
     expect(await runDoctor(true, '/nonexistent/shell')).toContain('jutell을 찾지 못했어요');
   });
+  it('shows only the fix for how JuTell is installed (#37: both fixes made the message long)', async () => {
+    const root = await realpath(await mkdtemp(path.join(os.tmpdir(), 'jutell-doctor-one-fix-')));
+    roots.push(root);
+    const env = { HOME: root, USERPROFILE: root, PATH: '/usr/bin:/bin', SHELL: '/bin/sh' };
+    const global = await loginShellJutellCheck(true, env, root);
+    expect(global.status).toBe('오류');
+    expect(global.detail).not.toContain('npm install --save-dev');
+    await mkdir(path.join(root, 'node_modules', 'jutell'), { recursive: true });
+    const local = await loginShellJutellCheck(true, env, root);
+    expect(local.detail).toContain('npm install --save-dev jutell');
+    expect(local.detail).not.toContain('PATH');
+  });
 });

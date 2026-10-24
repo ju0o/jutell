@@ -85,7 +85,7 @@ export function renderMapHtml(markdown: string): string {
   const { title, sections, headerNotes } = parseSections(markdown);
   const out = [
     `<h1>${escapeHtml(title)}</h1>`,
-    '<p class="notice">이 지도는 파일 경로를 기준으로 묶은 안내입니다. 기능 이름과 역할은 지도 기준 추정이며, 화면·코드·데이터의 연결 및 실제 동작은 확인되지 않았습니다. 위 시각은 마지막 지도 갱신 시각입니다. 최신성은 jutell status에서 확인하세요.</p>',
+    '<p class="notice">이 지도는 파일 경로를 기준으로 묶은 안내입니다. 기능 이름과 역할은 지도 기준 추정이며, 화면·코드·데이터의 연결 및 실제 동작은 확인되지 않았습니다. 아래 시각은 마지막 지도 갱신 시각입니다. 최신성은 jutell status에서 확인하세요.</p>',
     ...headerNotes.map((note) => `<p class="note">${escapeHtml(note)}</p>`),
     '<h2>파일 분류 인덱스 · 펼치면 경로와 확인 상태를 볼 수 있어요</h2>',
     ...sections.map(renderSection),

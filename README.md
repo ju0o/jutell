@@ -24,7 +24,8 @@ know whether it actually worked.
 npm install -g jutell && jutell
 ```
 
-> **Until 2.1.0 is on npm** (delete this note after publishing): `npm install -g jutell` gives 2.0.1. To try 2.1.0 now, install a packed copy from source. You need **git** and **Node.js 18+**.
+<!-- Maintainers: delete this note once 2.1.0 is published to npm. -->
+> **Until 2.1.0 is on npm**: `npm install -g jutell` gives 2.0.1. To try 2.1.0 now, install a packed copy from source. You need **git** and **Node.js 18+**.
 >
 > macOS / Linux:
 >
@@ -42,6 +43,8 @@ npm install -g jutell && jutell
 > npm ci; npm pack
 > npm install -g (Get-ChildItem jutell-*.tgz).FullName
 > ```
+>
+> If `npm pack` left more than one `jutell-*.tgz`, or a PowerShell step shows a red error, stop there: delete every `jutell-*.tgz` in `packages/cli`, run `npm pack` once more, and install that single file.
 >
 > Linux `EACCES` permission error on `npm install -g`? Don't use sudo; point npm at a folder in your home (`npm config set prefix ~/.npm-global` and add `~/.npm-global/bin` to `PATH`) or install Node with nvm.
 
@@ -80,7 +83,7 @@ test result is only what the AI reported; JuTell did not run the tests itself.
 [바뀐 파일]  [Git 기준]
  1. src/pages/Login.tsx
 
-[확인]  [AI가 적음 · ⓘ 줄은 JuTell이 적음]
+[확인]  [AI가 적음 · JuTell이 적은 줄은 따로 표시]
  ✔ 직접 확인한 것: Login.tsx에 파란색 클래스가 들어간 것을 확인  [AI가 적음]
  ✔ 직접 확인한 것: `npm test` 실행해서 3개 통과  [AI가 적음]
  ✖ 확인 못 한 것: 브라우저 화면은 열어 보지 않음  [AI가 적음]
@@ -354,6 +357,7 @@ Profile: balanced
 설치 범위 (설정·Skill·AGENTS.md): 현재 프로젝트
 Telemetry: 비활성화
 외부 전송: 없음
+지도: 지도가 최신이에요.
 ```
 
 "MCP 서버 응답: 확인하지 않음" means "MCP server response: not checked", and "현재 Agent 세션 적용:
@@ -428,7 +432,7 @@ actual output.
 | `jutell` | Finds installed supported agents and offers to connect them. |
 | `jutell status` | Shows installation, connection, profile, and feature status. |
 | `jutell doctor` | Checks setup problems. |
-| `jutell on` / `jutell off` | Turns JuTell's connection on or off. |
+| `jutell on` / `jutell off --yes` | Turns JuTell's connection on or off (`off` asks first; `--yes` skips the question). |
 | `jutell setup` | Prepares the Skill, default config, and MCP connection again. |
 | `jutell provider` | Shows detailed agent connection status. |
 | `jutell upgrade` | Refreshes JuTell's installed Skill/config/MCP to the current version. |

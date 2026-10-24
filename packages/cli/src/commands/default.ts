@@ -1,7 +1,9 @@
 import { stdin } from 'node:process';
 import { dashboardCommand } from './dashboard.js';
 import { enableCommand } from './lifecycle.js';
-import { getStatus } from './status.js';
+import { getStatus, loginShellJutellCheck } from './status.js';
+import { readBridgeConfig } from '../config/managed.js';
+import { codexDetected } from '../process/system.js';
 import { useCommand } from './use.js';
 import { assets } from '../config/paths.js';
 import { refreshStaleReceiptCommands } from '../installer/agents.js';
@@ -191,6 +193,7 @@ export async function defaultCommand(paths: ScopePaths, options: CliOptions, io:
     // user asked to connect, not to open a local browser/server session.
     // `jutell dashboard` remains the explicit, unchanged, opt-in way to do that.
     io.write(connectedSummaryMessage(providerRuntimeStatuses(await getStatus(paths))));
+    await warnIfCodexCannotRunJutell(paths, io);
     await offerMap(paths, options, io, stdin.isTTY === true);
     await recordReceiptBaseline(paths).catch(() => undefined);
     return { cancelled: false };
@@ -201,6 +204,7 @@ export async function defaultCommand(paths: ScopePaths, options: CliOptions, io:
     if (options.yes || stdin.isTTY !== true || process.stdout.isTTY !== true) {
       await enableCommand(paths, { ...options, yes: true, oneCommand: true }, io);
       io.write(readyMessage(await getStatus(paths)));
+      await warnIfCodexCannotRunJutell(paths, io);
       // A new project: --yes makes the map, a person at a terminal is asked (supervisor decision 2).
       if (options.yes || stdin.isTTY === true) await offerMap(paths, options, io, stdin.isTTY === true);
       await recordReceiptBaseline(paths).catch(() => undefined);
@@ -222,6 +226,7 @@ export async function defaultCommand(paths: ScopePaths, options: CliOptions, io:
   // this is a repeat run, not onboarding. Keep it minimal: no wizard, no
   // dashboard auto-launch, just a status line and a pointer to --help.
   io.write(alreadyConfiguredMessage(statuses));
+  await warnIfCodexCannotRunJutell(paths, io);
   if (paths.scope === 'project') {
     const fixed = await refreshStaleReceiptCommands(paths.targetRoot).catch(() => [] as string[]);
     if (fixed.length) io.write(`JuTell 설치 방식이 바뀌어 ${fixed.join('·')}의 영수증 명령을 지금 설치에 맞게 고쳤어요.`);
@@ -231,4 +236,17 @@ export async function defaultCommand(paths: ScopePaths, options: CliOptions, io:
   if (options.yes || stdin.isTTY === true) await offerMap(paths, options, io, stdin.isTTY === true);
   await recordReceiptBaseline(paths).catch(() => undefined);
   return { cancelled: false };
+}
+
+/**
+ * '준비 완료' must not hide what `jutell doctor` calls an error (dogfood #37: a non-default global npm
+ * folder is not on Codex's login-shell PATH, so receipts cannot run). Same check as doctor, one short line.
+ */
+export const CODEX_CANNOT_RUN_JUTELL = '⚠ 다만 Codex가 jutell 명령을 찾지 못해 작업 영수증을 만들 수 없어요. 고치는 법은 `jutell doctor`에 있어요.';
+async function warnIfCodexCannotRunJutell(paths: ScopePaths, io: CliIo): Promise<void> {
+  if (process.platform === 'win32' || paths.scope !== 'project' || !codexDetected()) return;
+  const { config } = await readBridgeConfig(paths).catch(() => ({ config: undefined }));
+  if (config?.features.receiptReport === false) return;
+  const check = await loginShellJutellCheck(true, process.env, paths.targetRoot).catch(() => undefined);
+  if (check?.status === '오류') io.write(CODEX_CANNOT_RUN_JUTELL);
 }
