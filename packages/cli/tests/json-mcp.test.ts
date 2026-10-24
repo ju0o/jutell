@@ -108,6 +108,14 @@ describe('json-mcp adapter (W3)', () => {
     expect(await readFile(file, 'utf8')).toBe(text);
   });
 
+  it('(j) a person\'s args value equal to a JuTell value is not dropped (PR-G)', async () => {
+    const { file } = await fileWith(JSON.stringify({ mcpServers: { jutell: { command: 'node', args: [SERVER, '--flag', SERVER] } } }));
+    await registerJsonMcp(CURSOR, file, ENTRY);
+    expect(parseJsoncObject(await readFile(file, 'utf8'))!.mcpServers).toEqual({ jutell: { ...ENTRY, args: [SERVER, '--flag', SERVER] } });
+    await registerJsonMcp(CURSOR, file, ENTRY);
+    expect(parseJsoncObject(await readFile(file, 'utf8'))!.mcpServers).toEqual({ jutell: { ...ENTRY, args: [SERVER, '--flag', SERVER] } });
+  });
+
   it('(j) values the person added to args survive an update (review #41 follow-up)', async () => {
     const old = { command: 'node', args: ['/old/node_modules/jutell/assets/mcp-server/index.js', '--flag', 'x'] };
     const { file } = await fileWith(JSON.stringify({ mcpServers: { jutell: old } }, null, 2));

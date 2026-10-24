@@ -58,9 +58,11 @@ describe('read-only commands with an unreadable file', () => {
     await fs.chmod(path.join(project, 'AGENTS.md'), 0o000);
     const doctor = await run(['doctor', '--json']);
     expect(doctor.stderr).not.toContain('권한이 없어');
-    const checks = JSON.parse(doctor.stdout) as Array<{ name: string; status: string }>;
+    const checks = JSON.parse(doctor.stdout) as Array<{ name: string; status: string; detail: string }>;
     const unreadable = checks.find((c) => c.name === '읽을 수 없는 파일: AGENTS.md');
     expect(unreadable?.status).toBe('주의');
+    // PR-G: the row name already shows the file, so the detail does not repeat it.
+    expect(unreadable?.detail.startsWith('파일을 읽을 수 없어')).toBe(true);
     expect(checks.filter((c) => c.status === '오류' && c.name.includes('AGENTS'))).toEqual([]);
     // Exit 1 only if some other check is 오류 (e.g. jutell not on the login-shell PATH here), never because of the unreadable file.
     expect(doctor.code).toBe(checks.some((c) => c.status === '오류') ? 1 : 0);

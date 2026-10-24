@@ -112,7 +112,12 @@ export async function withReadOnlyReads<T>(run: () => Promise<T>): Promise<{ res
 }
 
 export function unreadableWarning(file: string, code: string) {
-  return `${file} 파일을 읽을 수 없어(${code}) 없는 것으로 보고 점검했어요. 파일 권한을 확인하세요. JuTell은 이 파일을 바꾸지 않았어요.`;
+  return `${file} ${unreadableDetail(code)}`;
+}
+
+/** Without the file name, for doctor rows whose name already shows it. */
+export function unreadableDetail(code: string) {
+  return `파일을 읽을 수 없어(${code}) 없는 것으로 보고 점검했어요. 파일 권한을 확인하세요. JuTell은 이 파일을 바꾸지 않았어요.`;
 }
 
 export async function readText(file: string) {

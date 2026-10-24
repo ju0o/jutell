@@ -11,7 +11,7 @@ import { codexUninstallBlocker, managedCodexServerFile, readText, registerMcp, r
 import { removeOpenCodeMcp, readOpenCodeRegistration, setOpenCodeEnabled } from '../installer/opencode.js';
 import { removeClaudeMcp } from '../installer/claude.js';
 import { scopeLabel } from '../output/format.js';
-import { offerMap } from '../map/write.js';
+import { MAP_FILE, offerMap } from '../map/write.js';
 import { removeGitExclude, shownExcludePath } from '../map/git-exclude.js';
 import { codexDetected, nodeMajorVersion, operatingSystem } from '../process/system.js';
 import type { CliIo, CliOptions, ScopePaths } from '../types.js';
@@ -165,6 +165,9 @@ export async function uninstallCommand(paths: ScopePaths, options: CliOptions, i
   // it cannot work for other projects after removal, so JuTell's own entry is removed too.
   const codexLocal = paths.scope === 'project' && await runsFromProject(codexScopedPaths(paths), paths.targetRoot);
   const codexSkipped = paths.scope !== 'global' && !codexLocal;
+  // dogfood (cycle-3 main): say "not removed" only when there is a Codex entry to leave; an unreadable file counts as one.
+  const codexEntryExists = codexSkipped && await readCodexRegistration(codexScopedPaths(paths), packageRoot(), false)
+    .then((r) => r.canonicalRegistered || r.legacyRegistered, () => true);
   const codexNotes: string[] = [];
   let codexRemoved = false;
   if (!codexSkipped) {
@@ -201,11 +204,19 @@ export async function uninstallCommand(paths: ScopePaths, options: CliOptions, i
   }
   if (paths.scope === 'project') await removeEmptyFolders([paths.skillRoot, path.dirname(paths.skillRoot), path.dirname(path.dirname(paths.skillRoot))]);
   io.write(`제거했습니다. ${removeData ? '설정과 Beta Journal(JuTell이 남긴 하루 작업 기록)도 삭제했습니다.' : '설정과 Beta Journal(JuTell이 남긴 하루 작업 기록)은 보존했습니다.'}`);
-  if (paths.scope === 'project') io.write(leftoverNote(removeData));
+  if (paths.scope === 'project') {
+    const present = async (file: string) => fs.lstat(file).then(() => true, () => false);
+    const note = leftoverNote(removeData, {
+      config: await present(paths.configFile),
+      data: await present(paths.dataRoot),
+      map: await present(path.join(paths.targetRoot, MAP_FILE)),
+    });
+    if (note) io.write(note);
+  }
   for (const note of codexNotes) io.write(note);
   if (codexLocal && codexRemoved) io.write('Codex 전역 설정에 남아 있던 이 프로젝트용 JuTell 연결(이 폴더의 node_modules를 가리킴)도 지웠어요. 다른 설정은 그대로예요.');
   writeLines(io, await uninstallGuiEntries(paths.scope === 'project' ? paths.targetRoot : resolveScope('project').targetRoot, paths.scope === 'global'));
-  if (codexSkipped) io.write('Codex와 JuTell을 잇는 연결(MCP)은 이 컴퓨터의 모든 프로젝트가 함께 쓰는 Codex 설정 파일에 있어서, 다른 프로젝트와 공유되어 제거하지 않았습니다. 모든 프로젝트에서 지우려면 jutell uninstall --global --yes 를 실행하세요.');
+  if (codexSkipped && codexEntryExists) io.write('Codex와 JuTell을 잇는 연결(MCP)은 이 컴퓨터의 모든 프로젝트가 함께 쓰는 Codex 설정 파일에 있어서, 다른 프로젝트와 공유되어 제거하지 않았습니다. 모든 프로젝트에서 지우려면 jutell uninstall --global --yes 를 실행하세요.');
   return { cancelled: false };
 }
 
@@ -216,12 +227,19 @@ async function removeEmptyFolders(dirs: string[]) {
   }
 }
 
-function leftoverNote(removeData: boolean) {
-  const kept = removeData
-    ? 'JuTellMap.md(프로젝트 지도)'
-    : '.jutell.json(설정), .jutell-local/(작업 기록·영수증·지도 상세), JuTellMap.md(프로젝트 지도)';
-  const how = removeData ? '필요 없으면 직접 지우세요.' : '모두 지우려면 jutell uninstall --remove-data --yes 를 실행한 뒤 JuTellMap.md를 직접 지우세요.';
-  return `남겨 둔 것: ${kept}. 다시 설치하면 그대로 이어서 씁니다. ${how}`;
+/** Lists only what is really left (dogfood: a JuTellMap.md that never existed is not "left"). */
+export function leftoverNote(removeData: boolean, left: { config: boolean; data: boolean; map: boolean }) {
+  const kept = [
+    ...(!removeData && left.config ? ['.jutell.json(설정)'] : []),
+    ...(!removeData && left.data ? ['.jutell-local/(작업 기록·영수증·지도 상세)'] : []),
+    ...(left.map ? ['JuTellMap.md(프로젝트 지도)'] : []),
+  ];
+  if (!kept.length) return undefined;
+  const dataLeft = !removeData && (left.config || left.data);
+  const how = dataLeft
+    ? `모두 지우려면 jutell uninstall --remove-data --yes 를 실행${left.map ? '한 뒤 JuTellMap.md를 직접 지우세요' : '하세요'}.`
+    : '필요 없으면 직접 지우세요.';
+  return `남겨 둔 것: ${kept.join(', ')}. ${dataLeft ? '다시 설치하면 그대로 이어서 씁니다. ' : ''}${how}`;
 }
 
 export async function onCommand(paths: ScopePaths, options: CliOptions, io: CliIo) {

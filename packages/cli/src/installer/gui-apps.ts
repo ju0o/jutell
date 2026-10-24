@@ -149,7 +149,7 @@ export async function useGuiApp(app: GuiApp, wantsGlobal: boolean, projectRoot: 
   const entry = buildGuiEntry(target, projectRoot);
   if (!target.file) {
     if (app.id === 'vscode') return { written: false, message: [vscodeProfileGuidance(entry)] };
-    return { written: false, message: [`${app.label} 설정 파일 위치가 이 운영체제에서는 ${UNVERIFIED_PATH_NOTE}이라 바꾸지 않았어요. 넣을 항목:`, JSON.stringify({ [target.rootKey]: { jutell: entry } }, null, 2)] };
+    return { written: false, message: [`${app.label} 설정 파일 위치가 이 운영체제에서는 공식 문서에 없어서 바꾸지 않았어요. 넣을 항목:`, JSON.stringify({ [target.rootKey]: { jutell: entry } }, null, 2)] };
   }
   const fileExisted = await fs.lstat(target.file).then(() => true, () => false);
   const dirExisted = await fs.lstat(path.dirname(target.file)).then(() => true, () => false);
@@ -178,7 +178,7 @@ export async function disconnectGuiApp(app: GuiApp, wantsGlobal: boolean, projec
   const target = fileFor(app, scope, projectRoot);
   if (!target.file) {
     if (app.id === 'vscode') return { written: false, message: ['VS Code에서 MCP: List Servers → jutell → Uninstall을 실행하세요. (이 운영체제에서는 자동으로 못 지워요.)'] };
-    return { written: false, message: [`${target.label} 설정 파일 위치가 이 운영체제에서는 ${UNVERIFIED_PATH_NOTE}이라 바꾸지 않았어요. 앱의 MCP 설정에서 jutell 항목을 직접 지우세요.`] };
+    return { written: false, message: [`${target.label} 설정 파일 위치가 이 운영체제에서는 공식 문서에 없어서 바꾸지 않았어요. 앱의 MCP 설정에서 jutell 항목을 직접 지우세요.`] };
   }
   const result = await removeJsonMcp({ rootKey: target.rootKey }, target.file, scope === 'project' ? { projectRoot } : {});
   if (result.status === 'absent') return { written: false, message: [`${target.label}에 JuTell 연결이 없어요.`] };
@@ -260,7 +260,7 @@ export function guiStatusCheck(status: GuiFileStatus): { name: string; label: st
   const name = `${GUI_CHECK_PREFIX}${status.id}`;
   const label = status.label;
   const installed = status.installed === true ? '설치됨' : '설치 여부 모름';
-  if (!status.file) return { name, label, status: '정상', detail: `이 운영체제의 설정 파일 위치가 ${UNVERIFIED_PATH_NOTE}이라 확인하지 않았어요.` };
+  if (!status.file) return { name, label, status: '정상', detail: '이 운영체제에서는 설정 파일 위치가 공식 문서에 없어서 살펴보지 않았어요.' };
   if (!status.parseOk) return { name, label, status: '오류', detail: `설정 파일을 읽을 수 없어요(형식 오류): ${status.file}. 파일을 고친 뒤 다시 확인하세요. JuTell은 이 파일을 바꾸지 않아요.` };
   if (status.link) return { name, label, status: '주의', detail: `설정 파일이 링크라서 JuTell이 바꾸지 않아요: ${status.file}` };
   if (status.conflict) return { name, label, status: '주의', detail: `JuTell이 만들지 않은 "jutell" 항목이 있어요. 직접 관리하세요: ${status.file}` };
