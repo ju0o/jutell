@@ -190,7 +190,10 @@ function removeMember(parsed: Parsed, node: Extract<JsoncNode, { kind: 'object' 
   if (member.commaAt !== undefined) {
     end = member.commaAt + 1;
   } else if (index > 0 && node.members[index - 1].commaAt !== undefined) {
-    previousComma = node.members[index - 1].commaAt!;
+    const comma = node.members[index - 1].commaAt!;
+    // Only whitespace in between (the layout JuTell itself appends): take it all, as before.
+    if (/^\s*$/.test(body.slice(comma + 1, start))) start = comma;
+    else previousComma = comma;
   }
   // Take the whole line when the member sits on its own lines.
   const lineStart = body.lastIndexOf('\n', start - 1) + 1;
