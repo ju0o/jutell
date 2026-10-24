@@ -281,7 +281,7 @@ export async function getDoctorResults(paths: ScopePaths): Promise<CheckResult[]
       ? { name: '영수증 명령', status: '주의', detail: `JuTell 설치 방식이 바뀌었어요(프로젝트 안 설치 ↔ 컴퓨터 전체 설치). ${stale.map((entry) => entry.file).join('·')}에는 아직 예전 영수증 명령(\`${stale[0].command}\`)이 적혀 있어 AI가 영수증을 만들지 못할 수 있어요. 프로젝트 폴더에서 \`jutell --yes\`를 다시 실행하면 지금 설치에 맞게 고쳐집니다.` }
       : { name: '영수증 명령', status: '정상', detail: command === 'jutell receipt'
         ? 'AI는 작업이 끝나면 `jutell receipt`로 영수증을 만듭니다.'
-        : `이 프로젝트(또는 그 위 작업 공간)의 node_modules에 설치된 JuTell이라 AI는 \`${command}\`로 영수증을 만듭니다(AGENTS.md에 적혀 있음). 터미널에서 직접 쓸 때도 이 명령을 쓰세요.` });
+        : `이 프로젝트(또는 그 위 작업 공간)의 node_modules에 설치된 JuTell이라 AI는 \`${command}\`로 영수증을 만듭니다(AGENTS.md에 적혀 있음). 터미널에서 직접 쓸 때도 이 명령을 쓰세요.${command.includes('--prefix .') ? ' npm workspaces 멤버 폴더라 `--prefix .`로 이 폴더를 기준으로 실행해요. 이 폴더(또는 그 안)에서 실행하세요. 작업 공간 루트에서 실행하면 루트가 대상이 돼요.' : ''}` });
   }
   return checks;
 }

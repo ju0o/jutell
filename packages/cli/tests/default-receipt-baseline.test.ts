@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -33,5 +34,16 @@ describe('bare `jutell --yes` records the receipt baseline (not only `jutell set
     expect(receipt.stdout).toMatch(/package-lock\.json[^\n]*\(작업 전부터\)|\(작업 전부터\)[^\n]*package-lock\.json/);
     expect(receipt.stdout).not.toContain('첫 영수증이라');
     expect(receipt.stdout).not.toMatch(/login\.ts[^\n]*\(작업 전부터\)/);
+    // B1: install type changed → the block names an old command; one repeat `jutell --yes` (already-configured path) fixes it.
+    const agents = path.join(project, 'AGENTS.md');
+    const block = readFileSync(agents, 'utf8');
+    expect(block).toContain('`jutell receipt`를 한 번');
+    writeFileSync(agents, block.replace('`jutell receipt`를 한 번', '`npm exec --offline --no -- jutell receipt`를 한 번'));
+    const repeat = run('--yes', '--no-funding');
+    expect(repeat.status).toBe(0);
+    expect(repeat.stdout).toContain('영수증 명령을 지금 설치에 맞게 고쳤어요');
+    expect(readFileSync(agents, 'utf8')).toBe(block);
+    const doctor = run('doctor');
+    expect(doctor.stdout).not.toMatch(/주의\s+영수증 명령/);
   }, 90_000);
 });

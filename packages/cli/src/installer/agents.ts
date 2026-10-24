@@ -105,13 +105,31 @@ export async function writtenReceiptCommands(projectRoot: string) {
   return written;
 }
 
+/**
+ * Rewrites only the JuTell blocks whose receipt command no longer matches this install (B1: the install
+ * type changed). Used by a repeat `jutell --yes`, so the one command doctor names really fixes it.
+ */
+export async function refreshStaleReceiptCommands(projectRoot: string) {
+  const command = await receiptCommandFor(projectRoot);
+  const fixed: string[] = [];
+  for (const entry of await writtenReceiptCommands(projectRoot)) {
+    if (entry.command === command) continue;
+    const file = entry.file === 'CLAUDE.md' ? claudeMdFile(projectRoot) : agentsFile(projectRoot);
+    if ((await ensureManagedBlock(file, entry.file === 'CLAUDE.md' ? 'claude' : 'agents')).changed) fixed.push(entry.file);
+  }
+  return fixed;
+}
+
 async function hasManagedBlock(file: string) {
   const content = await readText(file);
   return Boolean(content && markerPattern().test(content));
 }
 
+// A file the user already had (even empty) is theirs: uninstall removes only the block, never the file.
+const PREEXISTING_MARK = '<!-- jutell: file existed before setup -->';
 async function ensureManagedBlock(file: string, target: GuidanceTarget = 'agents') {
-  const current = await readText(file) ?? '';
+  const before = await readText(file);
+  const current = before === undefined || before === null ? '' : (before.trim() === '' && !before.includes(PREEXISTING_MARK) ? `${PREEXISTING_MARK}\n` : before);
   const managedBlock = managedBlockFor(await receiptReportEnabled(path.dirname(file)), target, await receiptCommandFor(path.dirname(file)));
   const next = markerPattern().test(current)
     ? current.replace(markerPattern(), managedBlock).replace(/\n{3,}/g, '\n\n').trimEnd() + '\n'
@@ -123,7 +141,9 @@ async function ensureManagedBlock(file: string, target: GuidanceTarget = 'agents
 async function removeManagedBlock(file: string) {
   const current = await readText(file);
   if (!current || !markerPattern().test(current)) return { changed: false };
-  const next = current.replace(markerPattern(), '').replace(/\n{3,}/g, '\n\n').trimEnd();
+  const stripped = current.replace(markerPattern(), '').replace(/\n{3,}/g, '\n\n').trimEnd();
+  if (stripped === PREEXISTING_MARK) { await writeTextSafely(file, ''); return { changed: true }; }
+  const next = stripped;
   // A file that held only JuTell's block is JuTell-made; leaving a 0-byte file behind confused users.
   if (!next) { await fs.rm(file, { force: true }); return { changed: true, removedFile: true }; }
   await writeTextSafely(file, `${next}\n`);
