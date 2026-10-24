@@ -12,7 +12,8 @@ export type MatchItem =
 
 export type ReceiptMatch =
   | { map: false }
-  | { map: true; items: MatchItem[]; extra: string[]; extraBefore?: string[] };
+  // `extraAreas`: map area ID (`f-…`, as in `jutell map --show`) of each extra file the map lists.
+  | { map: true; items: MatchItem[]; extra: string[]; extraBefore?: string[]; extraAreas?: Record<string, string> };
 
 const OPEN = /^<!-- jutell:auto (.+) -->$/;
 
@@ -44,10 +45,21 @@ function candidates(section: MapSection): string[] {
   return [...new Set([...names, ...(entry ? [...entry.words, ...entry.ko] : [])].map((word) => word.toLowerCase()).filter((word) => word.length >= 2))];
 }
 
+// After a Korean word, the rest of the same word may only be a particle or a 하다/되다 ending
+// ('결제를', '계산하기'); anything else means it is part of another word ('계산기', '결제창').
+const KO_TAIL = /^(?:은|는|이|가|을|를|에|의|도|만|과|와|로|으로|랑|이랑|까지|부터|처럼|보다|하|해|했|한|할|함|되|돼|됐|된|될|됨|에서|에게|한테|이나|나)/;
+const HANGUL = /[가-힣]/;
+
 function mentions(request: string, word: string): boolean {
   const text = request.toLowerCase();
   if (/^[a-z0-9 _-]+$/.test(word)) return new RegExp(`(^|[^a-z0-9])${word.replace(/[-_ ]/g, '[-_ ]?')}([^a-z0-9]|$)`).test(text);
-  return text.includes(word);
+  for (let at = text.indexOf(word); at >= 0; at = text.indexOf(word, at + 1)) {
+    const before = text[at - 1];
+    if (before && HANGUL.test(before) && HANGUL.test(word[0])) continue;
+    const rest = /^[가-힣]*/.exec(text.slice(at + word.length))?.[0] ?? '';
+    if (!HANGUL.test(word.at(-1) ?? '') || rest === '' || KO_TAIL.test(rest)) return true;
+  }
+  return false;
 }
 
 /** Features a request talks about (by map section name, key, or dictionary words). */

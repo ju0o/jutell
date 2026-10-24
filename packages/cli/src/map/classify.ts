@@ -4,12 +4,12 @@ export const UNCLASSIFIED = '아직 분류 안 된 파일';
 export const ESTIMATED_LABEL = '[지도로 짐작]';
 
 /**
- * Word dictionary: a whole word in a folder or file name (case-insensitive) → feature name.
+ * Word dictionary: a whole word in a folder or file name (case-insensitive) → feature name estimate.
  * `ko` are the words a person uses in a request (substring match), for request matching in the receipt.
  */
 export const FEATURE_DICTIONARY: ReadonlyArray<{ feature: string; words: readonly string[]; ko: readonly string[] }> = [
   { feature: '로그인', words: ['auth', 'login', 'logout', 'signin', 'signup', 'signout', 'session', 'oauth', 'password'], ko: ['로그인', '로그아웃', '회원가입', '비밀번호'] },
-  { feature: '결제', words: ['pay', 'payment', 'checkout', 'billing', 'invoice', 'stripe'], ko: ['결제', '계산', '청구'] },
+  { feature: '결제', words: ['pay', 'payment', 'payments', 'checkout', 'billing', 'invoice', 'stripe'], ko: ['결제', '계산', '청구'] },
   // Feature names are kinds of features, never a page title ("할 일 목록" read like the page title and drifted when it changed).
   { feature: '할 일', words: ['todo', 'todos', 'task', 'tasks'], ko: ['할 일', '할일', '투두'] },
   { feature: '검색', words: ['search'], ko: ['검색'] },
@@ -20,7 +20,7 @@ export const FEATURE_DICTIONARY: ReadonlyArray<{ feature: string; words: readonl
 ];
 
 /** Folders skipped when a folder name is used as the feature name (case-insensitive). */
-export const GENERIC_FOLDERS = new Set(['src', 'lib', 'app', 'scripts', 'bin', 'tools', 'utils', 'util', 'helpers', 'common', 'shared', 'misc', 'internal', 'packages', 'apps']);
+export const GENERIC_FOLDERS = new Set(['src', 'lib', 'app', 'scripts', 'bin', 'tools', 'utils', 'util', 'helpers', 'common', 'shared', 'misc', 'internal', 'packages', 'apps', 'test', 'tests', '__tests__', 'spec', 'specs', 'e2e']);
 
 export type FileRole = '화면' | '기능' | '테스트' | '설정' | '문서';
 
@@ -28,7 +28,7 @@ export type Classified = {
   path: string;
   /** Feature section name; UNCLASSIFIED when nothing fits. */
   feature: string;
-  /** True when the name came from a folder, not the dictionary: shown with ESTIMATED_LABEL. */
+  /** True when the feature comes from a path-name heuristic; shown with ESTIMATED_LABEL. */
   estimated: boolean;
   role: FileRole;
 };
@@ -50,7 +50,8 @@ export function featureOf(relative: string): { feature: string; estimated: boole
   for (const part of parts) {
     for (const word of words(part)) {
       const feature = wordIndex.get(word);
-      if (feature) return { feature, estimated: false };
+      // A matching word is only a path-name hint, not evidence of the file's real feature.
+      if (feature) return { feature, estimated: true };
     }
   }
   // ② first folder that is not generic

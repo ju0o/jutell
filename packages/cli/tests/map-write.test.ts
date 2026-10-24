@@ -5,8 +5,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterAll, describe, expect, it } from 'vitest';
 import { resolveScope } from '../src/config/paths.js';
-import { MAP_COPY_FILE, MAP_DECLINED_FILE, MAP_DECLINED_NOTE, MAP_GUIDE, MAP_FILE, MAP_LATER, MAP_QUESTION, MAP_STATE_FILE, mapWriteMessage, offerMap, parseMap, sha256, writeMap } from '../src/map/write.js';
+import { MAP_COPY_FILE, MAP_DECLINED_FILE, MAP_DECLINED_NOTE, MAP_GUIDE, MAP_FILE, MAP_LATER, MAP_QUESTION, MAP_STATE_FILE, mapDeclined, mapWriteMessage, offerMap, rememberMapDeclined, parseMap, sha256, stamp, writeMap } from '../src/map/write.js';
 import { MAP_HTML_FILE, renderMapHtml } from '../src/map/html.js';
+import { readMapSelectionDetail, writeMapSelectionFiles } from '../src/map/selection.js';
+import { scanProject } from '../src/map/scan.js';
 import { parseYesNo } from '../src/output/format.js';
 import type { CliIo } from '../src/types.js';
 
@@ -25,8 +27,8 @@ async function project(name = 'proj', files = ['src/auth/LoginForm.tsx', 'src/pa
   await fs.mkdir(dir, { recursive: true });
   return { dir, paths: resolveScope('project', dir) };
 }
-const NOW = new Date(2026, 9, 20, 14, 3);
-const LATER = new Date(2026, 9, 21, 9, 0);
+const NOW = new Date('2026-10-20T14:03:00.000Z');
+const LATER = new Date('2026-10-21T09:00:00.000Z');
 const read = (file: string) => fs.readFile(file, 'utf8');
 
 /** Lines outside jutell:auto blocks, minus the jutell-managed "마지막 갱신" line. */
@@ -81,10 +83,9 @@ describe('map readability (dogfood fix)', () => {
     const { dir, paths } = await project('todo', ['test-app/todo.html', 'AGENTS.md']);
     await writeMap(paths, NOW);
     const text = await read(path.join(dir, MAP_FILE));
-    expect(text).toContain('## 할 일\n<!-- jutell:auto 할 일 -->');
+    expect(text).toContain('## 할 일 [지도로 짐작]\n<!-- jutell:auto 할 일 -->');
     expect(text).toContain('## 아직 분류 안 된 파일\n설명: 아래 줄을 원하는 기능 칸으로 옮기면, 다음부터 그 칸에 둡니다.\n<!-- jutell:auto 아직 분류 안 된 파일 -->');
     expect(text).not.toContain('할 일 목록');
-    expect(text).not.toContain('[지도 기준 추정]');
   });
 });
 
@@ -96,13 +97,11 @@ describe('map write (W2)', () => {
     expect(text).toBe([
       '# JuTell 지도 — 이 프로젝트는 어떻게 생겼나요?',
       MAP_GUIDE,
-      '마지막 갱신: 2026-10-20 14:03 · 파일 5개 · 분류 안 된 파일 2개',
+      `마지막 갱신: ${stamp(NOW)} · 파일 5개 · 분류 안 된 파일 2개 · 목록 기준 폴더 탐색 · 20,000개 상한 내`,
       '',
-      '## 로그인', '<!-- jutell:auto 로그인 -->', '- src/auth/LoginForm.tsx — 화면', '<!-- /jutell:auto -->',
+      '## 로그인 [지도로 짐작]', '<!-- jutell:auto 로그인 -->', '- src/auth/LoginForm.tsx — 화면', '<!-- /jutell:auto -->',
       '',
-      '## 결제', '<!-- jutell:auto 결제 -->', '- src/payments/pay-ui.ts — 기능', '<!-- /jutell:auto -->',
-      '',
-      '## payments [지도로 짐작]', '<!-- jutell:auto payments -->', '- src/payments/refund.ts — 기능', '<!-- /jutell:auto -->',
+      '## 결제 [지도로 짐작]', '<!-- jutell:auto 결제 -->', '- src/payments/pay-ui.ts — 기능', '- src/payments/refund.ts — 기능', '<!-- /jutell:auto -->',
       '',
       '## 아직 분류 안 된 파일', '설명: 아래 줄을 원하는 기능 칸으로 옮기면, 다음부터 그 칸에 둡니다.', '<!-- jutell:auto 아직 분류 안 된 파일 -->', '- index.js — 기능', '- scripts/migrate-2024.js — 기능', '<!-- /jutell:auto -->',
       '',
@@ -118,8 +117,8 @@ describe('map write (W2)', () => {
     const file = path.join(dir, MAP_FILE);
     let text = await read(file);
     text = text
-      .replace('## 로그인\n', '## 로그인\n설명: 회원이 들어오고 나가는 기능이에요.        ← 사람이 쓴 줄\n')
-      .replace('## payments [지도로 짐작]', '## 환불 (내가 지은 이름)')
+      .replace('## 로그인 [지도로 짐작]\n', '## 로그인 [지도로 짐작]\n설명: 회원이 들어오고 나가는 기능이에요.        ← 사람이 쓴 줄\n')
+      .replace('## 결제 [지도로 짐작]', '## 결제 (내가 지은 이름)')
       // moved out of every auto block into the 로그인 section: pinned there
       .replace('- index.js — 기능\n', '')
       .replace('설명: 회원이 들어오고 나가는 기능이에요.        ← 사람이 쓴 줄\n', '설명: 회원이 들어오고 나가는 기능이에요.        ← 사람이 쓴 줄\n- index.js — 기능 (여기가 맞아요)\n')
@@ -134,11 +133,12 @@ describe('map write (W2)', () => {
     expect(humanLines(after)).toEqual(humanLines(text));
     expect(after).toContain('- index.js — 기능 (여기가 맞아요)');
     expect(after.match(/index\.js/g)).toHaveLength(1);
-    expect(after).toContain('<!-- jutell:auto 결제 -->\n- scripts/migrate-2024.js — 기능\n- src/payments/pay-ui.ts — 기능\n<!-- /jutell:auto -->');
+    expect(after).toContain('<!-- jutell:auto 결제 -->\n- scripts/migrate-2024.js — 기능\n- src/payments/pay-ui.ts — 기능\n- src/payments/refund.ts — 기능\n<!-- /jutell:auto -->');
     expect(after).toContain('<!-- jutell:auto 로그인 -->\n- src/auth/LoginForm.tsx — 화면\n- src/auth/session.ts — 기능\n<!-- /jutell:auto -->');
-    expect(after).toContain('## 환불 (내가 지은 이름)\n<!-- jutell:auto payments -->\n- src/payments/refund.ts — 기능');
-    expect(after).not.toContain('[지도로 짐작]');
-    expect(after).toContain('마지막 갱신: 2026-10-21 09:00 · 파일 6개 · 분류 안 된 파일 0개');
+    expect(after).toContain('## 결제 (내가 지은 이름)\n<!-- jutell:auto 결제 -->\n- scripts/migrate-2024.js — 기능\n- src/payments/pay-ui.ts — 기능\n- src/payments/refund.ts — 기능');
+    expect(after).toContain('## 로그인 [지도로 짐작]');
+    expect(after).not.toContain('## 결제 (내가 지은 이름) [지도로 짐작]');
+    expect(after).toContain(`마지막 갱신: ${stamp(LATER)} · 파일 6개 · 분류 안 된 파일 0개 · 목록 기준 폴더 탐색 · 20,000개 상한 내`);
   });
 
   it('new features get a new section before "아직 분류 안 된 파일"; CRLF maps stay CRLF', async () => {
@@ -152,8 +152,29 @@ describe('map write (W2)', () => {
     await writeMap(paths, LATER);
     const after = await read(file);
     expect(after.split('\r\n').join('').includes('\n')).toBe(false);
-    expect(after.indexOf('## reports [지도로 짐작]')).toBeGreaterThan(after.indexOf('## payments'));
+    expect(after.indexOf('## reports [지도로 짐작]')).toBeGreaterThan(after.indexOf('## 결제'));
     expect(after.indexOf('## reports [지도로 짐작]')).toBeLessThan(after.indexOf('## 아직 분류 안 된 파일'));
+  });
+
+  it('header time is the local time with its zone; a content-identical refresh later keeps the old header', async () => {
+    expect(stamp(NOW)).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2} \(UTC[+-]\d{1,2}(:\d{2})?\)$/);
+    const local = new Date(NOW.getTime() - NOW.getTimezoneOffset() * 60000).toISOString().slice(0, 16).replace('T', ' ');
+    expect(stamp(NOW).startsWith(local)).toBe(true);
+    const { dir, paths } = await project();
+    await writeMap(paths, NOW);
+    const file = path.join(dir, MAP_FILE);
+    expect(await read(file)).toContain(`마지막 갱신: ${stamp(NOW)}`);
+    await writeMap(paths, LATER);
+    expect(await read(file)).toContain(`마지막 갱신: ${stamp(NOW)}`);
+    expect(await read(file)).not.toContain(stamp(LATER));
+  });
+
+  it('map.html shows the guide line with its literal "<!-- -->" (escaped), while real marker comments stay hidden', async () => {
+    const { dir, paths } = await project();
+    await writeMap(paths, NOW);
+    const html = renderMapHtml(await read(path.join(dir, MAP_FILE)));
+    expect(html).toContain('&lt;!-- --&gt; 로 된 줄은 JuTell이');
+    expect(html).not.toContain('jutell:auto');
   });
 
   it('writes nothing when nothing changed (mtime and bytes stay the same)', async () => {
@@ -166,6 +187,62 @@ describe('map write (W2)', () => {
     expect((await writeMap(paths, LATER)).status).toBe('unchanged');
     expect((await fs.stat(file)).mtimeMs).toBe(old.getTime());
     expect(await read(file)).toBe(before);
+  });
+
+  it('a non-JuTell map-index.json is kept, and the skip reason says it is NOT JuTell format', async () => {
+    const { dir, paths } = await project();
+    await fs.mkdir(path.join(dir, '.jutell-local'), { recursive: true });
+    const indexFile = path.join(dir, '.jutell-local', 'map-index.json');
+    await fs.writeFile(indexFile, '{"mine":true}');
+    const result = await writeMap(paths, NOW);
+    expect(result.selection?.status).toBe('skipped');
+    expect(result.selection?.reason).toBe('기존 인덱스가 JuTell 형식이 아니어서 보존함');
+    expect(await read(indexFile)).toBe('{"mine":true}');
+  });
+
+  it('no .gitignore: node_modules, dist, build… stay out of the map (git and plain folder alike)', async () => {
+    const files = ['src/app.ts', 'node_modules/left-pad/index.js', 'dist/app.js', 'build/out.js', 'web/node_modules/x/y.js', 'coverage/lcov.info'];
+    for (const useGit of [true, false]) {
+      const { dir } = await project(useGit ? 'git' : 'plain', files);
+      if (useGit) execFileSync('git', ['init', '-q'], { cwd: dir });
+      expect((await scanProject(dir)).files).toEqual(['src/app.ts']);
+    }
+  });
+
+  it('tracked files under build/ or vendor/ stay in the map; only untracked ones there are left out', async () => {
+    const { dir } = await project('tracked', ['src/app.ts', 'build/config.js', 'vendor/lib.js']);
+    execFileSync('git', ['init', '-q'], { cwd: dir });
+    execFileSync('git', ['add', '.'], { cwd: dir });
+    await fs.mkdir(path.join(dir, 'build', 'gen'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'build', 'gen', 'out.js'), 'x');
+    expect((await scanProject(dir)).files).toEqual(['build/config.js', 'src/app.ts', 'vendor/lib.js']);
+  });
+
+  it('reports a partial detail write and rejects a stale card if a later write fails', async () => {
+    const { dir, paths } = await project();
+    await writeMap(paths, NOW);
+    const mapFile = path.join(dir, MAP_FILE);
+    const map = await read(mapFile);
+    const indexFile = path.join(dir, '.jutell-local', 'map-index.json');
+    const indexBefore = await read(indexFile);
+    const index = JSON.parse(indexBefore) as { sections: Array<{ id: string }> };
+    await fs.writeFile(path.join(dir, 'src', 'auth', 'session.ts'), 'x');
+    await fs.writeFile(path.join(dir, 'src', 'payments', 'new.ts'), 'x');
+    const scan = await scanProject(dir);
+    const changedMap = map
+      .replace('<!-- jutell:auto 로그인 -->\n', '<!-- jutell:auto 로그인 -->\n- src/auth/session.ts — 기능\n')
+      .replace('<!-- jutell:auto 결제 -->\n', '<!-- jutell:auto 결제 -->\n- src/payments/new.ts — 기능\n');
+    let calls = 0;
+    const result = await writeMapSelectionFiles(paths, changedMap, scan, LATER, 'a'.repeat(40), async (file, content) => {
+      calls += 1;
+      if (calls === 2) throw new Error('simulated write failure');
+      await fs.writeFile(file, content, 'utf8');
+    });
+    expect(result.status).toBe('skipped');
+    expect(result.reason).toContain('부분 갱신됨');
+    expect(result.reason).toContain(index.sections[0]!.id);
+    expect(await read(indexFile)).toBe(indexBefore);
+    await expect(readMapSelectionDetail(paths, index.sections[0]!.id)).rejects.toThrow('현재 인덱스 출처와 맞지 않아요');
   });
 
   it('replaces the file via a temp file + rename and leaves no temp file behind', async () => {
@@ -351,6 +428,20 @@ describe('install question (W2)', () => {
     await offerMap(paths, {} as never, first.io, true);
     expect(first.asked).toEqual([MAP_QUESTION]);
     await expect(fs.stat(path.join(outsideDir, MAP_DECLINED_FILE))).resolves.toBeTruthy();
+  });
+
+  it.skipIf(process.platform === 'win32')('(iii) saving the \'no\' writes nothing through a .jutell-local link or outside the project', async () => {
+    const { dir, paths } = await project();
+    const outsideDir = path.join(path.dirname(dir), 'outside-save');
+    await fs.mkdir(outsideDir);
+    await fs.symlink(outsideDir, path.join(dir, '.jutell-local'));
+    await rememberMapDeclined(paths);
+    expect(await fs.readdir(outsideDir)).toEqual([]);
+    expect(await mapDeclined(paths)).toBe(false);
+    await fs.unlink(path.join(dir, '.jutell-local'));
+    await fs.mkdir(path.join(dir, '.jutell-local'));
+    await rememberMapDeclined(paths);
+    expect(await mapDeclined(paths)).toBe(true);
   });
 
   it('--yes → creates without asking, plus .jutell-local/map.html (same as `jutell map`)', async () => {

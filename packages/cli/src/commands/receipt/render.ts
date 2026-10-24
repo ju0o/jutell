@@ -47,8 +47,17 @@ export const LABEL_ESTIMATE = ESTIMATED_LABEL;
 export const LABEL_MATCH = '[Git 기준 · 지도 대조]';
 export const LABEL_JUTELL = '[JuTell이 적음]';
 /** Shown only when a check or a done item mentions a test or a command (item 2). */
+export const HANJA_NOTE = ` ⓘ AI가 적은 글에 한자가 섞여 있어요. 뜻이 헷갈리면 AI에게 쉬운 우리말로 다시 써 달라고 하세요  ${LABEL_JUTELL}`;
 export const AI_RESULTS_NOTE = ` ⓘ 위 테스트·명령 결과는 AI가 알려 준 내용이에요. JuTell이 직접 돌려 보지는 않았어요  ${LABEL_JUTELL}`;
-const MENTIONS_RUN = /테스트|명령|실행|빌드|검사|test|build|lint|npm|tsc/i;
+// A run record: a command name as a whole word (not 'test-app' or 'npm-debug.log'), or a run word plus a
+// result word ('테스트 통과'). A line that says it was NOT run ('실행하지 않음') never counts.
+const RUN_COMMAND = /(?<![\w./-])(?:npm|npx|pnpm|yarn|tsc|vitest|jest|pytest|eslint|cargo|make)(?![\w./-])/i;
+const RUN_NOUN = /테스트|빌드|검사|린트|명령|(?<![\w./-])(?:tests?|build|lint)(?![\w./-])/i;
+const RUN_RESULT = /실행했|실행함|실행 결과|돌려|돌렸|돌림|통과|실패|성공|(?<![\w-])(?:passed|failed|ran)(?![\w-])/i;
+const NOT_RUN = /않|안 ?함|안 ?했|안 ?돌|못 ?함|못 ?했|못 ?돌|생략|건너|미실행|(?<![\w-])(?:not|didn't|skipped)(?![\w-])/i;
+export function mentionsRunRecord(text: string): boolean {
+  return !NOT_RUN.test(text) && (RUN_COMMAND.test(text) || (RUN_NOUN.test(text) && RUN_RESULT.test(text)));
+}
 export const NO_MAP_MATCH = '지도가 없어 장소 대조는 못 했어요';
 export const SAYS_BUT_NO_FILES = ' ⚠ 말과 실제가 달라요: 한 일은 적혀 있는데 바뀐 파일이 없어요';
 
@@ -171,7 +180,14 @@ function readMatch(value: unknown, askedCount: number): ReceiptMatch | undefined
     else return undefined;
   }
   const extraBefore = readFileNames(value.extraBefore ?? []);
-  return { map: true, items, extra: readFileNames(value.extra ?? []), ...(extraBefore.length ? { extraBefore } : {}) };
+  const extra = readFileNames(value.extra ?? []);
+  const areas = isRecord(value.extraAreas)
+    ? Object.fromEntries(extra.flatMap((file) => {
+      const id = (value.extraAreas as Record<string, unknown>)[file];
+      return typeof id === 'string' && /^f-[a-f0-9]{12}$/.test(id) ? [[file, id]] : [];
+    }))
+    : {};
+  return { map: true, items, extra, ...(extraBefore.length ? { extraBefore } : {}), ...(Object.keys(areas).length ? { extraAreas: areas } : {}) };
 }
 
 function readBefore(value: unknown): { before?: string[] } {
@@ -209,7 +225,9 @@ function matchLines(receipt: ReceiptInput, asked: string[], askedMore: number, s
     if (item.status !== 'unplaced' && item.before?.length) lines.push(`    ${BEFORE_WORK_MARK} 바뀌어 있던 파일: ${shortList(item.before)}  ${LABEL_GIT}`);
   });
   lines.push(...more);
-  if (match.extra.length) lines.push(` ⚠ 요청에 없던 곳도 바뀜: ${shortList(match.extra)}  ${LABEL_GIT}`);
+  // Each file the map lists carries its area ID, so the user can find it in the map (`jutell map --show`).
+  const withArea = (file: string) => (match.extraAreas?.[file] ? `${file} [${match.extraAreas[file]}]` : file);
+  if (match.extra.length) lines.push(` ⚠ 요청에 없던 곳도 바뀜: ${shortList(match.extra.map(withArea))}  ${LABEL_GIT}`);
   if (match.extraBefore?.length) lines.push(` ${BEFORE_WORK_MARK} 바뀌어 있던 요청 밖 파일: ${shortList(match.extraBefore)}  ${LABEL_GIT}`);
   return [...lines, ...tail];
 }
@@ -381,9 +399,12 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
     : '';
   const summary = `${aiSummary ? `${limitText(aiSummary)}  ${LABEL_AI}` : `${DEFAULT_SUMMARY}  ${LABEL_JUTELL}`}${count}`;
   const beforeFiles = new Set(receipt.beforeFiles ?? []);
-  const mentionsRun = [...receipt.done, ...receipt.checks.flatMap((check) => check.result === '확인함' ? [check.what, check.how] : check.jutell ? [] : [check.what, check.reason])]
-    .some((text) => MENTIONS_RUN.test(text));
+  // Only an actual run record (a done item or a check marked 확인함) brings the note; '안 해봄' checks never do.
+  const mentionsRun = [...receipt.done, ...receipt.checks.flatMap((check) => check.result === '확인함' ? [`${check.what} ${check.how}`] : [])]
+    .some((text) => mentionsRunRecord(text));
   const asked = receipt.asked ?? [];
+  // Chinese characters (Hanja) in what the AI wrote are hard for beginners: say so once.
+  const hasHanja = /\p{Script=Han}/u.test([...asked, ...receipt.done, ...receipt.checks.flatMap((check) => [check.what, check.result === '확인함' ? check.how : check.reason]), ...receipt.next.continue, ...receipt.next.nice, ...receipt.next.stop, aiSummary ?? ''].join('\n'));
   const askedMoreSource = typeof input === 'object' && input !== null ? (input as { askedMore?: unknown }).askedMore : undefined;
   const askedMore = typeof askedMoreSource === 'number' && Number.isInteger(askedMoreSource) && askedMoreSource > 0 ? askedMoreSource : 0;
   const files = receipt.files ?? [];
@@ -425,6 +446,7 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
     // '확인 못 한 것' is never left out: with nothing unchecked it says so explicitly.
     ...(receipt.checks.some((check) => check.result !== '확인함') ? [] : [` ✖ 확인 못 한 것: 없음  ${LABEL_AI}`]),
     ...(mentionsRun ? [AI_RESULTS_NOTE] : []),
+    ...(hasHanja ? [HANJA_NOTE] : []),
     '------------------------------',
     ...(nextGroups.every((group) => group.length === 0)
       ? [RECEIPT_SECTIONS[4], `${NOTHING_NEXT_LINE}  ${LABEL_JUTELL}`]
@@ -436,7 +458,7 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
   ];
 
   if (savedPath && !isAbsolutePath(savedPath)) {
-    lines.push(` 저장됨: ${maskAbsolutePaths(readText(savedPath, '저장 경로'))}`);
+    lines.push(` 저장됨: ${maskAbsolutePaths(readText(savedPath, '저장 경로'))}  ${LABEL_JUTELL}`);
   }
   lines.push('==============================');
   lines.push(`${SUMMARY_PREFIX}${summary}`);

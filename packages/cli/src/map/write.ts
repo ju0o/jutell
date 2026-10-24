@@ -1,11 +1,14 @@
 import { createHash } from 'node:crypto';
+import { execFile } from 'node:child_process';
 import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
 import { ensureDataRoot } from '../config/managed.js';
+import { writeViaTemp } from '../fs/atomic.js';
 import type { CliIo, CliOptions, ScopePaths } from '../types.js';
 import { MAP_HTML_FILE, renderMapHtml } from './html.js';
 import { classifyFiles, ESTIMATED_LABEL, UNCLASSIFIED, type Classified } from './classify.js';
-import { scanProject } from './scan.js';
+import { scanProject, type MapScan } from './scan.js';
+import { selectionUpToDate, writeMapSelectionFiles, type MapSelectionWriteResult } from './selection.js';
 
 export const MAP_FILE = 'JuTellMap.md';
 export const MAP_STATE_FILE = 'map-state.json';
@@ -25,9 +28,9 @@ const OPEN = /^<!-- jutell:auto (.+) -->$/;
 const CLOSE = '<!-- /jutell:auto -->';
 
 export type MapWriteResult =
-  | { status: 'created'; file: string; files: number; unclassified: number }
-  | { status: 'updated'; file: string; added: string[]; removed: string[]; newSections: string[] }
-  | { status: 'unchanged'; file: string }
+  | { status: 'created'; file: string; files: number; unclassified: number; selection?: MapSelectionWriteResult }
+  | { status: 'updated'; file: string; added: string[]; removed: string[]; newSections: string[]; selection?: MapSelectionWriteResult }
+  | { status: 'unchanged'; file: string; selection?: MapSelectionWriteResult }
   /** copy is undefined when .jutell-local is not a real folder (a link etc.), so no copy was written. */
   | { status: 'broken'; file: string; copy: string | undefined; reason: string }
   | { status: 'link'; file: string };
@@ -47,12 +50,18 @@ function linePath(line: string): string | undefined {
   return cut > 2 ? line.slice(2, cut) : undefined;
 }
 
-function pad(value: number) { return String(value).padStart(2, '0'); }
-function stamp(now: Date) {
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+/** User's local time with its zone, e.g. "2026-10-24 21:07 (UTC+9)". */
+export function stamp(now: Date) {
+  const pad = (value: number) => String(value).padStart(2, '0');
+  const offset = -now.getTimezoneOffset();
+  const zone = `UTC${offset < 0 ? '-' : '+'}${Math.floor(Math.abs(offset) / 60)}${Math.abs(offset) % 60 ? `:${pad(Math.abs(offset) % 60)}` : ''}`;
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())} (${zone})`;
 }
-function headerLine(now: Date, files: number, unclassified: number) {
-  return `${HEADER_PREFIX} ${stamp(now)} · 파일 ${files}개 · 분류 안 된 파일 ${unclassified}개`;
+function headerLine(now: Date, files: number, unclassified: number, scan?: Pick<MapScan, 'source' | 'truncated'>) {
+  const source = scan?.source === 'git' ? 'Git 파일 목록' : scan?.source === 'walk' ? '폴더 탐색' : undefined;
+  const completeness = scan?.source === 'walk' ? (scan.truncated ? '20,000개 상한 초과로 일부 생략' : '20,000개 상한 내') : undefined;
+  const provenance = [source && `목록 기준 ${source}`, completeness].filter(Boolean).join(' · ');
+  return `${HEADER_PREFIX} ${stamp(now)} · 파일 ${files}개 · 분류 안 된 파일 ${unclassified}개${provenance ? ` · ${provenance}` : ''}`;
 }
 
 function sectionLines(key: string, estimated: boolean, items: Classified[]): string[] {
@@ -95,10 +104,10 @@ export function parseMap(text: string): Parsed | string {
 }
 
 /** Full map text for a project without one. */
-export function renderNewMap(items: Classified[], now: Date): string {
+export function renderNewMap(items: Classified[], now: Date, scan?: Pick<MapScan, 'source' | 'truncated'>): string {
   const groups = group(items, new Map());
   const keys = [...groups.keys()].filter((key) => key !== UNCLASSIFIED_KEY);
-  const out = [TITLE, MAP_GUIDE, headerLine(now, items.length, groups.get(UNCLASSIFIED_KEY)?.length ?? 0)];
+  const out = [TITLE, MAP_GUIDE, headerLine(now, items.length, groups.get(UNCLASSIFIED_KEY)?.length ?? 0, scan)];
   for (const key of [...keys, UNCLASSIFIED_KEY]) {
     const list = groups.get(key) ?? [];
     out.push('', ...sectionLines(key, list[0]?.estimated ?? false, list));
@@ -127,7 +136,7 @@ function group(items: Classified[], placement: Map<string, string>, blocks?: Map
  * Lines a person wrote ("설명:", headings, moved file lines) stay byte for byte.
  * A file moved into another auto block stays in that block; a file moved outside every block is left out of the blocks.
  */
-export function updateMap(existing: string, items: Classified[], now: Date): { text: string; changed: boolean; added: string[]; removed: string[]; newSections: string[] } | string {
+export function updateMap(existing: string, items: Classified[], now: Date, scan?: Pick<MapScan, 'source' | 'truncated'>): { text: string; changed: boolean; added: string[]; removed: string[]; newSections: string[] } | string {
   const parsed = parseMap(existing);
   if (typeof parsed === 'string') return parsed;
   const { lines, eol, blocks, placed, pinned } = parsed;
@@ -169,7 +178,7 @@ export function updateMap(existing: string, items: Classified[], now: Date): { t
   if (result.join(eol) === lines.join(eol)) return { text: existing, changed: false, ...diff };
   const unclassified = items.filter((item) => !pinned.has(item.path) && (placement.get(item.path) ?? keyOf(item)) === UNCLASSIFIED_KEY).length;
   const header = result.findIndex((line) => line.startsWith(HEADER_PREFIX));
-  if (header >= 0) result[header] = headerLine(now, items.length, unclassified);
+  if (header >= 0) result[header] = headerLine(now, items.length, unclassified, scan);
   return { text: result.join(eol), changed: true, ...diff };
 }
 
@@ -177,14 +186,8 @@ export function sha256(text: string) {
   return createHash('sha256').update(text).digest('hex');
 }
 
-export async function writeViaTemp(file: string, content: string) {
-  const temporary = path.join(path.dirname(file), `.${path.basename(file)}.jutell-tmp-${process.pid}`);
-  const flags = fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_WRONLY | (fsConstants.O_NOFOLLOW ?? 0);
-  const existingMode = await fs.lstat(file).then((stat) => stat.mode & 0o777, () => undefined);
-  const handle = await fs.open(temporary, flags, existingMode ?? 0o644);
-  try { await handle.writeFile(content, 'utf8'); } finally { await handle.close(); }
-  try { await fs.rename(temporary, file); } catch (error) { await fs.rm(temporary, { force: true }); throw error; }
-}
+/** Shared temp-then-rename write (src/fs/atomic.ts), re-exported for existing callers. */
+export { writeViaTemp };
 
 /**
  * .jutell-local/map-state.json. version 2 adds `files`: the project file list the map was last synced with.
@@ -214,34 +217,61 @@ export function mapFile(paths: ScopePaths) {
   return path.join(paths.targetRoot, MAP_FILE);
 }
 
+/** HEAD commit, or null. Async so a receipt's time limit can still fire while git runs. */
+function currentCommit(root: string, signal?: AbortSignal): Promise<string | null> {
+  return new Promise((resolve) => {
+    execFile('git', ['rev-parse', '--verify', 'HEAD'], {
+      cwd: root,
+      encoding: 'utf8',
+      timeout: 1000,
+      signal,
+      env: { ...process.env, GIT_OPTIONAL_LOCKS: '0' },
+    }, (error, stdout) => {
+      const commit = String(stdout ?? '').trim();
+      resolve(!error && /^[a-f0-9]{40,64}$/i.test(commit) ? commit : null);
+    });
+  });
+}
+
+async function updateSelection(paths: ScopePaths, markdown: string, scan: MapScan, now: Date, signal?: AbortSignal) {
+  return writeMapSelectionFiles(paths, markdown, scan, now, await currentCommit(paths.targetRoot, signal), writeViaTemp);
+}
+
 export async function mapExists(paths: ScopePaths) {
   return (await fs.lstat(mapFile(paths)).catch(() => undefined)) !== undefined;
 }
 
 /** Creates JuTellMap.md or refreshes its auto blocks. Writes nothing when nothing changed. */
-export async function writeMap(paths: ScopePaths, now = new Date()): Promise<MapWriteResult> {
+/** `skipWhenCurrent` (receipt): when the map, file list, commit and index already match, rewrite nothing. `jutell map` always re-checks every file. */
+export async function writeMap(paths: ScopePaths, now = new Date(), signal?: AbortSignal, skipWhenCurrent = false): Promise<MapWriteResult> {
+  // `signal` (receipt time limit): once aborted, nothing more is written; the call throws instead.
+  const check = () => signal?.throwIfAborted();
   const file = mapFile(paths);
   const stats = await fs.lstat(file).catch(() => undefined);
   if (stats && !stats.isFile()) return { status: 'link', file };
-  const scan = await scanProject(paths.targetRoot);
+  const scan = await scanProject(paths.targetRoot, signal);
   const listed = mapListFiles(scan.files);
   const items = classifyFiles(listed);
   if (!stats) {
-    const text = renderNewMap(items, now);
+    const text = renderNewMap(items, now, scan);
+    check();
     await writeViaTemp(file, text);
     await recordState(paths, sha256(text), listed, now).catch(() => undefined);
     await forgetMapDeclined(paths).catch(() => undefined);
-    return { status: 'created', file, files: items.length, unclassified: items.filter((item) => item.feature === UNCLASSIFIED).length };
+    check();
+    const selection = await updateSelection(paths, text, scan, now, signal);
+    return { status: 'created', file, files: items.length, unclassified: items.filter((item) => item.feature === UNCLASSIFIED).length, selection };
   }
   const existing = await fs.readFile(file, { encoding: 'utf8', flag: fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) });
-  const updated = updateMap(existing, items, now);
+  const updated = updateMap(existing, items, now, scan);
   if (typeof updated === 'string') {
     await ensureDataRoot(paths).catch(() => undefined);
     // Only into a real folder: never through a .jutell-local link.
     if (!(await fs.lstat(paths.dataRoot).catch(() => undefined))?.isDirectory()) return { status: 'broken', file, copy: undefined, reason: updated };
     const copy = path.join(paths.dataRoot, MAP_COPY_FILE);
     if ((await fs.lstat(copy).catch(() => undefined))?.isSymbolicLink()) throw new Error('지도 사본 위치가 링크라서 쓰지 않았어요');
-    await writeViaTemp(copy, renderNewMap(items, now));
+    check();
+    await writeViaTemp(copy, renderNewMap(items, now, scan));
     return { status: 'broken', file, copy, reason: updated };
   }
   if (!updated.changed) {
@@ -249,12 +279,21 @@ export async function writeMap(paths: ScopePaths, now = new Date()): Promise<Map
     const state = await readMapState(paths);
     const sameList = Array.isArray(state?.files) && state.files.length === listed.length && state.files.every((entry, index) => entry === listed[index]);
     if (!sameList) await recordState(paths, typeof state?.hash === 'string' ? state.hash : '', listed, now).catch(() => undefined);
-    return { status: 'unchanged', file };
+    check();
+    // Same files, same map, same commit, index already matching: nothing to rewrite.
+    const upToDate = sameList && skipWhenCurrent ? await selectionUpToDate(paths, existing, await currentCommit(paths.targetRoot, signal)) : undefined;
+    if (upToDate !== undefined) return { status: 'unchanged', file, selection: { status: 'unchanged', indexFile: path.join(paths.dataRoot, 'map-index.json'), sectionCount: upToDate } };
+    check();
+    const selection = await updateSelection(paths, existing, scan, now, signal);
+    return { status: 'unchanged', file, selection };
   }
+  check();
   await writeViaTemp(file, updated.text);
   // The map is already renamed into place: a state write failure must not turn the result into an error.
   await recordState(paths, sha256(updated.text), listed, now).catch(() => undefined);
-  return { status: 'updated', file, added: updated.added, removed: updated.removed, newSections: updated.newSections };
+  check();
+  const selection = await updateSelection(paths, updated.text, scan, now, signal);
+  return { status: 'updated', file, added: updated.added, removed: updated.removed, newSections: updated.newSections, selection };
 }
 
 /** Writes .jutell-local/map.html from the current JuTellMap.md (only when it differs). */
@@ -300,7 +339,6 @@ export const MAP_LATER = '프로젝트 지도는 만들지 않았어요. 언제�
 export const MAP_DECLINED_NOTE = '프로젝트 지도는 만들지 않기로 하셨어요. 언제든 `jutell map`으로 만들 수 있어요.';
 export const MAP_DECLINED_FILE = 'map-declined.json';
 
-/** True when the person answered 'no' to the map question in this project before. */
 /** .jutell-local is a real directory (not a symlink) whose real path stays inside the project. */
 async function safeDataRoot(paths: ScopePaths): Promise<boolean> {
   try {
@@ -322,6 +360,7 @@ async function declinedRecord(paths: ScopePaths): Promise<string | undefined> {
   return stats !== undefined && stats.isFile() && stats.nlink === 1 ? file : undefined;
 }
 
+/** True when the person answered 'no' to the map question in this project before. */
 export async function mapDeclined(paths: ScopePaths): Promise<boolean> {
   return (await declinedRecord(paths)) !== undefined;
 }
@@ -332,10 +371,15 @@ export async function forgetMapDeclined(paths: ScopePaths): Promise<void> {
   if (file) await fs.unlink(file).catch(() => undefined);
 }
 
-async function rememberMapDeclined(paths: ScopePaths, now = new Date()) {
+/**
+ * Saves the 'no' only inside a safe .jutell-local (same rule as reading it): a real directory, not a link,
+ * whose real path stays inside the project. An existing unsafe .jutell-local is never touched.
+ */
+export async function rememberMapDeclined(paths: ScopePaths, now = new Date()) {
+  const present = await fs.lstat(paths.dataRoot).then(() => true, () => false);
+  if (present && !(await safeDataRoot(paths))) return;
   await ensureDataRoot(paths);
-  const data = await fs.lstat(paths.dataRoot);
-  if (data.isSymbolicLink() || !data.isDirectory()) return;
+  if (!(await safeDataRoot(paths))) return;
   const file = path.join(paths.dataRoot, MAP_DECLINED_FILE);
   const existing = await fs.lstat(file).catch(() => undefined);
   if (existing && (!existing.isFile() || existing.nlink > 1)) return;

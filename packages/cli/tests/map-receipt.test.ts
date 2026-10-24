@@ -7,6 +7,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { resolveScope } from '../src/config/paths.js';
 import { mapFreshnessCheck, refreshMapForReceipt } from '../src/commands/map.js';
 import { receiptCommand } from '../src/commands/receipt/index.js';
+import { MAP_DETAILS_DIR, MAP_INDEX_FILE } from '../src/map/selection.js';
 import { writeMap } from '../src/map/write.js';
 import type { CliIo } from '../src/types.js';
 
@@ -68,6 +69,32 @@ describe('receipt refreshes the map (W5)', () => {
     expect(await mapFreshnessCheck(paths)).toMatchObject({ status: '정상', detail: '지도가 최신이에요.' });
   });
 
+  it('preflights every detail collision and refreshes HTML even when compact selection files are blocked', async () => {
+    const { dir, paths } = await project();
+    await fs.mkdir(path.join(dir, 'src', 'reports'), { recursive: true });
+    await fs.writeFile(path.join(dir, 'src', 'reports', 'report.ts'), 'x');
+    await writeMap(paths);
+    const dataRoot = path.join(dir, '.jutell-local');
+    const indexFile = path.join(dataRoot, MAP_INDEX_FILE);
+    const indexBefore = await fs.readFile(indexFile, 'utf8');
+    const index = JSON.parse(indexBefore) as { sections: Array<{ id: string; name: string }> };
+    const lastSection = index.sections[index.sections.length - 1]!;
+    const collision = path.join(dataRoot, MAP_DETAILS_DIR, `${lastSection.id}.md`);
+    await fs.writeFile(collision, '사용자 소유 파일');
+    const login = index.sections.find((item) => item.name === '로그인')!;
+    const loginDetail = path.join(dataRoot, MAP_DETAILS_DIR, `${login.id}.md`);
+    const loginBefore = await fs.readFile(loginDetail, 'utf8');
+    await fs.writeFile(path.join(dir, 'src', 'auth', 'session.ts'), 'x');
+
+    const result = await refreshMapForReceipt(paths);
+    expect(result.note).toContain('ⓘ 기능 인덱스 갱신 못 함');
+    expect(await fs.readFile(indexFile, 'utf8')).toBe(indexBefore);
+    expect(await fs.readFile(loginDetail, 'utf8')).toBe(loginBefore);
+    expect(await fs.readFile(collision, 'utf8')).toBe('사용자 소유 파일');
+    expect(await fs.readFile(path.join(dir, 'JuTellMap.md'), 'utf8')).toContain('src/auth/session.ts');
+    expect(await fs.readFile(path.join(dataRoot, 'map.html'), 'utf8')).toContain('session.ts');
+  });
+
   it('without a map: no map line and no map is created', async () => {
     const { dir, receipt } = await project();
     await fs.writeFile(path.join(dir, 'a.ts'), 'x');
@@ -113,6 +140,24 @@ describe('receipt refreshes the map (W5)', () => {
     const text = await receipt(0);
     expect(text).toContain('ⓘ 지도 갱신 못 함(시간 초과로 건너뜀)');
     expect(text).toContain('저장됨: .jutell-local/reports/');
+  });
+
+  it('a timed-out refresh is cancelled: the map is not written later', async () => {
+    const { dir, paths } = await project();
+    await writeMap(paths);
+    const mapBefore = await fs.readFile(path.join(dir, 'JuTellMap.md'), 'utf8');
+    await fs.writeFile(path.join(dir, 'late.ts'), 'x');
+    expect((await refreshMapForReceipt(paths, 0)).note).toBe('ⓘ 지도 갱신 못 함(시간 초과로 건너뜀)');
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(await fs.readFile(path.join(dir, 'JuTellMap.md'), 'utf8')).toBe(mapBefore);
+  });
+
+  it('writeMap with an aborted signal writes nothing and throws', async () => {
+    const { dir, paths } = await project();
+    const controller = new AbortController();
+    controller.abort();
+    await expect(writeMap(paths, new Date(), controller.signal)).rejects.toThrow();
+    await expect(fs.lstat(path.join(dir, 'JuTellMap.md'))).rejects.toThrow();
   });
 
   it('works in a Korean path with spaces', async () => {

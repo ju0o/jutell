@@ -108,8 +108,12 @@ describe('map git exclude (W4)', () => {
     await fs.writeFile(path.join(wt, 'JuTellMap.md'), '# 지도\n');
     const file = await excludeFile(wt);
     expect(file).toBe(path.resolve(dir, '.git', 'info', 'exclude'));
-    expect((await addGitExclude(wt)).status).toBe('added');
+    const added = await addGitExclude(wt);
+    expect(added.status).toBe('added');
     expect(ignored(wt)).toBe(true);
+    // The message names the real file (shared one, outside the worktree), relative to the project.
+    expect(gitExcludeMessage(added, wt)).toContain(`(${path.relative(await fs.realpath(wt), await fs.realpath(file!)).split(path.sep).join('/')})`);
+    expect(gitExcludeMessage(added, wt)).not.toContain('(.git/info/exclude)');
   });
 
   it('submodule: writes the submodule\'s own info/exclude', async () => {
@@ -124,7 +128,9 @@ describe('map git exclude (W4)', () => {
     const inner = path.join(dir, 'mod');
     await fs.writeFile(path.join(inner, 'JuTellMap.md'), '# 지도\n');
     expect(await excludeFile(inner)).toBe(path.resolve(dir, '.git', 'modules', 'mod', 'info', 'exclude'));
-    expect((await addGitExclude(inner)).status).toBe('added');
+    const added = await addGitExclude(inner);
+    expect(added.status).toBe('added');
+    expect(gitExcludeMessage(added, inner)).toContain('(../.git/modules/mod/info/exclude)');
     expect(ignored(inner)).toBe(true);
     expect(ignored(dir)).toBe(false);
   });

@@ -3,6 +3,7 @@ import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
 import { ensureDataRoot, exists, readText, writeTextSafely } from '../config/managed.js';
 import { assets } from '../config/paths.js';
+import { writeViaTemp } from '../fs/atomic.js';
 import type { ScopePaths } from '../types.js';
 import { KNOWN_SHIPPED_SKILL_HASHES } from './known-skill-hashes.js';
 
@@ -53,9 +54,7 @@ async function writeNewFile(file: string, content: Buffer) {
 /** Replace a file by writing a temp file next to it and renaming over it: rename replaces the
  * directory entry itself, so a link swapped in at the last moment is replaced, never followed. */
 async function replaceFile(file: string, content: Buffer) {
-  const temp = path.join(path.dirname(file), `.${path.basename(file)}.jutell-${process.pid}-${Date.now()}`);
-  await writeNewFile(temp, content);
-  try { await fs.rename(temp, file); } catch (error) { await fs.rm(temp, { force: true }); throw error; }
+  await writeViaTemp(file, content);
 }
 
 /** backups/skill-2026-10-18-2137 (local time), then -2, -3 … only when that name is taken. */

@@ -50,7 +50,7 @@ describe('receipt renderer', () => {
       ' ■ 여기서 멈춰도 됨',
       '   - 부탁한 일은 끝났어요',
       '------------------------------',
-      ' 저장됨: .jutell-local/reports/2026-10-18-164012.md',
+      ' 저장됨: .jutell-local/reports/2026-10-18-164012.md  [JuTell이 적음]',
       '==============================',
       '한 줄 요약: 브라우저 탭 이름: 할 일 목록 → 오늘 할 일 외 1건  [AI가 적음]',
     ].join('\n'));
@@ -61,7 +61,7 @@ describe('receipt renderer', () => {
     const lines = output.split('\n');
     expect(lines.at(-1)).toBe('한 줄 요약: 제목을 바꿨고 끝났어요  [AI가 적음]');
     expect(lines.at(-2)).toBe('==============================');
-    expect(lines.at(-3)).toBe(' 저장됨: .jutell-local/reports/x.md');
+    expect(lines.at(-3)).toBe(' 저장됨: .jutell-local/reports/x.md  [JuTell이 적음]');
   });
 
   it('is deterministic and does not print optional risk or next-message fields', () => {
@@ -285,7 +285,7 @@ describe('receipt command', () => {
     expect(output).toHaveLength(1);
     expect(output[0]).toContain(`저장됨: .jutell-local/reports/${reportFiles[0]}`);
     expect(output[0].split('\n').map((line) => line.trim()).filter((line) => line.startsWith('저장됨: '))).toEqual([
-      `저장됨: .jutell-local/reports/${reportFiles[0]}`,
+      `저장됨: .jutell-local/reports/${reportFiles[0]}  [JuTell이 적음]`,
     ]);
     expect(output[0]).not.toContain(path.join(paths.dataRoot, 'reports'));
     const report = path.join(paths.dataRoot, 'reports', reportFiles[0]);
@@ -441,6 +441,45 @@ describe('receipt command', () => {
     expect(changedFiles).not.toContain('beginner-bridge');
     expect(changedFiles).not.toContain('.jutell.json');
     expect(changedFiles).not.toContain('AGENTS.md');
+  });
+
+  it('no .gitignore: node_modules, dist, build… are not counted as changed files (same list as the map)', async () => {
+    await setup();
+    await execFileAsync('git', ['init', '-q'], { cwd: paths.targetRoot });
+    for (const file of ['node_modules/left-pad/index.js', 'dist/app.js', 'build/out.js', 'web/node_modules/x/y.js', '.next/cache.json', 'src/app.ts']) {
+      await fs.mkdir(path.dirname(path.join(paths.targetRoot, file)), { recursive: true });
+      await fs.writeFile(path.join(paths.targetRoot, file), 'x\n', 'utf8');
+    }
+    const stdin = new PassThrough();
+    stdin.end(JSON.stringify({ done: ['한 일'] }));
+    expect(await receiptCommand(paths, ['--file', '-'], io, stdin)).toBe(0);
+    const start = output[0].indexOf('[바뀐 파일]');
+    const changedFiles = output[0].slice(start, output[0].indexOf('[확인]', start));
+    expect(changedFiles).toContain('src/app.ts');
+    for (const hidden of ['node_modules', 'dist/', 'build/', '.next']) expect(changedFiles).not.toContain(hidden);
+  });
+
+  it('a committed build/ or vendor/ file that changed is still a changed file (exclusions are for untracked files only)', async () => {
+    await setup();
+    const git = (...args: string[]) => execFileAsync('git', args, { cwd: paths.targetRoot });
+    await git('init', '-q');
+    for (const file of ['build/config.js', 'vendor/lib.js', 'src/app.ts']) {
+      await fs.mkdir(path.dirname(path.join(paths.targetRoot, file)), { recursive: true });
+      await fs.writeFile(path.join(paths.targetRoot, file), 'v1\n', 'utf8');
+    }
+    await git('add', '.');
+    await git('-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-qm', 'base');
+    await fs.writeFile(path.join(paths.targetRoot, 'build/config.js'), 'v2\n', 'utf8');
+    await fs.writeFile(path.join(paths.targetRoot, 'vendor/lib.js'), 'v2\n', 'utf8');
+    await fs.writeFile(path.join(paths.targetRoot, 'build/new-output.js'), 'x\n', 'utf8');
+    const stdin = new PassThrough();
+    stdin.end(JSON.stringify({ done: ['설정 수정'] }));
+    expect(await receiptCommand(paths, ['--file', '-'], io, stdin)).toBe(0);
+    const start = output[0].indexOf('[바뀐 파일]');
+    const changedFiles = output[0].slice(start, output[0].indexOf('[확인]', start));
+    expect(changedFiles).toContain('build/config.js');
+    expect(changedFiles).toContain('vendor/lib.js');
+    expect(changedFiles).not.toContain('build/new-output.js');
   });
 
   it('does not accept inline JSON or incomplete --file arguments', async () => {

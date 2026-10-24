@@ -7,6 +7,8 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { resolveScope } from '../src/config/paths.js';
 import { receiptCommand } from '../src/commands/receipt/index.js';
 import { featuresFor, matchRequests, readMapSections } from '../src/commands/receipt/match.js';
+import { mapAreaIds, readMapSelectionIndex } from '../src/map/selection.js';
+import { mentionsRunRecord } from '../src/commands/receipt/render.js';
 import { writeMap } from '../src/map/write.js';
 import type { CliIo } from '../src/types.js';
 
@@ -90,11 +92,14 @@ describe('request matching (W6, plan.md §2)', () => {
   });
 
   it('④ a place outside the request changed → ⚠ 요청에 없던 곳도 바뀜 [Git 기준]', async () => {
-    const { receipt, edit } = await project();
+    const { dir, paths, receipt, edit } = await project();
     await edit('test-app/todo.html');
     await edit('scripts/migrate-2024.js');
     const text = await receipt({ ...base, asked: ['할 일 페이지 제목 바꾸기'], done: ['제목을 바꿨어요'] });
-    expect(text).toContain(' ⚠ 요청에 없던 곳도 바뀜: scripts/migrate-2024.js  [Git 기준]');
+    const id = mapAreaIds(await fs.readFile(path.join(dir, 'JuTellMap.md'), 'utf8')).get('scripts/migrate-2024.js');
+    expect(id).toMatch(/^f-[a-f0-9]{12}$/);
+    expect((await readMapSelectionIndex(paths)).index.sections.map((section) => section.id)).toContain(id);
+    expect(text).toContain(` ⚠ 요청에 없던 곳도 바뀜: scripts/migrate-2024.js [${id}]  [Git 기준]`);
   });
 
   it('⑤ done is written but 0 files changed → ⚠ 말과 실제가 달라요 (with and without asked)', async () => {
@@ -144,6 +149,20 @@ describe('request matching (W6, plan.md §2)', () => {
     expect(plain.split('\n').at(-1)).toBe('한 줄 요약: 제목을 바꿨어요  [AI가 적음] · 요청 1개 중 1개 처리  [Git 기준]');
   });
 
+  it('a folder name like test-app or a line saying it was not run never brings the ⓘ note; a real run record does', async () => {
+    const { receipt, edit } = await project();
+    await edit('test-app/todo.html');
+    const notRun = await receipt({ asked: ['할 일 페이지 제목 바꾸기'], done: ['test-app/todo.html 제목을 바꿨어요'], checked: ['test-app 폴더의 파일을 다시 읽었어요'], unchecked: ['테스트 (실행하지 않음)', 'npm test는 실행 못 함'], next: [] });
+    expect(notRun).not.toContain('ⓘ 위 테스트');
+    expect(mentionsRunRecord('test-app 폴더 정리')).toBe(false);
+    expect(mentionsRunRecord('npm-debug.log 삭제')).toBe(false);
+    expect(mentionsRunRecord('테스트는 실행하지 않음')).toBe(false);
+    expect(mentionsRunRecord('빌드 폴더 이름 바꿈')).toBe(false);
+    expect(mentionsRunRecord('npm test 통과')).toBe(true);
+    expect(mentionsRunRecord('테스트를 돌려 통과')).toBe(true);
+    expect(mentionsRunRecord('빌드 성공 (tsc)')).toBe(true);
+  });
+
   it('no map → Git only, "지도가 없어 장소 대조는 못 했어요", and the summary is not a code count', async () => {
     const { receipt, edit } = await project({ map: false });
     await edit('test-app/todo.html');
@@ -182,6 +201,12 @@ describe('match.ts (deterministic matching)', () => {
       { key: 'payments', name: '환불 (내가 지은 이름)', files: ['src/payments/r.ts'] },
       { key: 'cli', name: 'cli', files: ['index.js', 'packages/cli/x.ts'] },
     ]);
+  });
+
+  it('Korean words match whole words with particles or 하다 endings, never inside another word', () => {
+    const pay = [{ key: '결제', name: '결제', files: ['src/pay.ts'] }];
+    for (const yes of ['계산 화면 고치기', '계산을 고쳐 줘', '계산하기 버튼', '결제가 안 돼요', '"결제" 고치기']) expect(featuresFor(yes, pay)).toHaveLength(1);
+    for (const no of ['계산기 만들기', '공학계산 추가', '결제창 색 바꾸기']) expect(featuresFor(no, pay)).toEqual([]);
   });
 
   it('matches by Korean dictionary words, English words (whole word, any case), key and human heading', () => {
@@ -228,7 +253,7 @@ describe('files changed before the work in the comparison (W7 × W6)', () => {
     await edit('scripts/migrate-2024.js');
     const text = await receipt({ ...base, asked: ['할 일'], done: ['두 번째 작업'] });
     expect(text).toContain('[요청 대조]  요청 1개 중 1개 바뀐 곳 있음  [Git 기준 · 지도 대조]');
-    expect(text).toContain(' ⚠ 요청에 없던 곳도 바뀜: scripts/migrate-2024.js  [Git 기준]');
+    expect(text).toMatch(/ ⚠ 요청에 없던 곳도 바뀜: scripts\/migrate-2024\.js \[f-[a-f0-9]{12}\]  \[Git 기준\]/);
     expect(text).not.toContain('(작업 전부터)');
   });
 

@@ -1,15 +1,17 @@
+import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { assets, codexScopedPaths, packageRoot, safeLocation } from '../config/paths.js';
 import { readBridgeConfig, readCodexRegistration, snapshot, restore } from '../config/managed.js';
 import { ensureBridgeConfig, setMcpDisabled, setMcpEnabled } from '../installer/config.js';
 import { installSkill, recordSkillFiles, removeAddedSkillFiles, removeManagedSkillFiles, skillConflictMessage, skillRefreshMessage } from '../installer/skill.js';
 import { agentsFile, ensureJuTellAgentsBlock, removeJuTellAgentsBlock } from '../installer/agents.js';
-import { registerMcp, removeMcp } from '../config/managed.js';
+import { recordReceiptBaseline } from './receipt/index.js';
+import { codexUninstallBlocker, managedCodexServerFile, readText, registerMcp, removeMcp, userKeysInManagedBlock } from '../config/managed.js';
 import { removeOpenCodeMcp, readOpenCodeRegistration, setOpenCodeEnabled } from '../installer/opencode.js';
 import { removeClaudeMcp } from '../installer/claude.js';
 import { scopeLabel } from '../output/format.js';
 import { offerMap } from '../map/write.js';
-import { removeGitExclude } from '../map/git-exclude.js';
+import { removeGitExclude, shownExcludePath } from '../map/git-exclude.js';
 import { codexDetected, nodeMajorVersion, operatingSystem } from '../process/system.js';
 import type { CliIo, CliOptions, ScopePaths } from '../types.js';
 
@@ -57,6 +59,8 @@ export async function setupCommand(paths: ScopePaths, options: CliOptions, io: C
     await removeAddedSkillFiles(paths.skillRoot, skillResult.changed);
     throw error;
   }
+  // The install's own changes (package.json, lockfile…) become the receipt's 'before work' baseline.
+  await recordReceiptBaseline(paths).catch(() => undefined);
   // Asked after a successful install only (a map problem never rolls the install back).
   if (!options.oneCommand && !options.mcpOnly) await offerMap(paths, options, io, process.stdin.isTTY === true);
   return { cancelled: false, skillResult };
@@ -130,6 +134,16 @@ export async function disableCommand(paths: ScopePaths, options: CliOptions, io:
   return { cancelled: false };
 }
 
+async function runsFromProject(codexPaths: ScopePaths, projectRoot: string) {
+  const server = await managedCodexServerFile(codexPaths).catch(() => undefined);
+  if (!server) return false;
+  const real = async (file: string) => (await fs.realpath(file).catch(() => path.resolve(file))).replaceAll('\\', '/');
+  const [serverPath, root] = await Promise.all([real(path.dirname(server)), real(projectRoot)]);
+  // Only JuTell's own local install counts (<project>/node_modules/jutell/assets/mcp-server);
+  // other in-project paths such as vendor/…/jutell or a checkout of JuTell itself do not.
+  return serverPath === `${root}/node_modules/jutell/assets/mcp-server`;
+}
+
 export async function uninstallCommand(paths: ScopePaths, options: CliOptions, io: CliIo) {
   const removeData = options.removeData;
   const dataMessage = removeData ? '설정과 Beta Journal도 삭제합니다.' : '설정과 Beta Journal은 보존합니다.';
@@ -139,17 +153,36 @@ export async function uninstallCommand(paths: ScopePaths, options: CliOptions, i
   // must not silently break that shared connection for other projects, so a
   // project-scoped uninstall leaves it in place unless the user asked for
   // --global.
-  const codexSkipped = paths.scope !== 'global';
+  // Exception: when the shared entry runs THIS project's local install (node_modules inside the project),
+  // it cannot work for other projects after removal, so JuTell's own entry is removed too.
+  const codexLocal = paths.scope === 'project' && await runsFromProject(codexScopedPaths(paths), paths.targetRoot);
+  const codexSkipped = paths.scope !== 'global' && !codexLocal;
+  const codexNotes: string[] = [];
+  let codexRemoved = false;
   if (!codexSkipped) {
-    const removal = await removeMcp(codexScopedPaths(paths), packageRoot());
-    if (removal.commentedTables.length > 0) {
-      io.write(`직접 넣은 jutell 설정(${removal.commentedTables.join(', ')})은 지우지 않고 주석으로 남겼어요. 바로 전 백업: ${removal.backupPath}, 처음 원본: ${codexScopedPaths(paths).codexConfigFile}.jutell-original`);
+    const codexPaths = codexScopedPaths(paths);
+    // A broken or linked global file only skips the Codex step; the rest of uninstall goes on.
+    const blocker = await codexUninstallBlocker(codexPaths);
+    if (blocker) codexNotes.push(blocker);
+    else {
+      try {
+        const userKeys = userKeysInManagedBlock(await readText(codexPaths.codexConfigFile) ?? '');
+        const removal = await removeMcp(codexPaths, packageRoot());
+        codexRemoved = true;
+        if (userKeys.length > 0) codexNotes.push(`주의: JuTell이 관리하는 구역 안에 직접 넣은 값(${userKeys.join(', ')})이 있어 구역과 함께 지워졌어요. 필요하면 백업(${removal.backupPath})에서 다시 옮겨 주세요.`);
+        if (removal.commentedTables.length > 0) {
+          codexNotes.push(`직접 넣은 jutell 설정(${removal.commentedTables.join(', ')})은 지우지 않고 주석으로 남겼어요. 바로 전 백업: ${removal.backupPath}, 처음 원본: ${codexPaths.codexConfigFile}.jutell-original`);
+        }
+      } catch (error) {
+        codexNotes.push(`Codex 전역 설정의 JuTell 연결은 지우지 못했어요(${(error as Error).message}). 나머지 제거는 계속했어요.`);
+      }
     }
   }
   await removeManagedSkillFiles(assets().skill, paths.skillRoot, paths);
   if (paths.scope === 'project') await removeJuTellAgentsBlock(paths.targetRoot);
   // Only JuTell's two lines in .git/info/exclude; the map file itself and the user's .gitignore stay.
-  if (paths.scope === 'project' && (await removeGitExclude(paths.targetRoot).catch(() => undefined))?.status === 'removed') io.write('JuTellMap.md를 git에서 빼던 줄(.git/info/exclude)을 지웠어요.');
+  const excluded = paths.scope === 'project' ? await removeGitExclude(paths.targetRoot).catch(() => undefined) : undefined;
+  if (excluded?.status === 'removed') io.write(`JuTellMap.md를 git에서 빼던 줄(${shownExcludePath(excluded.file, paths.targetRoot)})을 지웠어요.`);
   await removeOpenCodeMcp(paths, packageRoot());
   // Same reasoning as disable: Claude's scope is already per-project, so no
   // shared-global-entry risk to guard against here.
@@ -159,6 +192,8 @@ export async function uninstallCommand(paths: ScopePaths, options: CliOptions, i
     await fs.rm(paths.dataRoot, { recursive: true, force: true });
   }
   io.write(`제거했습니다. ${removeData ? '설정과 Beta Journal도 삭제했습니다.' : '설정과 Beta Journal은 보존했습니다.'}`);
+  for (const note of codexNotes) io.write(note);
+  if (codexLocal && codexRemoved) io.write('Codex 전역 설정에 남아 있던 이 프로젝트용 JuTell 연결(이 폴더의 node_modules를 가리킴)도 지웠어요. 다른 설정은 그대로예요.');
   if (codexSkipped) io.write('Codex MCP 연결(전역 설정)은 다른 프로젝트와 공유되어 제거하지 않았습니다. 모든 프로젝트에서 제거하려면 jutell uninstall --global 을 실행하세요.');
   return { cancelled: false };
 }

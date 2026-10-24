@@ -1,17 +1,10 @@
 import { execFile } from 'node:child_process';
-import { constants as fsConstants, promises as fs } from 'node:fs';
+import { constants as fsConstants, promises as fs, realpathSync } from 'node:fs';
 import path from 'node:path';
-// No imports from the rest of the CLI: the local admin server uses this same file (map.gitExclude switch).
+// Only self-contained imports: the local admin server uses this same file (map.gitExclude switch).
+import { writeViaTemp } from '../fs/atomic.js';
 const MAP_FILE = 'JuTellMap.md';
 
-async function writeViaTemp(file: string, content: string) {
-  const temporary = path.join(path.dirname(file), `.${path.basename(file)}.jutell-tmp-${process.pid}`);
-  const flags = fsConstants.O_CREAT | fsConstants.O_EXCL | fsConstants.O_WRONLY | (fsConstants.O_NOFOLLOW ?? 0);
-  const existingMode = await fs.lstat(file).then((stat) => stat.mode & 0o777, () => undefined);
-  const handle = await fs.open(temporary, flags, existingMode ?? 0o644);
-  try { await handle.writeFile(content, 'utf8'); } finally { await handle.close(); }
-  try { await fs.rename(temporary, file); } catch (error) { await fs.rm(temporary, { force: true }); throw error; }
-}
 
 /** The two lines JuTell adds to the repository's info/exclude, always together and only once. */
 export const EXCLUDE_COMMENT = `# jutell: ${MAP_FILE}를 이 컴퓨터에서만 git에서 뺌 (jutell map --git-include로 되돌림)`;
@@ -121,16 +114,26 @@ export async function removeGitExclude(root: string): Promise<GitExcludeResult> 
   return { status: 'removed', file, ignored: await mapIgnored(root) };
 }
 
-export function gitExcludeMessage(result: GitExcludeResult): string {
+/** The exclude file as the person should see it: relative to the project, with / (e.g. ../.git/info/exclude in a subfolder). */
+export function shownExcludePath(file: string | undefined, root: string | undefined): string {
+  if (!file || !root) return '.git/info/exclude';
+  const real = (value: string) => { try { return realpathSync.native(value); } catch { return value; } };
+  // Real paths on both sides (macOS /var → /private/var), so git's answer and the project line up.
+  const relative = path.relative(real(root), path.join(real(path.dirname(file)), path.basename(file)));
+  return (relative && !path.isAbsolute(relative) ? relative : file).split(path.sep).join('/');
+}
+
+export function gitExcludeMessage(result: GitExcludeResult, root?: string): string {
+  const where = shownExcludePath('file' in result ? result.file : undefined, root);
   switch (result.status) {
     case 'added': return result.ignored
-      ? `${MAP_FILE}를 이 컴퓨터에서만 git에서 뺐어요(.git/info/exclude). 되돌리려면 \`jutell map --git-include\`.`
-      : `.git/info/exclude에 줄을 넣었지만 git이 아직 ${MAP_FILE}를 빼지 않아요(git check-ignore로 확인). 직접 확인해 주세요.`;
-    case 'already': return result.ignored ? `${MAP_FILE}는 이미 git에서 빠져 있어요.` : `JuTell 줄은 이미 있지만 git이 ${MAP_FILE}를 빼지 않아요(git check-ignore로 확인). 직접 확인해 주세요.`;
-    case 'removed': return result.ignored ? `JuTell 줄은 지웠지만 ${MAP_FILE}는 다른 규칙(.gitignore 등) 때문에 여전히 git에서 빠져 있어요.` : `${MAP_FILE}를 다시 git에 보이게 했어요.`;
+      ? `${MAP_FILE}를 이 컴퓨터에서만 git에서 뺐어요(${where}). 되돌리려면 \`jutell map --git-include\`.`
+      : `${where}에 줄을 넣었지만 git이 아직 ${MAP_FILE}를 빼지 않아요(git check-ignore로 확인). 직접 확인해 주세요.`;
+    case 'already': return result.ignored ? `${MAP_FILE}는 이미 git에서 빠져 있어요(${where}).` : `JuTell 줄은 이미 있지만 git이 ${MAP_FILE}를 빼지 않아요(git check-ignore로 확인). 직접 확인해 주세요.`;
+    case 'removed': return result.ignored ? `JuTell 줄은 지웠지만 ${MAP_FILE}는 다른 규칙(.gitignore 등) 때문에 여전히 git에서 빠져 있어요.` : `${MAP_FILE}를 다시 git에 보이게 했어요(${where}).`;
     case 'absent': return `JuTell이 넣은 git 제외 줄이 없어서 바꿀 것이 없어요.`;
     case 'not-git': return 'git 저장소가 아니라 할 일이 없어요.';
     case 'committed': return `${MAP_FILE}가 이미 커밋돼 있어서 아무것도 바꾸지 않았어요. git에서 빼려면 \`git rm --cached ${MAP_FILE}\`를 직접 실행하세요.`;
-    case 'link': return 'git 제외 파일(.git/info/exclude)이 링크라서 쓰지 않았어요.';
+    case 'link': return `git 제외 파일(${where})이 링크라서 쓰지 않았어요.`;
   }
 }

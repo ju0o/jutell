@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ensureJuTellAgentsBlock, ensureJuTellClaudeMdBlock } from '../src/installer/agents.js';
+import { ensureJuTellAgentsBlock, ensureJuTellClaudeMdBlock, receiptCommandFor } from '../src/installer/agents.js';
 
 const repoRoot = path.resolve(import.meta.dirname, '..', '..', '..');
 const skillFile = path.join(repoRoot, '.agents', 'skills', 'beginner-bridge', 'SKILL.md');
@@ -38,27 +38,42 @@ describe('M2.6 Codex Experience Parity guidance', () => {
     expect(text).not.toMatch(/JuTell 보고 규칙을 (먼저 )?적용/);
   });
 
-  it('AGENTS block has the agent write receipt.json with its file tool and run jutell receipt without a shell pipe', async () => {
+  it('local install: the project block names the exact npm exec receipt command (SKILL.md unchanged)', async () => {
+    const tmp = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-guidance-local-')));
+    temporaryRoots.push(tmp);
+    await fs.mkdir(path.join(tmp, 'node_modules', 'jutell'), { recursive: true });
+    expect(await receiptCommandFor(tmp, path.join(tmp, 'node_modules', 'jutell'))).toBe('npm exec --offline --no -- jutell receipt');
+    expect(await receiptCommandFor(tmp, path.join(tmp, 'vendor', 'jutell'))).toBe('jutell receipt');
+    expect(await receiptCommandFor(tmp, path.join(os.tmpdir(), 'global', 'node_modules', 'jutell'))).toBe('jutell receipt');
+  });
+
+  it('AGENTS block has the agent write receipt.json with its file tool and supports local npm receipt execution', async () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-guidance-receipt-'));
     temporaryRoots.push(tmp);
     await ensureJuTellAgentsBlock(tmp);
     const text = await fs.readFile(path.join(tmp, 'AGENTS.md'), 'utf8');
     expect(text).toContain('파일 쓰기 도구로 `.jutell-local/receipt.json`');
-    expect(text).toContain('인자 없이 `jutell receipt`');
+    // Not a local install: the plain command, and no fallback sentence (no second try).
+    expect(text).toContain('③ 프로젝트 루트에서 인자 없이 `jutell receipt`를 한 번 실행해');
+    expect(text).not.toContain('npm exec');
     expect(text).not.toMatch(/echo '|\| jutell receipt|--file -|npx/);
     expect(text).toContain('"summary"');
     expect(text).toContain('영수증을 저장하지 못했어요. 터미널에서 jutell doctor를 실행하면 해결 방법을 알려 줘요.');
+    expect(text).not.toContain('로컬 설치면');
     // Item 4: the rule call is step ① of the one end procedure (① call ② receipt.json ③ jutell receipt).
     const step = (text2: string, mark: string) => text2.indexOf(mark);
-    const line = text.split('\n').find((item) => item.startsWith('- 영수증(끝날 때 순서): ① `get_beginner_report_rules` 호출(생략 금지) ② 파일 쓰기 도구로')) ?? '';
+    const line = text.split('\n').find((item) => item.startsWith('- 영수증(끝날 때 순서): ① `get_beginner_report_rules` 호출(보이면 필수) ② 파일 쓰기 도구로')) ?? '';
     expect(line).not.toBe('');
     expect(step(line, '①')).toBeLessThan(step(line, '②'));
-    expect(step(line, '②')).toBeLessThan(step(line, '③ 인자 없이 `jutell receipt`'));
+    expect(step(line, '②')).toBeLessThan(step(line, '③ 프로젝트 루트에서 인자 없이 `jutell receipt`'));
     expect(text).not.toContain('그다음에 영수증');
     const skill = await fs.readFile(skillFile, 'utf8');
-    expect(skill).toContain('12. 끝날 때 ① `get_beginner_report_rules` 호출(생략 금지) ② AGENTS.md대로 `.jutell-local/receipt.json`');
+    expect(skill).toContain('12. 끝날 때 ① `get_beginner_report_rules` 호출(보이면 필수) ② `.jutell-local/receipt.json`을 파일 편집 도구로 쓴다. ③ AGENTS.md/CLAUDE.md에 적힌 영수증 명령(없으면 `jutell receipt`)을 한 번 실행한다.');
+    expect(skill).toContain('`jutell receipt`는 셸 명령이다');
+    expect(skill).not.toContain('npm exec');
+    expect(skill).not.toMatch(/전역은|로컬은/);
     expect(text).toContain('영수증이 최종 답입니다. 영수증 아래에는 아무것도 쓰지 않고');
-    expect(text).toContain('반드시 파일 편집 도구로 씁니다');
+    expect(text).toContain('(셸·heredoc 금지)');
     expect(text).toContain('테스트·실행 결과·화면 확인을 필요로 하면 실행하고');
     expect(text).toContain('checked가 아닌 unchecked에 씁니다');
     expect(text).toContain('필요한 파일만 명령 하나로 읽고, 읽은 파일은 다시 읽지 않습니다');
@@ -76,9 +91,11 @@ describe('M2.6 Codex Experience Parity guidance', () => {
     expect(text).toContain('`직접 확인한 것:`과 `확인 못 한 것:` 두 줄');
   });
 
-  it('SKILL.md points to JuTellMap.md instead of docs/ and drops the V0.1 line (W8)', async () => {
+  it('SKILL.md prefers one selected detail over the full compatibility map (W8)', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
-    expect(skill).toContain('* `JuTellMap.md`(프로젝트 맨 위) — 고칠 파일을 모를 때만 먼저 읽는다');
+    expect(skill).toContain('* `JuTellMap.md` — 전체 호환 지도; 필요할 때 관련 칸만 읽는다');
+    expect(skill).toContain('`.jutell-local/map-index.json` → ID → `.jutell-local/map-details/<ID>.md` 하나만 읽는다');
+    expect(skill).toContain('`jutell map --list`, `jutell map --show <ID>`');
     expect(skill).not.toContain('* `docs/` 아래 제품 범위·보고 사양·설정 문서');
     expect(skill).not.toContain('V0.1 시나리오를 실제로 실행하지 않았다면');
     expect(Buffer.byteLength(skill, 'utf8')).toBeLessThanOrEqual(6144);
@@ -171,14 +188,16 @@ describe('slim SKILL.md (skill-slim)', () => {
   it('keeps the every-time rules in SKILL.md itself', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
     for (const text of [
+      '보여주기 전에 민감한 값을 지운다',
+      '검증 명령은 프로젝트 문서·설정에서 찾고 임의로 만들지 않는다',
       '`references/report-format.md`',
       '맨 아래 줄은 항상 `한 줄 요약:`으로 끝낸다',
       'checked(직접 확인한 것)에는 실제로 실행하거나 읽은 것만 쓴다',
-      '요청이 테스트·실행 결과·화면 확인을 필요로 하면 관련 테스트를 실행한다',
+      '실행·테스트·화면 결과가 요청되면 관련 확인을 실행한다',
       '다음 행동 제안은 최대 3개',
-      '`.jutell-local/receipt.json`을 파일 편집 도구로(셸 금지) 쓰고, 인자 없이 `jutell receipt`를 한 번 실행',
-      '비밀정보를 출력할 수 있는 명령은 실행하지 않는다',
-      '`get_beginner_report_rules`를 한 번 호출한다',
+      '`.jutell-local/receipt.json`을 파일 편집 도구로 쓴다. ③ AGENTS.md/CLAUDE.md에 적힌 영수증 명령(없으면 `jutell receipt`)을 한 번 실행한다.',
+      '금지 명령과 비밀정보 출력 명령은 실행하지 않는다',
+      '최종 답 전에 `get_beginner_report_rules`를 한 번 호출',
       // Dogfooder fixes
       '`unchecked`는 빼지 말고, 없으면 없다고 쓴다',
       '사용자가 말한 조건을 모두 확인했을 때만 완료',
@@ -249,7 +268,7 @@ describe('exact tool names, so agents do not search their tool list', () => {
 
   it('SKILL.md (shared by every agent): call visible tools directly, else continue with the Skill; Codex names labelled', async () => {
     const skill = await fs.readFile(skillFile, 'utf8');
-    expect(skill).toContain('도구가 보이면 바로 호출하고, 안 보이면 검색하지 말고 Skill로 계속한다(Codex: `mcp__jutell__get_beginner_report_rules`, `apply_patch`). `jutell receipt`는 셸 명령이다.');
+    expect(skill).toContain('도구가 있으면 호출하고 없으면 검색 없이 Skill로 계속한다(Codex: `mcp__jutell__get_beginner_report_rules`, `apply_patch`).');
     expect(skill.replace(/\(Codex: [^)]*\)/g, '')).not.toContain('apply_patch');
     expect(skill).not.toContain('exec_command');
     expect(skill).not.toContain('ALL_TOOLS');

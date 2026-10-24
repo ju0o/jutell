@@ -159,7 +159,9 @@ JuTell은 AI Agent를 대신 실행하지 않고 연결과 보고만 도와줍�
 
 프로젝트 지도
 
-  jutell map            프로젝트 지도(JuTellMap.md)와 .jutell-local/map.html을 만들거나 갱신합니다.
+  jutell map            전체 지도, 작은 인덱스, 기능 상세 파일과 HTML을 만들거나 갱신합니다.
+  jutell map --list     기능 이름과 ID만 읽습니다.
+  jutell map --show <ID 또는 이름 일부>  기능 하나의 상세만 봅니다.
   jutell map --git-exclude  지도를 이 컴퓨터에서만 git에서 뺍니다. --git-include로 되돌립니다.
 
 공개 설치: npm install -g jutell

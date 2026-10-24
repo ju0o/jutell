@@ -1,5 +1,5 @@
-// .jutell-local/map.html: the same content as JuTellMap.md, as one self-contained page.
-// No scripts, no links, no external requests (CSP default-src 'none'); every md byte is escaped.
+// .jutell-local/map.html: a compact path index with optional detail cards.
+// No scripts or external requests; every map byte is escaped.
 
 export const MAP_HTML_FILE = 'map.html';
 
@@ -7,37 +7,89 @@ export function escapeHtml(value: string) {
   return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-const STYLE = 'body{font-family:system-ui,sans-serif;max-width:60rem;margin:2rem auto;padding:0 1rem;line-height:1.5}summary{font-weight:600;font-size:1.1rem;cursor:pointer}details{margin:.6rem 0}ul{margin:.2rem 0}.note{color:#555}';
+const STYLE = 'body{font-family:system-ui,sans-serif;max-width:68rem;margin:2rem auto;padding:0 1rem;line-height:1.5;color:#18212b}.count{display:block;color:#536171;font-size:.9rem;font-weight:400;margin-top:.15rem}.notice,.evidence,.note{color:#435160}.notice{background:#f2f6fa;padding:.8rem 1rem;border-radius:.5rem}details{border:1px solid #ccd5df;border-radius:.6rem;margin:.7rem 0;padding:.7rem 1rem}summary{font-weight:650;cursor:pointer;overflow-wrap:anywhere}.evidence{background:#f7f9fb;border-radius:.4rem;padding:.7rem 1rem;margin:.7rem 0}.evidence p{margin:.25rem 0}.files{margin:.4rem 0 .8rem;padding-left:1.4rem;overflow-wrap:anywhere}.files li{padding:.12rem 0}.note{font-size:.95rem;overflow-wrap:anywhere}';
 
-/** Converts JuTellMap.md to HTML. Each "## " section can be folded and unfolded (<details>). */
-export function renderMapHtml(markdown: string): string {
-  const lines = markdown.replace(/\r\n/g, '\n').replace(/<!--[\s\S]*?-->/g, '').split('\n');
-  const out: string[] = [];
+type Section = { title: string; files: string[]; notes: string[] };
+type Counts = { screen: number; code: number; tests: number; other: number };
+
+function roleOf(line: string): string {
+  const cut = line.lastIndexOf(' — ');
+  return cut < 0 ? '' : line.slice(cut + 3);
+}
+
+function countsOf(files: string[]): Counts {
+  const counts: Counts = { screen: 0, code: 0, tests: 0, other: 0 };
+  for (const file of files) {
+    const role = roleOf(file);
+    if (role === '화면') counts.screen += 1;
+    else if (role === '기능') counts.code += 1;
+    else if (role === '테스트') counts.tests += 1;
+    else counts.other += 1;
+  }
+  return counts;
+}
+
+function parseSections(markdown: string) {
+  const lines = markdown.replace(/\r\n/g, '\n').replace(/<!--(?!\s*-->)[\s\S]*?-->/g, '').split('\n');
   let title = 'JuTell 지도';
-  let inSection = false;
-  let inList = false;
-  const closeList = () => { if (inList) { out.push('</ul>'); inList = false; } };
+  const sections: Section[] = [];
+  let current: Section | undefined;
+  const headerNotes: string[] = [];
   for (const raw of lines) {
     const line = raw.trimEnd();
     if (!line.trim()) continue;
-    if (line.startsWith('# ')) { title = line.slice(2); out.push(`<h1>${escapeHtml(title)}</h1>`); continue; }
+    if (line.startsWith('# ')) { title = line.slice(2); continue; }
     if (line.startsWith('## ')) {
-      closeList();
-      if (inSection) out.push('</details>');
-      out.push(`<details open><summary>${escapeHtml(line.slice(3))}</summary>`);
-      inSection = true;
+      current = { title: line.slice(3), files: [], notes: [] };
+      sections.push(current);
       continue;
     }
     if (line.startsWith('- ')) {
-      if (!inList) { out.push('<ul>'); inList = true; }
-      out.push(`<li>${escapeHtml(line.slice(2))}</li>`);
+      if (current) current.files.push(line.slice(2));
       continue;
     }
-    closeList();
-    out.push(`<p class="note">${escapeHtml(line)}</p>`);
+    if (current) current.notes.push(line);
+    else headerNotes.push(line);
   }
-  closeList();
-  if (inSection) out.push('</details>');
+  return { title, sections, headerNotes };
+}
+
+function renderFiles(files: string[]) {
+  if (!files.length) return '<p class="note">해당 역할로 분류된 파일이 없습니다.</p>';
+  return `<ul class="files">${files.map((file) => `<li>${escapeHtml(file)}</li>`).join('')}</ul>`;
+}
+
+function renderSection(section: Section) {
+  const counts = countsOf(section.files);
+  const screens = section.files.filter((file) => roleOf(file) === '화면');
+  const code = section.files.filter((file) => roleOf(file) === '기능');
+  const tests = section.files.filter((file) => roleOf(file) === '테스트');
+  const other = section.files.filter((file) => !['화면', '기능', '테스트'].includes(roleOf(file)));
+  const details = [
+    `<section class="evidence" aria-label="근거 카드: ${escapeHtml(section.title)}">`,
+    '<p><strong>화면 경로</strong> · 파일 이름과 폴더로 짐작함</p>', renderFiles(screens),
+    '<p><strong>코드 경로</strong> · 파일 이름과 폴더로 짐작함</p>', renderFiles(code),
+    '<p><strong>테스트 경로</strong> · 지도에 적힌 파일; 테스트를 실행하지 않아 통과했는지 몰라요</p>', renderFiles(tests),
+    '<p><strong>데이터 연결</strong> · 모름 — 지도는 파일끼리 데이터가 어떻게 이어지는지 보지 않아요.</p>',
+    '<p><strong>동작</strong> · 모름 — 파일 목록만으로는 잘 동작하는지 알 수 없어요.</p>',
+    ...(other.length ? ['<p><strong>기타 경로</strong></p>', renderFiles(other)] : []),
+    ...section.notes.map((note) => `<p class="note">${escapeHtml(note)}</p>`),
+    '</section>',
+  ].join('\n');
+  const summary = `${escapeHtml(section.title)}<span class="count">파일 ${section.files.length}개 · 화면 ${counts.screen} · 코드 ${counts.code} · 테스트 ${counts.tests} · 기타 ${counts.other}</span>`;
+  return `<details><summary>${summary}</summary>${details}</details>`;
+}
+
+/** Converts JuTellMap.md into a compact index and collapsed detail cards. */
+export function renderMapHtml(markdown: string): string {
+  const { title, sections, headerNotes } = parseSections(markdown);
+  const out = [
+    `<h1>${escapeHtml(title)}</h1>`,
+    '<p class="notice">이 지도는 파일 경로를 기준으로 묶은 안내입니다. 기능 이름과 역할은 지도 기준 추정이며, 화면·코드·데이터의 연결 및 실제 동작은 확인되지 않았습니다. 위 시각은 마지막 지도 갱신 시각입니다. 최신성은 jutell status에서 확인하세요.</p>',
+    ...headerNotes.map((note) => `<p class="note">${escapeHtml(note)}</p>`),
+    '<h2>파일 분류 인덱스 · 펼치면 경로와 확인 상태를 볼 수 있어요</h2>',
+    ...sections.map(renderSection),
+  ];
   return [
     '<!doctype html>',
     '<html lang="ko"><head><meta charset="utf-8">',

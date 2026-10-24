@@ -1,3 +1,4 @@
+import { EXCLUDED_PATHSPECS, inExcludedFolder } from '../../map/scan.js';
 import { execFile } from 'node:child_process';
 import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
@@ -9,6 +10,7 @@ import { refreshMapForReceipt, RECEIPT_MAP_TIMEOUT_MS } from '../map.js';
 import { MAP_FILE } from '../../map/write.js';
 import { checkBeforeWork } from './before.js';
 import { matchRequests, readMapSections } from './match.js';
+import { mapAreaIds } from '../../map/selection.js';
 
 const RECEIPT_INPUT_EXAMPLE = `표준 입력으로 전달하는 방식을 권장합니다:
 ... | jutell receipt --file -
@@ -167,6 +169,9 @@ function pathsFromStatus(stdout: string, projectPrefix: string): string[] {
     if (file === '.jutell-local' || file.startsWith('.jutell-local/') || file === '.jutell.json') continue;
     if (file.startsWith('.agents/skills/beginner-bridge/') || file.startsWith('.claude/skills/beginner-bridge/')) continue;
     if (status === '??' && (file === 'AGENTS.md' || file === 'CLAUDE.md')) continue;
+    // Same rule as the map scan: untracked files in node_modules, dist, build… are not the user's work.
+    // A tracked file there (committed on purpose) still counts.
+    if (status === '??' && inExcludedFolder(file)) continue;
     files.push(file);
   }
   return files;
@@ -239,10 +244,13 @@ async function readChangedFiles(cwd: string): Promise<ChangedFiles> {
   try {
     const prefixOutput = await runGit(cwd, ['--no-optional-locks', 'rev-parse', '--show-prefix']);
     const projectPrefix = prefixOutput.replace(/\r?\n$/, '').replaceAll('\\', '/');
-    const status = await runGit(cwd, [
-      '--no-optional-locks', 'status', '--porcelain=v1', '-z', '--untracked-files=all', '--', '.',
+    // Tracked changes everywhere; untracked files only outside the standard exclude folders.
+    const [tracked, untracked] = await Promise.all([
+      runGit(cwd, ['--no-optional-locks', 'status', '--porcelain=v1', '-z', '--untracked-files=no']),
+      runGit(cwd, ['--no-optional-locks', 'status', '--porcelain=v1', '-z', '--untracked-files=all', ...EXCLUDED_PATHSPECS]),
     ]);
-    return { files: pathsFromStatus(status, projectPrefix) };
+    const onlyUntracked = untracked.split('\0').filter((field) => field.startsWith('?? ')).join('\0');
+    return { files: [...new Set([...pathsFromStatus(tracked, projectPrefix), ...pathsFromStatus(onlyUntracked, projectPrefix)])] };
   } catch (error) {
     return { files: [], unknownReason: gitFailureReason(error) };
   }
@@ -366,9 +374,27 @@ export async function receiptCommand(
     const markdown = await fs.readFile(path.join(paths.targetRoot, MAP_FILE), { encoding: 'utf8', flag: fsConstants.O_RDONLY | (fsConstants.O_NOFOLLOW ?? 0) }).catch(() => undefined);
     // Files changed before the work stay in the comparison, marked, but never count as '바뀐 곳 있음' or '⚠ 요청에 없던 곳'.
     receipt.match = markdown === undefined ? { map: false } : matchRequests(receipt.asked ?? [], receipt.files, readMapSections(markdown), beforeWork);
+    if (markdown !== undefined && receipt.match.map && receipt.match.extra.length) {
+      const ids = mapAreaIds(markdown);
+      const extraAreas = Object.fromEntries(receipt.match.extra.flatMap((file) => (ids.has(file) ? [[file, ids.get(file)!]] : [])));
+      if (Object.keys(extraAreas).length) receipt.match.extraAreas = extraAreas;
+    }
   }
   const time = receiptTimestamp(now);
   const output = await saveReceipt(paths, receipt, time.display, time.filename);
   io.write(output);
   return 0;
+}
+
+/**
+ * Called at the end of `jutell setup` / `jutell --yes`: what is already changed now (for example
+ * package.json and package-lock.json from `npm install jutell`) is the "before work" baseline, so the
+ * first receipt shows it as (작업 전부터) instead of '요청에 없던 곳도 바뀜'.
+ */
+export async function recordReceiptBaseline(paths: ScopePaths): Promise<void> {
+  if (paths.scope !== 'project') return;
+  const changed = await readChangedFiles(paths.targetRoot);
+  if (changed.unknownReason) return;
+  await prepareSafeReportsDirectory(paths).catch(() => undefined);
+  await checkBeforeWork(paths, changed.files).catch(() => undefined);
 }

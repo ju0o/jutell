@@ -1,5 +1,6 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { writeViaTemp } from '../../fs/atomic.js';
 import type { SessionMeta } from './types.js';
 
 export const SESSION_FOLDER_BASE = 'collaboration-sessions';
@@ -101,9 +102,7 @@ export async function saveSessionMeta(dir: string, meta: SessionMeta): Promise<v
   if (existing && existing.date !== meta.date) {
     throw new Error(`session.json 날짜가 다릅니다. 병합하지 않습니다: ${file}`);
   }
-  const tmp = path.join(dir, `${SESSION_META_FILE}.tmp`);
-  await fs.writeFile(tmp, `${JSON.stringify(meta, null, 2)}\n`, 'utf8');
-  await fs.rename(tmp, file);
+  await writeViaTemp(file, `${JSON.stringify(meta, null, 2)}\n`);
 }
 
 export function createInitialMeta(date: string): SessionMeta {

@@ -5,7 +5,9 @@ import type { AssetPaths, InstallScope, ScopePaths } from '../types.js';
 
 export function packageRoot() {
   return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-}export function assets(): AssetPaths {
+}
+
+export function assets(): AssetPaths {
   const root = path.join(packageRoot(), 'assets');
   return {
     root,
@@ -48,7 +50,21 @@ export function userHome() {
   return path.resolve(override && override.trim() ? override : os.homedir());
 }
 
-export function resolveScope(scope: InstallScope, cwd = process.cwd()): ScopePaths {
+export function resolveProjectRoot(
+  cwd = process.cwd(),
+  installedPackageRoot = packageRoot(),
+  npmLocalPrefix = process.env.npm_config_local_prefix,
+): string {
+  const callerRoot = path.resolve(cwd);
+  if (!npmLocalPrefix?.trim()) return callerRoot;
+
+  const localPrefix = path.resolve(npmLocalPrefix);
+  const packageRelativeToPrefix = path.relative(localPrefix, path.resolve(installedPackageRoot));
+  if (packageRelativeToPrefix === path.join('node_modules', 'jutell')) return localPrefix;
+  return callerRoot;
+}
+
+export function resolveScope(scope: InstallScope, cwd?: string): ScopePaths {
   if (scope === 'global') {
     const home = userHome();
     return {
@@ -64,7 +80,7 @@ export function resolveScope(scope: InstallScope, cwd = process.cwd()): ScopePat
       legacyDataRoot: path.join(home, '.beginner-bridge-local'),
     };
   }
-  const projectRoot = path.resolve(cwd);
+  const projectRoot = path.resolve(cwd ?? resolveProjectRoot());
   return {
     scope,
     targetRoot: projectRoot,

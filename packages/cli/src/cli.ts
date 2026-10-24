@@ -15,11 +15,14 @@ import { receiptCommand } from './commands/receipt/index.js';
 import { mapCommand } from './commands/map.js';
 import { maybeShowFundingNotice } from './output/funding.js';
 import type { CliIo } from './types.js';
+import { friendlyError } from './output/friendly.js';
 
-function safeError(message: string, verbose: boolean) {
-  if (verbose) return message;
-  if (/ENOENT|EACCES|EPERM|spawn EINVAL/i.test(message)) return '필요한 파일이나 실행 권한을 확인하지 못했습니다. `jutell doctor`를 실행해 주세요.';
-  return message.replace(/[A-Za-z]:[\\/][^\r\n'" ]+/g, '[경로]');
+function safeError(error: unknown, verbose: boolean) {
+  if (verbose) return error instanceof Error ? error.message : String(error);
+  // Plain Korean, relative paths only (EACCES/EISDIR … and absolute paths never reach the person).
+  const text = friendlyError(error, process.cwd());
+  const spawned = /spawn/i.test(error instanceof Error ? error.message : '');
+  return spawned ? `${text}. \`jutell doctor\`로 확인해 주세요.` : text;
 }
 
 export async function run(argv: string[] = process.argv.slice(2), io: CliIo = createIo(), legacyAlias = false) {
@@ -77,8 +80,7 @@ export async function run(argv: string[] = process.argv.slice(2), io: CliIo = cr
         : '확인 없이는 진행하지 않았어요. --yes를 붙이세요');
       return 1;
     }
-    const message = error instanceof Error ? error.message : '작업을 처리하지 못했습니다.';
-    io.error(`오류: ${safeError(message, argv.includes('--verbose'))}`);
+    io.error(`오류: ${safeError(error, argv.includes('--verbose'))}`);
     return 1;
   }
 }

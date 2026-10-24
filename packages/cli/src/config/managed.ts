@@ -1,6 +1,7 @@
 import { parse } from 'smol-toml';
 import { constants as fsConstants, promises as fs } from 'node:fs';
 import path from 'node:path';
+import { writeViaTemp } from '../fs/atomic.js';
 import { assets } from './paths.js';
 import type { BridgeConfig, FileSnapshot, ScopePaths } from '../types.js';
 
@@ -116,12 +117,9 @@ export async function restore(snapshotValue: FileSnapshot) {
 
 export async function writeTextSafely(file: string, content: string) {
   await fs.mkdir(path.dirname(file), { recursive: true });
-  const temporary = `${file}.beginner-bridge-tmp-${process.pid}`;
   // Keep the existing file's permissions (e.g. 600 on config.toml with secrets in env); rename would reset them.
   const existingMode = await fs.stat(file).then((stat) => stat.mode & 0o777, () => undefined);
-  await fs.writeFile(temporary, content, { encoding: 'utf8', ...(existingMode !== undefined ? { mode: existingMode } : {}) });
-  if (existingMode !== undefined) await fs.chmod(temporary, existingMode);
-  try { await fs.rename(temporary, file); } catch (error) { await fs.rm(temporary, { force: true }); throw error; }
+  await writeViaTemp(file, content, existingMode !== undefined ? { mode: existingMode } : {});
 }
 
 // Creates `.jutell-local` with its own `.gitignore` (`*`) so nothing inside (receipt.json, reports)
@@ -157,9 +155,7 @@ export async function backupFile(file: string) {
   // Immediately previous version: written to a temp file and renamed over, so a link at
   // `.previous` is replaced, never followed.
   const backupPath = `${file}.previous`;
-  const temp = `${backupPath}.jutell-${process.pid}-${Date.now()}`;
-  await writeNew(temp);
-  try { await fs.rename(temp, backupPath); } catch (error) { await fs.rm(temp, { force: true }); throw error; }
+  await writeViaTemp(backupPath, content, { mode: 0o600 });
   return backupPath;
 }
 
@@ -554,6 +550,48 @@ export function commentOutOrphanTables(text: string, prefix: string, marker = '#
     finalText = commentedText + finalText.slice(cursor);
   }
   return { text: finalText, commentedTables };
+}
+
+/** MCP server file in JuTell's own managed Codex block (undefined when there is no managed block). */
+export async function managedCodexServerFile(paths: ScopePaths): Promise<string | undefined> {
+  const content = await readText(paths.codexConfigFile) ?? '';
+  const block = managedBlocks(content).find((item) => hasMcpKey(item, CANONICAL_MCP_KEY));
+  const match = block?.match(/^args = \[("(?:[^"\\]|\\.)*")\]/m);
+  if (!match) return undefined;
+  try { return JSON.parse(match[1]) as string; } catch { return undefined; }
+}
+
+const JUTELL_BLOCK_KEYS = new Set(['command', 'args', 'cwd', 'enabled', 'required', 'default_tools_approval_mode']);
+
+/** Keys a person typed into JuTell's own managed block (they go away with the block; a backup is kept). */
+export function userKeysInManagedBlock(content: string): string[] {
+  const block = (content.match(markerPair(BEGIN_MARKER, END_MARKER)) ?? [])[0];
+  if (!block) return [];
+  const found: string[] = [];
+  let table = '';
+  for (const line of block.split(/\r?\n/)) {
+    const header = line.match(/^\s*\[([^\[\]]+)\]\s*(?:#.*)?$/);
+    if (header) { table = header[1].trim(); continue; }
+    const key = line.match(/^\s*([A-Za-z0-9_\-"'.]+)\s*=/)?.[1];
+    if (!key) continue;
+    if (table === `mcp_servers.${CANONICAL_MCP_KEY}` && JUTELL_BLOCK_KEYS.has(key)) continue;
+    if (table.startsWith(`mcp_servers.${CANONICAL_MCP_KEY}.tools.`) && key === 'approval_mode') continue;
+    if (!table.startsWith(`mcp_servers.${CANONICAL_MCP_KEY}`)) continue; // other tables are kept as they are
+    found.push(`${table}.${key}`);
+  }
+  return found;
+}
+
+/** Why uninstall must leave the Codex global settings file alone, if it must. */
+export async function codexUninstallBlocker(paths: ScopePaths): Promise<string | undefined> {
+  const stats = await fs.lstat(paths.codexConfigFile).catch(() => undefined);
+  if (!stats) return undefined;
+  if (stats.isSymbolicLink()) return `Codex 전역 설정 파일(${paths.codexConfigFile})이 다른 파일을 가리키는 링크라서 건드리지 않았어요. 링크를 그대로 두려고 JuTell 연결은 직접 지워 주세요.`;
+  const content = await readText(paths.codexConfigFile) ?? '';
+  try { parse(content); } catch {
+    return `Codex 전역 설정 파일(${paths.codexConfigFile})의 형식이 깨져 있어서 JuTell 연결은 지우지 못했어요. 파일을 고친 뒤 다시 실행하세요. 나머지 제거는 계속했어요.`;
+  }
+  return undefined;
 }
 
 export async function removeMcp(paths: ScopePaths, packageRoot: string) {
