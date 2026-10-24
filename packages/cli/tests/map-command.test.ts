@@ -49,8 +49,8 @@ describe('map HTML (W3)', () => {
     expect(html).not.toMatch(/<a\s|\shref=/i);
     expect(html).toContain('<h2>파일 분류 인덱스');
     expect(html).toContain('<details><summary>로그인<span class="count">파일 1개 · 화면 0 · 코드 1 · 테스트 0 · 기타 0</span></summary>');
-    expect(html).toContain('데이터 연결</strong> · 미확인');
-    expect(html).toContain('실행 결과 미확인');
+    expect(html).toContain('데이터 연결</strong> · 모름');
+    expect(html).toContain('통과했는지 몰라요');
   });
 
   it('keeps file paths behind the index and labels grouping and verification limits', () => {
@@ -58,8 +58,9 @@ describe('map HTML (W3)', () => {
     expect(html.indexOf('파일 분류 인덱스')).toBeLessThan(html.indexOf('src/auth/Login.tsx'));
     expect(html).toContain('화면 1 · 코드 0 · 테스트 1');
     expect(html).toContain('기능 이름과 역할은 지도 기준 추정');
-    expect(html).toContain('데이터 연결</strong> · 미확인');
-    expect(html).toContain('테스트 경로</strong> · 지도에 적힌 경로; 현재 파일 존재/실행 결과 미확인');
+    expect(html).toContain('데이터 연결</strong> · 모름');
+    expect(html).toContain('테스트 경로</strong> · 지도에 적힌 파일; 테스트를 실행하지 않아 통과했는지 몰라요');
+    expect(html).not.toMatch(/미확인|존재\//);
   });
 });
 
@@ -92,7 +93,7 @@ describe('jutell map (W3)', () => {
     const { run } = await project();
     expect(run('map', '--nope').status).not.toBe(0);
     expect(run('map', '--help').stdout).toContain('jutell map');
-    expect(run('map', '--help').stdout).toContain('jutell map --show <ID>');
+    expect(run('map', '--help').stdout).toContain('jutell map --show <ID 또는 이름 일부>');
   });
 
   it('works in a Korean path with spaces', async () => {
@@ -133,9 +134,10 @@ describe('jutell map (W3)', () => {
     expect(detail).toContain('src/auth/LoginForm.tsx');
     expect(detail).toContain('- `` src/auth/odd`file.ts `` — 기능');
     expect(detail).toContain('\\# 링크 \\[x\\]\\(javascript:alert\\(1\\)\\)\\\\u001b\\[31m');
-    expect(detail).toContain('생성 시점의 파일 목록에서 확인');
-    expect(detail).toContain('데이터 연결');
-    expect(detail).toContain('테스트 경로의 존재는 통과 결과가 아닙니다');
+    expect(detail).not.toContain('해당 역할로');
+    expect(detail).toContain('데이터가 어떻게 이어지는지');
+    expect(detail).toContain('테스트가 통과하는지');
+    expect(detail).not.toMatch(/SHA-256|단면/);
 
     const unselectedDetail = path.join(dir, '.jutell-local', MAP_DETAILS_DIR, `${payments!.id}.md`);
     await fs.rm(unselectedDetail);
@@ -147,13 +149,22 @@ describe('jutell map (W3)', () => {
     expect(list.status).toBe(0);
     expect(list.stdout).toContain(login!.id);
     expect(list.stdout).toContain('파일 4개');
-    expect(list.stdout).toContain('jutell map --show <ID>');
+    expect(list.stdout).toContain('jutell map --show <ID 또는 이름 일부>');
     expect(list.stdout).toContain('파일 목록: Git 파일 목록');
     expect(list.stdout).not.toContain('src/auth/LoginForm.tsx');
     expect(shown.status).toBe(0);
     expect(shown.stdout).toContain('src/auth/LoginForm.tsx');
-    expect(shown.stdout).toContain(`인덱스에 기록한 지도: ${MAP_FILE} · SHA-256 ${sha256(fullMap)}`);
-    expect(shown.stdout).toContain('라이브 파일과 지도를 다시 확인하지 않았습니다.');
+    expect(shown.stdout).toContain(`${MAP_FILE} 기준 · Git 파일 목록`);
+    expect(shown.stdout).toContain('지금 폴더와 다시 맞춰 보지 않았어요.');
+    expect(shown.stdout).not.toMatch(/SHA-256|선택 단면|라이브 파일|<!--/);
+    expect(list.stdout).not.toMatch(/SHA-256|단면/);
+    // Keyword search: a part of the name opens the same detail.
+    const byName = run('map', '--show', '로그');
+    expect(byName.status).toBe(0);
+    expect(byName.stdout).toContain('src/auth/LoginForm.tsx');
+    const none = run('map', '--show', '없는기능');
+    expect(none.status).not.toBe(0);
+    expect(none.stderr).toContain('들어간 기능 이름이 없어요');
     expect(shown.stdout).not.toContain('src/payments/Checkout.tsx');
     await expect(fs.stat(unselectedDetail)).rejects.toThrow();
     expect(await fs.readFile(fullMapFile, 'utf8')).toContain('src/payments/Checkout.tsx');

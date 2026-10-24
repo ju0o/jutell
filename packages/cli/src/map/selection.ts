@@ -166,43 +166,24 @@ function buildIndex(markdown: string, scan: MapScan, commit: string | null, gene
 }
 
 function renderDetail(section: MapSection, entry: MapSectionEntry, index: MapSelectionIndex, presentPaths: ReadonlySet<string>) {
-  const group = (roles: readonly string[]) => {
-    const files = section.files.filter((file) => roles.includes(file.role));
-    if (!files.length) return ['해당 역할로 지도에 기록된 경로가 없습니다.'];
-    return files.map((file) => `- ${escapeCode(file.path)} — ${escapeMarkdownText(file.role)} — ${presentPaths.has(file.path) ? '생성 시점의 파일 목록에서 확인' : '이번 파일 목록에서 확인 못 함'}`);
-  };
-  const other = section.files.filter((file) => !['화면', '기능', '테스트'].includes(file.role));
-  const otherLines = other.length
-    ? other.map((file) => `- ${escapeCode(file.path)} — ${escapeMarkdownText(file.role)} — ${presentPaths.has(file.path) ? '생성 시점의 파일 목록에서 확인' : '이번 파일 목록에서 확인 못 함'}`)
-    : ['해당 역할로 지도에 기록된 경로가 없습니다.'];
+  const line = (file: MapSection['files'][number]) => `- ${escapeCode(file.path)} — ${escapeMarkdownText(file.role)}${presentPaths.has(file.path) ? '' : ' — 지금 폴더에서 찾지 못함'}`;
+  // Only groups that have files; no repeated "nothing here" lines.
+  const groups: Array<[string, typeof section.files]> = [
+    ['화면', section.files.filter((file) => file.role === '화면')],
+    ['코드', section.files.filter((file) => file.role === '기능')],
+    ['테스트', section.files.filter((file) => file.role === '테스트')],
+    ['기타', section.files.filter((file) => !['화면', '기능', '테스트'].includes(file.role))],
+  ];
+  const listed = groups.filter(([, files]) => files.length).flatMap(([title, files]) => [`## ${title}`, ...files.map(line), '']);
   return [
     markerLine(entry),
-    `# 기능 상세: ${escapeMarkdownText(entry.name)}`,
+    `# ${escapeMarkdownText(entry.name)}`,
     '',
-    `- 기능 ID: \`${entry.id}\``,
-    `- 분류: ${entry.estimated ? `지도 기준 추정 (${ESTIMATED_LABEL})` : '지도에 추정 표식 없음; 의미 검증은 하지 않음'}`,
-    `- 단면 생성 시각: ${entry.generatedAt ?? index.generatedAt}`,
-    `- 지도 단면 SHA-256: \`${entry.sectionSha256 ?? '미확인'}\``,
+    `- 정리한 시각: ${entry.generatedAt ?? index.generatedAt}${entry.estimated ? ` · 이름과 분류는 파일 이름으로 짐작함 ${ESTIMATED_LABEL}` : ''}`,
+    '- 모르는 것: 파일끼리 데이터가 어떻게 이어지는지, 실제로 잘 동작하는지, 테스트가 통과하는지 (지도는 앱이나 테스트를 실행하지 않아요)',
     '',
-    '## 화면 경로',
-    ...group(['화면']),
-    '',
-    '## 코드 경로',
-    ...group(['기능']),
-    '',
-    '## 테스트 경로',
-    ...group(['테스트']),
-    '',
-    '## 기타 경로',
-    ...otherLines,
-    '',
-    '## 데이터 연결',
-    '미확인 — 지도에는 파일 간 데이터 관계가 기록되어 있지 않습니다. 파일명이나 폴더명만으로 연결을 추정하지 않았습니다.',
-    '',
-    '## 동작 및 테스트 결과',
-    '미확인 — 지도 생성은 앱을 실행하거나 테스트를 실행하지 않습니다. 테스트 경로의 존재는 통과 결과가 아닙니다.',
-    '',
-    ...(section.notes.length ? ['## 지도에 있던 설명 (사용자가 적은 내용; 검증되지 않음)', ...section.notes.map((line) => `- ${escapeMarkdownText(line)}`), ''] : []),
+    ...(listed.length ? listed : ['지도에 적힌 파일이 없어요.', '']),
+    ...(section.notes.length ? ['## 지도에 사용자가 적은 설명 (JuTell이 확인하지 않음)', ...section.notes.map((note) => `- ${escapeMarkdownText(note)}`), ''] : []),
   ].join('\n');
 }
 
@@ -367,28 +348,23 @@ export function sanitizeMapSelectionText(value: string) {
 }
 
 export function formatMapSelectionIndex(index: MapSelectionIndex) {
-  const commit = index.sourceMap.commit ?? '확인 못 함';
-  const rows = index.sections.map((section) => `- ${section.id} · ${visibleText(section.name)} · ${section.pathCount === undefined ? '경로 수 미확인' : `파일 ${section.pathCount}개`}${section.estimated ? ` ${ESTIMATED_LABEL}` : ''} · ${section.detail}`);
-  const scan = `${index.scan.source === 'git' ? 'Git 파일 목록' : '폴더 탐색'} · ${index.scan.fileCount}개${index.scan.truncated ? ' · 상한에 걸려 일부 경로가 빠졌을 수 있음' : ''}`;
+  const rows = index.sections.map((section) => `- ${visibleText(section.name)} · ${section.pathCount === undefined ? '파일 수 모름' : `파일 ${section.pathCount}개`}${section.estimated ? ` ${ESTIMATED_LABEL}` : ''} · ID ${section.id}`);
+  const scan = `${index.scan.source === 'git' ? 'Git 파일 목록' : '폴더 탐색'} · ${index.scan.fileCount}개${index.scan.truncated ? ' · 너무 많아 일부 빠졌을 수 있음' : ''}`;
   return [
-    `기능 지도 인덱스 · ${index.generatedAt}`,
-    `출처: ${index.sourceMap.path} · SHA-256 ${index.sourceMap.sha256} · 커밋 ${commit}`,
+    `기능 목록 · 정리한 시각 ${index.generatedAt}${index.sourceMap.commit ? ` · 커밋 ${index.sourceMap.commit.slice(0, 7)}` : ''}`,
     `파일 목록: ${scan}`,
     ...rows,
-    '데이터 연결·기능 동작·테스트 통과는 이 인덱스로 확인되지 않습니다.',
-    '상세 확인: `jutell map --show <ID>`',
+    '파일끼리의 연결, 실제 동작, 테스트 통과는 이 목록으로 알 수 없어요.',
+    '자세히 보기: `jutell map --show <ID 또는 이름 일부>`',
   ].join('\n');
 }
 
 /** Global source and scan metadata shown with the selected, section-local detail. */
 export function formatMapSelectionContext(index: MapSelectionIndex, entry: MapSectionEntry) {
-  const commit = index.sourceMap.commit ?? '확인 못 함';
-  const scan = `${index.scan.source === 'git' ? 'Git 파일 목록' : '폴더 탐색'} · ${index.scan.fileCount}개${index.scan.source === 'walk' ? (index.scan.truncated ? ' · 20,000개 상한에서 일부 생략' : ' · 20,000개 상한 내') : ''}`;
+  const scan = `${index.scan.source === 'git' ? 'Git 파일 목록' : '폴더 탐색'} ${index.scan.fileCount}개${index.scan.truncated ? ' (일부 빠졌을 수 있음)' : ''}`;
   return [
-    `인덱스에 기록한 지도: ${index.sourceMap.path} · SHA-256 ${index.sourceMap.sha256} · 커밋 ${commit}`,
-    `인덱스에 기록한 파일 목록: ${scan} · 인덱스 생성 ${index.generatedAt}`,
-    `선택 단면: ${entry.id} · ${entry.generatedAt ?? '생성 시각 미확인'} · SHA-256 ${entry.sectionSha256 ?? '미확인'}`,
-    '라이브 파일과 지도를 다시 확인하지 않았습니다. 최신 목록은 `jutell map`으로 갱신하세요.',
+    `${index.sourceMap.path} 기준 · ${scan} · ID ${entry.id}${index.sourceMap.commit ? ` · 커밋 ${index.sourceMap.commit.slice(0, 7)}` : ''}`,
+    '지금 폴더와 다시 맞춰 보지 않았어요. 최신으로 하려면 `jutell map`을 실행하세요.',
     '',
   ].join('\n');
 }

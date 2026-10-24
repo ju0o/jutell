@@ -67,11 +67,11 @@ function renderSection(section: Section) {
   const other = section.files.filter((file) => !['화면', '기능', '테스트'].includes(roleOf(file)));
   const details = [
     `<section class="evidence" aria-label="근거 카드: ${escapeHtml(section.title)}">`,
-    '<p><strong>화면 경로</strong> · 파일명/폴더/확장자 기준 분류</p>', renderFiles(screens),
-    '<p><strong>코드 경로</strong> · 파일명/폴더/확장자 기준 분류</p>', renderFiles(code),
-    '<p><strong>테스트 경로</strong> · 지도에 적힌 경로; 현재 파일 존재/실행 결과 미확인</p>', renderFiles(tests),
-    '<p><strong>데이터 연결</strong> · 미확인 — 현재 지도는 데이터 경로를 기능에 연결하지 않습니다.</p>',
-    '<p><strong>동작 검증</strong> · 미확인 — 파일 목록은 실행 성공이나 테스트 통과를 증명하지 않습니다.</p>',
+    '<p><strong>화면 경로</strong> · 파일 이름과 폴더로 짐작함</p>', renderFiles(screens),
+    '<p><strong>코드 경로</strong> · 파일 이름과 폴더로 짐작함</p>', renderFiles(code),
+    '<p><strong>테스트 경로</strong> · 지도에 적힌 파일; 테스트를 실행하지 않아 통과했는지 몰라요</p>', renderFiles(tests),
+    '<p><strong>데이터 연결</strong> · 모름 — 지도는 파일끼리 데이터가 어떻게 이어지는지 보지 않아요.</p>',
+    '<p><strong>동작</strong> · 모름 — 파일 목록만으로는 잘 동작하는지 알 수 없어요.</p>',
     ...(other.length ? ['<p><strong>기타 경로</strong></p>', renderFiles(other)] : []),
     ...section.notes.map((note) => `<p class="note">${escapeHtml(note)}</p>`),
     '</section>',
