@@ -55,8 +55,7 @@ function unlabeled(text: string): string[] {
       if (line.startsWith('[')) { sectionLabeled = true; matchSection = line.startsWith('[요청 대조]'); }
       return false;
     }
-    if (line.startsWith('[')) { sectionLabeled = false; matchSection = false; return line !== '[확인]' && line !== '[다음 추천]'; }
-    if (/^ [▶○■] /.test(line)) return false;
+    if (line.startsWith('[')) { sectionLabeled = false; matchSection = false; return line !== '[다음 추천]'; }
     // Items under a labeled header inherit it, except the request sentences in [요청 대조] (the header is Git's count).
     return !(sectionLabeled && !matchSection && /^ +(\d+\.|-) /.test(line));
   });
@@ -137,6 +136,28 @@ describe('request matching (W6, plan.md §2)', () => {
     expect(text).toContain('[다음 추천]\n 여기서 멈춰도 됩니다 – 따로 추천할 다음 작업이 없어요  [JuTell이 적음]');
     expect(text).toContain(' 1. 할 일 페이지 제목 바꾸기  [AI가 적음]');
     expect(unlabeled(text)).toEqual([]);
+  });
+
+  it('dogfood #36: a checked line with a command keeps its result (command as a code span) and gets the ⓘ note', async () => {
+    const { receipt, edit } = await project();
+    await edit('test-app/todo.html');
+    const text = await receipt({ asked: ['할 일 페이지 제목 바꾸기'], done: ['제목을 바꿨어요'], checked: ['npm test 실행해서 3개 통과'], unchecked: [], next: [] });
+    expect(text).toContain(' ✔ 직접 확인한 것: `npm test` 실행해서 3개 통과  [AI가 적음]');
+    expect(text).not.toContain('바꾸지 못해');
+    expect(text).toContain(' ⓘ 위 테스트·명령 결과는 AI가 알려 준 내용이에요');
+    expect(unlabeled(text)).toEqual([]);
+  });
+
+  it('dogfood #36: [확인], group headers and each recommendation line carry a label', async () => {
+    const { receipt, edit } = await project();
+    await edit('test-app/todo.html');
+    const text = await receipt({ asked: ['할 일 페이지 제목 바꾸기'], done: ['제목을 바꿨어요'], checked: ['파일을 다시 읽어 봤어요'], unchecked: [], next: ['페이지를 열어 보세요'] });
+    expect(text).toContain('[확인]  [AI가 적음]');
+    expect(text).toMatch(/\n [▶○■] [^\n]*  \[AI가 적음\]\n   - 페이지를 열어 보세요  \[AI가 적음\]/);
+    // Stricter than unlabeled(): no line under the header is allowed to inherit a label.
+    const body = text.split('\n').slice(4).filter((line) => line && !/^[=-]+$/.test(line) && !line.startsWith(' 저장됨:') && line !== '[다음 추천]');
+    expect(body.filter((line) => !/\]$/.test(line) && !/^ +\d+\. /.test(line) && !/^ +- /.test(line))).toEqual([]);
+    expect(body.filter((line) => /^ {3}- /.test(line) && !/\]$/.test(line))).toEqual([]);
   });
 
   it('the ⓘ test/command note appears only when a test or a command is mentioned', async () => {

@@ -33,6 +33,7 @@ describe('bare `jutell --yes` records the receipt baseline (not only `jutell set
     expect(receipt.status).toBe(0);
     expect(receipt.stdout).toMatch(/package-lock\.json[^\n]*\(작업 전부터\)|\(작업 전부터\)[^\n]*package-lock\.json/);
     expect(receipt.stdout).not.toContain('첫 영수증이라');
+    expect(receipt.stdout).toContain('(JuTell 설치·연결 때 기준)');
     expect(receipt.stdout).not.toMatch(/login\.ts[^\n]*\(작업 전부터\)/);
     // B1: install type changed → the block names an old command; one repeat `jutell --yes` (already-configured path) fixes it.
     const agents = path.join(project, 'AGENTS.md');
