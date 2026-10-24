@@ -379,3 +379,16 @@ export async function receiptCommand(
   io.write(output);
   return 0;
 }
+
+/**
+ * Called at the end of `jutell setup` / `jutell --yes`: what is already changed now (for example
+ * package.json and package-lock.json from `npm install jutell`) is the "before work" baseline, so the
+ * first receipt shows it as (작업 전부터) instead of '요청에 없던 곳도 바뀜'.
+ */
+export async function recordReceiptBaseline(paths: ScopePaths): Promise<void> {
+  if (paths.scope !== 'project') return;
+  const changed = await readChangedFiles(paths.targetRoot);
+  if (changed.unknownReason) return;
+  await prepareSafeReportsDirectory(paths).catch(() => undefined);
+  await checkBeforeWork(paths, changed.files).catch(() => undefined);
+}
