@@ -7,6 +7,10 @@ import { scanProject, WALK_MAX_FILES } from '../src/map/scan.js';
 import { classifyFile, classifyFiles, ESTIMATED_LABEL, GENERIC_FOLDERS, UNCLASSIFIED } from '../src/map/classify.js';
 
 const roots: string[] = [];
+/** Empty files, 256 at a time (macOS CI's open-file limit is low: EMFILE with 10k parallel writes). */
+async function writeInBatches(files: string[]) {
+  for (let index = 0; index < files.length; index += 256) await Promise.all(files.slice(index, index + 256).map((file) => fs.writeFile(file, '')));
+}
 afterAll(async () => { await Promise.all(roots.map((root) => fs.rm(root, { recursive: true, force: true }))); });
 
 async function project(name = 'proj') {
@@ -64,7 +68,7 @@ describe('map scanner (W1)', () => {
   it('not a git repo: stops at the file count cap and says so', async () => {
     const root = await project();
     const many = Array.from({ length: WALK_MAX_FILES + 5 }, (_, i) => `f${i}.txt`);
-    await Promise.all(many.map((file) => fs.writeFile(path.join(root, file), '')));
+    await writeInBatches(many.map((file) => path.join(root, file)));
     const scan = await scanProject(root);
     expect(scan.truncated).toBe(true);
     expect(scan.files).toHaveLength(WALK_MAX_FILES);
@@ -100,7 +104,7 @@ describe('map scanner (W1)', () => {
       const root = await project();
       const dirs = Array.from({ length: 100 }, (_, i) => `src/feature${i}`);
       await Promise.all(dirs.map((dir) => fs.mkdir(path.join(root, dir), { recursive: true })));
-      await Promise.all(Array.from({ length: 10000 }, (_, i) => fs.writeFile(path.join(root, dirs[i % 100], `file${i}.ts`), '')));
+      await writeInBatches(Array.from({ length: 10000 }, (_, i) => path.join(root, dirs[i % 100], `file${i}.ts`)));
       if (mode === 'git') git(root, 'init', '-q');
       const start = performance.now();
       const scan = await scanProject(root);

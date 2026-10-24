@@ -14,7 +14,8 @@ const PAIR = `${EXCLUDE_COMMENT}\n${EXCLUDE_LINE}\n`;
 const git = (cwd: string, ...args: string[]) => execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', '-c', 'protocol.file.allow=always', ...args], { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
 
 async function repo(name = 'proj', init = true) {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-gx-'));
+  // realpath: macOS tmpdir is a symlink (/var → /private/var) and git prints the real path.
+  const root = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'jutell-gx-')));
   roots.push(root);
   const dir = path.join(root, name);
   const home = path.join(root, 'home');
