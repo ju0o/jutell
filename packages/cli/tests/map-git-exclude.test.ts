@@ -132,14 +132,14 @@ describe('map git exclude (W4)', () => {
   // Reviewer C2: a project in a subfolder of a bigger repository gets /<prefix>JuTellMap.md (glob characters escaped).
   it('project in a subfolder of a parent repo: prefixed, escaped line; check-ignore reported; remove/uninstall use the same line', async () => {
     const { dir: parent, root } = await repo('parent');
-    const sub = path.join(parent, 'apps', 'we[ird]*?');
+    const sub = path.join(parent, 'apps', 'we[ird]'); // * and ? are not allowed in Windows folder names; checked via excludeLineFor
     await fs.mkdir(sub, { recursive: true });
     await fs.writeFile(path.join(sub, 'JuTellMap.md'), '# 지도\n');
     expect(excludeLineFor('apps/we[ird]*?/')).toBe('/apps/we\\[ird\\]\\*\\?/JuTellMap.md');
     const added = await addGitExclude(sub);
     expect(added).toMatchObject({ status: 'added', ignored: true });
     const exclude = path.join(parent, '.git', 'info', 'exclude');
-    expect(await fs.readFile(exclude, 'utf8')).toContain(`${EXCLUDE_COMMENT}\n/apps/we\\[ird\\]\\*\\?/JuTellMap.md\n`);
+    expect(await fs.readFile(exclude, 'utf8')).toContain(`${EXCLUDE_COMMENT}\n/apps/we\\[ird\\]/JuTellMap.md\n`);
     expect(ignored(sub)).toBe(true);
     expect(ignored(parent)).toBe(false); // the parent's own map is not hidden
     expect((await addGitExclude(sub)).status).toBe('already');
