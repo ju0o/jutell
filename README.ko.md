@@ -52,7 +52,7 @@ headless Chrome으로 찍었어요. 카드를 하나씩 펼친 모습):
 Linux에서 `npm install -g`가 `EACCES` 권한 오류로 실패하면 sudo 대신, npm 설치 위치를 홈 폴더로 바꾸거나(`npm config set prefix ~/.npm-global` 후 `~/.npm-global/bin`을 `PATH`에 추가) nvm으로 Node를 설치하세요.
 
 JuTell은 해당 폴더에 `AGENTS.md`, `.agents/`, `.jutell.json`, `.jutell-local/`을 만들거나
-업데이트합니다. Codex를 연결하면 `~/.codex/config.toml`에도 연결 설정을 추가합니다.
+업데이트합니다. Codex를 연결하면 `~/.codex/config.toml`에도 연결 설정을 추가합니다. ChatGPT 데스크톱 앱(Codex 앱)과 Codex IDE 확장도 이 파일을 같이 쓰므로 Codex를 한 번 연결하면 셋 다 연결돼요. 연결 뒤 앱은 설정 → MCP servers → Restart, IDE 확장은 Restart extension을 눌러 주세요.
 
 `jutell receipt`는 한 페이지 작업 영수증을 출력합니다.
 `<project>/.jutell-local/reports/YYYY-MM-DD-HHmmss.md`에 저장하며, 파일명이 겹치면 `-2`, `-3` 등을 붙입니다.
