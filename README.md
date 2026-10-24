@@ -7,46 +7,46 @@
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![node: >=18](https://img.shields.io/badge/node-%3E%3D18-brightgreen.svg)](https://nodejs.org)
 
-## Tell your agent what you mean. Understand what it did.
+## Your AI agent says "Done!" — but did it really?
 
-For people who can tell a coding agent what they want, but don't want to read code or logs just to
-know whether it actually worked.
+JuTell gives you a one-page **receipt** after your coding agent works: what you asked for, what the
+AI *says* it did, and what **Git actually saw change** — each line labeled so you know who is
+speaking. No code or logs to read.
 
 ![Codex: Supported](https://img.shields.io/badge/Codex-Supported-brightgreen)
 ![Claude Code: Beta](https://img.shields.io/badge/Claude%20Code-Beta-yellow)
 ![OpenCode: Beta](https://img.shields.io/badge/OpenCode-Beta-yellow)
 
+### Before / after
+
+| Without JuTell — the agent's own words | With JuTell — the receipt (real output, trimmed) |
+|---|---|
+| *(a typical agent reply, for illustration)*<br>"Done! I updated the login button to blue and all tests pass. 🎉" | `[요청 대조]` request check — 1 of 1 requests has a change `[Git 기준]` (checked by Git)<br>`→ 바뀐 곳 있음` changed: `src/pages/Login.tsx`<br>`✔` checked: `npm test` passed `[AI가 적음]` (AI's claim)<br>`✖` not checked: screen not viewed in a browser<br>`ⓘ` test results come from the AI; JuTell did not run them `[JuTell이 적음]` |
+| You have to trust it — or read the diff yourself. | You see what's verified, what's only claimed, and what's still unchecked. |
+
+### Start in 3 steps
+
+1. **Install** (Node.js 18+): `npm install -g jutell`
+2. **Run it in your project folder:** `cd your-project && jutell` — it finds your agent (Codex, Claude Code, OpenCode) and connects it.
+3. **Ask your agent as usual** in a new session. When it finishes, it prints a JuTell receipt.
+
+### See it (real terminal recording, unedited)
+
+Setup → a small change → `jutell receipt`. The output is in Korean; the labels are glossed below.
+
+![JuTell demo: jutell --yes setup, a one-line change, then jutell receipt](docs/assets/readme/demo-receipt.gif)
+
+JuTell also writes **JuTellMap.md**, a map of your project's files grouped by feature:
+
+![JuTellMap demo: cat JuTellMap.md and jutell map --list](docs/assets/readme/demo-map.gif)
+
+Label glossary: `[AI가 적음]` = written by the AI · `[Git 기준]` = checked against Git ·
+`[지도 …]` = matched with the project map · `[JuTell이 적음]` = JuTell's own note ·
+`영수증` = receipt · `확인 못 한 것` = not checked yet.
+
 ![Tell your agent what you mean. Understand what it did — before work, JuTell checks project facts and asks one question if it matters; after work, it separates verified from not-checked-yet.](docs/assets/readme/hero-report.svg)
 
-**Install in one line** (inside your project folder):
-
-```bash
-npm install -g jutell && jutell
-```
-
-<!-- Maintainers: delete this note once 2.1.0 is published to npm. -->
-> **Until 2.1.0 is on npm**: `npm install -g jutell` gives 2.0.1. To try 2.1.0 now, install a packed copy from source. You need **git** and **Node.js 18+**.
->
-> macOS / Linux:
->
-> ```bash
-> git clone https://github.com/ju0o/jutell.git && cd jutell
-> (cd apps/mcp-server && npm ci) && (cd apps/local-admin && npm ci)
-> cd packages/cli && npm ci && npm pack && npm install -g ./jutell-*.tgz
-> ```
->
-> Windows PowerShell (PowerShell does not expand `*` for npm, so the file name is looked up first):
->
-> ```powershell
-> git clone https://github.com/ju0o/jutell.git; cd jutell
-> cd apps/mcp-server; npm ci; cd ../local-admin; npm ci; cd ../../packages/cli
-> npm ci; npm pack
-> npm install -g (Get-ChildItem jutell-*.tgz).FullName
-> ```
->
-> If `npm pack` left more than one `jutell-*.tgz`, or a PowerShell step shows a red error, stop there: delete every `jutell-*.tgz` in `packages/cli`, run `npm pack` once more, and install that single file.
->
-> Linux `EACCES` permission error on `npm install -g`? Don't use sudo; point npm at a folder in your home (`npm config set prefix ~/.npm-global` and add `~/.npm-global/bin` to `PATH`) or install Node with nvm.
+Linux `EACCES` permission error on `npm install -g`? Don't use sudo; point npm at a folder in your home (`npm config set prefix ~/.npm-global` and add `~/.npm-global/bin` to `PATH`) or install Node with nvm.
 
 ## Two key features
 
@@ -425,8 +425,7 @@ limitations, see [Product scope](docs/PRODUCT_SCOPE.md).
 
 ## What's new
 
-**`jutell@2.1.0`** is the next release and is not yet published to npm; the latest npm
-release is `jutell@2.0.1`. It helps before work starts as well as after it finishes: project facts
+**`jutell@2.1.0`** is out on npm (released 2026-10-24). It helps before work starts as well as after it finishes: project facts
 are checked first, only a real decision is asked, and verified / expected / not-checked remain
 separate.
 
