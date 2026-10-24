@@ -26,8 +26,26 @@ npm install -g jutell
 jutell
 ```
 
-> **2.1.0이 npm에 올라가기 전까지** (공개 후 이 안내는 지우세요): `npm install -g jutell`은 2.0.1을 설치해요. 2.1.0을 지금 쓰려면 소스에서 묶은 복사본을 설치하세요:
-> `git clone https://github.com/ju0o/jutell.git && cd jutell && (cd apps/mcp-server && npm ci) && (cd apps/local-admin && npm ci) && cd packages/cli && npm ci && npm pack && npm install -g ./jutell-2.1.0.tgz`
+> **2.1.0이 npm에 올라가기 전까지** (공개 후 이 안내는 지우세요): `npm install -g jutell`은 2.0.1을 설치해요. 2.1.0을 지금 쓰려면 소스에서 묶은 복사본을 설치하세요. **git**과 **Node.js 18 이상**이 필요해요.
+>
+> macOS / Linux:
+>
+> ```bash
+> git clone https://github.com/ju0o/jutell.git && cd jutell
+> (cd apps/mcp-server && npm ci) && (cd apps/local-admin && npm ci)
+> cd packages/cli && npm ci && npm pack && npm install -g ./jutell-*.tgz
+> ```
+>
+> Windows PowerShell (PowerShell은 npm에 `*`를 풀어 주지 않아서 파일 이름을 먼저 찾아요):
+>
+> ```powershell
+> git clone https://github.com/ju0o/jutell.git; cd jutell
+> cd apps/mcp-server; npm ci; cd ../local-admin; npm ci; cd ../../packages/cli
+> npm ci; npm pack
+> npm install -g (Get-ChildItem jutell-*.tgz).FullName
+> ```
+>
+> Linux에서 `npm install -g`가 `EACCES` 권한 오류로 실패하면 sudo 대신, npm 설치 위치를 홈 폴더로 바꾸거나(`npm config set prefix ~/.npm-global` 후 `~/.npm-global/bin`을 `PATH`에 추가) nvm으로 Node를 설치하세요.
 
 JuTell은 해당 폴더에 `AGENTS.md`, `.agents/`, `.jutell.json`, `.jutell-local/`을 만들거나
 업데이트합니다. Codex를 연결하면 `~/.codex/config.toml`에도 연결 설정을 추가합니다.

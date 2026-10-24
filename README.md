@@ -24,8 +24,26 @@ know whether it actually worked.
 npm install -g jutell && jutell
 ```
 
-> **Until 2.1.0 is on npm** (delete this note after publishing): `npm install -g jutell` gives 2.0.1. To try 2.1.0 now, install a packed copy from source:
-> `git clone https://github.com/ju0o/jutell.git && cd jutell && (cd apps/mcp-server && npm ci) && (cd apps/local-admin && npm ci) && cd packages/cli && npm ci && npm pack && npm install -g ./jutell-2.1.0.tgz`
+> **Until 2.1.0 is on npm** (delete this note after publishing): `npm install -g jutell` gives 2.0.1. To try 2.1.0 now, install a packed copy from source. You need **git** and **Node.js 18+**.
+>
+> macOS / Linux:
+>
+> ```bash
+> git clone https://github.com/ju0o/jutell.git && cd jutell
+> (cd apps/mcp-server && npm ci) && (cd apps/local-admin && npm ci)
+> cd packages/cli && npm ci && npm pack && npm install -g ./jutell-*.tgz
+> ```
+>
+> Windows PowerShell (PowerShell does not expand `*` for npm, so the file name is looked up first):
+>
+> ```powershell
+> git clone https://github.com/ju0o/jutell.git; cd jutell
+> cd apps/mcp-server; npm ci; cd ../local-admin; npm ci; cd ../../packages/cli
+> npm ci; npm pack
+> npm install -g (Get-ChildItem jutell-*.tgz).FullName
+> ```
+>
+> Linux `EACCES` permission error on `npm install -g`? Don't use sudo; point npm at a folder in your home (`npm config set prefix ~/.npm-global` and add `~/.npm-global/bin` to `PATH`) or install Node with nvm.
 
 ## Two key features
 
