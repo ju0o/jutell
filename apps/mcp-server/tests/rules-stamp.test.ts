@@ -19,12 +19,13 @@ describe('rules fetch stamp (read by jutell receipt)', () => {
     expect(await recordRulesFetched(root)).toBe(false);
     await expect(lstat(path.join(outside, RULES_STAMP_FILE))).rejects.toThrow();
   });
-  it('does nothing when the project root itself is reached through a link', async () => {
+  it('writes into the real project when JUTELL_PROJECT_ROOT goes through a link (review #41 follow-up)', async () => {
     const real = await realpath(await mkdtemp(path.join(os.tmpdir(), 'jutell-stamp-real-')));
     await mkdir(path.join(real, '.jutell-local'));
     const link = path.join(await realpath(await mkdtemp(path.join(os.tmpdir(), 'jutell-stamp-link-'))), 'root');
     await symlink(real, link);
-    expect(await recordRulesFetched(link)).toBe(false);
-    await expect(lstat(path.join(real, '.jutell-local', RULES_STAMP_FILE))).rejects.toThrow();
+    expect(await recordRulesFetched(link, new Date('2026-10-24T00:00:00Z'))).toBe(true);
+    expect(JSON.parse(await readFile(path.join(real, '.jutell-local', RULES_STAMP_FILE), 'utf8'))).toEqual({ at: '2026-10-24T00:00:00.000Z' });
+    expect((await lstat(link)).isSymbolicLink()).toBe(true);
   });
 });
