@@ -188,7 +188,9 @@ describe('Distribution CLI V0.1', () => {
   });
 
   it('global 범위도 격리된 사용자 홈에서 동작한다', async () => {
-    const { project, home, env } = await fixture();
+    const { project, home, env: base } = await fixture();
+    // JUTELL_HOME wins over BEGINNER_BRIDGE_HOME (paths.ts), so an ambient JUTELL_HOME must not leak in.
+    const env = { ...base, JUTELL_HOME: home };
     await runCli(['setup', '--global', '--yes'], project, env);
     expect(await fs.stat(path.join(home, '.agents', 'skills', 'beginner-bridge', 'SKILL.md'))).toBeTruthy();
     expect(JSON.parse(await fs.readFile(path.join(home, '.jutell.json'), 'utf8')).mcp.enabled).toBe(false);

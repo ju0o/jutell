@@ -37,7 +37,8 @@ describe('map HTML (W3)', () => {
     expect(html).not.toMatch(/<script|<img|<b>|onerror=alert\(1\)>/);
     expect(html).toContain('<li>src/&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt;.ts — 기능</li>');
     expect(html).toContain('<li>a&amp;b&#39;c.ts — 화면</li>');
-    expect(html).toContain('<summary>&lt;b&gt;기능&lt;/b&gt;<span class="count">파일 2개 · 화면 1 · 코드 1 · 테스트 0 · 기타 0</span></summary>');
+    expect(html).toContain('<summary>&lt;b&gt;기능&lt;/b&gt;<span class="count">파일 2개</span></summary>');
+    expect(html).toContain('<td><a href="#f-b-기능-b">&lt;b&gt;기능&lt;/b&gt;</a></td><td>2</td><td>1</td><td>1</td><td>0</td><td>0</td>');
     expect(html).not.toContain('jutell:auto');
     expect(escapeHtml(`<>&"'`)).toBe('&lt;&gt;&amp;&quot;&#39;');
   });
@@ -46,20 +47,22 @@ describe('map HTML (W3)', () => {
     const html = renderMapHtml('# 지도\n## 로그인\n- https://evil.example/x.js — 기능\n');
     expect(html).toContain(`content="default-src 'none'; style-src 'unsafe-inline'"`);
     expect(html).not.toMatch(/<script|<link|<iframe|<img|\ssrc=|href="https?:|url\(|@import/i);
-    expect(html).not.toMatch(/<a\s|\shref=/i);
-    expect(html).toContain('<h2>기능별 파일 목록');
-    expect(html).toContain('<details><summary>로그인<span class="count">파일 1개 · 화면 0 · 코드 1 · 테스트 0 · 기타 0</span></summary>');
-    expect(html).toContain('데이터 연결</strong> · 모름');
+    // W10: the only links are in-page anchors from the overview table to the cards.
+    for (const href of html.match(/\shref="[^"]*"/g) ?? []) expect(href).toMatch(/^ href="#f-/);
+    expect(html).toContain('<h2 id="cards">기능별 파일 목록');
+    expect(html).toContain('<details id="f-로그인"><summary>로그인<span class="count">파일 1개</span></summary>');
+    expect(html).toContain('<strong>데이터 연결</strong>은 모름');
     expect(html).toContain('통과했는지 몰라요');
   });
 
   it('keeps file paths behind the index and labels grouping and verification limits', () => {
     const html = renderMapHtml('# 지도\n## 로그인 [지도 기준 추정]\n- src/auth/Login.tsx — 화면\n- src/auth/login.test.ts — 테스트\n');
     expect(html.indexOf('기능별 파일 목록')).toBeLessThan(html.indexOf('src/auth/Login.tsx'));
-    expect(html).toContain('화면 1 · 코드 0 · 테스트 1');
+    expect(html).toContain('<td>2</td><td>1</td><td>0</td><td>1</td><td>0</td>');
     expect(html).toContain('기능 이름과 역할은 지도 기준 추정');
-    expect(html).toContain('데이터 연결</strong> · 모름');
-    expect(html).toContain('테스트 경로</strong> · 지도에 적힌 파일; 테스트를 실행하지 않아 통과했는지 몰라요');
+    expect(html).toContain('<strong>데이터 연결</strong>은 모름');
+    expect(html).toContain('<strong>테스트 경로</strong>는 지도에 적힌 파일이고, 테스트를 실행하지 않아 통과했는지 몰라요');
+    expect(html).toContain('<strong>코드 경로</strong>: 없음');
     expect(html).not.toMatch(/미확인|존재\//);
   });
 });
