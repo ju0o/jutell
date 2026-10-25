@@ -371,7 +371,7 @@ with only Codex installed, trimmed to the key lines:
 $ jutell status
 JuTell 상태
 
-CLI: 2.1.0
+CLI: 2.2.0
 Skill: 설치됨
 AGENTS.md: JuTell 블록 있음
 JuTell 연결 정책: 켜짐
@@ -441,7 +441,7 @@ limitations, see [Product scope](docs/PRODUCT_SCOPE.md).
 
 ## What's new
 
-**`jutell@2.1.0`** is out on npm (released 2026-10-24). It helps before work starts as well as after it finishes: project facts
+**`jutell@2.2.0`** is out on npm (released 2026-10-25). It helps before work starts as well as after it finishes: project facts
 are checked first, only a real decision is asked, and verified / expected / not-checked remain
 separate.
 
@@ -523,7 +523,7 @@ You can tune reports with a project `.jutell.json` file created by the CLI. Avai
 underlying facts or risk.
 
 If you are verifying the repository source instead of installing from npm, `npm pack` creates
-`jutell-2.1.0.tgz` in `packages/cli`; ordinary users do not need this path.
+`jutell-2.2.0.tgz` in `packages/cli`; ordinary users do not need this path.
 
 For contributors: [Changelog](CHANGELOG.md) · [Documentation map](docs/DOCUMENTATION_MAP.md) ·
 [OpenCode connection](docs/PROVIDER_OPENCODE.md) ·

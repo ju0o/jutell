@@ -2,7 +2,7 @@
 
 ## 현재 상태
 
-`jutell@2.0.1`은 npm에 공개된 최신 릴리스이며, `jutell@2.1.0`은 아직 npm에 공개되지 않은 다음 릴리스입니다. 일반 설치는 npm registry에서 진행합니다.
+`jutell@2.1.0`은 npm에 공개된 최신 릴리스이며, `jutell@2.2.0`은 아직 npm에 공개되지 않은 다음 릴리스입니다. 일반 설치는 npm registry에서 진행합니다.
 
 ```powershell
 npm install -g jutell
@@ -19,7 +19,7 @@ jutell
 cd packages/cli
 npm install
 npm pack
-npm install -g ./jutell-2.1.0.tgz
+npm install -g ./jutell-2.2.0.tgz
 ```
 
 ### 프로젝트에 로컬 설치해서 사용하기
