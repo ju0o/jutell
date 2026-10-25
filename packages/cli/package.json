@@ -1,6 +1,6 @@
 {
   "name": "jutell",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Understand what your AI coding agent actually did - a clarify-before / verify-after layer for Codex, Claude Code and OpenCode",
   "license": "MIT",
   "repository": {

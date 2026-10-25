@@ -2,6 +2,20 @@
 
 Notable user-facing changes to JuTell. See [GitHub Releases](https://github.com/ju0o/jutell/releases) for the full history and exact publish dates.
 
+## v2.2.0 — 2026-10-25
+
+**Cycle 3: connect JuTell to GUI apps, with careful config edits you can undo.**
+
+- **GUI app connect:** `jutell use cursor`, `jutell use claude-desktop` and `jutell use vscode` register JuTell in the app's MCP config, and `jutell disconnect <app>` removes it. Cursor and VS Code use the project file by default; `--global` writes the user file. Each command prints the file it changed, the rule files it prepares, and how to restart the app. Paths not confirmed on an OS (Claude Desktop on Linux, VS Code user profile on macOS/Windows) get guidance and the JSON only; Windsurf is status only.
+- **Codex app and IDE extension:** `jutell status`, `provider status` and `use codex` note that the Codex CLI, desktop app and IDE extension share one config, with the restart step for each.
+- **Safe JSONC editing:** JuTell changes only its own entry in `mcp.json`-style files. Comments, trailing commas, other servers, unknown keys, line endings and BOM are kept byte-for-byte. Files are backed up before writing, re-checked after, and restored if anything fails. Values you added to JuTell's `args` are kept on updates.
+- **Rollback:** an app file JuTell created is deleted only when it is empty again and carries JuTell's marker; folders only when JuTell made them and they are empty. Rollback restores the app file, its backups and marker.
+- **Server project root:** the MCP server uses `JUTELL_PROJECT_ROOT` (absolute, existing folder) when set, so GUI apps find the right project.
+- **status / doctor / uninstall:** GUI app lines are grouped under one heading; a file that can't be read is shown as a warning instead of exit 1 in read-only commands; uninstall lists only leftovers that really exist.
+- **map.html:** smaller page (about 41% smaller on a 200-feature map), an overview table with links to each feature, one line for empty roles, dark mode, print and mobile styles. It no longer shows lines meant only for `JuTellMap.md`.
+- **Windows:** CI runs a PowerShell end-to-end check (home folder with Korean letters and spaces, temp `%APPDATA%`), and CI actions are pinned to exact versions.
+- **README:** new "Connect a GUI app" section (English and Korean) with the command, file per OS, restart step and removal for each app, plus a short table on the npm page.
+
 ## v2.1.0 — 2026-10-24
 
 **Cycle 2: a project map, a receipt that checks the AI's claims, and a steadier setup.**

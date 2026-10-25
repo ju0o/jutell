@@ -258,7 +258,7 @@ AI 세션이 실제로 JuTell을 읽었는지는 여기서 볼 수 없으니 짐
 $ jutell status
 JuTell 상태
 
-CLI: 2.1.0
+CLI: 2.2.0
 Skill: 설치됨
 AGENTS.md: JuTell 블록 있음
 JuTell 연결 정책: 켜짐
@@ -434,7 +434,7 @@ JuTell은 여러분 컴퓨터에 이미 있는 파일·Git·명령 결과를 바
 
 ## 최신 소식
 
-**`jutell@2.1.0`**이 npm에 공개됐어요(2026-10-24). 이제 작업이 끝난 뒤뿐 아니라 시작하기 전에도
+**`jutell@2.2.0`**이 npm에 공개됐어요(2026-10-25). 이제 작업이 끝난 뒤뿐 아니라 시작하기 전에도
 돕습니다. 프로젝트 사실을 먼저 확인하고, 진짜 결정만 물으며, 확인됨 / 예상 / 미확인을 섞지
 않습니다.
 
@@ -526,7 +526,7 @@ CLI가 만들어 주는 프로젝트의 `.jutell.json`으로 보고 방식을 �
 않습니다.
 
 npm이 아니라 저장소 소스를 직접 검증하는 기여자라면 `packages/cli`에서 `npm pack`을
-실행했을 때 `jutell-2.1.0.tgz`가 만들어집니다. 일반 사용자는 이 경로가 필요 없습니다.
+실행했을 때 `jutell-2.2.0.tgz`가 만들어집니다. 일반 사용자는 이 경로가 필요 없습니다.
 
 기여자용 문서: [Changelog](CHANGELOG.md) · [문서 지도](docs/DOCUMENTATION_MAP.md) ·
 [OpenCode 연결](docs/PROVIDER_OPENCODE.md) ·

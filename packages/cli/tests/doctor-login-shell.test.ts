@@ -31,7 +31,7 @@ if [ "$1" = "exec" ]; then
   [ "$5" = "$JUTELL_TEST_EXPECTED_ROOT" ] || exit 3
   [ "$6" = "--" ] && [ "$7" = "jutell" ] && [ "$8" = "--version" ] || exit 4
   [ -x "$5/node_modules/.bin/jutell" ] || exit 5
-  echo 2.1.0
+  echo 2.2.0
   exit 0
 fi
 exit 1
@@ -40,7 +40,7 @@ exit 1
   if (withLocalJutell) {
     const localBin = path.join(project, 'node_modules', '.bin');
     await mkdir(localBin, { recursive: true });
-    await writeFile(path.join(localBin, 'jutell'), '#!/bin/sh\necho 2.1.0\n', 'utf8');
+    await writeFile(path.join(localBin, 'jutell'), '#!/bin/sh\necho 2.2.0\n', 'utf8');
     await chmod(path.join(localBin, 'jutell'), 0o755);
     await writeFile(path.join(home, '.profile'), `export PATH="${npmBin}:$PATH"\n`, 'utf8');
   }
@@ -114,7 +114,7 @@ describe.skipIf(process.platform === 'win32')('doctor checks jutell on the login
     const log = path.join(root, 'npm-args.txt');
     const localBin = path.join(project, 'node_modules', '.bin');
     await mkdir(localBin, { recursive: true });
-    await writeFile(path.join(localBin, 'jutell'), '#!/bin/sh\necho 2.1.0\n', 'utf8');
+    await writeFile(path.join(localBin, 'jutell'), '#!/bin/sh\necho 2.2.0\n', 'utf8');
     await chmod(path.join(localBin, 'jutell'), 0o755);
     await writeFile(path.join(npmBin, 'npm'), `#!/bin/sh
 [ "$1" = "exec" ] && [ "$2" = "--offline" ] && [ "$3" = "--no" ] && [ "$4" = "--prefix" ] || exit 2
@@ -123,7 +123,7 @@ describe.skipIf(process.platform === 'win32')('doctor checks jutell on the login
 [ "$6" = "--" ] && [ "$7" = "jutell" ] && [ "$8" = "--version" ] || exit 5
 [ -x "$5/node_modules/.bin/jutell" ] || exit 6
 printf '%s\n%s\n' "$5" "$PWD" > "$JUTELL_TEST_LOG"
-echo 2.1.0
+echo 2.2.0
 `, 'utf8');
     await chmod(path.join(npmBin, 'npm'), 0o755);
     await writeFile(path.join(home, '.profile'), `export PATH="${npmBin}:$PATH"\n`, 'utf8');

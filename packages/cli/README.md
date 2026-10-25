@@ -82,7 +82,7 @@ cannot see that from here:
 $ jutell status
 JuTell 상태
 
-CLI: 2.1.0
+CLI: 2.2.0
 Skill: 설치됨
 AGENTS.md: JuTell 블록 있음
 JuTell 연결 정책: 켜짐
@@ -105,7 +105,7 @@ And when something looks wrong (summary, translated):
 $ jutell doctor
 OK       Node version: Node 22.22.1
 OK       Skill file: verified
-OK       Skill version: 2.1.0 (installed copy matches)
+OK       Skill version: 2.2.0 (installed copy matches)
 OK       MCP server live connection (Stdio): JuTell server responded with 5 tools
 OK       External transmission code: no outbound patterns in the MCP build
 Check    Current agent session applied: must be confirmed in that agent's session
@@ -173,7 +173,7 @@ an empty-search message's styling, it reported:
 It does not turn "looks right in code" into "confirmed on screen."
 
 If you are verifying the source instead of installing from npm, `npm pack` in
-`packages/cli` creates `jutell-2.1.0.tgz`; ordinary users do not need this path.
+`packages/cli` creates `jutell-2.2.0.tgz`; ordinary users do not need this path.
 
 ## Supported agents & platforms
 
