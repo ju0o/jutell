@@ -1,5 +1,32 @@
 import type { MatchItem, ReceiptMatch } from './match.js';
-import { ESTIMATED_LABEL } from '../../map/classify.js';
+import { RECEIPT_LABELS, receiptLabelsFor, resolveReceiptLocale, type ReceiptLabels, type ReceiptLocale } from './i18n.js';
+
+// Receipt i18n (v2.3.0): the fixed labels and JuTell's own note lines come from
+// RECEIPT_LABELS (i18n.ts), chosen per locale. The Korean set is re-exported
+// below under its original names, so callers and tests that read the labels
+// directly keep working and Korean stays the default everywhere.
+export { RECEIPT_LABELS, receiptLabelsFor, resolveReceiptLocale } from './i18n.js';
+export type { ReceiptLabels, ReceiptLocale } from './i18n.js';
+export const RECEIPT_SECTIONS = RECEIPT_LABELS.ko.sections;
+export const NEXT_GROUPS = RECEIPT_LABELS.ko.nextGroups;
+export const NOTHING_NEXT_LINE = RECEIPT_LABELS.ko.nothingNextLine;
+export const DEFAULT_SUMMARY = RECEIPT_LABELS.ko.defaultSummary;
+export const SUMMARY_PREFIX = RECEIPT_LABELS.ko.summaryPrefix;
+export const MATCH_SECTION = RECEIPT_SECTIONS[0];
+export const LABEL_GIT = RECEIPT_LABELS.ko.labelGit;
+/** Files already changed before the work (W7): listed in the comparison, never counted as a change or a warning. */
+export const BEFORE_WORK_MARK = RECEIPT_LABELS.ko.beforeWorkMark;
+export const LABEL_AI = RECEIPT_LABELS.ko.labelAI;
+export const LABEL_ESTIMATE = RECEIPT_LABELS.ko.labelEstimate;
+/** The comparison count: Git's changed files placed by the map. */
+export const LABEL_MATCH = RECEIPT_LABELS.ko.labelMatch;
+export const LABEL_JUTELL = RECEIPT_LABELS.ko.labelJuTell;
+/** [확인] heading label when JuTell's own ⓘ line sits under it, so the AI label never seems to cover JuTell's line. */
+export const LABEL_CHECK_MIXED = RECEIPT_LABELS.ko.labelCheckMixed;
+export const HANJA_NOTE = RECEIPT_LABELS.ko.hanjaNote;
+export const AI_RESULTS_NOTE = RECEIPT_LABELS.ko.aiResultsNote;
+export const NO_MAP_MATCH = RECEIPT_LABELS.ko.noMapMatch;
+export const SAYS_BUT_NO_FILES = RECEIPT_LABELS.ko.saysButNoFiles;
 
 export type ReceiptCheck =
   | { what: string; result: '확인함'; how: string }
@@ -32,26 +59,8 @@ export type ReceiptInput = {
   nextMessage?: unknown;
 };
 
-export const RECEIPT_SECTIONS = ['[요청 대조]', '[이번에 한 작업]', '[바뀐 파일]', '[확인]', '[다음 추천]'] as const;
-export const NEXT_GROUPS = [' ▶ 계속', ' ○ 추천', ' ■ 여기서 멈춰도 됨'] as const;
-export const NOTHING_NEXT_LINE = ' 여기서 멈춰도 됩니다 – 따로 추천할 다음 작업이 없어요';
-// No AI summary or work list (e.g. a person ran `jutell receipt` by hand): never claim the work is done.
-export const DEFAULT_SUMMARY = 'AI가 작업 설명을 주지 않아 Git이 본 변경만 적었어요.';
-export const SUMMARY_PREFIX = '한 줄 요약: ';
-export const MATCH_SECTION = RECEIPT_SECTIONS[0];
-export const LABEL_GIT = '[Git 기준]';
-/** Files already changed before the work (W7): listed in the comparison, never counted as a change or a warning. */
-export const BEFORE_WORK_MARK = '(작업 전부터)';
-export const LABEL_AI = '[AI가 적음]';
-export const LABEL_ESTIMATE = ESTIMATED_LABEL;
-/** The comparison count: Git's changed files placed by the map. */
-export const LABEL_MATCH = '[Git 기준 · 지도 대조]';
-export const LABEL_JUTELL = '[JuTell이 적음]';
-/** Shown only when a check or a done item mentions a test or a command (item 2). */
-export const HANJA_NOTE = ` ⓘ AI가 적은 글에 한자가 섞여 있어요. 뜻이 헷갈리면 AI에게 쉬운 우리말로 다시 써 달라고 하세요  ${LABEL_JUTELL}`;
-/** [확인] heading label when JuTell's own ⓘ line sits under it, so the AI label never seems to cover JuTell's line. */
-export const LABEL_CHECK_MIXED = '[AI가 적음 · JuTell이 적은 줄은 따로 표시]';
-export const AI_RESULTS_NOTE = ` ⓘ 위 테스트·명령 결과는 AI가 알려 준 내용이에요. JuTell이 직접 돌려 보지는 않았어요  ${LABEL_JUTELL}`;
+// (The Korean label constants lived here before v2.3.0; they now come from
+// RECEIPT_LABELS.ko via the re-exports above, so Korean output is unchanged.)
 // A run record: a command name as a whole word (not 'test-app' or 'npm-debug.log'), or a run word plus a
 // result word ('테스트 통과'). A line that says it was NOT run ('실행하지 않음') never counts.
 const RUN_COMMAND = /(?<![\w./-])(?:npm|npx|pnpm|yarn|tsc|vitest|jest|pytest|eslint|cargo|make)(?![\w./-])/i;
@@ -62,8 +71,7 @@ const NOT_RUN = /않|안 ?함|안 ?했|안 ?돌|못 ?함|못 ?했|못 ?돌|생�
 export function mentionsRunRecord(text: string): boolean {
   return !NOT_RUN.test(text) && (RUN_COMMAND.test(text) || (RUN_NOUN.test(text) && RUN_RESULT.test(text)));
 }
-export const NO_MAP_MATCH = '지도가 없어 장소 대조는 못 했어요';
-export const SAYS_BUT_NO_FILES = ' ⚠ 말과 실제가 달라요: 한 일은 적혀 있는데 바뀐 파일이 없어요';
+
 
 const forbiddenStatusPhrases = ['확인 완료', '일부 확인', '추가 확인 필요'];
 const rawCommandPattern = /`|(?:^|[^A-Za-z0-9_])(?:git|npm|npx|node|pnpm|yarn|rg|grep|cat|sed|ls|cd|python|pytest|vitest|tsc|make|curl)\s+\S+|(?:^|\s)--[A-Za-z][A-Za-z0-9-]*(?=\s|=|$)|(?:^|\s)-[A-Za-z](?:[A-Za-z0-9-]*)(?=\s|$)/;
@@ -94,6 +102,20 @@ function isAbsolutePath(value: string): boolean {
   return value.startsWith('/') || value.startsWith('\\') || /^[A-Za-z]:[\\/]/.test(value);
 }
 
+// Mask placeholders follow the receipt locale too: Korean by default, English
+// when the receipt renders in English. Set at the render entry points.
+const MASK_MARKS = {
+  ko: { secretMark: '[비밀값]', path: '[경로]' },
+  en: { secretMark: '[redacted]', path: '[path]' },
+} as const;
+let maskMarks: { secretMark: string; path: string } = MASK_MARKS.ko;
+/** Resolves the locale (explicit option > JUTELL_LANG/JUTELL_LOCALE/LC_ALL/LANG, Korean default)
+ *  and switches the labels and mask placeholders this module hands out. */
+function applyReceiptLocale(locale: ReceiptLocale): ReceiptLabels {
+  maskMarks = MASK_MARKS[locale] ?? MASK_MARKS.ko;
+  return receiptLabelsFor(locale);
+}
+
 /**
  * Secret values never reach the receipt (Reviewer #37): `KEY=value` / `token: value` for secret-looking names,
  * Bearer headers, private key blocks, and well-known token shapes are replaced with [비밀값].
@@ -109,8 +131,8 @@ const SECRET_SHAPES = [
   /\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/g,
 ];
 export function maskSecretValues(value: string): string {
-  let text = value.replace(SECRET_ASSIGNMENT, (_match, key: string, sep: string) => `${key}${sep}[비밀값]`);
-  for (const shape of SECRET_SHAPES) text = text.replace(shape, '[비밀값]');
+  let text = value.replace(SECRET_ASSIGNMENT, (_match, key: string, sep: string) => `${key}${sep}${maskMarks.secretMark}`);
+  for (const shape of SECRET_SHAPES) text = text.replace(shape, maskMarks.secretMark);
   return text;
 }
 
@@ -120,7 +142,7 @@ function maskAbsolutePaths(value: string): string {
 
   return value.replace(new RegExp(`${boundary.source}${pathPattern.source}`, 'g'), (match) => {
     const prefix = match.match(boundary)?.[0] ?? '';
-    return `${prefix}[경로]`;
+    return `${prefix}${maskMarks.path}`;
   });
 }
 
@@ -235,41 +257,41 @@ function readBefore(value: unknown): { before?: string[] } {
   return before.length ? { before } : {};
 }
 
-function shortList(items: string[], max = 3) {
-  return `${items.slice(0, max).join(', ')}${items.length > max ? ` 외 ${items.length - max}개` : ''}`;
+function shortList(items: string[], L: ReceiptLabels, max = 3) {
+  return `${items.slice(0, max).join(', ')}${items.length > max ? L.moreItems(items.length - max) : ''}`;
 }
 
-function matchLines(receipt: ReceiptInput, asked: string[], askedMore: number, saysButNoFiles: boolean): string[] {
-  const more = askedMore > 0 ? [` 외 ${askedMore}개`] : [];
+function matchLines(receipt: ReceiptInput, asked: string[], askedMore: number, saysButNoFiles: boolean, L: ReceiptLabels): string[] {
+  const more = askedMore > 0 ? [L.askedMore(askedMore)] : [];
   const tail = [
-    ...(saysButNoFiles ? [`${SAYS_BUT_NO_FILES}  ${LABEL_GIT}`] : []),
+    ...(saysButNoFiles ? [`${L.saysButNoFiles}  ${L.labelGit}`] : []),
     ...(receipt.mapNote ? [` ${receipt.mapNote}`] : []),
     '',
   ];
-  const plain = (note: string) => [`${MATCH_SECTION}  ${note}  ${LABEL_GIT}`, ...asked.map((item, index) => ` ${index + 1}. ${item}  ${LABEL_AI}`), ...more, ...tail];
-  if (receipt.filesUnknownReason) return plain('바뀐 파일을 확인하지 못해 대조는 못 했어요');
+  const plain = (note: string) => [`${L.sections[0]}  ${note}  ${L.labelGit}`, ...asked.map((item, index) => ` ${index + 1}. ${item}  ${L.labelAI}`), ...more, ...tail];
+  if (receipt.filesUnknownReason) return plain(L.filesUnknownMatchNote);
   const match = receipt.match;
-  if (!match || !match.map) return plain(NO_MAP_MATCH);
+  if (!match || !match.map) return plain(L.noMapMatch);
   const count = (status: MatchItem['status']) => match.items.filter((item) => item.status === status).length;
   const parts = [
-    count('changed') ? `${count('changed')}개 바뀐 곳 있음` : '',
-    count('unchanged') ? `${count('unchanged')}개 바뀐 곳 없음` : '',
-    count('unplaced') ? `${count('unplaced')}개 장소 못 찾음` : '',
+    count('changed') ? L.matchChanged(count('changed')) : '',
+    count('unchanged') ? L.matchUnchanged(count('unchanged')) : '',
+    count('unplaced') ? L.matchUnplaced(count('unplaced')) : '',
   ].filter(Boolean);
-  const lines = [`${MATCH_SECTION}  요청 ${asked.length}개 중 ${parts.join(' · ')}  ${LABEL_MATCH}`];
+  const lines = [`${L.sections[0]}  ${L.matchSummary(asked.length, parts)}  ${L.labelMatch}`];
   match.items.forEach((item, index) => {
-    lines.push(` ${index + 1}. ${asked[index]}  ${LABEL_AI}`);
-    if (item.status === 'changed') lines.push(`    → 바뀐 곳 있음: ${shortList(item.files)}  ${item.via === 'context' ? '[추정 · AI 설명 기준]' : item.via === 'sensitive' ? '[Git 기준 · 요청에 적힌 민감 파일]' : `[Git 기준 · ${item.features.length ? `지도: ${item.features.join(', ')}` : '파일 이름으로 찾음'}]`}`);
-    else if (item.status === 'unchanged') lines.push(`    → 바뀐 곳 없음: '${item.features.join(', ')}' 파일이 바뀌지 않았어요  [Git 기준 · 지도: ${item.features.join(', ')}]`);
-    else lines.push(`    → 장소를 못 찾았어요(지도에 맞는 기능이 없어요)  ${LABEL_ESTIMATE}`);
-    if (item.status !== 'unplaced' && item.before?.length) lines.push(`    ${BEFORE_WORK_MARK} 바뀌어 있던 파일: ${shortList(item.before)}  ${LABEL_GIT}`);
+    lines.push(` ${index + 1}. ${asked[index]}  ${L.labelAI}`);
+    if (item.status === 'changed') lines.push(`${L.itemChanged}${shortList(item.files, L)}  ${item.via === 'context' ? L.viaContext : item.via === 'sensitive' ? L.viaSensitive : item.features.length ? L.viaGitMap(item.features.join(', ')) : L.viaGitFileName}`);
+    else if (item.status === 'unchanged') lines.push(`${L.itemUnchanged(item.features.join(', '))}  ${L.viaGitMap(item.features.join(', '))}`);
+    else lines.push(`${L.itemUnplaced}  ${L.labelEstimate}`);
+    if (item.status !== 'unplaced' && item.before?.length) lines.push(`    ${L.beforeWorkMark} ${L.beforeFilesLine} ${shortList(item.before, L)}  ${L.labelGit}`);
   });
   lines.push(...more);
   // Each file the map lists carries its area ID, so the user can find it in the map (`jutell map --show`).
   // Map area ids ([f-…]) mean nothing to the person reading: file names only (dogfood #37).
-  if (match.sensitiveNamed?.length) lines.push(` ⚠ 민감 파일 바뀜: ${shortList(match.sensitiveNamed)} (요청에 적혀 있음 · AI가 적음)`);
-  if (match.extra.length) lines.push(` ⚠ 요청에 없던 곳도 바뀜: ${shortList(match.extra)}  ${LABEL_GIT}`);
-  if (match.extraBefore?.length) lines.push(` ${BEFORE_WORK_MARK} 바뀌어 있던 요청 밖 파일: ${shortList(match.extraBefore)}  ${LABEL_GIT}`);
+  if (match.sensitiveNamed?.length) lines.push(L.sensitiveChanged(shortList(match.sensitiveNamed, L)));
+  if (match.extra.length) lines.push(`${L.extraChanged}${shortList(match.extra, L)}  ${L.labelGit}`);
+  if (match.extraBefore?.length) lines.push(` ${L.beforeWorkMark} ${L.extraBeforeLine.trim()} ${shortList(match.extraBefore, L)}  ${L.labelGit}`);
   return [...lines, ...tail];
 }
 
@@ -337,7 +359,8 @@ function markNormalized(receipt: ReceiptInput): ReceiptInput {
 }
 
 /** Converts old and minimal receipt inputs into renderable data without throwing. */
-export function normalizeReceipt(value: unknown, problems?: string[]): ReceiptInput {
+export function normalizeReceipt(value: unknown, problems?: string[], locale?: ReceiptLocale): ReceiptInput {
+  const L = applyReceiptLocale(resolveReceiptLocale(locale));
   const initialProblemCount = Array.isArray(problems) ? problems.length : 0;
   try {
     const issues: string[] = [];
@@ -395,10 +418,10 @@ export function normalizeReceipt(value: unknown, problems?: string[]): ReceiptIn
     }
 
     const gapChecks: ReceiptCheck[] = [];
-    if (done.length === 0) gapChecks.push({ what: '한 일 목록이 비어 있었어요', result: '안 해봄', reason: '', jutell: true });
-    if (sourceChecks.length === 0) gapChecks.push({ what: '확인한 내용을 받지 못했어요', result: '안 해봄', reason: '', jutell: true });
+    if (done.length === 0) gapChecks.push({ what: L.gapNoDone, result: '안 해봄', reason: '', jutell: true });
+    if (sourceChecks.length === 0) gapChecks.push({ what: L.gapNoChecks, result: '안 해봄', reason: '', jutell: true });
     const hasInputProblems = initialProblemCount > 0 || issues.length > 0;
-    if (hasInputProblems) gapChecks.push({ what: '입력을 읽지 못했어요', result: '안 해봄', reason: '', jutell: true });
+    if (hasInputProblems) gapChecks.push({ what: L.gapBadInput, result: '안 해봄', reason: '', jutell: true });
     for (const issue of issues) addProblem(problems, issue);
 
     const availableCheckSlots = Math.max(0, 4 - gapChecks.length);
@@ -412,9 +435,9 @@ export function normalizeReceipt(value: unknown, problems?: string[]): ReceiptIn
       done: [],
       files: [],
       checks: [
-        { what: '한 일 목록이 비어 있었어요', result: '안 해봄', reason: '', jutell: true },
-        { what: '확인한 내용을 받지 못했어요', result: '안 해봄', reason: '', jutell: true },
-        { what: '입력을 읽지 못했어요', result: '안 해봄', reason: '', jutell: true },
+        { what: L.gapNoDone, result: '안 해봄', reason: '', jutell: true },
+        { what: L.gapNoChecks, result: '안 해봄', reason: '', jutell: true },
+        { what: L.gapBadInput, result: '안 해봄', reason: '', jutell: true },
       ],
       next: { continue: [], nice: [], stop: [] },
     });
@@ -425,7 +448,8 @@ function renderList<T>(items: T[], format: (item: T, index: number) => string, e
   return items.length === 0 ? [empty] : items.map(format);
 }
 
-export function renderReceipt(input: unknown, timestamp: string, savedPath?: string): string {
+export function renderReceipt(input: unknown, timestamp: string, savedPath?: string, locale?: ReceiptLocale): string {
+  const L = applyReceiptLocale(resolveReceiptLocale(locale));
   const receipt = validateReceipt(input, typeof input === 'object' && input !== null && normalizedReceipts.has(input));
   const time = readText(timestamp, '시간');
   const summarySource = typeof input === 'object' && input !== null ? (input as { summary?: unknown }).summary : undefined;
@@ -433,11 +457,11 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
   // The summary says WHAT was done (AI summary or the first done item, as before W6); with request
   // matching the count, counted by code from Git (plan.md §2), is appended with its own label.
   const aiSummary = cleanReceiptText(summarySource)
-    ?? (receipt.done.length > 0 ? `${receipt.done[0]}${receipt.done.length > 1 ? ` 외 ${receipt.done.length - 1}건` : ''}` : undefined);
+    ?? (receipt.done.length > 0 ? `${receipt.done[0]}${receipt.done.length > 1 ? L.doneMore(receipt.done.length - 1) : ''}` : undefined);
   const count = codeMatch && codeMatch.items.length > 0
-    ? ` · 요청 ${codeMatch.items.length}개 중 ${codeMatch.items.filter((item) => item.status === 'changed').length}개 처리  ${LABEL_GIT}`
+    ? L.summaryCount(codeMatch.items.length, codeMatch.items.filter((item) => item.status === 'changed').length)
     : '';
-  const summary = `${aiSummary ? `${limitText(aiSummary)}  ${LABEL_AI}` : `${DEFAULT_SUMMARY}  ${LABEL_JUTELL}`}${count}`;
+  const summary = `${aiSummary ? `${limitText(aiSummary)}  ${L.labelAI}` : `${L.defaultSummary}  ${L.labelJuTell}`}${count}`;
   const beforeFiles = new Set(receipt.beforeFiles ?? []);
   // Only an actual run record (a done item or a check marked 확인함) brings the note; '안 해봄' checks never do.
   const mentionsRun = [...receipt.done, ...receipt.checks.flatMap((check) => check.result === '확인함' ? [`${check.what} ${check.how}`] : [])]
@@ -455,61 +479,62 @@ export function renderReceipt(input: unknown, timestamp: string, savedPath?: str
   const saysButNoFiles = receipt.filesChecked === true && !filesUnknownReason && files.length === 0 && receipt.done.some((item) => !isPlaceholder(item));
   const lines = [
     '==============================',
-    '  JuTell 작업 영수증',
+    L.header,
     `  ${time}`,
     '==============================',
-    ...(asked.length > 0 ? matchLines(receipt, asked, askedMore, saysButNoFiles) : []),
-    `${RECEIPT_SECTIONS[1]}  ${receipt.done.length ? LABEL_AI : LABEL_JUTELL}`,
-    ...renderList(receipt.done, (item, index) => ` ${index + 1}. ${item}`, ' 없음'),
-    ...(asked.length === 0 && saysButNoFiles ? [`${SAYS_BUT_NO_FILES}  ${LABEL_GIT}`] : []),
+    ...(asked.length > 0 ? matchLines(receipt, asked, askedMore, saysButNoFiles, L) : []),
+    `${L.sections[1]}  ${receipt.done.length ? L.labelAI : L.labelJuTell}`,
+    ...renderList(receipt.done, (item, index) => ` ${index + 1}. ${item}`, L.noneItem),
+    ...(asked.length === 0 && saysButNoFiles ? [`${L.saysButNoFiles}  ${L.labelGit}`] : []),
     '',
     ...(filesUnknownReason ? [
-      `${RECEIPT_SECTIONS[2]}  ${LABEL_GIT}`,
-      ` 확인 못 함 (${filesUnknownReason})`,
+      `${L.sections[2]}  ${L.labelGit}`,
+      L.filesUnknownLine(filesUnknownReason),
       '',
     ] : files.length > 0 ? [
-      `${RECEIPT_SECTIONS[2]}  ${LABEL_GIT}`,
-      ...files.slice(0, 8).map((item, index) => ` ${index + 1}. ${item}${beforeFiles.has(item) ? ` ${BEFORE_WORK_MARK}` : ''}`),
-      ...(files.length > 8 ? [` 외 ${files.length - 8}개`] : []),
+      `${L.sections[2]}  ${L.labelGit}`,
+      ...files.slice(0, 8).map((item, index) => ` ${index + 1}. ${item}${beforeFiles.has(item) ? ` ${L.beforeWorkMark}` : ''}`),
+      ...(files.length > 8 ? [L.moreFiles(files.length - 8)] : []),
       ...(receipt.beforeNote ? [` ${receipt.beforeNote.trim()}`] : []),
       '',
     ] : []),
     ...(asked.length === 0 && receipt.mapNote ? [` ${receipt.mapNote}`, ''] : []),
     // Every line carries its own source label (dogfood: [확인], ' ○ 추천' and '- …' lines had none).
     // Every line in [확인] written by JuTell (dogfood #37): the heading says so, not 'AI가 적음'.
-    `${RECEIPT_SECTIONS[3]}  ${receipt.checks.length > 0 && receipt.checks.every((check) => check.result !== '확인함' && check.jutell === true) ? LABEL_JUTELL : mentionsRun || hasHanja || receipt.checks.some((check) => check.result !== '확인함' && check.jutell === true) ? LABEL_CHECK_MIXED : LABEL_AI}`,
+    `${L.sections[3]}  ${receipt.checks.length > 0 && receipt.checks.every((check) => check.result !== '확인함' && check.jutell === true) ? L.labelJuTell : mentionsRun || hasHanja || receipt.checks.some((check) => check.result !== '확인함' && check.jutell === true) ? L.labelCheckMixed : L.labelAI}`,
     ...renderList(
       receipt.checks,
       (check) => check.result === '확인함'
-        ? ` ✔ 직접 확인한 것: ${check.what}${check.how ? ` (${check.how})` : ''}  ${LABEL_AI}`
-        : ` ✖ 확인 못 한 것: ${check.what}${check.reason ? ` (${check.reason})` : ''}  ${check.jutell ? LABEL_JUTELL : LABEL_AI}`,
-      ` ✔ 직접 확인한 것: 없음  ${LABEL_AI}`,
+        ? `${L.verifiedItem}${check.what}${check.how ? ` (${check.how})` : ''}  ${L.labelAI}`
+        : `${L.notVerifiedItem}${check.what}${check.reason ? ` (${check.reason})` : ''}  ${check.jutell ? L.labelJuTell : L.labelAI}`,
+      `${L.verifiedNone}  ${L.labelAI}`,
     ),
     // '확인 못 한 것' is never left out: with nothing unchecked it says so explicitly.
-    ...(receipt.checks.some((check) => check.result !== '확인함') ? [] : [` ✖ 확인 못 한 것: 없음  ${LABEL_AI}`]),
-    ...(mentionsRun ? [AI_RESULTS_NOTE] : []),
-    ...(hasHanja ? [HANJA_NOTE] : []),
+    ...(receipt.checks.some((check) => check.result !== '확인함') ? [] : [`${L.notVerifiedNone}  ${L.labelAI}`]),
+    ...(mentionsRun ? [L.aiResultsNote] : []),
+    ...(hasHanja ? [L.hanjaNote] : []),
     '------------------------------',
     ...(nextGroups.every((group) => group.length === 0)
-      ? [RECEIPT_SECTIONS[4], `${NOTHING_NEXT_LINE}  ${LABEL_JUTELL}`]
-      : [`${RECEIPT_SECTIONS[4]}  ${LABEL_AI}`]),
+      ? [L.sections[4], `${L.nothingNextLine}  ${L.labelJuTell}`]
+      : [`${L.sections[4]}  ${L.labelAI}`]),
     ...(nextGroups.every((group) => group.length === 0)
       ? []
-      : nextGroups.flatMap((group, index) => group.length === 0 ? [] : [`${NEXT_GROUPS[index]}  ${LABEL_AI}`, ...group.map((item) => `   - ${item}  ${LABEL_AI}`)])),
+      : nextGroups.flatMap((group, index) => group.length === 0 ? [] : [`${L.nextGroups[index]}  ${L.labelAI}`, ...group.map((item) => `   - ${item}  ${L.labelAI}`)])),
     '------------------------------',
   ];
 
   if (savedPath && !isAbsolutePath(savedPath)) {
-    lines.push(` 저장됨: ${maskAbsolutePaths(readText(savedPath, '저장 경로'))}  ${LABEL_JUTELL}`);
+    lines.push(`${L.saveLine}${maskAbsolutePaths(readText(savedPath, '저장 경로'))}  ${L.labelJuTell}`);
   }
   lines.push('==============================');
-  lines.push(`${SUMMARY_PREFIX}${summary}`);
+  lines.push(`${L.summaryPrefix}${summary}`);
   return lines.join('\n');
 }
 
 /** Saved report file: the receipt inside a text code block (valid Markdown), summary as the last line. */
-export function receiptMarkdown(output: string): string {
+export function receiptMarkdown(output: string, locale?: ReceiptLocale): string {
+  const L = receiptLabelsFor(resolveReceiptLocale(locale));
   const lines = output.split('\n');
-  const summary = lines[lines.length - 1]?.startsWith(SUMMARY_PREFIX) ? lines.pop()! : `${SUMMARY_PREFIX}${DEFAULT_SUMMARY}`;
-  return ['# JuTell 작업 영수증', '', '```text', ...lines, '```', '', summary, ''].join('\n');
+  const summary = lines[lines.length - 1]?.startsWith(L.summaryPrefix) ? lines.pop()! : `${L.summaryPrefix}${L.defaultSummary}`;
+  return [L.markdownTitle, '', '```text', ...lines, '```', '', summary, ''].join('\n');
 }

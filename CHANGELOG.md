@@ -2,6 +2,12 @@
 
 Notable user-facing changes to JuTell. See [GitHub Releases](https://github.com/ju0o/jutell/releases) for the full history and exact publish dates.
 
+## Unreleased
+
+- **Zero-install onboarding:** the READMEs (English and Korean) now lead with `npx jutell@latest` — no global install, so npm's `EACCES` global-folder permission error cannot happen. The permanent install (`npm install -g jutell`, then bare `jutell`) stays documented as the alternative.
+- **English receipts (i18n):** the receipt's fixed labels and JuTell's own note lines follow the locale: an explicit option, then `JUTELL_LANG` / `JUTELL_LOCALE` / `LC_ALL` / `LANG`. English environments get `[Request Check]`, `[Work Done]`, `[Changed Files]`, `[Verification]`, `[Next Steps]`, `[Git Verified]`, `[AI Claimed]` and `[JuTell Note]`; Korean stays the default everywhere (including test runs), and what the AI wrote is passed through untouched.
+- **Publish guide:** `.github/workflows/publish.yml` documents the full tokenless Trusted Publishing (OIDC) release flow — one-time npm setup, tag/version discipline, the dry-run rehearsal, and the fallback token.
+
 ## v2.2.0 — 2026-10-25
 
 **Cycle 3: connect JuTell to GUI apps, with careful config edits you can undo.**
