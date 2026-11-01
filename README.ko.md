@@ -27,10 +27,28 @@ JuTell은 두 가지를 해 줘요. 코드나 로그를 읽을 필요가 없어�
 
 ### 3단계로 시작하기
 
-1. **설치** (Node.js 18 이상): `npm install -g jutell`
-2. **프로젝트 폴더에서 실행:** `cd 내-프로젝트 && jutell` — 설치된 Agent(Codex, Claude Code, OpenCode)를 찾아 연결해요.
-3. **프로젝트 지도 열기** — 브라우저로 `.jutell-local/map.html`(또는 `JuTellMap.md`)을 열어 보고,
-   **평소처럼 Agent에게 요청**하세요(새 대화에서). 작업이 끝나면 JuTell 영수증이 나오고 지도도 갱신돼요.
+**권장: 설치 없이 바로 실행** — 전역 설치가 없으니 npm 전역 폴더 권한 오류(`EACCES`)가 생길 수
+없어요. Node.js 18 이상이면 됩니다:
+
+1. **프로젝트 폴더에서 바로 실행:**
+
+   ```bash
+   cd 내-프로젝트
+   npx jutell@latest
+   ```
+
+   설치된 Agent(Codex, Claude Code, OpenCode)를 찾아 연결해 줘요.
+2. **프로젝트 지도 열기** — 브라우저로 `.jutell-local/map.html`(또는 `JuTellMap.md`)을 열어 보고,
+   **평소처럼 Agent에게 요청**하세요(새 대화에서). 작업이 끝나면 JuTell 영수증이 나오고 지도도
+   갱신돼요.
+
+**영구 설치를 원하시나요?** 명령이 한 줄 더 필요하고, Linux에서는 npm의 `EACCES` 권한 오류를 만날
+수 있어요(해결법은 아래에):
+
+```bash
+npm install -g jutell
+jutell
+```
 
 ### 직접 보기 (실제 터미널 녹화, 편집 없음)
 
@@ -49,7 +67,10 @@ headless Chrome으로 찍었어요. 카드를 하나씩 펼친 모습):
 
 ![내가 하려는 말을 Agent에게, Agent가 한 일을 나에게 — 작업 전에는 프로젝트 사실을 확인하고 필요할 때만 질문하고, 작업 후에는 확인된 것과 아직 확인하지 못한 것을 나눕니다.](docs/assets/readme/hero-report.ko.svg)
 
-Linux에서 `npm install -g`가 `EACCES` 권한 오류로 실패하면 sudo 대신, npm 설치 위치를 홈 폴더로 바꾸거나(`npm config set prefix ~/.npm-global` 후 `~/.npm-global/bin`을 `PATH`에 추가) nvm으로 Node를 설치하세요.
+Linux에서 `npm install -g`가 `EACCES` 권한 오류로 실패하면, 권장하는 `npx jutell@latest` 방식은
+전역 폴더를 건드리지 않아 이 오류가 날 수 없어요. 전역 설치를 원한다면 sudo 대신, npm 설치 위치를
+홈 폴더로 바꾸거나(`npm config set prefix ~/.npm-global` 후 `~/.npm-global/bin`을 `PATH`에 추가)
+nvm으로 Node를 설치하세요.
 
 JuTell은 해당 폴더에 `AGENTS.md`, `.agents/`, `.jutell.json`, `.jutell-local/`을 만들거나
 업데이트합니다. Codex를 연결하면 `~/.codex/config.toml`에도 연결 설정을 추가합니다. ChatGPT 데스크톱 앱(Codex 앱)과 Codex IDE 확장도 이 파일을 같이 쓰므로 Codex를 한 번 연결하면 셋 다 연결돼요. 연결 뒤 앱은 설정 → MCP servers → Restart, IDE 확장은 Restart extension을 눌러 주세요.
@@ -62,7 +83,8 @@ JuTell은 `*`가 든 `.jutell-local/.gitignore`를 만들어 영수증을 Git에
 
 대화형 입력이 없는 자동 실행에서는 `jutell --yes`를 사용하면 `(Y/n)` 확인을 건너뜁니다.
 
-**설치는 하기 싫다면.** JuTell이 하는 일은 대부분 한 번의 연결이고, 끝나면 원래 쓰던 Agent로
+**설치는 하기 싫다면.** 그게 권장 방식이에요(위의 **3단계로 시작하기** 참고). JuTell이 하는 일은
+대부분 한 번의 연결이고, 끝나면 원래 쓰던 Agent로
 돌려보내고 빠집니다. 그래서 설치 없이 바로 실행해도 됩니다:
 
 ```bash
@@ -147,11 +169,11 @@ JuTell은 "코드로는 맞아 보인다"를 "화면에서 확인됐다"로 바�
 ## 써 보세요
 
 ```bash
-npm install -g jutell
-jutell
+npx jutell@latest
 ```
 
-위와 똑같은 두 명령이에요 — 여기까지 읽고 써 보고 싶으시다면, 필요한 건 이게 전부예요.
+이게 권장 방식이에요 — 설치 없이, 여기까지 읽고 써 보고 싶으시다면 필요한 건 이게 전부예요.
+영구 설치(`npm install -g jutell` 후 `jutell`)를 해 두어도 같은 방식으로 동작해요.
 
 ## 지원하는 Agent와 플랫폼
 
@@ -290,10 +312,10 @@ jutell doctor
 아래 화면은 모두 **실제로 실행해서 나온 그대로**입니다. 작은 연습용 Git 프로젝트(파일 5개)에서
 Codex만 깔린 환경으로 실행했어요. 날짜·시각·파일 이름은 여러분 컴퓨터에서 다르게 나옵니다.
 
-**한 줄 설치** — 터미널에 붙여 넣으세요. (Node.js 18 이상이 필요해요.)
+**한 줄 실행** — 터미널에 붙여 넣으세요. (Node.js 18 이상이 필요해요. 설치 없이 실행하는 권장 방식이에요.)
 
 ```bash
-npm install -g jutell && jutell
+npx jutell@latest
 ```
 
 **처음 실행했을 때** (`jutell` 화면 중 일부):

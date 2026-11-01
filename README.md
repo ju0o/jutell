@@ -33,11 +33,28 @@ JuTell does two things for you, with no code or logs to read:
 
 ### Start in 3 steps
 
-1. **Install** (Node.js 18+): `npm install -g jutell`
-2. **Run it in your project folder:** `cd your-project && jutell` — it finds your agent (Codex, Claude Code, OpenCode) and connects it.
-3. **Open your project map** — `.jutell-local/map.html` in a browser (or `JuTellMap.md`) — then
+**Recommended: run it without installing** — no global install, so npm's global-folder permission
+errors (`EACCES`) can't happen. You need Node.js 18+:
+
+1. **Run it in your project folder:**
+
+   ```bash
+   cd your-project
+   npx jutell@latest
+   ```
+
+   It finds your agent (Codex, Claude Code, OpenCode) and connects it.
+2. **Open your project map** — `.jutell-local/map.html` in a browser (or `JuTellMap.md`) — then
    **ask your agent as usual** in a new session. When it finishes, it prints a JuTell receipt and the
    map is refreshed.
+
+**Prefer a permanent install?** It's one command more, and on Linux it can hit npm's `EACCES`
+permission error (fix below):
+
+```bash
+npm install -g jutell
+jutell
+```
 
 ### See it (real terminal recording, unedited)
 
@@ -62,7 +79,9 @@ Label glossary: `[AI가 적음]` = written by the AI · `[Git 기준]` = checked
 
 ![Tell your agent what you mean. Understand what it did — before work, JuTell checks project facts and asks one question if it matters; after work, it separates verified from not-checked-yet.](docs/assets/readme/hero-report.svg)
 
-Linux `EACCES` permission error on `npm install -g`? Don't use sudo; point npm at a folder in your home (`npm config set prefix ~/.npm-global` and add `~/.npm-global/bin` to `PATH`) or install Node with nvm.
+Linux `EACCES` permission error on `npm install -g`? The recommended `npx jutell@latest` path above
+never touches the global folder, so it cannot hit this. If you prefer a permanent global install,
+don't use sudo; point npm at a folder in your home (`npm config set prefix ~/.npm-global` and add `~/.npm-global/bin` to `PATH`) or install Node with nvm.
 
 ## Two key features
 
@@ -152,6 +171,14 @@ First, go to your project folder:
 cd /path/to/your-project
 ```
 
+**Recommended (no install, no permission errors):**
+
+```bash
+npx jutell@latest
+```
+
+**Or install permanently first:**
+
 ```bash
 npm install -g jutell
 jutell
@@ -168,7 +195,8 @@ Set `"features": { "receiptReport": false }` in `.jutell.json` to turn off recei
 
 For non-interactive or automated runs, use `jutell --yes` to skip the `(Y/n)` prompt.
 
-**Don't want to install anything?** JuTell's normal job is a one-time connection - it hands you
+**Don't want to install anything?** That's the recommended way to start (see **Start in 3
+steps** above): JuTell's normal job is a one-time connection - it hands you
 back to your own agent and gets out of the way - so you can just run it without installing:
 
 ```bash
@@ -249,11 +277,11 @@ starting with the full Skill-file read — is an active area of work, not someth
 ## Try it
 
 ```bash
-npm install -g jutell
-jutell
+npx jutell@latest
 ```
 
-The same two commands as above — if you've read this far and want to try it, this is all it takes.
+That's the recommended, no-install way — if you've read this far and want to try it, this is all it
+takes. A permanent install (`npm install -g jutell`, then bare `jutell`) works the same once it's in.
 
 ## Supported agents & platforms
 
